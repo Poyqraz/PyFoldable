@@ -2,13 +2,14 @@
 
 ## Türkçe özet (teslim)
 
-| Konu | Durum |
-|------|--------|
-| CFD | Yapılmadı; yalnızca Seviye-1 hazırlık girdileri |
-| Deneysel doğrulama | Yok |
-| Motor bağlantısı | `reference_load_postprocess` — referans yük dengesi + foldable son-işleme |
-| Raporlama kazancı | `gain_vs_compact_20cm_root` → 20 cm temel pervaneye göre kazanç |
-| Referans üst sınır | `fixed 25cm reference` → sabit 25 cm referans |
+| Konu | Açıklama |
+|------|----------|
+| Geçerlilik kapsamı | Sayısal ön tasarım ve model tabanlı değerlendirme |
+| CFD hazırlık | İşletim noktası ve sınır koşulu girdisi (Seviye-1) |
+| Deneysel doğrulama | Sonraki doğrulama adımı olarak referans alınır |
+| Motor bağlantısı | `reference_load_postprocess` — referans pervane dengesi + katlanabilir son-işleme |
+| İtki kazancı | `gain_vs_compact_20cm_root` → 20 cm temel pervaneye göre |
+| İtki açığı | `loss_vs_25cm_reference` → sabit 25 cm referans pervaneye göre |
 
 Terim eşlemesi: `terminology_tr.md`
 

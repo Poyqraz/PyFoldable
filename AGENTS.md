@@ -10,14 +10,14 @@ work happens through `pytest` and the standalone scripts in `examples/`.
 - Use the virtualenv at `venv/` created by the update script. Run tools via
   `./venv/bin/python` and `./venv/bin/pytest` (the package is installed editable, so
   source edits are picked up without reinstalling).
-- Requires Python >=3.10 (CI VM has 3.12). System package `python3.12-venv` is needed
-  to create the venv; the update script installs it.
+- Requires Python >=3.10 (CI tests 3.10 and 3.11; local VM may have 3.12). System
+  package `python3.12-venv` is needed to create the venv; the update script installs it.
 
 ### Lint / test / build / run
-- Tests: `./venv/bin/pytest tests/ -q` (≈197 pass, a few skips).
+- Tests: `./venv/bin/pytest tests/ -q` (**197 passed**, 9 skipped as of last CI run).
 - No linter is configured in this repo (no ruff/flake8/black config or deps). For a
   baseline syntax check use `./venv/bin/python -m compileall pyfoldable pythrust examples tests`.
-- Build/run = executing the `examples/*.py` scripts; see README "Quick start".
+- Build/run = executing the `examples/*.py` scripts; see README "Hızlı çalıştırma".
 
 ### Non-obvious gotchas
 - Several example scripts are a **pipeline** and must be run in order because each one
@@ -26,10 +26,10 @@ work happens through `pytest` and the standalone scripts in `examples/`.
   `run_design_variant_sweep` → `run_design_variant_summary` →
   `run_design_variant_decision_matrix`; and
   `run_moment_kinematics_validation` → `run_foldable_visuals`;
-  deployment diagnostics → `generate_foldable_engineering_report`.
-- `examples/run_foldable_sweep.py` currently fails with
-  `ImportError: cannot import name 'evaluate_sweep' from 'pyfoldable'`. This is a
-  pre-existing source bug: `evaluate_sweep`/`evaluate_sweep_row` are listed in
-  `pyfoldable/__init__.py` `__all__` but never imported there (they live in
-  `pyfoldable.performance`). It is NOT an environment problem. Other examples work.
+  `run_deployment_diagnostics` → `generate_foldable_engineering_report`.
+- `examples/run_foldable_sweep.py` uses `reference_scaled` thrust mode and loads the APC
+  propeller database to supply `fixed_thrust_n` per RPM (hover J=0). Requires
+  `data/propellers/apc_202602/` on disk.
+- Standalone quick-start scripts (no pipeline): `run_foldable_sweep`, `run_foldable_operating_point`,
+  `run_prescribed_rpm_physics`, `run_cfd_preparation`.
 - Generated artifacts land in `outputs/` (gitignored) and `reports/`.

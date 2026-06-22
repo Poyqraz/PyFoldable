@@ -42,6 +42,8 @@ from .performance import (
     estimate_foldable_thrust_n,
     estimate_thrust_n,
     estimate_thrust_reference_scaled,
+    evaluate_sweep,
+    evaluate_sweep_row,
     thrust_model_note,
 )
 from .summary import (

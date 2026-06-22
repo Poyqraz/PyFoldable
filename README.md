@@ -2,42 +2,35 @@
 
 ![Tests](https://github.com/Poyqraz/PyFoldable/actions/workflows/tests.yml/badge.svg)
 
-**Uçtan eklemli katlanabilir pervane analiz ve raporlama paketi**
+**Uçtan eklemli katlanabilir pervane için sayısal analiz ve mühendislik raporlama paketi**
 
-PyFoldable, İHA elektrik tahrikli pervaneler için uçtan mafsallı (tip-hinged) katlanabilir pervane
-geometrisinin model tabanlı analizini, karar desteğini ve mühendislik tasarım raporu üretimini
-sağlar. Paket; kinematik model, menteşe dinamiği, kalibrasyonlu itki bölünmesi, motor bağlantılı
-performans katmanı ve Seviye-1 CFD hazırlık çıktılarını tek bir doğrulanabilir iş akışında birleştirir.
-
-> **Teknik geçmiş:** Bu depo, [PyThrust](https://github.com/Poyqraz/PyThrust) içindeki
-> `pythrust/foldable/` modülünün bağımsız paket olarak dışa aktarılmış halidir. Çekirdek PyThrust
-> çözücüsü değiştirilmemiştir; işletim noktası eşlemesi için minimal `pythrust.propellers` ve
-> `pythrust.propulsion` dilimleri dahil edilmiştir.
+PyFoldable; uçtan mafsallı (tip-hinged) katlanabilir pervane geometrisinin kinematik modelini,
+menteşe dinamiğini, kalibrasyonlu itki bölünmesini ve motor bağlantılı performans
+değerlendirmesini tek bir doğrulanabilir iş akışında birleştirir. Paket; tasarım varyantı
+taramasından 7100 dev/dak mühendislik kontrol noktasına, oradan mühendislik tasarım raporu ve
+Seviye-1 CFD hazırlık tablolarına kadar uçtan uca sayısal ön tasarım çıktıları üretir.
 
 ## Projenin amacı
 
-Mühendislik tasarımı bağlamında şu sorulara yanıt üretmek:
+Mühendislik tasarımı bağlamında şu sorulara model tabanlı yanıt üretmek:
 
-1. Katlanabilir pervane, **20 cm temel pervane** (`root-only` / `compact root`) itkisine göre ne kadar kazanç sağlar?
-2. **Katlanabilir aday** (`foldable pretest`) konfigürasyonu, **sabit 25 cm referans** (`fixed reference`) pervaneye ne kadar yaklaşır?
-3. 7100 dev/dak mühendislik kontrol noktasında motor akımı, gücü ve tork marjı kabul edilebilir mi?
-4. Tasarım varyantları ve dağıtım senaryoları raporlanabilir, tekrarlanabilir CSV/şekil çıktılarıyla belgelenebilir mi?
+1. **Katlanabilir aday**, **20 cm temel pervane** (`root-only` / `compact root`) itkisine göre ne kadar **itki kazancı** sağlar?
+2. **Katlanabilir aday** (`foldable pretest`), **sabit 25 cm referans pervane** (`fixed reference`) performansına ne kadar yaklaşır; **itki açığı** nedir?
+3. 7100 dev/dak kontrol noktasında motor akımı, gücü ve tork marjı kabul edilebilir mi?
+4. Tasarım varyantları ve dağıtım senaryoları tekrarlanabilir CSV ve rapor dosyalarıyla belgelenebilir mi?
 
-Tüm sonuçlar **simülasyon çıktısıdır**; imalat veya görev kararı için deneysel doğrulama ve CFD
-analizi gerektirir.
-
-## Terimler (kod etiketi → Türkçe açıklama)
+## Terimler (kod etiketi → rapor dili)
 
 | Kod / CSV etiketi | Türkçe karşılık |
 |-------------------|-----------------|
-| `root-only`, `compact root`, `root_only_20cm` | **20 cm temel pervane** — katlanmış/kompakt kök baz çizgisi |
-| `foldable`, `foldable pretest`, `pretest_70_fixed` | **Katlanabilir aday** — kalibrasyonlu ön-test foldable konfigürasyonu |
-| `fixed reference`, `fixed 25cm`, `25 cm reference` | **Sabit 25 cm referans** — tam açık sabit pervane üst sınırı |
-| `gain_vs_compact_20cm_root` | 20 cm temel pervaneye göre itki kazancı (%) |
-| `loss_vs_25cm_reference` | Sabit 25 cm referansa göre itki açığı (%) |
-| `reference_load_postprocess` | Motor denge çözümü referans yüke; foldable aerodinamik yük sonradan işlenir |
+| `root-only`, `compact root`, `root_only_20cm` | **20 cm temel pervane** |
+| `foldable`, `foldable pretest`, `pretest_70_fixed` | **Katlanabilir aday** |
+| `fixed reference`, `fixed 25cm`, `25 cm reference` | **Sabit 25 cm referans pervane** |
+| `gain`, `gain_vs_compact_20cm_root` | **İtki kazancı** (20 cm temel pervaneye göre, %) |
+| `loss`, `loss_vs_25cm_reference` | **İtki açığı** (sabit 25 cm referansa göre, %) |
+| `reference_load_postprocess` | Referans pervane yüküyle motor dengesi; katlanabilir aerodinamik yük sonradan işlenir |
 
-Ayrıntılı rapor dili için bkz. `reports/foldable_v2_engineering_design/terminology_tr.md`.
+Ayrıntılı eşleme: `reports/foldable_v2_engineering_design/terminology_tr.md`
 
 ## Kurulum
 
@@ -51,21 +44,27 @@ Gereksinimler: Python ≥ 3.10, NumPy, SciPy. Grafik örnekleri için `matplotli
 
 ## Hızlı çalıştırma
 
+Aşağıdaki komutlar bağımsız çalışır (önceki çıktı gerektirmez):
+
 ```bash
-# Tasarım varyantı tarama (V1)
+# 1) V1 RPM taraması — kinematik + efektif çap + itki tablosu
 python3 examples/run_foldable_sweep.py
 
-# Mühendislik tasarım raporu üretimi (V2 motor bağlantılı kontrol noktası)
-python3 examples/generate_foldable_engineering_report.py
+# 2) V2 işletim noktası — PyThrust denge + foldable son-işleme
+python3 examples/run_foldable_operating_point.py
 
-# Seviye-1 CFD hazırlık CSV'leri (CFD çözümü değil)
-python3 examples/run_cfd_preparation.py
-
-# Prescribed-RPM V2 fizik tanıları
+# 3) V2 prescribed-RPM fizik tanıları ve debug CSV/şekilleri
 python3 examples/run_prescribed_rpm_physics.py
 
-# Motor bağlantılı throttle taraması
-python3 examples/run_foldable_operating_point.py
+# 4) Seviye-1 CFD hazırlık tabloları (işletim noktası ve sınır koşulu girdisi)
+python3 examples/run_cfd_preparation.py
+```
+
+Mühendislik raporu üretimi (önce motor bağlantılı tanı CSV'leri gerekir):
+
+```bash
+python3 examples/run_deployment_diagnostics.py
+python3 examples/generate_foldable_engineering_report.py
 ```
 
 Testler:
@@ -76,60 +75,72 @@ pytest tests/ -q
 
 ## Ana çıktı dosyaları
 
+**Türkçe rapor referansları (öncelikli):**
+
 | Yol | Açıklama |
 |-----|----------|
-| `reports/foldable_v2_engineering_design/foldable_v2_engineering_design_report.md` | Ana İngilizce mühendislik raporu (Markdown) |
-| `reports/foldable_v2_engineering_design/report_conclusion_tr.md` | Türkçe sonuç paragrafı |
+| `reports/foldable_v2_engineering_design/README.md` | Rapor paketi girişi |
+| `reports/foldable_v2_engineering_design/report_conclusion_tr.md` | **Türkçe sonuç metni** |
 | `reports/foldable_v2_engineering_design/report_key_results.csv` | 7100 dev/dak özet metrikleri |
-| `reports/foldable_v2_engineering_design/model_assumptions_and_limits.md` | Model varsayımları ve sınırları |
-| `reports/foldable_v2_engineering_design/figure_index.md` | Şekil envanteri ve kullanım uyarıları |
-| `reports/foldable_v2_engineering_design/docx/` | Final Word raporu (teslim dosyası) |
-| `reports/foldable_v2_engineering_design/pdf/` | Final PDF çıktısı (teslim dosyası) |
+| `reports/foldable_v2_engineering_design/terminology_tr.md` | Terim sözlüğü |
+| `reports/foldable_v2_engineering_design/docx/` | Final Word raporu (teslim) |
+| `reports/foldable_v2_engineering_design/pdf/` | Final PDF çıktısı (teslim) |
 | `reports/foldable_v2_engineering_design/figures/` | Rapora gömülecek nihai şekiller |
-| `outputs/foldable/` | Örnek betiklerin ürettiği ara CSV ve şekiller (gitignore; yerelde yeniden üretilir) |
+
+**Teknik ekler (İngilizce):**
+
+| Yol | Açıklama |
+|-----|----------|
+| `reports/foldable_v2_engineering_design/foldable_v2_engineering_design_report.md` | Tam mühendislik raporu (Markdown) |
+| `reports/foldable_v2_engineering_design/model_assumptions_and_limits.md` | Model varsayımları |
+| `reports/foldable_v2_engineering_design/figure_index.md` | Şekil envanteri |
 | `configs/foldable/TIP_HINGED_250_V02.json` | V2 referans konfigürasyonu |
+| `outputs/foldable/` | Örnek betiklerin ürettiği ara CSV ve şekiller (gitignore) |
 
-Örnek betikler `outputs/` altına dinamik çıktı yazar; teslim paketinde `reports/` ve `docx/` /
-`pdf/` klasörleri referans alınır.
+## 7100 dev/dak ana sonuçları
 
-## 7100 dev/dak ana sonuçları (model)
+Motor bağlantılı katmanda interpolasyonla elde edilen mühendislik kontrol noktası
+(`CHECKPOINT_RPM` = 7100 dev/dak):
 
-Motor bağlantılı katmanda interpolasyonla elde edilen mühendislik kontrol noktası (`CHECKPOINT_RPM` / 7100 dev/dak):
+| Karşılaştırma | Değer |
+|---------------|-------|
+| 20 cm temel pervane | **3.73 N** |
+| Katlanabilir aday | **6.37 N** |
+| Sabit 25 cm referans pervane | **9.10 N** |
+| 20 cm temele göre itki kazancı | **+%70.9** |
+| Sabit 25 cm referansa göre itki açığı | **%30.0** |
 
-| Metrik (kod) | Değer | Türkçe yorum |
-|--------------|-------|--------------|
-| `root_only_20cm_thrust_7100` | **3.73 N** | 20 cm temel pervane itkisi |
-| `foldable_pretest_thrust_7100` | **6.37 N** | Katlanabilir aday (kalibrasyonlu ön-test) |
-| `fixed_25cm_reference_thrust_7100` | **9.10 N** | Sabit 25 cm referans itkisi |
-| `gain_vs_compact_20cm_root` | **+70.9%** | 20 cm temele göre kazanç |
-| `loss_vs_25cm_reference` | **−30.0%** | Sabit 25 cm referansa göre açık |
-| `interpolated_throttle_7100` | **0.768** | 7100 dev/dak için gereken gaz |
-| `motor_current_7100` | **17.0 A** | Batarya akımı (model) |
-| `motor_power_7100` | **150 W** | Elektrik gücü (model) |
+Ek kontrol noktası verileri: gaz **0.768**, akım **17.0 A**, güç **150 W**
+(kaynak: `report_key_results.csv`).
 
-Kaynak: `reports/foldable_v2_engineering_design/report_key_results.csv`
+## Geçerlilik kapsamı
 
-## Model sınırları
+Bu aşama **sayısal ön tasarım ve model tabanlı değerlendirme** üretir. Paket;
 
-Bu paket **mühendislik ön-tasarım ve raporlama** içindir. Aşağıdaki sınırlar bilinçli olarak
-korunmuştur:
+- kinematik model, menteşe dinamiği, kalibrasyonlu itki bölünmesi ve motor bağlantılı
+  performans katmanını bir arada sunar;
+- Seviye-1 **CFD hazırlık tabloları** ile işletim noktası ve sınır koşulu girdisi sağlar;
+- motor bağlantısını `reference_load_postprocess` seviyesinde modeller (RPM/akım/güç referans
+  pervane dengesinden; katlanabilir `D_aero` yükü sonradan işlenir).
 
-| Konu | Durum |
-|------|--------|
-| **CFD** | Yapılmadı. Seviye-1 hazırlık CSV'leri yalnızca sınır koşulu / işletim noktası girdisi üretir. |
-| **Deneysel doğrulama** | Yok. İtki standı, RPM telemetrisi veya dağıtım videosu metrologisi modele dahil değildir. |
-| **Motor bağlantısı** | `reference_load_postprocess` seviyesinde: RPM/akım/güç PyThrust referans pervane dengesinden gelir; foldable `D_aero` yükü sonradan işlenir, çözücüye geri beslenmez. |
-| **Yapısal analiz** | Menteşe, kilit ve kök bağlantısı gerilme/ömür analizi yoktur. |
-| **BEM / kanat çözünürlüğü** | Veritabanı ölçekli itki modeli; kanat profili çözünürlüklü BEM veya CFD yoktur. |
-
-Ayrıntı: `reports/foldable_v2_engineering_design/model_assumptions_and_limits.md`
+Deneysel doğrulama, ileri aerodinamik çözüm (CFD/BEM çalıştırması) ve yapısal analiz sonraki
+doğrulama adımları için referans alınır. Ayrıntı:
+`reports/foldable_v2_engineering_design/model_assumptions_and_limits.md`
 
 ## Kapsam özeti
 
 - **V1:** Kinematik, efektif çap, tasarım taraması, karar matrisi, görselleştirme
 - **V2:** Menteşe dinamiği, itki bölünmesi, motor bağlantılı performans, mühendislik raporu
-- **Dahil değil:** PyThrust çekirdek değişiklikleri, OpenMDAO, tam pervane veritabanı, CFD çözücü çalıştırması
 
 ## Lisans
 
 Apache-2.0 — bkz. `LICENSE`.
+
+---
+
+## Teknik altyapı notu
+
+PyFoldable, [PyThrust](https://github.com/Poyqraz/PyThrust) ekosistemindeki foldable modülünün
+bağımsız paket olarak dışa aktarılmış halidir. İşletim noktası eşlemesi için minimal
+`pythrust.propellers` ve `pythrust.propulsion` dilimleri dahil edilmiştir; PyThrust çekirdek
+çözücüsü değiştirilmemiştir.
