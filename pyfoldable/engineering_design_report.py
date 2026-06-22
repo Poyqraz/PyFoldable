@@ -61,18 +61,6 @@ FIGURE_CATALOG: tuple[tuple[str, str, bool, str], ...] = (
         "Moment-based deployment model visualization.",
     ),
     (
-        "outputs/foldable/dynamics/physics/figures/diag_bias10_thrust_split.png",
-        "Deployment diagnostic thrust split (bias10 case)",
-        True,
-        "Candidate geometry; compare with latch reference.",
-    ),
-    (
-        "outputs/foldable/dynamics/physics/figures/diag_bias10_phase_portrait.png",
-        "Deployment diagnostic phase portrait (bias10)",
-        True,
-        "Partial deployment state; not full latch open-stop.",
-    ),
-    (
         "outputs/foldable/dynamics/physics/figures/ramp_thrust_split.png",
         "Spin-up ramp thrust split",
         False,
@@ -608,7 +596,8 @@ def _format_figure_index(project_root: Path) -> str:
             "## Report-ready summary",
             "",
             "Preferred V2 physics figures under "
-            "`outputs/foldable/dynamics/physics/figures/` (constant_7100_* and diag_bias10_*).",
+            "`outputs/foldable/dynamics/physics/figures/` (`constant_7100_*`; "
+            "from `examples/run_prescribed_rpm_physics.py`).",
             "",
             "## Use with caution",
             "",

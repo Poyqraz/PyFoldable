@@ -11,8 +11,6 @@ Paths are relative to the repository root.
 | `outputs/foldable/dynamics/physics/figures/constant_7100_diameter_geo_aero.png` | Geometric vs aerodynamic effective diameter at 7100 rpm | yes | Shows D_geo and D_aero separation in V2 model. |
 | `outputs/foldable/dynamics/physics/figures/constant_7100_hinge_kinematics.png` | Hinge kinematics time history at 7100 rpm | yes | Prescribed-RPM diagnostic; not motor-coupled transient. |
 | `outputs/foldable/dynamics/physics/figures/constant_7100_moments.png` | Hinge moment balance at 7100 rpm | yes | Moment-based deployment model visualization. |
-| `outputs/foldable/dynamics/physics/figures/diag_bias10_thrust_split.png` | Deployment diagnostic thrust split (bias10 case) | yes | Candidate geometry; compare with latch reference. |
-| `outputs/foldable/dynamics/physics/figures/diag_bias10_phase_portrait.png` | Deployment diagnostic phase portrait (bias10) | yes | Partial deployment state; not full latch open-stop. |
 | `outputs/foldable/dynamics/physics/figures/ramp_thrust_split.png` | Spin-up ramp thrust split | no | Dynamic V1 layer; do not mix directly with V2 motor-coupled tables. |
 | `outputs/foldable/dynamics/physics/figures/ramp_phase_portrait.png` | Spin-up ramp phase portrait | no | Transient startup; different coupling level than 7100 checkpoint. |
 | `outputs/foldable/figures/foldable_thrust_n_vs_throttle_by_variant.png` | Design-variant thrust vs throttle sweep | no | Pre-motor-coupled design sweep; throttle axis not V2 motor equilibrium. |
@@ -26,7 +24,7 @@ Paths are relative to the repository root.
 
 ## Report-ready summary
 
-Preferred V2 physics figures under `outputs/foldable/dynamics/physics/figures/` (constant_7100_* and diag_bias10_*).
+Preferred V2 physics figures under `outputs/foldable/dynamics/physics/figures/` (`constant_7100_*`; üretim: `examples/run_prescribed_rpm_physics.py`). Teslim kopyası: `figures/` klasörü.
 
 ## Use with caution
 

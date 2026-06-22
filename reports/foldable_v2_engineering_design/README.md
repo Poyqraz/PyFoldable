@@ -13,6 +13,11 @@ Bu klasör, uçtan eklemli katlanabilir pervane V2 çalışmasının **teslim ra
 | [`pdf/`](pdf/) | Final PDF çıktısı (teslim) |
 | [`figures/`](figures/) | Rapora gömülecek nihai şekiller |
 
+**Görsel üretim:** V2 fizik şekilleri (`constant_7100_*.png`) için
+`python3 examples/run_prescribed_rpm_physics.py` çalıştırın; çıktılar
+`outputs/foldable/dynamics/physics/figures/` altında oluşur. Teslim için bu dosyaları
+`figures/` klasörüne kopyalayın (bkz. `figures/README.md`).
+
 ## 7100 dev/dak özet (model)
 
 | Karşılaştırma | Değer |

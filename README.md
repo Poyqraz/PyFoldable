@@ -111,7 +111,7 @@ Motor bağlantılı katmanda interpolasyonla elde edilen mühendislik kontrol no
 | Sabit 25 cm referansa göre itki açığı | **%30.0** |
 
 Ek kontrol noktası verileri: gaz **0.768**, akım **17.0 A**, güç **150 W**
-(kaynak: `report_key_results.csv`).
+(kaynak: `reports/foldable_v2_engineering_design/report_key_results.csv`).
 
 ## Geçerlilik kapsamı
 
