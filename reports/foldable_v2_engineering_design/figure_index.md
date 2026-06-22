@@ -2,6 +2,8 @@
 
 Paths are relative to the repository root.
 
+**Teslim şekilleri:** Nihai rapor görselleri `reports/foldable_v2_engineering_design/figures/` altına kopyalanır (bkz. `figures/README.md`).
+
 | File | Purpose | Report-ready | Caution |
 |------|---------|--------------|---------|
 | `outputs/foldable/dynamics/physics/figures/constant_7100_thrust_split.png` | V2 prescribed-RPM thrust split at 7100 rpm checkpoint | yes | Use with note that values are model-based, not measured. |

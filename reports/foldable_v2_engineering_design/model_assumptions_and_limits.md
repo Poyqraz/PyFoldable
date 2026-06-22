@@ -1,5 +1,19 @@
 # Model Assumptions and Limits — Foldable V2
 
+## Türkçe özet (teslim)
+
+| Konu | Durum |
+|------|--------|
+| CFD | Yapılmadı; yalnızca Seviye-1 hazırlık girdileri |
+| Deneysel doğrulama | Yok |
+| Motor bağlantısı | `reference_load_postprocess` — referans yük dengesi + foldable son-işleme |
+| Raporlama kazancı | `gain_vs_compact_20cm_root` → 20 cm temel pervaneye göre kazanç |
+| Referans üst sınır | `fixed 25cm reference` → sabit 25 cm referans |
+
+Terim eşlemesi: `terminology_tr.md`
+
+---
+
 ## Motor and propulsion coupling
 
 - **Coupling level:** `reference_load_postprocess`
