@@ -23,7 +23,7 @@ Bu klasör, uçtan eklemli katlanabilir pervane V2 çalışmasının **teslim ra
 | Karşılaştırma | Değer |
 |---------------|-------|
 | 20 cm temel pervane | 3.73 N |
-| Katlanabilir aday | 6.37 N |
+| Katlanabilir düzenleme | 6.37 N |
 | Sabit 25 cm referans pervane | 9.10 N |
 | İtki kazancı (20 cm temele göre) | +%70.9 |
 | İtki açığı (sabit 25 cm referansa göre) | %30.0 |

@@ -313,7 +313,9 @@ def build_report_key_results(metrics: EngineeringReportMetrics) -> list[ReportKe
             metric="motor_coupling_level",
             value=metrics.motor_coupling_level,
             unit="label",
-            interpretation=SOLVER_LOAD_NOTE,
+            interpretation=(
+                "RPM/akım/güç referans pervane dengesinden; katlanabilir D_aero yükü sonradan işlenir."
+            ),
         ),
     ]
 
@@ -501,6 +503,21 @@ See `report_key_results.csv` and `report_conclusion_tr.md` for summary tables.*
 def _format_assumptions_and_limits() -> str:
     return f"""# Model Assumptions and Limits — Foldable V2
 
+## Türkçe özet (teslim)
+
+| Konu | Açıklama |
+|------|----------|
+| Geçerlilik kapsamı | Sayısal ön tasarım ve model tabanlı değerlendirme |
+| CFD hazırlık | İşletim noktası ve sınır koşulu girdisi (Seviye-1) |
+| Deneysel doğrulama | Sonraki doğrulama adımı olarak referans alınır |
+| Motor bağlantısı | `reference_load_postprocess` — referans pervane dengesi + katlanabilir son-işleme |
+| İtki kazancı | `gain_vs_compact_20cm_root` → 20 cm temel pervaneye göre |
+| İtki açığı | `loss_vs_25cm_reference` → sabit 25 cm referans pervaneye göre |
+
+Terim eşlemesi: `terminology_tr.md`
+
+---
+
 ## Motor and propulsion coupling
 
 - **Coupling level:** `{MOTOR_COUPLING_LEVEL}`
@@ -552,24 +569,24 @@ def _format_assumptions_and_limits() -> str:
 def _format_conclusion_tr(metrics: EngineeringReportMetrics) -> str:
     return f"""# Mühendislik Tasarım Raporu — Sonuç Paragrafı
 
-Katlanır uç-mafsallı V2 pervane tasarımı, model tabanlı değerlendirmede kompakt **20 cm kök
-bazına** göre anlamlı bir itki artışı sağlamaktadır. 7100 rpm mühendislik kontrol noktasında
-kalibrasyonlu ön-test foldable itki yaklaşık **{metrics.foldable_pretest_thrust_7100:.2f} N**,
-kompakt kök-only referans **{metrics.root_only_20cm_thrust_7100:.2f} N** seviyesindedir; bu da
-yaklaşık **%{metrics.gain_vs_compact_20cm_root_percent:.1f}** kazanç anlamına gelir. Aynı
-çalışma noktasında sabit **25 cm** referans pervane (**{metrics.fixed_25cm_reference_thrust_7100:.2f} N**)
-karşısında foldable çözüm yaklaşık **%{metrics.loss_vs_25cm_reference_percent:.1f}** daha düşük
-kalmaktadır; bu durum katlanabilirlik–performans dengesinin beklenen bir sonucudur.
+Katlanır uç-mafsallı V2 pervane tasarımı, model tabanlı değerlendirmede **20 cm temel pervane**
+bazına göre anlamlı bir **itki kazancı** sağlamaktadır. 7100 dev/dak mühendislik kontrol
+noktasında **katlanabilir düzenleme** itki yaklaşık **{metrics.foldable_pretest_thrust_7100:.2f} N**,
+**20 cm temel pervane** itki **{metrics.root_only_20cm_thrust_7100:.2f} N** seviyesindedir; bu da
+yaklaşık **%{metrics.gain_vs_compact_20cm_root_percent:.1f} itki kazancı** anlamına gelir. Aynı
+çalışma noktasında **sabit 25 cm referans pervane** (**{metrics.fixed_25cm_reference_thrust_7100:.2f} N**)
+karşısında katlanabilir düzenleme yaklaşık **%{metrics.loss_vs_25cm_reference_percent:.1f} itki açığı**
+ile kalmaktadır; bu durum katlanabilirlik–performans dengesinin beklenen bir sonucudur.
 
-Tasarım, taşınabilirlik ve depolama zarfı kısıtlı platformlar için avantajlıdır: tam açık
-referans kadar itki üretemese de, katlanmış kök konfigürasyonuna kıyasla görev itki seviyesine
-yaklaşmaktadır. Motor tarafında 7100 rpm, throttle interpolasyonu ile erişilebilir görünmekte
-ancak foldable aerodinamik yük henüz PyThrust denge çözücüsüne geri beslenmemektedir
-(`reference_load_postprocess`).
+Tasarım, taşınabilirlik ve depolama zarfı kısıtlı platformlar için avantajlıdır: **sabit 25 cm
+referans pervane** kadar itki üretemese de, **20 cm temel pervane** konfigürasyonuna kıyasla görev
+itki seviyesine yaklaşmaktadır. Motor tarafında 7100 dev/dak, gaz interpolasyonu ile erişilebilir
+görünmekte; katlanabilir aerodinamik yük `reference_load_postprocess` seviyesinde modellenmekte
+(referans pervane dengesi + son-işleme).
 
-**Sonuç olarak:** mevcut bulgular tasarımın fizibilitesini destekler; ancak bunlar deneysel
-doğrulama, CFD/BEM analizi ve mekanik latch/menteşe dayanım çalışmaları tamamlanmadan imalat
-kararı verilmemelidir.
+**Sonuç olarak:** mevcut bulgular tasarımın fizibilitesini destekler; deneysel doğrulama,
+ileri aerodinamik çözüm ve mekanik latch/menteşe dayanım çalışmaları sonraki doğrulama
+adımları olarak planlanmalıdır.
 """
 
 
@@ -578,6 +595,10 @@ def _format_figure_index(project_root: Path) -> str:
         "# Figure Index — Foldable V2 Engineering Design Report",
         "",
         "Paths are relative to the repository root.",
+        "",
+        "**Teslim şekilleri:** Nihai rapor görselleri "
+        "`reports/foldable_v2_engineering_design/figures/` altına kopyalanır "
+        "(bkz. `figures/README.md`).",
         "",
         "| File | Purpose | Report-ready | Caution |",
         "|------|---------|--------------|---------|",
@@ -597,7 +618,8 @@ def _format_figure_index(project_root: Path) -> str:
             "",
             "Preferred V2 physics figures under "
             "`outputs/foldable/dynamics/physics/figures/` (`constant_7100_*`; "
-            "from `examples/run_prescribed_rpm_physics.py`).",
+            "üretim: `examples/run_prescribed_rpm_physics.py`). "
+            "Teslim kopyası: `figures/` klasörü.",
             "",
             "## Use with caution",
             "",

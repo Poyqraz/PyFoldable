@@ -10,4 +10,4 @@ motor_power_7100,150,W,Interpolated electrical power at 7100 rpm checkpoint
 aero_torque_root_20cm,0.0462,Nm,Post-processed foldable_proxy aero torque at D=0.20 m
 aero_torque_foldable,0.1411,Nm,Post-processed foldable_proxy aero torque at deployed D_aero
 motor_torque_margin_foldable,0.0129 (8.4%),Nm,Motor torque minus foldable aero torque at 7100 rpm
-motor_coupling_level,reference_load_postprocess,label,RPM/current/power are from PyThrust reference propeller equilibrium; foldable D_aero load is post-processed and not yet fed back into solver.
+motor_coupling_level,reference_load_postprocess,label,RPM/akım/güç referans pervane dengesinden; katlanabilir D_aero yükü sonradan işlenir.
