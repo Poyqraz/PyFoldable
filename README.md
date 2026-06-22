@@ -8,7 +8,7 @@ PyFoldable; uçtan mafsallı (tip-hinged) katlanabilir pervane geometrisinin kin
 menteşe dinamiğini, kalibrasyonlu itki bölünmesini ve motor bağlantılı performans
 değerlendirmesini tek bir doğrulanabilir iş akışında birleştirir. Paket; tasarım varyantı
 taramasından 7100 dev/dak mühendislik kontrol noktasına, oradan mühendislik tasarım raporu ve
-Seviye-1 CFD hazırlık tablolarına kadar uçtan uca sayısal ön tasarım çıktıları üretir.
+Seviye-2 CFD hazırlık tablolarına kadar uçtan uca sayısal ön tasarım çıktıları üretir.
 
 ## Projenin amacı
 
