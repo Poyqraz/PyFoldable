@@ -13,12 +13,17 @@ Bu klasör, uçtan eklemli katlanabilir pervane V2 çalışmasının **teslim ra
 | [`pdf/`](pdf/) | Final PDF çıktısı (teslim) |
 | [`figures/`](figures/) | Rapora gömülecek nihai şekiller |
 
+**Görsel üretim:** V2 fizik şekilleri (`constant_7100_*.png`) için
+`python3 examples/run_prescribed_rpm_physics.py` çalıştırın; çıktılar
+`outputs/foldable/dynamics/physics/figures/` altında oluşur. Teslim için bu dosyaları
+`figures/` klasörüne kopyalayın (bkz. `figures/README.md`).
+
 ## 7100 dev/dak özet (model)
 
 | Karşılaştırma | Değer |
 |---------------|-------|
 | 20 cm temel pervane | 3.73 N |
-| Katlanabilir aday | 6.37 N |
+| Katlanabilir düzenleme | 6.37 N |
 | Sabit 25 cm referans pervane | 9.10 N |
 | İtki kazancı (20 cm temele göre) | +%70.9 |
 | İtki açığı (sabit 25 cm referansa göre) | %30.0 |

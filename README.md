@@ -8,14 +8,14 @@ PyFoldable; uçtan mafsallı (tip-hinged) katlanabilir pervane geometrisinin kin
 menteşe dinamiğini, kalibrasyonlu itki bölünmesini ve motor bağlantılı performans
 değerlendirmesini tek bir doğrulanabilir iş akışında birleştirir. Paket; tasarım varyantı
 taramasından 7100 dev/dak mühendislik kontrol noktasına, oradan mühendislik tasarım raporu ve
-Seviye-1 CFD hazırlık tablolarına kadar uçtan uca sayısal ön tasarım çıktıları üretir.
+Seviye-2 CFD hazırlık tablolarına kadar uçtan uca sayısal ön tasarım çıktıları üretir.
 
 ## Projenin amacı
 
 Mühendislik tasarımı bağlamında şu sorulara model tabanlı yanıt üretmek:
 
-1. **Katlanabilir aday**, **20 cm temel pervane** (`root-only` / `compact root`) itkisine göre ne kadar **itki kazancı** sağlar?
-2. **Katlanabilir aday** (`foldable pretest`), **sabit 25 cm referans pervane** (`fixed reference`) performansına ne kadar yaklaşır; **itki açığı** nedir?
+1. **Katlanabilir düzenleme**, **20 cm temel pervane** (`root-only` / `compact root`) itkisine göre ne kadar **itki kazancı** sağlar?
+2. **Katlanabilir düzenleme** (`foldable pretest`), **sabit 25 cm referans pervane** (`fixed reference`) performansına ne kadar yaklaşır; **itki açığı** nedir?
 3. 7100 dev/dak kontrol noktasında motor akımı, gücü ve tork marjı kabul edilebilir mi?
 4. Tasarım varyantları ve dağıtım senaryoları tekrarlanabilir CSV ve rapor dosyalarıyla belgelenebilir mi?
 
@@ -24,7 +24,7 @@ Mühendislik tasarımı bağlamında şu sorulara model tabanlı yanıt üretmek
 | Kod / CSV etiketi | Türkçe karşılık |
 |-------------------|-----------------|
 | `root-only`, `compact root`, `root_only_20cm` | **20 cm temel pervane** |
-| `foldable`, `foldable pretest`, `pretest_70_fixed` | **Katlanabilir aday** |
+| `foldable`, `foldable pretest`, `pretest_70_fixed` | **Katlanabilir düzenleme** |
 | `fixed reference`, `fixed 25cm`, `25 cm reference` | **Sabit 25 cm referans pervane** |
 | `gain`, `gain_vs_compact_20cm_root` | **İtki kazancı** (20 cm temel pervaneye göre, %) |
 | `loss`, `loss_vs_25cm_reference` | **İtki açığı** (sabit 25 cm referansa göre, %) |
@@ -50,7 +50,7 @@ Aşağıdaki komutlar bağımsız çalışır (önceki çıktı gerektirmez):
 # 1) V1 RPM taraması — kinematik + efektif çap + itki tablosu
 python3 examples/run_foldable_sweep.py
 
-# 2) V2 işletim noktası — PyThrust denge + foldable son-işleme
+# 2) V2 işletim noktası — motor denge + katlanabilir son-işleme
 python3 examples/run_foldable_operating_point.py
 
 # 3) V2 prescribed-RPM fizik tanıları ve debug CSV/şekilleri
@@ -105,13 +105,13 @@ Motor bağlantılı katmanda interpolasyonla elde edilen mühendislik kontrol no
 | Karşılaştırma | Değer |
 |---------------|-------|
 | 20 cm temel pervane | **3.73 N** |
-| Katlanabilir aday | **6.37 N** |
+| Katlanabilir düzenleme | **6.37 N** |
 | Sabit 25 cm referans pervane | **9.10 N** |
 | 20 cm temele göre itki kazancı | **+%70.9** |
 | Sabit 25 cm referansa göre itki açığı | **%30.0** |
 
 Ek kontrol noktası verileri: gaz **0.768**, akım **17.0 A**, güç **150 W**
-(kaynak: `report_key_results.csv`).
+(kaynak: `reports/foldable_v2_engineering_design/report_key_results.csv`).
 
 ## Geçerlilik kapsamı
 
@@ -138,7 +138,7 @@ Apache-2.0 — bkz. `LICENSE`.
 
 ---
 
-## Teknik altyapı notu
+## Geliştirici notu
 
 PyFoldable, [PyThrust](https://github.com/Poyqraz/PyThrust) ekosistemindeki foldable modülünün
 bağımsız paket olarak dışa aktarılmış halidir. İşletim noktası eşlemesi için minimal

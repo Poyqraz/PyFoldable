@@ -101,5 +101,7 @@ def test_generate_report_package(tmp_path: Path) -> None:
     assert "No experimental validation" in assumptions
 
     conclusion_tr = (report_dir / "report_conclusion_tr.md").read_text(encoding="utf-8")
-    assert "CFD/BEM" in conclusion_tr
-    assert "20 cm" in conclusion_tr
+    assert "ileri aerodinamik" in conclusion_tr
+    assert "20 cm temel pervane" in conclusion_tr
+    assert "katlanabilir düzenleme" in conclusion_tr
+    assert "PyThrust" not in conclusion_tr
