@@ -131,6 +131,10 @@ doğrulama adımları için referans alınır. Ayrıntı:
 
 - **V1:** Kinematik, efektif çap, tasarım taraması, karar matrisi, görselleştirme
 - **V2:** Menteşe dinamiği, itki bölünmesi, motor bağlantılı performans, mühendislik raporu
+- **Opt-in fizik eklentileri (V03):** Nonlineer/eksponansiyel uç açılma yasası
+  (`nonlinear_saturation`) ve advance-ratio'ya bağlı aero kapanma momenti (`aero_closing`).
+  Geriye dönük uyumlu; varsayılan kapalı. Bkz. `docs/foldable_conventions.md`,
+  `configs/foldable/TIP_HINGED_250_V03.json`, `examples/run_tip_nonlinear_closing_demo.py`.
 
 ## Lisans
 
