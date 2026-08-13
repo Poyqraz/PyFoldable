@@ -1,4 +1,11 @@
-"""Canonical PyFoldable models, units, and versioned design loading."""
+"""Canonical PyFoldable geometry, models, units, and design loading."""
+
+from .airfoil import (
+    AirfoilFileFormat,
+    AirfoilGeometryError,
+    load_airfoil_coordinates,
+    parse_airfoil_coordinates,
+)
 
 from .config import DesignConfigError, load_design_config
 from .models import (
@@ -26,6 +33,8 @@ from .units import (
 
 __all__ = [
     "AirfoilDefinition",
+    "AirfoilFileFormat",
+    "AirfoilGeometryError",
     "BladeGeometry",
     "BladeStation",
     "DesignConfigError",
@@ -42,7 +51,9 @@ __all__ = [
     "UnitError",
     "ValidationRecord",
     "canonical_unit",
+    "load_airfoil_coordinates",
     "load_design_config",
     "normalize_quantity",
+    "parse_airfoil_coordinates",
     "parse_quantity",
 ]

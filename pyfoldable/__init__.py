@@ -12,6 +12,8 @@ from .comparison import (
 )
 from .core import (
     AirfoilDefinition,
+    AirfoilFileFormat,
+    AirfoilGeometryError,
     BladeGeometry,
     BladeStation,
     DesignConfigError,
@@ -25,8 +27,10 @@ from .core import (
     SimulationResult,
     UnitError,
     ValidationRecord,
+    load_airfoil_coordinates,
     load_design_config,
     normalize_quantity,
+    parse_airfoil_coordinates,
     parse_quantity,
 )
 from .decision import (
@@ -99,6 +103,8 @@ __all__ = [
     "DESIGN_VARIANT_SUMMARY_COLUMNS",
     "CalibrationConfig",
     "AirfoilDefinition",
+    "AirfoilFileFormat",
+    "AirfoilGeometryError",
     "BladeGeometry",
     "BladeStation",
     "DesignVariantDecisionRow",
@@ -137,11 +143,13 @@ __all__ = [
     "evaluate_sweep",
     "evaluate_sweep_row",
     "list_default_variant_configs",
+    "load_airfoil_coordinates",
     "load_design_config",
     "load_config",
     "make_variant_config",
     "post_process_from_operating_point",
     "normalize_quantity",
+    "parse_airfoil_coordinates",
     "parse_quantity",
     "solve_pythrust_operating_point",
     "summarize_design_variants_from_csv",
