@@ -78,8 +78,16 @@ class PolarTable:
     cd: tuple[float, ...]
     cm: tuple[float, ...]
     source: str
+    scenario_id: str = "default"
+    metadata: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        if not self.airfoil_id:
+            raise ValueError("PolarTable.airfoil_id must not be empty.")
+        if not self.source:
+            raise ValueError("PolarTable.source must not be empty.")
+        if not self.scenario_id:
+            raise ValueError("PolarTable.scenario_id must not be empty.")
         _positive("reynolds", self.reynolds)
         _nonnegative("mach", self.mach)
         lengths = {len(self.alpha_rad), len(self.cl), len(self.cd), len(self.cm)}
@@ -87,7 +95,12 @@ class PolarTable:
             raise ValueError("Polar arrays must have the same length and at least two points.")
         if any(b <= a for a, b in zip(self.alpha_rad, self.alpha_rad[1:])):
             raise ValueError("alpha_rad must be strictly increasing.")
-        for name, values in (("alpha_rad", self.alpha_rad), ("cl", self.cl), ("cd", self.cd), ("cm", self.cm)):
+        for name, values in (
+            ("alpha_rad", self.alpha_rad),
+            ("cl", self.cl),
+            ("cd", self.cd),
+            ("cm", self.cm),
+        ):
             for index, value in enumerate(values):
                 _finite(f"{name}[{index}]", value)
         if any(value < 0.0 for value in self.cd):
