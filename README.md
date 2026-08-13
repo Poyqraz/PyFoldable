@@ -32,6 +32,21 @@ Mühendislik tasarımı bağlamında şu sorulara model tabanlı yanıt üretmek
 
 Ayrıntılı eşleme: `reports/foldable_v2_engineering_design/terminology_tr.md`
 
+## Kanonik tasarım dosyası
+
+Yeni BEM/CAD/CFD geliştirmeleri için birim kontrollü, sürümlenmiş TOML giriş modeli
+`pyfoldable.core` altında bulunur. Kullanıcı girdileri `mm`, `in`, `deg` ve `rpm` gibi
+mühendislik birimleriyle yazılabilir; çözücü modelleri yalnızca SI değerleri alır.
+
+```python
+from pyfoldable.core import load_design_config
+
+design = load_design_config("configs/designs/TIP_HINGED_250_CANONICAL.toml")
+```
+
+Şema, model listesi ve geriye dönük uyumluluk sınırı:
+`docs/canonical_design_config.md`.
+
 ## Kurulum
 
 ```bash
