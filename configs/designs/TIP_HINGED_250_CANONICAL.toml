@@ -1,0 +1,81 @@
+schema_version = 1
+
+[design]
+id = "TIP_HINGED_250_CANONICAL"
+description = "Canonical SI-boundary model for the 250 mm tip-hinged propeller"
+
+[blade]
+diameter = "250 mm"
+hub_radius = "18 mm"
+blade_count = 2
+
+[[blade.stations]]
+r_over_R = 0.20
+chord = "28 mm"
+twist = "31 deg"
+airfoil = "NACA2412"
+
+[[blade.stations]]
+r_over_R = 0.40
+chord = "26 mm"
+twist = "24 deg"
+airfoil = "NACA2412"
+
+[[blade.stations]]
+r_over_R = 0.60
+chord = "23 mm"
+twist = "17 deg"
+airfoil = "NACA2412"
+
+[[blade.stations]]
+r_over_R = 0.80
+chord = "17 mm"
+twist = "10 deg"
+airfoil = "NACA2412"
+
+[[blade.stations]]
+r_over_R = 0.98
+chord = "8 mm"
+twist = "5 deg"
+airfoil = "NACA2412"
+
+[[airfoils]]
+id = "NACA2412"
+source = "analytic_naca_4_digit"
+
+[[operating_conditions]]
+id = "hover_7100_rpm"
+angular_speed = "7100 rpm"
+forward_speed = "0 m/s"
+air_density = "1.225 kg/m^3"
+dynamic_viscosity = "1.81e-5 Pa*s"
+temperature = "288.15 K"
+pressure = "101325 Pa"
+
+[hinge]
+radius = "100 mm"
+axial_offset = "0 mm"
+tangential_offset = "0 mm"
+axis_azimuth = "0 deg"
+axis_elevation = "90 deg"
+stowed_angle = "-180 deg"
+deployed_angle = "0 deg"
+stop_angle = "0 deg"
+
+[motor]
+id = "REFERENCE_980KV"
+kv = "980 rpm/V"
+resistance = "0.06 ohm"
+no_load_current = "1.2 A"
+max_current = "30 A"
+
+[manufacturing]
+process = "FFF"
+min_wall_thickness = "1.2 mm"
+min_trailing_edge_thickness = "0.8 mm"
+build_orientation = "to_be_verified_by_coupon_tests"
+
+[metadata]
+project = "PyFoldable"
+stowed_envelope_requirement = "140 mm"
+note = "Airfoil, chord, and twist values are initial schema examples, not validated design claims."
