@@ -22,6 +22,13 @@ from .models import (
     SimulationResult,
     ValidationRecord,
 )
+from .polar import (
+    PolarBoundsPolicy,
+    PolarFamily,
+    PolarInterpolationError,
+    PolarQueryResult,
+    load_polar_csv,
+)
 from .units import (
     NormalizedQuantity,
     QuantityInput,
@@ -45,6 +52,10 @@ __all__ = [
     "NormalizedQuantity",
     "OperatingCondition",
     "PolarTable",
+    "PolarBoundsPolicy",
+    "PolarFamily",
+    "PolarInterpolationError",
+    "PolarQueryResult",
     "PropellerDesign",
     "QuantityInput",
     "SimulationResult",
@@ -53,6 +64,7 @@ __all__ = [
     "canonical_unit",
     "load_airfoil_coordinates",
     "load_design_config",
+    "load_polar_csv",
     "normalize_quantity",
     "parse_airfoil_coordinates",
     "parse_quantity",
