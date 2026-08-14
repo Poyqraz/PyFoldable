@@ -63,6 +63,14 @@ from .polar_cache_lock import (
     POLAR_CACHE_LOCK_SCHEMA_VERSION,
     PolarCacheLockPolicy,
 )
+from .polar_family_generation import (
+    POLAR_FAMILY_GENERATION_SCHEMA_VERSION,
+    PolarFamilyGenerationCell,
+    PolarFamilyGenerationError,
+    PolarFamilyGenerationPlan,
+    PolarFamilyGenerationResult,
+    generate_polar_family,
+)
 from .polar_health import (
     POLAR_PROVIDER_HEALTH_SCHEMA_VERSION,
     PolarProviderCircuitOpenError,
@@ -122,6 +130,7 @@ __all__ = [
     "POLAR_ACCEPTANCE_SCHEMA_VERSION",
     "POLAR_CACHE_LOCK_SCHEMA_VERSION",
     "POLAR_CACHE_SCHEMA_VERSION",
+    "POLAR_FAMILY_GENERATION_SCHEMA_VERSION",
     "POLAR_ORCHESTRATION_SCHEMA_VERSION",
     "POLAR_PROVIDER_HEALTH_SCHEMA_VERSION",
     "PolarBoundsPolicy",
@@ -140,6 +149,10 @@ __all__ = [
     "PolarCoefficientMetrics",
     "PolarErrorTolerance",
     "PolarFamily",
+    "PolarFamilyGenerationCell",
+    "PolarFamilyGenerationError",
+    "PolarFamilyGenerationPlan",
+    "PolarFamilyGenerationResult",
     "PolarGenerationRequest",
     "PolarGenerationResult",
     "PolarGoldenFixture",
@@ -175,6 +188,7 @@ __all__ = [
     "compare_polar_results",
     "generate_polar",
     "generate_polar_cached",
+    "generate_polar_family",
     "generate_polar_orchestrated",
     "load_airfoil_coordinates",
     "load_design_config",

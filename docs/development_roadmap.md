@@ -18,8 +18,10 @@ boundary between `PolarGenerationResult.to_polar_table()` and manually assembled
 | PR-04E | Cross-process duplicate-work coalescing | Complete |
 | PR-04F | Ordered fallback and bounded retry | Complete |
 | PR-04G | Health telemetry and circuit breaker | Complete |
-| PR-04H | Golden acceptance and cross-provider benchmark | Complete in this change |
-| PR-05 | Provider-backed `PolarFamily` integration | Ready to start after PR-04H merges |
+| PR-04H | Golden acceptance and cross-provider benchmark | Complete |
+| PR-05A | Provider-backed family generation contract | Complete in this change |
+| PR-05B | Partial-grid policy and batch diagnostics | Next |
+| PR-05C/D/E | Config, analysis integration, real-backend qualification | Planned |
 
 ## PR-05 — provider-backed PolarFamily integration
 
@@ -29,6 +31,7 @@ multi-Reynolds/Mach family to an aerodynamic analysis consumer.
 1. **PR-05A — family generation contract.** Define an ordered operating-point grid,
    generate each table through `generate_polar_orchestrated()`, and assemble a
    deterministic `PolarFamily` without losing provider/cache/orchestration provenance.
+   **Complete in this change.**
 2. **PR-05B — partial-grid policy and batch diagnostics.** Make fail-fast versus partial
    family behavior explicit; report every requested cell, retry/fallback outcome, and
    unusable alpha range.
@@ -42,6 +45,24 @@ multi-Reynolds/Mach family to an aerodynamic analysis consumer.
    for a declared operating envelope, freeze backend versions, and publish the benchmark
    report separately from deterministic adapter-contract fixtures.
 
+## Confirmed PR-05 design decisions
+
+- The family grid is a complete Cartesian product in deterministic Mach-major,
+  Reynolds-minor order. Both axes must be strictly increasing and unique.
+- The request template is anchored to the first grid cell, preventing its Reynolds or
+  Mach values from becoming silently ignored inputs.
+- PR-05A is sequential and fail-fast. Every accepted table requires a complete provider
+  result; timing is telemetry and never an acceptance threshold.
+- Every cell retains both `PolarGenerationResult` and its canonical `PolarTable`, so
+  provider identity, cache state, retries, fallback, circuit state, warnings, and solver
+  metadata remain auditable.
+- A capability mismatch still follows the PR-04F provider chain. This lets a Mach-capable
+  provider handle nonzero-Mach cells while NeuralFoil remains eligible at Mach zero.
+- A partial provider result is not silently converted or routed to another provider in
+  PR-05A. Partial-grid and acceptance-driven continuation belong to PR-05B.
+- Real XFOIL/NeuralFoil physical qualification remains PR-05E and is not represented by
+  deterministic adapter doubles.
+
 ## Entry gates and distance
 
 | PR-05 entry gate | State | Evidence |
@@ -50,11 +71,11 @@ multi-Reynolds/Mach family to an aerodynamic analysis consumer.
 | Both adapters and strict capability mapping | Met | PR-04A/B |
 | Cache, lifecycle, and duplicate-work control | Met | PR-04C/D/E |
 | Fallback, retry, health, and circuit isolation | Met | PR-04F/G |
-| Deterministic acceptance and benchmark harness | Met after this change | PR-04H |
+| Deterministic acceptance and benchmark harness | Met | PR-04H |
 | Real-solver physical qualification data | Open; not a code-start blocker | PR-05E |
 
-After PR-04H merges, the **code-start gate for PR-05 is 100% complete**: the provider
-platform can be integrated without adding another adapter-layer prerequisite. Production
-aerodynamic qualification remains **5 of 6 gates complete** until real XFOIL/NeuralFoil
-baselines are reviewed; that work is deliberately tracked as PR-05E so contract fixtures
-cannot be mistaken for physical validation.
+The **PR-05 code-start gate is complete**, and PR-05A now supplies the first integration
+contract. The implementation sequence is therefore **1 of 5 PR-05 increments complete**.
+Production aerodynamic qualification remains **5 of 6 readiness gates complete** until
+real XFOIL/NeuralFoil baselines are reviewed; that work is deliberately tracked as PR-05E
+so contract fixtures cannot be mistaken for physical validation.
