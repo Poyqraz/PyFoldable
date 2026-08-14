@@ -10,6 +10,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from .polar_cache_lock import _is_cache_key_lock_active
+
 
 _CACHE_ENTRY_PATTERN = re.compile(r"^(?P<key>[0-9a-f]{64})\.json$")
 _CORRUPT_ENTRY_PATTERN = re.compile(
@@ -121,6 +123,8 @@ def _maintain_cache(
             key=_oldest_first,
         )
         for artifact in expired:
+            if _is_cache_key_lock_active(root, artifact.path.stem):
+                continue
             if _unlink(artifact.path):
                 evicted.append(artifact.relative_path)
                 reclaimed_bytes += artifact.size_bytes
@@ -131,6 +135,8 @@ def _maintain_cache(
         for artifact in sorted(active.values(), key=_oldest_first):
             if active_bytes <= max_bytes:
                 break
+            if _is_cache_key_lock_active(root, artifact.path.stem):
+                continue
             if _unlink(artifact.path):
                 evicted.append(artifact.relative_path)
                 reclaimed_bytes += artifact.size_bytes
