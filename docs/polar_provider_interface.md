@@ -2,6 +2,7 @@
 
 PR-04 defines the dependency-free boundary shared by XFOIL and NeuralFoil adapters.
 PR-04A adds the XFOIL subprocess implementation without bundling an executable.
+PR-04B adds an optional NeuralFoil implementation without making it a core dependency.
 
 ## Contract
 
@@ -31,7 +32,7 @@ backend versions, and provider options. Cache storage and eviction are separate 
 | Failure signal | missing/unconverged output point | coefficient output plus `analysis_confidence` |
 | Partial sweep | preserved point by point | normally complete; low confidence remains explicit |
 | Iteration limit | optional `ITER` control | unsupported; capability must be false |
-| Timeout | subprocess deadline | adapter deadline when isolation is enabled |
+| Timeout | subprocess deadline | unsupported in-process; custom values rejected |
 
 XFOIL continuation/hysteresis means alpha order is part of the request and cache key.
 Ascending, descending, and custom unique sequences are valid; adapters must not reorder
@@ -57,8 +58,23 @@ coefficients. Non-zero process exits, missing/malformed polar files, startup fai
 and request timeouts use the typed provider errors. The only provider option is
 `repanel: bool`, which defaults to true; unknown options are rejected.
 
+## NeuralFoil adapter
+
+Install the optional backend with `pip install pyfoldable[neuralfoil]`, then construct
+`NeuralFoilProvider`. Importing `pyfoldable` does not import NeuralFoil; backend loading
+and version capture happen only when the provider is constructed.
+
+The provider evaluates all requested angles in one vectorized coordinate-API call. It
+passes Reynolds number, `Ncrit`, and forced-transition positions directly, while Mach,
+iteration limits, and custom timeouts are rejected by capability validation. Outputs
+must contain correctly sized, finite `CL`, `CD`, `CM`, `analysis_confidence`, `Top_Xtr`,
+and `Bot_Xtr` arrays; malformed backend responses fail as typed execution errors.
+
+Provider options are `model_size` (default `xlarge`) and `confidence_threshold`
+(default `0.5`). Confidence strictly below the threshold produces a usable
+`low_confidence` point with an explicit warning; coefficients are never silently
+discarded. Both options participate in the request cache key.
+
 ## Next adapter increments
 
-1. NeuralFoil optional adapter: lazy import, version capture, vectorized evaluation,
-   confidence threshold, and capability declaration.
-2. Filesystem cache: atomic writes, schema checks, and corruption recovery.
+1. Filesystem cache: atomic writes, schema checks, and corruption recovery.

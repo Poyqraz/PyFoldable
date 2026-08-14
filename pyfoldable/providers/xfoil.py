@@ -43,6 +43,7 @@ _CAPABILITIES = ProviderCapabilities(
     supports_partial_results=True,
     supports_vectorized_alpha=False,
     supports_iteration_limit=True,
+    supports_timeout=True,
 )
 _ALLOWED_OPTIONS = {"repanel"}
 

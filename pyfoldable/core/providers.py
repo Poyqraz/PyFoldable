@@ -112,6 +112,7 @@ class ProviderCapabilities:
     supports_partial_results: bool
     supports_vectorized_alpha: bool
     supports_iteration_limit: bool
+    supports_timeout: bool = False
 
     def __post_init__(self) -> None:
         for name in self.__dataclass_fields__:
@@ -194,6 +195,8 @@ class PolarGenerationRequest:
             unsupported.append("forced_transition")
         if self.max_iterations is not None and not capabilities.supports_iteration_limit:
             unsupported.append("max_iterations")
+        if self.timeout_s != 30.0 and not capabilities.supports_timeout:
+            unsupported.append("timeout_s")
         if unsupported:
             joined = ", ".join(unsupported)
             raise PolarProviderCapabilityError(
