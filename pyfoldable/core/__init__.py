@@ -36,6 +36,11 @@ from .polar_cache import (
     PolarCacheError,
     generate_polar_cached,
 )
+from .polar_cache_lifecycle import (
+    PolarCacheEntry,
+    PolarCacheMaintenanceResult,
+    PolarCacheStats,
+)
 from .providers import (
     PolarGenerationRequest,
     PolarGenerationResult,
@@ -77,7 +82,10 @@ __all__ = [
     "OperatingCondition",
     "POLAR_CACHE_SCHEMA_VERSION",
     "PolarBoundsPolicy",
+    "PolarCacheEntry",
     "PolarCacheError",
+    "PolarCacheMaintenanceResult",
+    "PolarCacheStats",
     "PolarFamily",
     "PolarGenerationRequest",
     "PolarGenerationResult",

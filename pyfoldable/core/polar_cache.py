@@ -6,11 +6,20 @@ import json
 import math
 import os
 import tempfile
+import threading
 import uuid
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Literal, Mapping
 
+from .polar_cache_lifecycle import (
+    PolarCacheEntry,
+    PolarCacheMaintenanceResult,
+    PolarCacheStats,
+    _cache_stats,
+    _list_cache_entries,
+    _maintain_cache,
+)
 from .providers import (
     PolarGenerationRequest,
     PolarGenerationResult,
@@ -44,6 +53,7 @@ class FilesystemPolarCache:
 
     def __init__(self, root: str | Path) -> None:
         self._root = Path(root)
+        self._lock = threading.RLock()
 
     @property
     def root(self) -> Path:
@@ -70,8 +80,55 @@ class FilesystemPolarCache:
             return None
         return _with_cache_provenance(read.result, "hit", read.entry, self._root)
 
+    def list_entries(self) -> tuple[PolarCacheEntry, ...]:
+        """Return active cache entries sorted by relative path."""
+        try:
+            with self._lock:
+                return _list_cache_entries(self._root)
+        except OSError as error:
+            raise PolarCacheError(
+                f"Could not inspect polar cache root {self._root}."
+            ) from error
+
+    def stats(self) -> PolarCacheStats:
+        """Return active, corrupt, and temporary artifact storage totals."""
+        try:
+            with self._lock:
+                return _cache_stats(self._root)
+        except OSError as error:
+            raise PolarCacheError(
+                f"Could not inspect polar cache root {self._root}."
+            ) from error
+
+    def maintain(
+        self,
+        *,
+        max_bytes: int | None = None,
+        max_age_s: float | None = None,
+        corrupt_max_age_s: float | None = None,
+        temporary_max_age_s: float | None = None,
+    ) -> PolarCacheMaintenanceResult:
+        """Apply deterministic eviction and optional artifact cleanup policies."""
+        try:
+            with self._lock:
+                return _maintain_cache(
+                    self._root,
+                    max_bytes=max_bytes,
+                    max_age_s=max_age_s,
+                    corrupt_max_age_s=corrupt_max_age_s,
+                    temporary_max_age_s=temporary_max_age_s,
+                )
+        except OSError as error:
+            raise PolarCacheError(
+                f"Could not maintain polar cache root {self._root}."
+            ) from error
+
     def put(self, result: PolarGenerationResult) -> Path:
         """Atomically publish one structurally validated provider result."""
+        with self._lock:
+            return self._put(result)
+
+    def _put(self, result: PolarGenerationResult) -> Path:
         entry = self.entry_path(result.provider, result.request)
         try:
             document = _encode_document(result)
@@ -118,6 +175,14 @@ class FilesystemPolarCache:
         return entry
 
     def _read(
+        self,
+        provider: PolarProvider,
+        request: PolarGenerationRequest,
+    ) -> _CacheRead:
+        with self._lock:
+            return self._read_unlocked(provider, request)
+
+    def _read_unlocked(
         self,
         provider: PolarProvider,
         request: PolarGenerationRequest,
