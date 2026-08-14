@@ -18,8 +18,11 @@ from pyfoldable.core import (
     PolarProviderAttempt,
     PolarProviderChainExhaustedError,
     PolarProviderExecutionError,
+    PolarProviderHealthPolicy,
+    PolarProviderHealthRegistry,
     PolarProviderTimeoutError,
     PolarProviderUnavailableError,
+    PolarProviderUnexpectedError,
     PolarRetryPolicy,
     ProviderCapabilities,
     ProviderIdentity,
@@ -435,3 +438,342 @@ def test_provider_chain_rejects_empty_duplicate_and_invalid_entries() -> None:
         generate_polar_orchestrated((object(),), _request())
     with pytest.raises(TypeError, match="ordered sequence"):
         generate_polar_orchestrated("primary", _request())
+
+
+def test_health_threshold_opens_circuit_and_suppresses_planned_retry() -> None:
+    primary = ScriptedProvider(PRIMARY, [PolarProviderTimeoutError("slow")])
+    secondary = ScriptedProvider(SECONDARY, ["success"])
+    registry = PolarProviderHealthRegistry(
+        PolarProviderHealthPolicy(failure_threshold=1, recovery_timeout_s=60.0)
+    )
+    retry = PolarRetryPolicy(max_attempts=3, initial_backoff_s=0.0)
+
+    result = generate_polar_orchestrated(
+        (primary, secondary),
+        _request(),
+        retry_policy=retry,
+        health_registry=registry,
+    )
+
+    first = result.metadata["orchestration"]["attempts"][0]
+    assert primary.calls == 1
+    assert secondary.calls == 1
+    assert first["outcome"] == "timeout"
+    assert first["will_retry"] is False
+    assert first["health_counted"] is True
+    assert first["circuit_state_before"] == "closed"
+    assert first["circuit_state_after"] == "open"
+    assert registry.snapshot(PRIMARY).state == "open"
+
+
+def test_open_circuit_is_audited_and_falls_back_without_backend_call() -> None:
+    primary = ScriptedProvider(PRIMARY, [PolarProviderTimeoutError("opens")])
+    secondary = ScriptedProvider(SECONDARY, ["success", "success"])
+    registry = PolarProviderHealthRegistry(
+        PolarProviderHealthPolicy(failure_threshold=1, recovery_timeout_s=60.0)
+    )
+    retry = PolarRetryPolicy(max_attempts=1)
+    generate_polar_orchestrated(
+        (primary, secondary),
+        _request(),
+        retry_policy=retry,
+        health_registry=registry,
+    )
+
+    result = generate_polar_orchestrated(
+        (primary, secondary),
+        _request(scenario_id="second"),
+        retry_policy=retry,
+        health_registry=registry,
+    )
+
+    provenance = result.metadata["orchestration"]
+    assert primary.calls == 1
+    assert secondary.calls == 2
+    assert provenance["attempts"][0]["outcome"] == "circuit_open"
+    assert provenance["circuit_rejection_count"] == 1
+    assert registry.snapshot(PRIMARY).total_rejections == 1
+
+
+def test_unexpected_exception_is_isolated_counted_and_fallen_back() -> None:
+    primary = ScriptedProvider(PRIMARY, [RuntimeError("backend bug")])
+    secondary = ScriptedProvider(SECONDARY, ["success"])
+    registry = PolarProviderHealthRegistry(
+        PolarProviderHealthPolicy(failure_threshold=1)
+    )
+
+    result = generate_polar_orchestrated(
+        (primary, secondary),
+        _request(),
+        health_registry=registry,
+    )
+
+    provenance = result.metadata["orchestration"]
+    first = provenance["attempts"][0]
+    assert result.provider == SECONDARY
+    assert first["outcome"] == "unexpected_error"
+    assert first["error_type"] == PolarProviderUnexpectedError.__name__
+    assert "RuntimeError" in first["error_message"]
+    assert first["health_counted"] is True
+    assert provenance["unexpected_error_count"] == 1
+    assert registry.snapshot(PRIMARY).state == "open"
+
+
+def test_unprintable_unexpected_exception_cannot_break_fallback_telemetry() -> None:
+    class UnprintableError(Exception):
+        def __str__(self) -> str:
+            raise RuntimeError("broken exception formatter")
+
+    primary = ScriptedProvider(PRIMARY, [UnprintableError()])
+    secondary = ScriptedProvider(SECONDARY, ["success"])
+    registry = PolarProviderHealthRegistry(
+        PolarProviderHealthPolicy(failure_threshold=1)
+    )
+
+    result = generate_polar_orchestrated(
+        (primary, secondary),
+        _request(),
+        health_registry=registry,
+    )
+
+    first = result.metadata["orchestration"]["attempts"][0]
+    assert result.provider == SECONDARY
+    assert first["outcome"] == "unexpected_error"
+    assert "message unavailable" in first["error_message"]
+    assert "message unavailable" in registry.snapshot(PRIMARY).last_failure_message
+
+
+def test_exhausted_unexpected_error_preserves_original_exception_chain() -> None:
+    primary = ScriptedProvider(PRIMARY, [RuntimeError("root bug")])
+    registry = PolarProviderHealthRegistry()
+
+    with pytest.raises(PolarProviderChainExhaustedError) as captured:
+        generate_polar_orchestrated(
+            (primary,),
+            _request(),
+            health_registry=registry,
+        )
+
+    wrapped = captured.value.__cause__
+    assert isinstance(wrapped, PolarProviderUnexpectedError)
+    assert isinstance(wrapped.__cause__, RuntimeError)
+    assert str(wrapped.__cause__) == "root bug"
+
+
+def test_unexpected_exception_is_not_isolated_when_policy_disables_it() -> None:
+    primary = ScriptedProvider(PRIMARY, [RuntimeError("surface this")])
+    secondary = ScriptedProvider(SECONDARY, ["success"])
+    registry = PolarProviderHealthRegistry(
+        PolarProviderHealthPolicy(isolate_unexpected_errors=False)
+    )
+
+    with pytest.raises(RuntimeError, match="surface this"):
+        generate_polar_orchestrated(
+            (primary, secondary),
+            _request(),
+            health_registry=registry,
+        )
+
+    assert secondary.calls == 0
+    assert registry.snapshot(PRIMARY).state == "closed"
+    assert registry.snapshot(PRIMARY).total_failures == 0
+
+
+def test_unexpected_capabilities_failure_is_isolated_and_fallen_back() -> None:
+    class BrokenCapabilitiesProvider:
+        identity = PRIMARY
+
+        @property
+        def capabilities(self):
+            raise RuntimeError("capabilities bug")
+
+        def generate(self, request):
+            raise AssertionError("generate must not be called")
+
+    secondary = ScriptedProvider(SECONDARY, ["success"])
+    registry = PolarProviderHealthRegistry(
+        PolarProviderHealthPolicy(failure_threshold=1)
+    )
+
+    result = generate_polar_orchestrated(
+        (BrokenCapabilitiesProvider(), secondary),
+        _request(),
+        health_registry=registry,
+    )
+
+    first = result.metadata["orchestration"]["attempts"][0]
+    assert result.provider == SECONDARY
+    assert first["outcome"] == "unexpected_error"
+    assert "capabilities bug" in first["error_message"]
+    assert registry.snapshot(PRIMARY).state == "open"
+
+
+def test_capabilities_failure_still_propagates_without_health_isolation() -> None:
+    class BrokenCapabilitiesProvider:
+        identity = PRIMARY
+
+        @property
+        def capabilities(self):
+            raise RuntimeError("surface capabilities bug")
+
+        def generate(self, request):
+            raise AssertionError("generate must not be called")
+
+    with pytest.raises(RuntimeError, match="surface capabilities bug"):
+        generate_polar_orchestrated(
+            (BrokenCapabilitiesProvider(),),
+            _request(),
+        )
+
+
+def test_health_cache_hit_reads_provider_capabilities_once(tmp_path) -> None:
+    class SingleReadCapabilitiesProvider(ScriptedProvider):
+        def __init__(self) -> None:
+            self.identity = PRIMARY
+            self.outcomes = [RuntimeError("must-not-run")]
+            self.calls = 0
+            self.capability_reads = 0
+
+        @property
+        def capabilities(self):
+            self.capability_reads += 1
+            if self.capability_reads > 1:
+                raise RuntimeError("capabilities read twice")
+            return CAPABILITIES
+
+    cache = FilesystemPolarCache(tmp_path)
+    request = _request()
+    cache.put(_result(request, PRIMARY))
+    primary = SingleReadCapabilitiesProvider()
+
+    result = generate_polar_orchestrated(
+        (primary,),
+        request,
+        cache=cache,
+        health_registry=PolarProviderHealthRegistry(),
+    )
+
+    assert result.metadata["cache"]["status"] == "hit"
+    assert primary.capability_reads == 1
+    assert primary.calls == 0
+
+
+def test_base_exception_releases_half_open_probe_without_masking() -> None:
+    current_time = [0.0]
+    registry = PolarProviderHealthRegistry(
+        PolarProviderHealthPolicy(failure_threshold=1, recovery_timeout_s=5.0),
+        clock=lambda: current_time[0],
+    )
+    permit, _ = registry._acquire(PRIMARY)
+    assert permit is not None
+    registry._record_failure(permit, PolarProviderTimeoutError("opens"))
+    current_time[0] = 5.0
+    primary = ScriptedProvider(PRIMARY, [KeyboardInterrupt()])
+
+    with pytest.raises(KeyboardInterrupt):
+        generate_polar_orchestrated(
+            (primary,),
+            _request(),
+            health_registry=registry,
+        )
+
+    snapshot = registry.snapshot(PRIMARY)
+    assert snapshot.state == "open"
+    assert snapshot.probe_in_flight is False
+    assert snapshot.cooldown_remaining_s == 5.0
+
+
+def test_open_circuit_still_serves_primary_cache_hit(tmp_path) -> None:
+    cache = FilesystemPolarCache(tmp_path)
+    request = _request()
+    cache.put(_result(request, PRIMARY))
+    registry = PolarProviderHealthRegistry(
+        PolarProviderHealthPolicy(failure_threshold=1, recovery_timeout_s=60.0)
+    )
+    permit, _ = registry._acquire(PRIMARY)
+    assert permit is not None
+    registry._record_failure(permit, PolarProviderTimeoutError("opens"))
+    primary = ScriptedProvider(PRIMARY, [RuntimeError("must-not-run")])
+
+    result = generate_polar_orchestrated(
+        (primary,),
+        request,
+        cache=cache,
+        health_registry=registry,
+    )
+
+    attempt = result.metadata["orchestration"]["attempts"][0]
+    assert primary.calls == 0
+    assert result.metadata["cache"]["status"] == "hit"
+    assert result.metadata["cache"]["coalesced"] is False
+    assert attempt["cache_status"] == "hit"
+    assert attempt["circuit_state_before"] == "open"
+    assert attempt["circuit_state_after"] == "open"
+    assert registry.snapshot(PRIMARY).state == "open"
+    assert registry.snapshot(PRIMARY).total_successes == 0
+
+
+def test_successful_half_open_provider_probe_closes_circuit() -> None:
+    current_time = [0.0]
+    registry = PolarProviderHealthRegistry(
+        PolarProviderHealthPolicy(failure_threshold=1, recovery_timeout_s=5.0),
+        clock=lambda: current_time[0],
+    )
+    permit, _ = registry._acquire(PRIMARY)
+    assert permit is not None
+    registry._record_failure(permit, PolarProviderTimeoutError("opens"))
+    current_time[0] = 5.0
+    primary = ScriptedProvider(PRIMARY, ["success"])
+
+    result = generate_polar_orchestrated(
+        (primary,),
+        _request(),
+        health_registry=registry,
+    )
+
+    attempt = result.metadata["orchestration"]["attempts"][0]
+    assert attempt["circuit_probe"] is True
+    assert attempt["circuit_state_before"] == "half_open"
+    assert attempt["circuit_state_after"] == "closed"
+    assert registry.snapshot(PRIMARY).state == "closed"
+
+
+def test_capability_mismatch_does_not_mutate_provider_health() -> None:
+    limited = replace(CAPABILITIES, supports_mach=False)
+    primary = ScriptedProvider(PRIMARY, ["must-not-run"], capabilities=limited)
+    secondary = ScriptedProvider(SECONDARY, ["success"])
+    registry = PolarProviderHealthRegistry()
+
+    result = generate_polar_orchestrated(
+        (primary, secondary),
+        _request(mach=0.2),
+        health_registry=registry,
+    )
+
+    first = result.metadata["orchestration"]["attempts"][0]
+    assert first["outcome"] == "capability_error"
+    assert first["health_counted"] is False
+    assert registry.snapshot(PRIMARY).total_failures == 0
+    assert tuple(snapshot.provider for snapshot in registry.snapshots()) == (SECONDARY,)
+
+
+def test_health_provenance_contains_chain_snapshots() -> None:
+    primary = ScriptedProvider(PRIMARY, [PolarProviderUnavailableError("missing")])
+    secondary = ScriptedProvider(SECONDARY, ["success"])
+    registry = PolarProviderHealthRegistry()
+
+    result = generate_polar_orchestrated(
+        (primary, secondary),
+        _request(),
+        health_registry=registry,
+    )
+
+    provenance = result.metadata["orchestration"]
+    health = provenance["provider_health"]
+    assert provenance["health_enabled"] is True
+    assert tuple(item["provider"] for item in health) == (
+        PRIMARY.as_mapping(),
+        SECONDARY.as_mapping(),
+    )
+    assert health[0]["total_failures"] == 1
+    assert health[1]["total_successes"] == 1

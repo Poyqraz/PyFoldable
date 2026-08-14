@@ -4,6 +4,10 @@ PR-04 defines the dependency-free boundary shared by XFOIL and NeuralFoil adapte
 PR-04A adds the XFOIL subprocess implementation without bundling an executable.
 PR-04B adds an optional NeuralFoil implementation without making it a core dependency.
 PR-04C adds a provider-neutral filesystem cache with validated, atomic records.
+PR-04D adds deterministic cache inventory, eviction, and artifact cleanup.
+PR-04E adds cross-process duplicate-work coalescing and crash-safe lock ownership.
+PR-04F adds ordered provider fallback, bounded retry, and attempt provenance.
+PR-04G adds process-local health telemetry and a thread-safe circuit breaker.
 
 ## Contract
 
@@ -183,7 +187,7 @@ Failures have explicit routing behavior:
 | Backend unavailable | Never | Yes |
 | Timeout | Controlled by `retry_timeouts` | After attempts are exhausted |
 | Execution failure | Opt-in with `retry_execution_errors` | After attempts are exhausted |
-| Unexpected non-provider exception | Never | No; propagated immediately |
+| Unexpected non-provider exception | Never | With health isolation; otherwise propagated |
 
 Execution retries are disabled by default because this error class also covers invalid
 provider envelopes and other deterministic contract violations. Applications should
@@ -199,6 +203,61 @@ counts, and ordered `PolarProviderAttempt` entries. If every provider fails,
 `PolarProviderChainExhaustedError.attempts` exposes the same ordered audit trail and the
 last provider failure is preserved as the exception cause.
 
+## Provider health telemetry and circuit breaker
+
+A `PolarProviderHealthRegistry` persists process-local health across orchestration calls
+and is safe to share between threads. Its default `PolarProviderHealthPolicy` opens a
+provider circuit after three consecutive counted failures, waits 30 seconds, and then
+admits exactly one half-open probe. A successful backend call closes the circuit; a
+failed or neutral probe opens it for another cooldown period.
+
+```python
+from pyfoldable import (
+    PolarProviderHealthPolicy,
+    PolarProviderHealthRegistry,
+    generate_polar_orchestrated,
+)
+
+health = PolarProviderHealthRegistry(
+    PolarProviderHealthPolicy(
+        failure_threshold=3,
+        recovery_timeout_s=30.0,
+    )
+)
+
+result = generate_polar_orchestrated(
+    providers,
+    request,
+    cache=cache,
+    health_registry=health,
+)
+```
+
+Availability, timeout, execution, generic provider, and isolated unexpected errors are
+counted by default. Capability mismatches and circuit rejections are request/routing
+decisions and never affect health. Individual failure classes can be excluded through
+the policy without changing retry behavior.
+
+When a registry is supplied, cache lookup occurs before circuit admission. An open
+provider can therefore serve a valid cached result without executing its backend or
+being reported as a health success. Cache misses continue through the circuit state
+machine. Cross-process cache coordination remains independent from this process-local
+health registry.
+
+Health isolation converts an unexpected provider `Exception` into a typed
+`PolarProviderUnexpectedError`, records a bounded safe message, and continues the
+fallback chain. It is enabled by default only when a health registry is explicitly
+used, and can be disabled with `isolate_unexpected_errors=False`. `KeyboardInterrupt`,
+`SystemExit`, and other `BaseException` types are never masked; an outstanding
+half-open reservation is released before they are re-raised.
+
+Version 2 orchestration provenance records circuit state before/after each attempt,
+whether it was the half-open probe, health failure counts, circuit rejections, and a
+snapshot for every provider in the configured chain. `snapshot()`, deterministic
+`snapshots()`, and `reset()` provide direct operational telemetry and lifecycle control.
+Generation tokens prevent completions from an older circuit epoch or pre-reset call
+from mutating current state.
+
 ## Next adapter increments
 
-1. Provider health telemetry: circuit breaking and cooldown-aware provider selection.
+1. Adapter acceptance: golden polar fixtures and cross-provider tolerance benchmarks.
