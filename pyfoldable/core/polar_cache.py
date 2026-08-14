@@ -12,6 +12,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Literal, Mapping
 
+from .polar_cache_errors import PolarCacheError
 from .polar_cache_lifecycle import (
     PolarCacheEntry,
     PolarCacheMaintenanceResult,
@@ -19,6 +20,11 @@ from .polar_cache_lifecycle import (
     _cache_stats,
     _list_cache_entries,
     _maintain_cache,
+)
+from .polar_cache_lock import (
+    PolarCacheLockPolicy,
+    _ProcessKeyLock,
+    _cache_key_lock_path,
 )
 from .providers import (
     PolarGenerationRequest,
@@ -36,10 +42,6 @@ POLAR_CACHE_SCHEMA_VERSION = 1
 CacheStatus = Literal["hit", "miss", "recovered"]
 
 
-class PolarCacheError(RuntimeError):
-    """Raised when a filesystem cache operation cannot be completed safely."""
-
-
 @dataclass(frozen=True)
 class _CacheRead:
     result: PolarGenerationResult | None
@@ -51,9 +53,17 @@ class _CacheRead:
 class FilesystemPolarCache:
     """Store validated polar results as versioned JSON with atomic replacement."""
 
-    def __init__(self, root: str | Path) -> None:
+    def __init__(
+        self,
+        root: str | Path,
+        *,
+        lock_policy: PolarCacheLockPolicy | None = None,
+    ) -> None:
         self._root = Path(root)
         self._lock = threading.RLock()
+        self._lock_policy = lock_policy or PolarCacheLockPolicy()
+        if not isinstance(self._lock_policy, PolarCacheLockPolicy):
+            raise TypeError("lock_policy must be a PolarCacheLockPolicy or None.")
 
     @property
     def root(self) -> Path:
@@ -67,6 +77,14 @@ class FilesystemPolarCache:
         """Return the deterministic, sharded path for one request/provider key."""
         cache_key = request.cache_key(provider)
         return self._root / cache_key[:2] / f"{cache_key}.json"
+
+    def lock_path(
+        self,
+        provider: ProviderIdentity,
+        request: PolarGenerationRequest,
+    ) -> Path:
+        """Return the persistent process-coordination path for one cache key."""
+        return _cache_key_lock_path(self._root, request.cache_key(provider))
 
     def get(
         self,
@@ -231,6 +249,9 @@ class FilesystemPolarCache:
             return None
         return _relative_entry(self._root, quarantine)
 
+    def _process_key_lock(self, cache_key: str) -> _ProcessKeyLock:
+        return _ProcessKeyLock(self._root, cache_key, self._lock_policy)
+
 
 def generate_polar_cached(
     provider: PolarProvider,
@@ -241,17 +262,44 @@ def generate_polar_cached(
     request.validate_capabilities(provider.capabilities)
     read = cache._read(provider, request)
     if read.result is not None:
-        return _with_cache_provenance(read.result, "hit", read.entry, cache.root)
+        return _with_cache_provenance(
+            read.result,
+            "hit",
+            read.entry,
+            cache.root,
+            coalesced=False,
+            lock_wait_s=0.0,
+        )
 
-    result = generate_polar(provider, request)
-    entry = cache.put(result)
-    return _with_cache_provenance(
-        result,
-        read.status,
-        entry,
-        cache.root,
-        quarantined_entry=read.quarantined_entry,
-    )
+    cache_key = request.cache_key(provider.identity)
+    with cache._process_key_lock(cache_key) as acquisition:
+        checked = cache._read(provider, request)
+        if checked.result is not None:
+            return _with_cache_provenance(
+                checked.result,
+                "hit",
+                checked.entry,
+                cache.root,
+                coalesced=True,
+                lock_wait_s=acquisition.waited_s,
+                lock_entry=acquisition.relative_path,
+                stale_lock_recovered=acquisition.recovered_stale_metadata,
+            )
+
+        recovery = checked if checked.status == "recovered" else read
+        result = generate_polar(provider, request)
+        entry = cache.put(result)
+        return _with_cache_provenance(
+            result,
+            recovery.status,
+            entry,
+            cache.root,
+            quarantined_entry=recovery.quarantined_entry,
+            coalesced=False,
+            lock_wait_s=acquisition.waited_s,
+            lock_entry=acquisition.relative_path,
+            stale_lock_recovered=acquisition.recovered_stale_metadata,
+        )
 
 
 def _encode_document(result: PolarGenerationResult) -> dict[str, Any]:
@@ -374,6 +422,10 @@ def _with_cache_provenance(
     root: Path,
     *,
     quarantined_entry: str | None = None,
+    coalesced: bool | None = None,
+    lock_wait_s: float | None = None,
+    lock_entry: str | None = None,
+    stale_lock_recovered: bool = False,
 ) -> PolarGenerationResult:
     metadata = dict(result.metadata)
     cache_metadata: dict[str, Any] = {
@@ -383,6 +435,12 @@ def _with_cache_provenance(
     }
     if quarantined_entry is not None:
         cache_metadata["quarantined_entry"] = quarantined_entry
+    if coalesced is not None:
+        cache_metadata["coalesced"] = coalesced
+        cache_metadata["lock_wait_s"] = float(lock_wait_s or 0.0)
+        cache_metadata["stale_lock_recovered"] = stale_lock_recovered
+    if lock_entry is not None:
+        cache_metadata["lock_entry"] = lock_entry
     metadata["cache"] = cache_metadata
     return replace(result, metadata=metadata)
 

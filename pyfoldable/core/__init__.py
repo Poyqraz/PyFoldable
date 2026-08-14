@@ -36,10 +36,18 @@ from .polar_cache import (
     PolarCacheError,
     generate_polar_cached,
 )
+from .polar_cache_errors import (
+    PolarCacheLockError,
+    PolarCacheLockTimeoutError,
+)
 from .polar_cache_lifecycle import (
     PolarCacheEntry,
     PolarCacheMaintenanceResult,
     PolarCacheStats,
+)
+from .polar_cache_lock import (
+    POLAR_CACHE_LOCK_SCHEMA_VERSION,
+    PolarCacheLockPolicy,
 )
 from .providers import (
     PolarGenerationRequest,
@@ -80,10 +88,14 @@ __all__ = [
     "MotorModel",
     "NormalizedQuantity",
     "OperatingCondition",
+    "POLAR_CACHE_LOCK_SCHEMA_VERSION",
     "POLAR_CACHE_SCHEMA_VERSION",
     "PolarBoundsPolicy",
     "PolarCacheEntry",
     "PolarCacheError",
+    "PolarCacheLockError",
+    "PolarCacheLockPolicy",
+    "PolarCacheLockTimeoutError",
     "PolarCacheMaintenanceResult",
     "PolarCacheStats",
     "PolarFamily",

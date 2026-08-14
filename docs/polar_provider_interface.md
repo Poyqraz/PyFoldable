@@ -125,8 +125,32 @@ are removed after maintenance.
 
 Operations on one `FilesystemPolarCache` instance use an in-process reentrant lock, so
 its readers, atomic writers, and maintenance passes cannot delete each other's current
-files. This does not coalesce duplicate backend work or provide a cross-process lock.
+files.
+
+## Cross-process duplicate-work coalescing
+
+`generate_polar_cached()` also coordinates independent processes with one persistent
+advisory-lock file per cache key under `locks/<prefix>/<key>.lock`. The default
+`PolarCacheLockPolicy` bounds waiting to 60 seconds and uses exponential polling from
+10 to 250 milliseconds; applications can supply a stricter policy when constructing
+`FilesystemPolarCache`.
+
+On a miss, a process acquires the key lock and checks the cache again before invoking
+the provider. A follower therefore consumes the leader's newly published result rather
+than repeating XFOIL or NeuralFoil work. Result cache metadata records whether work was
+coalesced, lock wait time, the relative lock entry, and stale-metadata recovery.
+
+While held, the lock document contains a version, cache key, random owner token, PID,
+hostname, and acquisition time. Release clears the document only when the stored token
+still matches the owner. The operating-system lock is released automatically if a
+process exits, so a subsequent process can safely identify and replace abandoned owner
+metadata without an arbitrary age threshold that could steal a long-running live lock.
+
+Lock files remain as one-byte coordination sentinels after normal release. Maintenance
+ignores the `locks/` tree and skips age/size eviction for an entry whose key is actively
+locked by another process. If protected entries alone exceed `max_bytes`, the reported
+post-maintenance size can remain above that requested target.
 
 ## Next adapter increments
 
-1. Duplicate-work coalescing: cross-process per-key locks and stale-lock recovery.
+1. Provider orchestration: fallback chains and explicit retry policy objects.
