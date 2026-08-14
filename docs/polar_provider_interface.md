@@ -151,6 +151,54 @@ ignores the `locks/` tree and skips age/size eviction for an entry whose key is 
 locked by another process. If protected entries alone exceed `max_bytes`, the reported
 post-maintenance size can remain above that requested target.
 
+## Provider orchestration, fallback, and retry
+
+`generate_polar_orchestrated()` evaluates an ordered provider chain and returns the
+first valid result. A `PolarRetryPolicy` bounds retries independently for each provider;
+the defaults allow two attempts, retry timeouts, do not retry execution failures, and
+apply exponential backoff from 50 to 500 milliseconds.
+
+```python
+from pyfoldable import (
+    FilesystemPolarCache,
+    NeuralFoilProvider,
+    PolarRetryPolicy,
+    XfoilProvider,
+    generate_polar_orchestrated,
+)
+
+result = generate_polar_orchestrated(
+    (XfoilProvider(), NeuralFoilProvider()),
+    request,
+    retry_policy=PolarRetryPolicy(max_attempts=2),
+    cache=FilesystemPolarCache(".cache/polars"),
+)
+```
+
+Failures have explicit routing behavior:
+
+| Failure | Retry same provider | Continue fallback chain |
+| --- | --- | --- |
+| Capability mismatch | Never | Yes |
+| Backend unavailable | Never | Yes |
+| Timeout | Controlled by `retry_timeouts` | After attempts are exhausted |
+| Execution failure | Opt-in with `retry_execution_errors` | After attempts are exhausted |
+| Unexpected non-provider exception | Never | No; propagated immediately |
+
+Execution retries are disabled by default because this error class also covers invalid
+provider envelopes and other deterministic contract violations. Applications should
+enable them only when their backend's execution failures are known to be transient.
+Cache/lock infrastructure errors are not treated as provider failures and are likewise
+propagated rather than hidden by fallback.
+
+Each provider retains its own identity and cache key. Consequently a cached primary
+result wins without invoking its backend, while a cached fallback result is found after
+earlier providers have been rejected for the current call. Successful result metadata
+adds a versioned `orchestration` record containing the selected provider, retry/fallback
+counts, and ordered `PolarProviderAttempt` entries. If every provider fails,
+`PolarProviderChainExhaustedError.attempts` exposes the same ordered audit trail and the
+last provider failure is preserved as the exception cause.
+
 ## Next adapter increments
 
-1. Provider orchestration: fallback chains and explicit retry policy objects.
+1. Provider health telemetry: circuit breaking and cooldown-aware provider selection.
