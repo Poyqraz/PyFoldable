@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "name": "naca0012_re200k_clean",
+  "request": {
+    "airfoil": {
+      "id": "NACA0012",
+      "source": "analytic-contract-fixture",
+      "coordinates": [
+        [1.0, 0.0],
+        [0.75, 0.0316],
+        [0.5, 0.0529],
+        [0.25, 0.0594],
+        [0.0, 0.0],
+        [0.25, -0.0594],
+        [0.5, -0.0529],
+        [0.75, -0.0316],
+        [1.0, 0.0]
+      ]
+    },
+    "alpha_rad": [
+      -0.10471975511965978,
+      -0.06981317007977318,
+      -0.03490658503988659,
+      0.0,
+      0.03490658503988659,
+      0.06981317007977318,
+      0.10471975511965978,
+      0.13962634015954636,
+      0.17453292519943295
+    ],
+    "reynolds": 200000.0,
+    "mach": 0.0,
+    "n_crit": 9.0,
+    "xtr_upper": 1.0,
+    "xtr_lower": 1.0,
+    "max_iterations": null,
+    "timeout_s": 30.0,
+    "scenario_id": "clean",
+    "options": {}
+  },
+  "reference": {
+    "provider": {
+      "name": "golden",
+      "adapter_version": "1",
+      "backend_name": "reviewed-reference",
+      "backend_version": "naca0012-re200k-v1"
+    },
+    "points": [
+      {"alpha_rad": -0.10471975511965978, "status": "converged", "cl": -0.6, "cd": 0.0136, "cm": -0.02, "confidence": null, "iterations": null, "message": ""},
+      {"alpha_rad": -0.06981317007977318, "status": "converged", "cl": -0.4, "cd": 0.0116, "cm": -0.02, "confidence": null, "iterations": null, "message": ""},
+      {"alpha_rad": -0.03490658503988659, "status": "converged", "cl": -0.2, "cd": 0.0104, "cm": -0.02, "confidence": null, "iterations": null, "message": ""},
+      {"alpha_rad": 0.0, "status": "converged", "cl": 0.0, "cd": 0.01, "cm": -0.02, "confidence": null, "iterations": null, "message": ""},
+      {"alpha_rad": 0.03490658503988659, "status": "converged", "cl": 0.2, "cd": 0.0104, "cm": -0.02, "confidence": null, "iterations": null, "message": ""},
+      {"alpha_rad": 0.06981317007977318, "status": "converged", "cl": 0.4, "cd": 0.0116, "cm": -0.02, "confidence": null, "iterations": null, "message": ""},
+      {"alpha_rad": 0.10471975511965978, "status": "converged", "cl": 0.6, "cd": 0.0136, "cm": -0.02, "confidence": null, "iterations": null, "message": ""},
+      {"alpha_rad": 0.13962634015954636, "status": "converged", "cl": 0.8, "cd": 0.0164, "cm": -0.02, "confidence": null, "iterations": null, "message": ""},
+      {"alpha_rad": 0.17453292519943295, "status": "converged", "cl": 1.0, "cd": 0.02, "cm": -0.02, "confidence": null, "iterations": null, "message": ""}
+    ]
+  }
+}

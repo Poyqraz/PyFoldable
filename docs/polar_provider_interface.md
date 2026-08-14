@@ -8,6 +8,8 @@ PR-04D adds deterministic cache inventory, eviction, and artifact cleanup.
 PR-04E adds cross-process duplicate-work coalescing and crash-safe lock ownership.
 PR-04F adds ordered provider fallback, bounded retry, and attempt provenance.
 PR-04G adds process-local health telemetry and a thread-safe circuit breaker.
+PR-04H adds versioned golden fixtures, coefficient acceptance envelopes, and
+cross-provider benchmark reports.
 
 ## Contract
 
@@ -258,6 +260,48 @@ snapshot for every provider in the configured chain. `snapshot()`, deterministic
 Generation tokens prevent completions from an older circuit epoch or pre-reset call
 from mutating current state.
 
-## Next adapter increments
+## Adapter acceptance and cross-provider benchmarks
 
-1. Adapter acceptance: golden polar fixtures and cross-provider tolerance benchmarks.
+`load_polar_golden_fixture()` loads strict schema-versioned JSON fixtures.
+`compare_polar_results()` checks a request-identical candidate against its reference
+using an absolute-plus-relative envelope for each of `CL`, `CD`, and `CM`. Acceptance
+also records usable-point agreement and minimum reference coverage, so a solver cannot
+pass by silently dropping difficult angles.
+
+```python
+from pyfoldable import (
+    NeuralFoilProvider,
+    PolarAcceptanceCriteria,
+    PolarErrorTolerance,
+    XfoilProvider,
+    load_polar_golden_fixture,
+    run_polar_provider_benchmark,
+)
+
+fixture = load_polar_golden_fixture("tests/fixtures/polar_acceptance/naca0012_re200k.json")
+criteria = PolarAcceptanceCriteria(
+    cl=PolarErrorTolerance(absolute=0.05, relative=0.02),
+    cd=PolarErrorTolerance(absolute=0.002, relative=0.10),
+    cm=PolarErrorTolerance(absolute=0.01, relative=0.05),
+)
+report = run_polar_provider_benchmark(
+    (XfoilProvider(), NeuralFoilProvider()),
+    (fixture,),
+    criteria=criteria,
+)
+```
+
+The report preserves the complete provider-by-fixture matrix, individual failures,
+coefficient error statistics, wall-clock elapsed time, provider-reported elapsed time,
+and per-provider timing summaries. Timing is telemetry only and never a CI pass/fail
+gate, because shared-runner noise would make such a gate nondeterministic.
+
+The committed NACA0012 fixture is an analytic **adapter-contract regression fixture**.
+It proves angle/unit/status/coefficient mapping through deterministic XFOIL subprocess
+and NeuralFoil API doubles. It is not wind-tunnel evidence and must not be presented as
+physical agreement between real solver versions. A real-backend qualification run can
+use the same API after its operating envelope, backend versions, and reviewed reference
+data are frozen.
+
+PR-04 is complete through PR-04H. The next integration milestone is tracked in
+[`development_roadmap.md`](development_roadmap.md).
