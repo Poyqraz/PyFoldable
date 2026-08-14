@@ -3,6 +3,7 @@
 PR-04 defines the dependency-free boundary shared by XFOIL and NeuralFoil adapters.
 PR-04A adds the XFOIL subprocess implementation without bundling an executable.
 PR-04B adds an optional NeuralFoil implementation without making it a core dependency.
+PR-04C adds a provider-neutral filesystem cache with validated, atomic records.
 
 ## Contract
 
@@ -19,17 +20,18 @@ PR-04B adds an optional NeuralFoil implementation without making it a core depen
 
 The cache key is SHA-256 over canonical JSON containing schema version, normalized
 coordinates, ordered angles, all physical and numerical request fields, provider and
-backend versions, and provider options. Cache storage and eviction are separate work.
+backend versions, and provider options. Cache storage is implemented independently of
+the XFOIL and NeuralFoil adapters, so neither adapter contains persistence behavior.
 
 ## Provider mapping
 
 | Contract field | XFOIL adapter | NeuralFoil adapter |
 |---|---|---|
-| Angle input | radians converted to `ALFA`/`ASEQ` degrees | radians converted to vectorized degrees |
+| Angle input | degrees via `ALFA`/`ASEQ` | vectorized degrees |
 | Reynolds | `VISC`/type-1 polar | `Re` |
 | Mach | `MACH` | unsupported by standalone coordinate API; capability must be false |
 | Transition | `VPAR N` and trips | `n_crit`, `xtr_upper`, `xtr_lower` |
-| Failure signal | missing/unconverged output point | coefficient output plus `analysis_confidence` |
+| Failure signal | missing output row | coefficients plus `analysis_confidence` |
 | Partial sweep | preserved point by point | normally complete; low confidence remains explicit |
 | Iteration limit | optional `ITER` control | unsupported; capability must be false |
 | Timeout | subprocess deadline | unsupported in-process; custom values rejected |
@@ -75,6 +77,33 @@ Provider options are `model_size` (default `xlarge`) and `confidence_threshold`
 `low_confidence` point with an explicit warning; coefficients are never silently
 discarded. Both options participate in the request cache key.
 
+## Filesystem polar cache
+
+`FilesystemPolarCache(root)` stores one JSON document per request/provider cache key.
+Entries are sharded by the first two key characters. `generate_polar_cached()` first
+validates provider capabilities, then returns a valid hit or calls the provider and
+publishes the result. Returned result metadata records cache `status` as `hit`, `miss`,
+or `recovered`, together with the schema version and relative entry path.
+
+```python
+from pyfoldable import FilesystemPolarCache, generate_polar_cached
+
+cache = FilesystemPolarCache("outputs/polar-cache")
+result = generate_polar_cached(provider, request, cache)
+```
+
+Each document records the storage schema version, cache key, complete provider
+identity, canonical request payload, and the point-level result envelope. Reads reject
+unknown fields, unsupported schemas, identity/request mismatches, malformed points,
+and results that contradict provider capabilities. Invalid entries are moved under
+`corrupt/` and regenerated; they are never treated as successful solver output.
+
+Writes use a unique temporary file in the destination directory, flush and `fsync`
+the complete JSON payload, then publish it with `os.replace`. Readers therefore see
+either the previous complete entry or the new complete entry, while concurrent writers
+for the same deterministic key remain safe. Cache misses and provider failures are not
+stored as fabricated aerodynamic data.
+
 ## Next adapter increments
 
-1. Filesystem cache: atomic writes, schema checks, and corruption recovery.
+1. Cache lifecycle policy: size/age eviction and optional duplicate-work coalescing.
