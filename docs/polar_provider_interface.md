@@ -104,6 +104,29 @@ either the previous complete entry or the new complete entry, while concurrent w
 for the same deterministic key remain safe. Cache misses and provider failures are not
 stored as fabricated aerodynamic data.
 
+## Cache lifecycle management
+
+`list_entries()` returns active records in deterministic relative-path order, including
+their key, byte size, and modification time. `stats()` reports active, quarantined, and
+temporary artifact counts and byte totals without creating a missing cache directory.
+
+`maintain()` accepts four independent, opt-in policies:
+
+- `max_age_s` evicts active entries older than the declared age.
+- `max_bytes` evicts the oldest remaining active entries until their total size fits.
+- `corrupt_max_age_s` removes old records from the `corrupt/` quarantine.
+- `temporary_max_age_s` removes abandoned atomic-write temporary files.
+
+Age eviction runs before size eviction. Equal modification times are ordered by
+relative path, making the decision reproducible. Maintenance returns before/after
+storage statistics, ordered removed-entry paths, and reclaimed bytes. Unrelated files,
+symlinks, and non-cache directories are ignored; empty two-character shard directories
+are removed after maintenance.
+
+Operations on one `FilesystemPolarCache` instance use an in-process reentrant lock, so
+its readers, atomic writers, and maintenance passes cannot delete each other's current
+files. This does not coalesce duplicate backend work or provide a cross-process lock.
+
 ## Next adapter increments
 
-1. Cache lifecycle policy: size/age eviction and optional duplicate-work coalescing.
+1. Duplicate-work coalescing: cross-process per-key locks and stale-lock recovery.
