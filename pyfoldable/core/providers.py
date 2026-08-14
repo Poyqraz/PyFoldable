@@ -394,6 +394,15 @@ def generate_polar(
     """Validate capabilities and enforce the result/provider identity boundary."""
     request.validate_capabilities(provider.capabilities)
     result = provider.generate(request)
+    return _validate_polar_result(provider, request, result)
+
+
+def _validate_polar_result(
+    provider: PolarProvider,
+    request: PolarGenerationRequest,
+    result: Any,
+) -> PolarGenerationResult:
+    """Enforce the provider boundary for generated and cached result envelopes."""
     if not isinstance(result, PolarGenerationResult):
         raise PolarProviderExecutionError(
             "Provider did not return a PolarGenerationResult."
