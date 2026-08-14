@@ -93,10 +93,24 @@ class FilesystemPolarCache:
     ) -> PolarGenerationResult | None:
         """Return a validated cache hit, or ``None`` for a clean/recovered miss."""
         request.validate_capabilities(provider.capabilities)
+        return self._get_after_capability_validation(provider, request)
+
+    def _get_after_capability_validation(
+        self,
+        provider: PolarProvider,
+        request: PolarGenerationRequest,
+    ) -> PolarGenerationResult | None:
         read = self._read(provider, request)
         if read.result is None:
             return None
-        return _with_cache_provenance(read.result, "hit", read.entry, self._root)
+        return _with_cache_provenance(
+            read.result,
+            "hit",
+            read.entry,
+            self._root,
+            coalesced=False,
+            lock_wait_s=0.0,
+        )
 
     def list_entries(self) -> tuple[PolarCacheEntry, ...]:
         """Return active cache entries sorted by relative path."""
