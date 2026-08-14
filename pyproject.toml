@@ -17,8 +17,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-plot = ["matplotlib>=3.4"]
 dev = ["pytest>=7.0"]
+neuralfoil = ["neuralfoil>=0.3.3,<0.4"]
+plot = ["matplotlib>=3.4"]
 
 [tool.setuptools.packages.find]
 where = ["."]

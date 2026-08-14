@@ -87,7 +87,7 @@ from .performance import (
     evaluate_sweep_row,
     thrust_model_note,
 )
-from .providers import XfoilProvider
+from .providers import NeuralFoilProvider, XfoilProvider
 from .summary import (
     DESIGN_VARIANT_SUMMARY_COLUMNS,
     DesignVariantSummaryRow,
@@ -141,6 +141,7 @@ __all__ = [
     "ManufacturingModel",
     "MaterialModel",
     "MotorModel",
+    "NeuralFoilProvider",
     "OPERATING_POINT_COLUMNS",
     "OperatingCondition",
     "PolarBoundsPolicy",
