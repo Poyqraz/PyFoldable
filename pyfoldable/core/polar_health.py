@@ -8,6 +8,7 @@ import time
 from dataclasses import dataclass
 from typing import Callable, Literal
 
+from .polar_qualification import PolarProviderResultRejectedError
 from .providers import (
     PolarProviderCapabilityError,
     PolarProviderError,
@@ -71,6 +72,8 @@ class PolarProviderHealthPolicy:
         if isinstance(error, PolarProviderCapabilityError):
             return False
         if isinstance(error, PolarProviderCircuitOpenError):
+            return False
+        if isinstance(error, PolarProviderResultRejectedError):
             return False
         if isinstance(error, PolarProviderUnexpectedError):
             return self.count_unexpected_errors

@@ -18,6 +18,10 @@ from .polar_health import (
     _ProviderCallPermit,
     _safe_error_message,
 )
+from .polar_qualification import (
+    PolarProviderResultRejectedError,
+    PolarResultQualificationPolicy,
+)
 from .providers import (
     PolarGenerationRequest,
     PolarGenerationResult,
@@ -33,7 +37,7 @@ from .providers import (
 )
 
 
-POLAR_ORCHESTRATION_SCHEMA_VERSION = 2
+POLAR_ORCHESTRATION_SCHEMA_VERSION = 3
 
 PolarProviderAttemptOutcome = Literal[
     "success",
@@ -44,6 +48,7 @@ PolarProviderAttemptOutcome = Literal[
     "provider_error",
     "unexpected_error",
     "circuit_open",
+    "result_rejected",
 ]
 _POLAR_PROVIDER_ATTEMPT_OUTCOMES = {
     "success",
@@ -54,6 +59,7 @@ _POLAR_PROVIDER_ATTEMPT_OUTCOMES = {
     "provider_error",
     "unexpected_error",
     "circuit_open",
+    "result_rejected",
 }
 _MISSING_PROVIDER_MEMBER = object()
 
@@ -142,6 +148,10 @@ class PolarProviderAttempt:
     circuit_probe: bool = False
     health_counted: bool = False
     health_consecutive_failures: int | None = None
+    result_point_count: int | None = None
+    result_accepted_points: int | None = None
+    result_usable_fraction: float | None = None
+    result_rejected_indices: tuple[int, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.provider, ProviderIdentity):
@@ -186,6 +196,60 @@ class PolarProviderAttempt:
             raise ValueError(
                 "health_consecutive_failures must be a non-negative integer or None."
             )
+        for name in ("result_point_count", "result_accepted_points"):
+            value = getattr(self, name)
+            if value is not None and (
+                isinstance(value, bool)
+                or not isinstance(value, int)
+                or value < 0
+            ):
+                raise ValueError(f"{name} must be a non-negative integer or None.")
+        if self.result_usable_fraction is not None and (
+            isinstance(self.result_usable_fraction, bool)
+            or not isinstance(self.result_usable_fraction, (int, float))
+            or not math.isfinite(float(self.result_usable_fraction))
+            or not 0.0 <= self.result_usable_fraction <= 1.0
+        ):
+            raise ValueError("result_usable_fraction must be in [0, 1] or None.")
+        result_fields = (
+            self.result_point_count,
+            self.result_accepted_points,
+            self.result_usable_fraction,
+        )
+        if any(value is None for value in result_fields) != all(
+            value is None for value in result_fields
+        ):
+            raise ValueError("Result qualification fields must be present together.")
+        if self.result_point_count is not None:
+            if self.result_point_count < 2:
+                raise ValueError("result_point_count must be at least two.")
+            if self.result_accepted_points > self.result_point_count:
+                raise ValueError("result_accepted_points cannot exceed point count.")
+            expected_fraction = self.result_accepted_points / self.result_point_count
+            if not math.isclose(
+                self.result_usable_fraction,
+                expected_fraction,
+                rel_tol=0.0,
+                abs_tol=1.0e-15,
+            ):
+                raise ValueError("Result usable fraction must match result counts.")
+        if tuple(sorted(set(self.result_rejected_indices))) != (
+            self.result_rejected_indices
+        ):
+            raise ValueError("result_rejected_indices must be sorted and unique.")
+        if self.result_point_count is None and self.result_rejected_indices:
+            raise ValueError("Rejected indices require result qualification fields.")
+        if self.result_point_count is not None and any(
+            index < 0 or index >= self.result_point_count
+            for index in self.result_rejected_indices
+        ):
+            raise ValueError("result_rejected_indices must refer to result points.")
+        if self.result_point_count is not None and len(
+            self.result_rejected_indices
+        ) != self.result_point_count - self.result_accepted_points:
+            raise ValueError(
+                "result_rejected_indices must cover every unaccepted point."
+            )
 
     def as_mapping(self) -> dict[str, object]:
         """Return canonical JSON-like provenance for result metadata."""
@@ -205,6 +269,10 @@ class PolarProviderAttempt:
             "circuit_probe": self.circuit_probe,
             "health_counted": self.health_counted,
             "health_consecutive_failures": self.health_consecutive_failures,
+            "result_point_count": self.result_point_count,
+            "result_accepted_points": self.result_accepted_points,
+            "result_usable_fraction": self.result_usable_fraction,
+            "result_rejected_indices": self.result_rejected_indices,
         }
 
 
@@ -243,6 +311,7 @@ def generate_polar_orchestrated(
     retry_policy: PolarRetryPolicy | None = None,
     cache: FilesystemPolarCache | None = None,
     health_registry: PolarProviderHealthRegistry | None = None,
+    result_policy: PolarResultQualificationPolicy | None = None,
 ) -> PolarGenerationResult:
     """Generate through an ordered provider chain with bounded per-provider retry."""
     chain = _validate_provider_chain(providers)
@@ -257,6 +326,13 @@ def generate_polar_orchestrated(
     ):
         raise TypeError(
             "health_registry must be a PolarProviderHealthRegistry or None."
+        )
+    if result_policy is not None and not isinstance(
+        result_policy,
+        PolarResultQualificationPolicy,
+    ):
+        raise TypeError(
+            "result_policy must be a PolarResultQualificationPolicy or None."
         )
 
     attempts: list[PolarProviderAttempt] = []
@@ -329,6 +405,21 @@ def generate_polar_orchestrated(
                     health_registry,
                     identity,
                 )
+                rejection = _result_rejection(cached, result_policy)
+                if rejection is not None:
+                    attempts.append(
+                        _failure_attempt(
+                            provider=identity,
+                            provider_position=provider_position,
+                            attempt_number=attempt_number,
+                            error=rejection,
+                            elapsed_s=time.monotonic() - started,
+                            before=snapshot,
+                            after=snapshot,
+                        )
+                    )
+                    last_error = rejection
+                    break
                 attempts.append(
                     _success_attempt(
                         provider=identity,
@@ -440,6 +531,28 @@ def generate_polar_orchestrated(
                     health_registry._record_neutral(permit)
                 raise
 
+            rejection = _result_rejection(result, result_policy)
+            if rejection is not None:
+                after = (
+                    health_registry._record_neutral(permit)
+                    if health_registry is not None and permit is not None
+                    else before
+                )
+                attempts.append(
+                    _failure_attempt(
+                        provider=identity,
+                        provider_position=provider_position,
+                        attempt_number=attempt_number,
+                        error=rejection,
+                        elapsed_s=time.monotonic() - started,
+                        before=before,
+                        after=after,
+                        permit=permit,
+                    )
+                )
+                last_error = rejection
+                break
+
             after = _record_health_success(
                 health_registry,
                 permit,
@@ -534,6 +647,8 @@ def _failure_outcome(error: PolarProviderError) -> PolarProviderAttemptOutcome:
         return "unexpected_error"
     if isinstance(error, PolarProviderCircuitOpenError):
         return "circuit_open"
+    if isinstance(error, PolarProviderResultRejectedError):
+        return "result_rejected"
     return "provider_error"
 
 
@@ -567,6 +682,9 @@ def _with_orchestration_provenance(
         ),
         "unexpected_error_count": sum(
             attempt.outcome == "unexpected_error" for attempt in attempts
+        ),
+        "result_rejection_count": sum(
+            attempt.outcome == "result_rejected" for attempt in attempts
         ),
         "attempts": tuple(attempt.as_mapping() for attempt in attempts),
     }
@@ -620,6 +738,18 @@ def _record_health_success(
     return health_registry._record_success(permit)
 
 
+def _result_rejection(
+    result: PolarGenerationResult,
+    policy: PolarResultQualificationPolicy | None,
+) -> PolarProviderResultRejectedError | None:
+    if policy is None:
+        return None
+    qualification = policy.evaluate(result)
+    if qualification.accepted:
+        return None
+    return PolarProviderResultRejectedError(result, qualification)
+
+
 def _failure_attempt(
     *,
     provider: ProviderIdentity,
@@ -634,6 +764,11 @@ def _failure_attempt(
     permit: _ProviderCallPermit | None = None,
     health_counted: bool = False,
 ) -> PolarProviderAttempt:
+    qualification = (
+        error.qualification
+        if isinstance(error, PolarProviderResultRejectedError)
+        else None
+    )
     return PolarProviderAttempt(
         provider=provider,
         provider_position=provider_position,
@@ -642,6 +777,11 @@ def _failure_attempt(
         elapsed_s=elapsed_s,
         will_retry=will_retry,
         backoff_s=backoff_s,
+        cache_status=(
+            _cache_status(error.result.metadata)
+            if isinstance(error, PolarProviderResultRejectedError)
+            else None
+        ),
         error_type=type(error).__name__,
         error_message=_safe_error_message(error),
         circuit_state_before=before.state if before is not None else None,
@@ -650,6 +790,18 @@ def _failure_attempt(
         health_counted=health_counted,
         health_consecutive_failures=(
             after.consecutive_failures if after is not None else None
+        ),
+        result_point_count=(
+            qualification.point_count if qualification is not None else None
+        ),
+        result_accepted_points=(
+            qualification.accepted_points if qualification is not None else None
+        ),
+        result_usable_fraction=(
+            qualification.usable_fraction if qualification is not None else None
+        ),
+        result_rejected_indices=(
+            qualification.rejected_indices if qualification is not None else ()
         ),
     )
 

@@ -56,11 +56,39 @@ generated = generate_polar_family(
 family = generated.family
 ```
 
-PR-05A is deliberately sequential and fail-fast. It requires a complete provider result
-for every cell and returns cells in Mach-major, Reynolds-minor order. Each cell retains
+Complete generation is deliberately sequential and fail-fast. It requires a complete
+provider result for every cell and returns cells in Mach-major, Reynolds-minor order.
+An incomplete provider result is first rejected by the orchestration qualification gate,
+so another configured provider can satisfy the same cell. Each accepted cell retains
 the original `PolarGenerationResult` beside its canonical `PolarTable`, including cache,
 retry, fallback, health, warning, and backend provenance. If a cell fails,
 `PolarFamilyGenerationError` exposes the successful prefix and the exact failed request.
 
-Partial-grid continuation and acceptance-driven fallback are reserved for PR-05B. This
-prevents a sparse family from reaching interpolation without an explicit policy.
+For an exhaustive batch report, select `collect_all` explicitly:
+
+```python
+from pyfoldable import (
+    PolarFamilyBatchPolicy,
+    generate_polar_family_batch,
+)
+
+batch = generate_polar_family_batch(
+    providers,
+    plan,
+    policy=PolarFamilyBatchPolicy(
+        failure_mode="collect_all",
+        subgrid_policy="complete_axes",
+    ),
+    cache=cache,
+    health_registry=health,
+)
+```
+
+`batch.cells` and `batch.failures` together cover every planned position. Failures retain
+the complete provider-attempt trail and, when the last candidate was incomplete, its
+point statuses, rejected indices, and qualification decision. The default
+`subgrid_policy="none"` never creates a family from sparse successes. `complete_axes`
+considers only two verifiable Cartesian candidates: every complete Mach row across the
+full Reynolds axis, or every complete Reynolds column across the full Mach axis. It
+chooses the larger candidate deterministically and returns `family=None` when neither
+exists. This makes any interpolation across a reduced grid an explicit caller decision.
