@@ -52,6 +52,10 @@ must consume or produce them instead of creating parallel unit conventions.
 polar sources, model options, convergence state, and warnings part of the result
 contract rather than relying on filenames.
 
+Provider-backed polar runtime settings deliberately use the separate versioned boundary
+documented in `docs/polar_configuration.md`. This prevents executable paths, retry/cache
+policy, and backend selection from becoming mechanical design properties.
+
 ## Legacy compatibility
 
 `pyfoldable.models.load_config()` continues to load

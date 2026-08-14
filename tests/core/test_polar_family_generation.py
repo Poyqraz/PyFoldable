@@ -24,6 +24,7 @@ from pyfoldable.core import (
     PolarProviderExecutionError,
     PolarProviderHealthPolicy,
     PolarProviderHealthRegistry,
+    PolarResultQualificationPolicy,
     PolarProviderTimeoutError,
     PolarRetryPolicy,
     ProviderCapabilities,
@@ -560,3 +561,11 @@ def test_batch_policy_rejects_ambiguous_combinations_and_inputs() -> None:
         generate_polar_family_batch((GridProvider(PRIMARY),), _plan(), policy=object())
     with pytest.raises(ValueError, match="at least one"):
         generate_polar_family_batch((), _plan())
+    with pytest.raises(ValueError, match="minimum_usable_fraction=1.0"):
+        generate_polar_family_batch(
+            (GridProvider(PRIMARY),),
+            _plan(),
+            result_policy=PolarResultQualificationPolicy(
+                minimum_usable_fraction=0.5
+            ),
+        )
