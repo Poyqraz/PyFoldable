@@ -1,7 +1,7 @@
 # Polar provider interface
 
-PR-04 defines the dependency-free boundary shared by future XFOIL and NeuralFoil
-adapters. It does not install or execute either solver.
+PR-04 defines the dependency-free boundary shared by XFOIL and NeuralFoil adapters.
+PR-04A adds the XFOIL subprocess implementation without bundling an executable.
 
 ## Contract
 
@@ -44,10 +44,21 @@ NeuralFoil's standalone coordinate API expects normalized Selig order, matching
 locations, and `analysis_confidence`; confidence policy belongs to the adapter and
 must not turn a low-confidence point into a silent success.
 
+## XFOIL subprocess adapter
+
+`XfoilProvider` discovers an executable from an explicit path or `PATH`, captures its
+reported version (falling back to a SHA-256 executable fingerprint), and runs each
+request in an isolated temporary directory. It sends commands on stdin without a
+shell, disables plotting, writes a normalized labeled coordinate file, enables `PACC`,
+and executes each requested angle in its original order.
+
+Missing polar rows become `not_converged` point results instead of fabricated
+coefficients. Non-zero process exits, missing/malformed polar files, startup failures,
+and request timeouts use the typed provider errors. The only provider option is
+`repanel: bool`, which defaults to true; unknown options are rejected.
+
 ## Next adapter increments
 
-1. XFOIL subprocess adapter: executable discovery, isolated temporary directory,
-   command script, timeout, polar parsing, and missing-point reconciliation.
-2. NeuralFoil optional adapter: lazy import, version capture, vectorized evaluation,
+1. NeuralFoil optional adapter: lazy import, version capture, vectorized evaluation,
    confidence threshold, and capability declaration.
-3. Filesystem cache: atomic writes, schema checks, and corruption recovery.
+2. Filesystem cache: atomic writes, schema checks, and corruption recovery.

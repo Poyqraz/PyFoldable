@@ -87,6 +87,7 @@ from .performance import (
     evaluate_sweep_row,
     thrust_model_note,
 )
+from .providers import XfoilProvider
 from .summary import (
     DESIGN_VARIANT_SUMMARY_COLUMNS,
     DesignVariantSummaryRow,
@@ -164,6 +165,7 @@ __all__ = [
     "SimulationResult",
     "UnitError",
     "ValidationRecord",
+    "XfoilProvider",
     "build_decision_matrix_from_csv",
     "compare_fixed_vs_foldable_sweep",
     "compactness_ratio",
