@@ -128,6 +128,7 @@ from .polar_real_qualification import (
     POLAR_REAL_QUALIFICATION_SCHEMA_VERSION,
     PolarRealQualificationCapture,
     capture_real_polar_qualification,
+    write_polar_real_qualification_failure_bundle,
     write_polar_real_qualification_bundle,
 )
 from .providers import (
@@ -269,6 +270,7 @@ __all__ = [
     "normalize_quantity",
     "parse_airfoil_coordinates",
     "parse_quantity",
+    "write_polar_real_qualification_failure_bundle",
     "run_polar_provider_benchmark",
     "qualify_real_polar_backends",
     "write_polar_real_qualification_bundle",

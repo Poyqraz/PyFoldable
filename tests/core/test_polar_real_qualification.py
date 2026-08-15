@@ -17,6 +17,7 @@ from pyfoldable.core import (
     ProviderCapabilities,
     ProviderIdentity,
     capture_real_polar_qualification,
+    write_polar_real_qualification_failure_bundle,
     write_polar_real_qualification_bundle,
 )
 
@@ -181,6 +182,35 @@ def test_bundle_never_overwrites_previous_evidence(tmp_path: Path) -> None:
     with pytest.raises(FileExistsError, match="will not be overwritten"):
         write_polar_real_qualification_bundle(capture, destination)
     assert (destination / "manifest.json").read_bytes() == original
+
+
+def test_provider_failure_is_preserved_as_unreviewed_hashed_evidence(
+    tmp_path: Path,
+) -> None:
+    xfoil_identity = ProviderIdentity("xfoil-subprocess", "1", "XFOIL", "6.99")
+    neural_identity = ProviderIdentity("neuralfoil", "1", "NeuralFoil", "0.3.3")
+    destination = write_polar_real_qualification_failure_bundle(
+        case_name="failed-execution",
+        source_revision="0123456789abcdef0123456789abcdef01234567",
+        captured_at_utc="2026-08-15T10:00:00Z",
+        expected_providers=(xfoil_identity, neural_identity),
+        reference_provider=xfoil_identity,
+        request=_request(),
+        environment={"runner": "test"},
+        error=RuntimeError("solver exited with status -8"),
+        output_directory=tmp_path / "failure",
+    )
+
+    manifest = json.loads((destination / "manifest.json").read_text())
+    failure = json.loads((destination / "failure.json").read_text())
+    assert manifest["capture_failed"] is True
+    assert manifest["benchmark_passed"] is False
+    assert manifest["review_state"] == "unreviewed"
+    assert manifest["promotion_allowed"] is False
+    assert failure["error_type"] == "RuntimeError"
+    assert failure["error_message"] == "solver exited with status -8"
+    payload = (destination / manifest["files"][0]["path"]).read_bytes()
+    assert hashlib.sha256(payload).hexdigest() == manifest["files"][0]["sha256"]
 
 
 def test_unusable_reference_is_preserved_as_failed_review_evidence(

@@ -268,6 +268,93 @@ def write_polar_real_qualification_bundle(
     return destination
 
 
+def write_polar_real_qualification_failure_bundle(
+    *,
+    case_name: str,
+    source_revision: str,
+    captured_at_utc: str,
+    expected_providers: Sequence[ProviderIdentity],
+    reference_provider: ProviderIdentity,
+    request: PolarGenerationRequest,
+    environment: Mapping[str, Any],
+    error: Exception,
+    output_directory: str | Path,
+) -> Path:
+    """Atomically preserve an unreviewed provider-execution failure."""
+    frozen_environment = _validate_capture_header(
+        case_name, source_revision, captured_at_utc, environment
+    )
+    expected = tuple(expected_providers)
+    if not expected or not all(
+        isinstance(identity, ProviderIdentity) for identity in expected
+    ):
+        raise TypeError("expected_providers must contain ProviderIdentity values.")
+    if len(set(expected)) != len(expected):
+        raise ValueError("expected_providers must be unique.")
+    if reference_provider not in expected:
+        raise ValueError("reference_provider must be one of expected_providers.")
+    if not isinstance(request, PolarGenerationRequest):
+        raise TypeError("request must be a PolarGenerationRequest.")
+    if not isinstance(error, Exception):
+        raise TypeError("error must be an Exception.")
+
+    destination = Path(output_directory)
+    if destination.exists():
+        raise FileExistsError(
+            f"Qualification output already exists and will not be overwritten: {destination}."
+        )
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(
+        tempfile.mkdtemp(
+            prefix=f".{destination.name}.staging-", dir=destination.parent
+        )
+    )
+    try:
+        failure_relative = Path("failure.json")
+        failure_file = _write_evidence_document(
+            staging / failure_relative,
+            failure_relative,
+            {
+                "schema_version": POLAR_REAL_QUALIFICATION_SCHEMA_VERSION,
+                "kind": "polar-provider-capture-failure",
+                "case_name": case_name,
+                "request": _request_document(request),
+                "expected_providers": tuple(
+                    identity.as_mapping() for identity in expected
+                ),
+                "error_type": type(error).__name__,
+                "error_message": _safe_error_message(error),
+            },
+        )
+        manifest = {
+            "schema_version": POLAR_REAL_QUALIFICATION_SCHEMA_VERSION,
+            "kind": "polar-real-backend-qualification",
+            "review_state": "unreviewed",
+            "promotion_allowed": False,
+            "capture_failed": True,
+            "case_name": case_name,
+            "source_revision": source_revision,
+            "captured_at_utc": captured_at_utc,
+            "request_sha256": _document_sha256(
+                _request_fingerprint_document(request)
+            ),
+            "expected_providers": tuple(
+                identity.as_mapping() for identity in expected
+            ),
+            "actual_providers": (),
+            "reference_provider": reference_provider.as_mapping(),
+            "environment": _thaw_json(frozen_environment),
+            "benchmark_passed": False,
+            "files": (failure_file,),
+        }
+        _write_json(staging / "manifest.json", manifest)
+        staging.rename(destination)
+    except BaseException:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+    return destination
+
+
 def _result_document(
     case_name: str, result: PolarGenerationResult
 ) -> dict[str, object]:

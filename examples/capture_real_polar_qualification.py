@@ -18,6 +18,7 @@ from pyfoldable.core import (
     ProviderIdentity,
     capture_real_polar_qualification,
     load_airfoil_coordinates,
+    write_polar_real_qualification_failure_bundle,
     write_polar_real_qualification_bundle,
 )
 
@@ -43,30 +44,53 @@ def main() -> int:
         xtr_lower=1.0,
         scenario_id="naca0012-re200k-natural-transition",
     )
-    capture = capture_real_polar_qualification(
-        (XfoilProvider(args.xfoil), NeuralFoilProvider()),
-        request,
-        expected_providers=(EXPECTED_XFOIL, EXPECTED_NEURALFOIL),
-        reference_provider=EXPECTED_XFOIL,
-        case_name="naca0012_re200k_real_v1",
-        source_revision=args.source_revision,
-        captured_at_utc=datetime.now(timezone.utc)
+    captured_at_utc = (
+        datetime.now(timezone.utc)
         .isoformat(timespec="seconds")
-        .replace("+00:00", "Z"),
-        criteria=PolarAcceptanceCriteria(
-            cl=PolarErrorTolerance(absolute=0.05, relative=0.02),
-            cd=PolarErrorTolerance(absolute=0.002, relative=0.10),
-            cm=PolarErrorTolerance(absolute=0.01, relative=0.05),
-            minimum_coverage=1.0,
-            require_usable_match=True,
-        ),
-        environment={
-            "python": sys.version,
-            "platform": platform.platform(),
-            "xfoil_debian_package": args.xfoil_package_version,
-            "packages": _installed_package_versions(),
-        },
+        .replace("+00:00", "Z")
     )
+    environment = {
+        "python": sys.version,
+        "platform": platform.platform(),
+        "xfoil_debian_package": args.xfoil_package_version,
+        "packages": _installed_package_versions(),
+    }
+    try:
+        capture = capture_real_polar_qualification(
+            (XfoilProvider(args.xfoil), NeuralFoilProvider()),
+            request,
+            expected_providers=(EXPECTED_XFOIL, EXPECTED_NEURALFOIL),
+            reference_provider=EXPECTED_XFOIL,
+            case_name="naca0012_re200k_real_v1",
+            source_revision=args.source_revision,
+            captured_at_utc=captured_at_utc,
+            criteria=PolarAcceptanceCriteria(
+                cl=PolarErrorTolerance(absolute=0.05, relative=0.02),
+                cd=PolarErrorTolerance(absolute=0.002, relative=0.10),
+                cm=PolarErrorTolerance(absolute=0.01, relative=0.05),
+                minimum_coverage=1.0,
+                require_usable_match=True,
+            ),
+            environment=environment,
+        )
+    except Exception as error:
+        destination = write_polar_real_qualification_failure_bundle(
+            case_name="naca0012_re200k_real_v1",
+            source_revision=args.source_revision,
+            captured_at_utc=captured_at_utc,
+            expected_providers=(EXPECTED_XFOIL, EXPECTED_NEURALFOIL),
+            reference_provider=EXPECTED_XFOIL,
+            request=request,
+            environment=environment,
+            error=error,
+            output_directory=args.output_dir,
+        )
+        print(
+            f"Qualification failure evidence written to {destination}: "
+            f"{type(error).__name__}: {error}",
+            file=sys.stderr,
+        )
+        return 2
     destination = write_polar_real_qualification_bundle(capture, args.output_dir)
     outcome = "passed" if capture.benchmark.passed else "requires review"
     print(f"Qualification capture written to {destination} ({outcome}).")

@@ -37,13 +37,17 @@ jobs:
 
       - name: Capture unreviewed qualification evidence
         run: |
+          set +e
           python examples/capture_real_polar_qualification.py \
             --source-revision "$GITHUB_SHA" \
             --xfoil-package-version "$XFOIL_DEBIAN_VERSION" \
             --output-dir outputs/polar-real-qualification
+          status=$?
           python -m json.tool outputs/polar-real-qualification/manifest.json >/dev/null
+          exit "$status"
 
       - name: Upload review candidate
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: polar-real-qualification-${{ github.sha }}
