@@ -29,6 +29,13 @@ from .polar import (
     PolarQueryResult,
     load_polar_csv,
 )
+from .polar_analysis import (
+    POLAR_SECTION_ANALYSIS_SCHEMA_VERSION,
+    PolarSectionAnalysisError,
+    PolarSectionAnalysisResult,
+    PolarSectionDiagnostic,
+    analyze_generated_polar_sections,
+)
 from .polar_acceptance import (
     POLAR_ACCEPTANCE_SCHEMA_VERSION,
     PolarAcceptanceCriteria,
@@ -160,6 +167,7 @@ __all__ = [
     "POLAR_ORCHESTRATION_SCHEMA_VERSION",
     "POLAR_PROVIDER_HEALTH_SCHEMA_VERSION",
     "POLAR_RESULT_QUALIFICATION_SCHEMA_VERSION",
+    "POLAR_SECTION_ANALYSIS_SCHEMA_VERSION",
     "PolarBoundsPolicy",
     "PolarAcceptanceCriteria",
     "PolarAcceptanceReport",
@@ -215,6 +223,9 @@ __all__ = [
     "PolarProviderUnavailableError",
     "PolarProviderUnexpectedError",
     "PolarQueryResult",
+    "PolarSectionAnalysisError",
+    "PolarSectionAnalysisResult",
+    "PolarSectionDiagnostic",
     "PolarResultQualification",
     "PolarResultQualificationPolicy",
     "PolarRetryPolicy",
@@ -228,6 +239,7 @@ __all__ = [
     "ValidationRecord",
     "canonical_unit",
     "compare_polar_results",
+    "analyze_generated_polar_sections",
     "generate_polar",
     "generate_polar_cached",
     "generate_polar_family",

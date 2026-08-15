@@ -51,6 +51,13 @@ Polar provider platformundan provider-backed `PolarFamily` entegrasyonuna geçi�
 Sürümlü polar grid/provider/runtime ayarları ve güvenlik kuralları:
 `docs/polar_configuration.md`.
 
+İlk generated-polar tüketicisi `analyze_generated_polar_sections()` ile her kanat
+istasyonunun kinematiğini ve iki boyutlu yüklerini hesaplar. Varsayılan polar sınır
+politikası fail-closed `error`dır; açıkça seçilen `clamp` işlemleri tanı, uyarı ve
+`SimulationResult` provenance kayıtlarında korunur. Bu model tam BEM değildir:
+indüksiyon, swirl, Prandtl kök/uç kaybı, dinamik stall ve sıkıştırılabilirlik düzeltmesi
+uygulamaz.
+
 ## Kurulum
 
 ```bash
