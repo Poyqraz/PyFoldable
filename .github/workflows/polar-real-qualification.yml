@@ -17,20 +17,24 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
+      - id: checkout
+        uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
+      - id: setup_python
+        name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
 
-      - name: Install XFOIL build dependencies
+      - id: install_xfoil_dependencies
+        name: Install XFOIL build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends gfortran libx11-dev
 
-      - name: Build pinned XFOIL source without FPE traps
+      - id: build_xfoil
+        name: Build pinned XFOIL source without FPE traps
         run: |
           archive="$RUNNER_TEMP/xfoil6.99.tgz"
           source_root="$RUNNER_TEMP/xfoil-source"
@@ -39,7 +43,9 @@ jobs:
           echo "$XFOIL_SOURCE_SHA256  $archive" | sha256sum --check --strict
           mkdir -p "$source_root" "$install_root"
           tar --no-same-owner -xzf "$archive" -C "$source_root"
-          make -C "$source_root/Xfoil/plotlib" gfortranDP \
+          cp "$source_root/Xfoil/plotlib/config.make.gfortranDP" \
+            "$source_root/Xfoil/plotlib/config.make"
+          make -C "$source_root/Xfoil/plotlib" libPlt_gDP.a \
             FFLAGS="$XFOIL_FORTRAN_FLAGS"
           make -C "$source_root/Xfoil/bin" -f Makefile_gfortran \
             BINDIR="$install_root/" \
@@ -53,14 +59,16 @@ jobs:
           echo "OSMAP=$source_root/Xfoil/orrs/osmapDP.dat" >> "$GITHUB_ENV"
           echo "XFOIL_BUILD_ID=mit-xfoil6.99.tgz;sha256=$XFOIL_SOURCE_SHA256;gfortran=$compiler_version;flags=-O2,-fdefault-real-8,-fallow-argument-mismatch" >> "$GITHUB_ENV"
 
-      - name: Install project and pinned NeuralFoil backend
+      - id: install_python_dependencies
+        name: Install project and pinned NeuralFoil backend
         run: |
           python -m pip install --upgrade pip
           python -m pip install --editable .
           python -m pip install "NeuralFoil==0.3.3"
           python -c "import importlib.metadata as m; assert m.version('NeuralFoil') == '0.3.3'"
 
-      - name: Capture unreviewed qualification evidence
+      - id: capture
+        name: Capture unreviewed qualification evidence
         run: |
           set +e
           python examples/capture_real_polar_qualification.py \
@@ -72,11 +80,40 @@ jobs:
           python -m json.tool outputs/polar-real-qualification/manifest.json >/dev/null
           exit "$status"
 
+      - name: Record workflow-level failure evidence
+        if: failure()
+        env:
+          STEPS_JSON: ${{ toJson(steps) }}
+          SOURCE_REVISION: ${{ github.sha }}
+          WORKFLOW_RUN_ID: ${{ github.run_id }}
+          WORKFLOW_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          mkdir -p outputs/workflow-diagnostics
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          document = {
+              "kind": "polar-qualification-workflow-failure",
+              "source_revision": os.environ["SOURCE_REVISION"],
+              "workflow_run_id": os.environ["WORKFLOW_RUN_ID"],
+              "workflow_run_attempt": os.environ["WORKFLOW_RUN_ATTEMPT"],
+              "steps": json.loads(os.environ["STEPS_JSON"]),
+          }
+          Path("outputs/workflow-diagnostics/workflow_failure.json").write_text(
+              json.dumps(document, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
       - name: Upload review candidate
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: polar-real-qualification-${{ github.sha }}
-          path: outputs/polar-real-qualification/
+          name: polar-real-qualification-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            outputs/polar-real-qualification/
+            outputs/workflow-diagnostics/
           if-no-files-found: error
           retention-days: 30
