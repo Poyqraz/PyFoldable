@@ -34,7 +34,11 @@ The `Polar real-backend qualification` workflow is manual-only and has
 - `benchmark.json`, with coverage and CL/CD/CM discrepancies.
 
 If provider execution fails, the workflow retains its failing status but still uploads
-a hash-manifested `failure.json`. Failure evidence is never eligible for promotion.
+a hash-manifested `failure.json`. Failures before provider execution, including source
+verification, compiler, dependency, and build failures, produce a separate
+`workflow_failure.json` containing the exact run/attempt identity and step outcomes.
+Artifact names include the run ID and attempt so repeated or concurrent captures cannot
+be confused. Failure evidence is never eligible for promotion.
 
 Every bundle starts with `review_state: "unreviewed"` and
 `promotion_allowed: false`. Identity drift is rejected before solver execution, output
