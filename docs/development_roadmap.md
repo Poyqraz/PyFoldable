@@ -21,9 +21,9 @@ boundary between `PolarGenerationResult.to_polar_table()` and manually assembled
 | PR-04H | Golden acceptance and cross-provider benchmark | Complete |
 | PR-05A | Provider-backed family generation contract | Complete |
 | PR-05B | Partial-grid policy and batch diagnostics | Complete |
-| PR-05C | Strict configuration binding | Complete in this change |
-| PR-05D | Analysis integration | Next |
-| PR-05E | Real-backend qualification | Planned |
+| PR-05C | Strict configuration binding | Complete |
+| PR-05D | Analysis integration | Complete in this change |
+| PR-05E | Real-backend qualification | Next |
 
 ## PR-05 — provider-backed PolarFamily integration
 
@@ -46,7 +46,11 @@ multi-Reynolds/Mach family to an aerodynamic analysis consumer.
    validates provider coverage, and constructs the stateful runtime lazily.
 4. **PR-05D — analysis integration.** Route generated families into the first section/BEM
    consumer with explicit interpolation bounds and end-to-end provenance in
-   `SimulationResult`.
+   `SimulationResult`. **Complete in this change.** The initial fail-closed section
+   consumer evaluates station kinematics and quasi-steady two-dimensional loads, then
+   trapezoidally integrates only the declared station interval. It is explicitly not
+   full BEM: induction, swirl, Prandtl losses, dynamic stall, and compressibility
+   correction remain unapplied.
 5. **PR-05E — real-backend qualification.** Capture reviewed XFOIL and NeuralFoil outputs
    for a declared operating envelope, freeze backend versions, and publish the benchmark
    report separately from deterministic adapter-contract fixtures.
@@ -94,9 +98,10 @@ multi-Reynolds/Mach family to an aerodynamic analysis consumer.
 | Deterministic acceptance and benchmark harness | Met | PR-04H |
 | Real-solver physical qualification data | Open; not a code-start blocker | PR-05E |
 
-The **PR-05 code-start gate is complete**, and PR-05A/B/C now supply generation,
-partial-grid, and strict runtime configuration contracts. The implementation sequence is
-therefore **3 of 5 PR-05 increments complete**. PR-05D analysis integration is next.
+The **PR-05 code-start gate is complete**, and PR-05A/B/C/D now supply generation,
+partial-grid, strict runtime configuration, and fail-closed section-consumption contracts.
+The implementation sequence is therefore **4 of 5 PR-05 increments complete**. PR-05E
+real-backend qualification is next.
 Production aerodynamic qualification remains **5 of 6 readiness gates complete** until
 real XFOIL/NeuralFoil baselines are reviewed; that work is deliberately tracked as PR-05E
 so contract fixtures cannot be mistaken for physical validation.
