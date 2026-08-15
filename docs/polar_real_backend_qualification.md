@@ -16,9 +16,12 @@ input, but it is not physical XFOIL or NeuralFoil evidence.
 | Reference | XFOIL subprocess adapter v1, XFOIL 6.99 |
 | Candidate | NeuralFoil adapter v1, NeuralFoil 0.3.3 |
 
-XFOIL 6.99 is intentionally selected from Ubuntu 24.04's versioned
-`6.99.dfsg+1-3` package. Adopting another XFOIL release creates a new qualification case
-instead of silently changing this baseline. NeuralFoil is installed at exactly 0.3.3.
+XFOIL 6.99 is built from MIT's official `xfoil6.99.tgz` source archive, pinned by
+SHA-256. The workflow uses the source-provided double-precision GNU Fortran build flags
+without enabling floating-point traps. Ubuntu's `6.99.dfsg+1-3` package is not used:
+its `invalid,zero` trap flags terminate the iterative viscous solver with `SIGFPE` for
+this envelope. Adopting another XFOIL release creates a new qualification case instead
+of silently changing this baseline. NeuralFoil is installed at exactly 0.3.3.
 
 ## Capture and review boundary
 
@@ -29,6 +32,9 @@ The `Polar real-backend qualification` workflow is manual-only and has
   provider identities, environment versions, and SHA-256 file hashes;
 - one raw result per provider; and
 - `benchmark.json`, with coverage and CL/CD/CM discrepancies.
+
+If provider execution fails, the workflow retains its failing status but still uploads
+a hash-manifested `failure.json`. Failure evidence is never eligible for promotion.
 
 Every bundle starts with `review_state: "unreviewed"` and
 `promotion_allowed: false`. Identity drift is rejected before solver execution, output

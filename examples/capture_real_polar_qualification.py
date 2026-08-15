@@ -52,7 +52,7 @@ def main() -> int:
     environment = {
         "python": sys.version,
         "platform": platform.platform(),
-        "xfoil_debian_package": args.xfoil_package_version,
+        "xfoil_build_id": args.xfoil_build_id,
         "packages": _installed_package_versions(),
     }
     try:
@@ -109,7 +109,7 @@ def _arguments() -> argparse.Namespace:
     )
     parser.add_argument("--xfoil", default="xfoil")
     parser.add_argument("--source-revision", required=True)
-    parser.add_argument("--xfoil-package-version", required=True)
+    parser.add_argument("--xfoil-build-id", required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     return parser.parse_args()
 
