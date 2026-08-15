@@ -23,7 +23,7 @@ boundary between `PolarGenerationResult.to_polar_table()` and manually assembled
 | PR-05B | Partial-grid policy and batch diagnostics | Complete |
 | PR-05C | Strict configuration binding | Complete |
 | PR-05D | Analysis integration | Complete in this change |
-| PR-05E | Real-backend qualification | Next |
+| PR-05E | Real-backend qualification | In progress: capture infrastructure |
 
 ## PR-05 — provider-backed PolarFamily integration
 
@@ -53,7 +53,11 @@ multi-Reynolds/Mach family to an aerodynamic analysis consumer.
    correction remain unapplied.
 5. **PR-05E — real-backend qualification.** Capture reviewed XFOIL and NeuralFoil outputs
    for a declared operating envelope, freeze backend versions, and publish the benchmark
-   report separately from deterministic adapter-contract fixtures.
+   report separately from deterministic adapter-contract fixtures. **In progress.** The
+   manual capture workflow pins exact backend identities and preserves raw results in an
+   unreviewed, hash-manifested artifact. The reviewed-fixture runner then rejects
+   out-of-envelope inputs and identity drift. Completion still requires two reproducible
+   real-backend captures, review, and explicit baseline promotion.
 
 ## Confirmed PR-05 design decisions
 
@@ -84,8 +88,8 @@ multi-Reynolds/Mach family to an aerodynamic analysis consumer.
   airfoil/cache paths are anchored to the config file.
 - Optional provider backends are resolved only by `build_runtime()`. Config loading can
   therefore be audited without requiring XFOIL or NeuralFoil to be installed.
-- Real XFOIL/NeuralFoil physical qualification remains PR-05E and is not represented by
-  deterministic adapter doubles.
+- Real XFOIL/NeuralFoil physical qualification is performed by the PR-05E runner and is
+  not represented by deterministic adapter doubles.
 
 ## Entry gates and distance
 
@@ -96,12 +100,10 @@ multi-Reynolds/Mach family to an aerodynamic analysis consumer.
 | Cache, lifecycle, and duplicate-work control | Met | PR-04C/D/E |
 | Fallback, retry, health, and circuit isolation | Met | PR-04F/G |
 | Deterministic acceptance and benchmark harness | Met | PR-04H |
-| Real-solver physical qualification data | Open; not a code-start blocker | PR-05E |
+| Real-solver physical qualification workflow | Capture path met; reviewed data open | PR-05E |
 
-The **PR-05 code-start gate is complete**, and PR-05A/B/C/D now supply generation,
+The **PR-05 code integration sequence is complete**. PR-05A/B/C/D supply generation,
 partial-grid, strict runtime configuration, and fail-closed section-consumption contracts.
-The implementation sequence is therefore **4 of 5 PR-05 increments complete**. PR-05E
-real-backend qualification is next.
-Production aerodynamic qualification remains **5 of 6 readiness gates complete** until
-real XFOIL/NeuralFoil baselines are reviewed; that work is deliberately tracked as PR-05E
-so contract fixtures cannot be mistaken for physical validation.
+PR-05E's capture and qualification boundaries are implemented, but production
+aerodynamic qualification remains open until reviewed real-solver data is promoted;
+contract fixtures can never satisfy that physical gate.

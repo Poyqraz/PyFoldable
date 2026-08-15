@@ -1,0 +1,56 @@
+name: Polar real-backend qualification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install pinned XFOIL package
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends xfoil=6.99.dfsg+1-3
+          installed="$(dpkg-query -W -f='${Version}' xfoil)"
+          test "$installed" = "6.99.dfsg+1-3"
+          echo "XFOIL_DEBIAN_VERSION=$installed" >> "$GITHUB_ENV"
+
+      - name: Install project and pinned NeuralFoil backend
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --editable .
+          python -m pip install "NeuralFoil==0.3.3"
+          python -c "import importlib.metadata as m; assert m.version('NeuralFoil') == '0.3.3'"
+
+      - name: Capture unreviewed qualification evidence
+        run: |
+          set +e
+          python examples/capture_real_polar_qualification.py \
+            --source-revision "$GITHUB_SHA" \
+            --xfoil-package-version "$XFOIL_DEBIAN_VERSION" \
+            --output-dir outputs/polar-real-qualification
+          status=$?
+          python -m json.tool outputs/polar-real-qualification/manifest.json >/dev/null
+          exit "$status"
+
+      - name: Upload review candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: polar-real-qualification-${{ github.sha }}
+          path: outputs/polar-real-qualification/
+          if-no-files-found: error
+          retention-days: 30

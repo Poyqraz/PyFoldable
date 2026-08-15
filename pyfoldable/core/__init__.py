@@ -50,6 +50,11 @@ from .polar_acceptance import (
     load_polar_golden_fixture,
     run_polar_provider_benchmark,
 )
+from .polar_backend_qualification import (
+    POLAR_BACKEND_QUALIFICATION_SCHEMA_VERSION,
+    PolarBackendQualification,
+    qualify_real_polar_backends,
+)
 from .polar_cache import (
     POLAR_CACHE_SCHEMA_VERSION,
     CacheStatus,
@@ -119,6 +124,13 @@ from .polar_qualification import (
     PolarResultQualification,
     PolarResultQualificationPolicy,
 )
+from .polar_real_qualification import (
+    POLAR_REAL_QUALIFICATION_SCHEMA_VERSION,
+    PolarRealQualificationCapture,
+    capture_real_polar_qualification,
+    write_polar_real_qualification_failure_bundle,
+    write_polar_real_qualification_bundle,
+)
 from .providers import (
     PolarGenerationRequest,
     PolarGenerationResult,
@@ -159,6 +171,7 @@ __all__ = [
     "NormalizedQuantity",
     "OperatingCondition",
     "POLAR_ACCEPTANCE_SCHEMA_VERSION",
+    "POLAR_BACKEND_QUALIFICATION_SCHEMA_VERSION",
     "POLAR_CACHE_LOCK_SCHEMA_VERSION",
     "POLAR_CACHE_SCHEMA_VERSION",
     "POLAR_CONFIG_SCHEMA_VERSION",
@@ -166,6 +179,7 @@ __all__ = [
     "POLAR_FAMILY_GENERATION_SCHEMA_VERSION",
     "POLAR_ORCHESTRATION_SCHEMA_VERSION",
     "POLAR_PROVIDER_HEALTH_SCHEMA_VERSION",
+    "POLAR_REAL_QUALIFICATION_SCHEMA_VERSION",
     "POLAR_RESULT_QUALIFICATION_SCHEMA_VERSION",
     "POLAR_SECTION_ANALYSIS_SCHEMA_VERSION",
     "PolarBoundsPolicy",
@@ -174,6 +188,7 @@ __all__ = [
     "PolarBenchmarkEntry",
     "PolarBenchmarkProviderSummary",
     "PolarBenchmarkReport",
+    "PolarBackendQualification",
     "PolarCacheEntry",
     "PolarCacheError",
     "PolarCacheLockError",
@@ -223,6 +238,7 @@ __all__ = [
     "PolarProviderUnavailableError",
     "PolarProviderUnexpectedError",
     "PolarQueryResult",
+    "PolarRealQualificationCapture",
     "PolarSectionAnalysisError",
     "PolarSectionAnalysisResult",
     "PolarSectionDiagnostic",
@@ -238,6 +254,7 @@ __all__ = [
     "UnitError",
     "ValidationRecord",
     "canonical_unit",
+    "capture_real_polar_qualification",
     "compare_polar_results",
     "analyze_generated_polar_sections",
     "generate_polar",
@@ -253,5 +270,8 @@ __all__ = [
     "normalize_quantity",
     "parse_airfoil_coordinates",
     "parse_quantity",
+    "write_polar_real_qualification_failure_bundle",
     "run_polar_provider_benchmark",
+    "qualify_real_polar_backends",
+    "write_polar_real_qualification_bundle",
 ]
