@@ -23,7 +23,7 @@ boundary between `PolarGenerationResult.to_polar_table()` and manually assembled
 | PR-05B | Partial-grid policy and batch diagnostics | Complete |
 | PR-05C | Strict configuration binding | Complete |
 | PR-05D | Analysis integration | Complete in this change |
-| PR-05E | Real-backend qualification | Complete in this change |
+| PR-05E | Real-backend qualification | In progress: capture infrastructure |
 
 ## PR-05 — provider-backed PolarFamily integration
 
@@ -53,11 +53,11 @@ multi-Reynolds/Mach family to an aerodynamic analysis consumer.
    correction remain unapplied.
 5. **PR-05E — real-backend qualification.** Capture reviewed XFOIL and NeuralFoil outputs
    for a declared operating envelope, freeze backend versions, and publish the benchmark
-   report separately from deterministic adapter-contract fixtures. **Complete in this
-   change.** The qualification runner rejects out-of-envelope fixtures and unknown
-   backend versions, binds the report to configuration and fixture SHA-256 digests, and
-   writes an atomic standalone artifact. Reviewed solver outputs remain review inputs;
-   they are never synthesized or silently replaced by adapter doubles.
+   report separately from deterministic adapter-contract fixtures. **In progress.** The
+   manual capture workflow pins exact backend identities and preserves raw results in an
+   unreviewed, hash-manifested artifact. The reviewed-fixture runner then rejects
+   out-of-envelope inputs and identity drift. Completion still requires two reproducible
+   real-backend captures, review, and explicit baseline promotion.
 
 ## Confirmed PR-05 design decisions
 
@@ -100,10 +100,10 @@ multi-Reynolds/Mach family to an aerodynamic analysis consumer.
 | Cache, lifecycle, and duplicate-work control | Met | PR-04C/D/E |
 | Fallback, retry, health, and circuit isolation | Met | PR-04F/G |
 | Deterministic acceptance and benchmark harness | Met | PR-04H |
-| Real-solver physical qualification workflow | Met | PR-05E |
+| Real-solver physical qualification workflow | Capture path met; reviewed data open | PR-05E |
 
-The **PR-05 implementation sequence is complete**. PR-05A/B/C/D supply generation,
-partial-grid, strict runtime configuration, and fail-closed section-consumption contracts;
-PR-05E adds the separately auditable real-backend qualification boundary. A particular
-airfoil is production-qualified only when its reviewed real-solver fixtures produce a
-passing committed artifact; contract fixtures can never satisfy that physical gate.
+The **PR-05 code integration sequence is complete**. PR-05A/B/C/D supply generation,
+partial-grid, strict runtime configuration, and fail-closed section-consumption contracts.
+PR-05E's capture and qualification boundaries are implemented, but production
+aerodynamic qualification remains open until reviewed real-solver data is promoted;
+contract fixtures can never satisfy that physical gate.

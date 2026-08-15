@@ -16,6 +16,7 @@ from .polar_acceptance import (
     run_polar_provider_benchmark,
 )
 from .polar_config import PolarFamilyConfig
+from .providers import ProviderIdentity
 
 
 POLAR_BACKEND_QUALIFICATION_SCHEMA_VERSION = 1
@@ -86,6 +87,8 @@ class PolarBackendQualification:
 def qualify_real_polar_backends(
     config: PolarFamilyConfig,
     fixture_paths: Sequence[str | Path],
+    *,
+    expected_providers: Sequence[ProviderIdentity],
 ) -> PolarBackendQualification:
     """Run pinned configured backends over reviewed, in-envelope fixtures.
 
@@ -104,12 +107,19 @@ def qualify_real_polar_backends(
     fixtures = tuple(load_polar_golden_fixture(path) for path in paths)
     _validate_fixture_envelope(config, fixtures)
     runtime = config.build_runtime()
-    for provider in runtime.providers:
-        version = provider.identity.backend_version.strip().casefold()
-        if version in {"", "unknown", "unavailable"}:
-            raise ValueError(
-                f"Backend {provider.identity.backend_name!r} has no frozen version."
-            )
+    expected = tuple(expected_providers)
+    if not expected or not all(
+        isinstance(identity, ProviderIdentity) for identity in expected
+    ):
+        raise TypeError(
+            "expected_providers must contain at least one ProviderIdentity."
+        )
+    actual = tuple(provider.identity for provider in runtime.providers)
+    if actual != expected:
+        raise ValueError(
+            "Installed provider identities do not match the pinned qualification "
+            f"identities; expected={expected!r}, actual={actual!r}."
+        )
     report = run_polar_provider_benchmark(
         runtime.providers, fixtures, criteria=config.acceptance_criteria
     )

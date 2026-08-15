@@ -11,6 +11,7 @@ import pytest
 
 from pyfoldable.core import (
     PolarBackendQualification,
+    ProviderCapabilities,
     ProviderIdentity,
     load_polar_golden_fixture,
     run_polar_provider_benchmark,
@@ -27,6 +28,16 @@ FIXTURE = (
 
 class _MatchingProvider:
     identity = ProviderIdentity("real-test", "1", "solver", "6.9.1")
+    capabilities = ProviderCapabilities(
+        supports_mach=True,
+        supports_n_crit=True,
+        supports_forced_transition=True,
+        supports_pointwise_confidence=False,
+        supports_partial_results=True,
+        supports_vectorized_alpha=True,
+        supports_iteration_limit=True,
+        supports_timeout=True,
+    )
 
     def __init__(self, reference):
         self.reference = reference

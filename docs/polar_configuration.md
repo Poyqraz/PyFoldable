@@ -74,7 +74,8 @@ runtime family generation uses the result-qualification and batch policies direc
 PR-05E deliberately runs outside the deterministic test suite because it launches the
 installed XFOIL and NeuralFoil backends. Each reviewed golden fixture must match the
 configured airfoil, scenario, alpha sweep, and Reynolds/Mach grid cell. Each discovered
-backend must expose a concrete version; `unknown` and `unavailable` are rejected.
+backend must exactly match the pinned adapter and backend identity; merely reporting a
+non-empty version is insufficient.
 
 ```bash
 python examples/run_real_backend_qualification.py \
@@ -87,3 +88,7 @@ The standalone JSON contains the full benchmark matrix and acceptance criteria p
 polar configuration digest, every reviewed fixture digest, and discovered adapter/backend
 identities. Timing remains telemetry rather than a pass gate. The output is written
 atomically so an interrupted backend run cannot leave a plausible partial report.
+
+Initial raw solver capture is performed by the manual GitHub Actions workflow documented
+in `docs/polar_real_backend_qualification.md`. Capture artifacts are explicitly
+unreviewed and cannot be treated as golden fixtures without a separate promotion review.
