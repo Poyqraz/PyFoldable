@@ -11,10 +11,11 @@ import pytest
 
 from pyfoldable.core import (
     AirfoilDefinition, BladeGeometry, BladeStation, OperatingCondition,
-    PolarFamilyGenerationPlan, PolarGenerationRequest, PolarGenerationResult,
-    PolarInterpolationError, PolarPointResult, PolarSectionAnalysisError,
+    PolarFamilyBatchPolicy, PolarFamilyGenerationPlan, PolarGenerationRequest,
+    PolarGenerationResult, PolarPointResult, PolarProviderExecutionError,
+    PolarSectionAnalysisError, PolarSectionAnalysisResult,
     PropellerDesign, ProviderCapabilities, ProviderIdentity,
-    analyze_generated_polar_sections, generate_polar_family,
+    analyze_generated_polar_sections, generate_polar_family_batch,
     load_polar_family_config,
 )
 
@@ -43,6 +44,13 @@ class AnalyticProvider:
         )
 
 
+class PartiallyFailingProvider(AnalyticProvider):
+    def generate(self, request):
+        if request.reynolds == 2_000_000.0:
+            raise PolarProviderExecutionError("fixture failure")
+        return super().generate(request)
+
+
 def fixture(*, forward=0.0, omega=100.0, twists=(0.1, 0.1), airfoils=None):
     condition = OperatingCondition("hover" if forward == 0 else "forward", omega, forward,
                                    1.2, 1.8e-5, 288.15, 101325.0)
@@ -57,7 +65,7 @@ def fixture(*, forward=0.0, omega=100.0, twists=(0.1, 0.1), airfoils=None):
     request = PolarGenerationRequest(AIRFOIL, (-0.5, 0.0, 0.5), 10_000.0,
                                      mach=0.0, scenario_id="clean")
     plan = PolarFamilyGenerationPlan(request, (10_000.0, 2_000_000.0), (0.0, 0.5))
-    generation = generate_polar_family((AnalyticProvider(),), plan)
+    generation = generate_polar_family_batch((AnalyticProvider(),), plan)
     config = replace(load_polar_family_config("configs/polars/PYFOLDABLE_DEMO_FAMILY.toml"),
                      plan=plan)
     return design, condition, generation, config
@@ -91,7 +99,7 @@ def test_forward_flight_kinematics_are_analytic():
 
 def test_error_is_default_and_clamp_is_audited_everywhere():
     design, condition, generation, config = fixture(twists=(1.0, 1.0))
-    with pytest.raises(PolarInterpolationError):
+    with pytest.raises(PolarSectionAnalysisError, match="Station 0.*outside"):
         analyze_generated_polar_sections(
             design, condition, generation, config, git_commit="abc"
         )
@@ -136,9 +144,34 @@ def test_provenance_and_json_serialization_are_complete():
     assert "analytic" in encoded
 
 
+def test_batch_without_materialized_family_fails_closed():
+    design, condition, generation, config = fixture()
+    failed = generate_polar_family_batch(
+        (PartiallyFailingProvider(),),
+        generation.plan,
+        policy=PolarFamilyBatchPolicy(
+            failure_mode="collect_all", subgrid_policy="none"
+        ),
+    )
+    assert failed.family is None
+    with pytest.raises(PolarSectionAnalysisError, match="materialize"):
+        analyze_generated_polar_sections(
+            design, condition, failed, config, bounds="clamp", git_commit="abc"
+        )
+
+
+def test_result_contract_rejects_forged_section_provenance():
+    result = analyze_generated_polar_sections(
+        *fixture(), bounds="clamp", git_commit="abc"
+    )
+    forged = replace(result.simulation_result, metadata={})
+    with pytest.raises(ValueError, match="provenance"):
+        PolarSectionAnalysisResult(result.sections, forged)
+
+
 def test_randomized_outputs_remain_finite():
     rng = random.Random(20260815)
-    for _ in range(50):
+    for _ in range(500):
         design, condition, generation, config = fixture(
             forward=rng.uniform(0.0, 30.0), omega=rng.uniform(20.0, 200.0),
             twists=(rng.uniform(-0.4, 0.4), rng.uniform(-0.4, 0.4)),

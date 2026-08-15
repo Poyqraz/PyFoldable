@@ -8,15 +8,22 @@ from __future__ import annotations
 
 import math
 from dataclasses import asdict, dataclass
-from typing import Literal
+from typing import Literal, Mapping
 
 from .models import OperatingCondition, PropellerDesign, SimulationResult
-from .polar import PolarBoundsPolicy
+from .polar import PolarBoundsPolicy, PolarFamily, PolarInterpolationError
 from .polar_config import PolarFamilyConfig
-from .polar_family_generation import PolarFamilyGenerationResult
+from .polar_family_generation import (
+    PolarFamilyBatchResult,
+    PolarFamilyGenerationResult,
+)
 
 
 POLAR_SECTION_ANALYSIS_SCHEMA_VERSION = 1
+POLAR_SECTION_SOLVER_NAME = "polar-section-analysis"
+POLAR_SECTION_SOLVER_VERSION = "1"
+
+PolarFamilyProvenance = PolarFamilyGenerationResult | PolarFamilyBatchResult
 
 
 class PolarSectionAnalysisError(ValueError):
@@ -47,6 +54,60 @@ class PolarSectionDiagnostic:
     interpolated_dimensions: tuple[str, ...]
     clamped_dimensions: tuple[str, ...]
 
+    def __post_init__(self) -> None:
+        if (
+            isinstance(self.station_index, bool)
+            or not isinstance(self.station_index, int)
+            or self.station_index < 0
+        ):
+            raise ValueError("station_index must be a non-negative integer.")
+        positive = {
+            "radius_m",
+            "chord_m",
+            "relative_speed_m_s",
+            "reynolds",
+        }
+        numeric_fields = (
+            "radius_m",
+            "chord_m",
+            "twist_rad",
+            "tangential_speed_m_s",
+            "relative_speed_m_s",
+            "inflow_angle_rad",
+            "alpha_rad",
+            "reynolds",
+            "mach",
+            "cl",
+            "cd",
+            "lift_per_span_n_m",
+            "drag_per_span_n_m",
+            "axial_force_per_span_n_m",
+            "torque_per_span_nm_m",
+        )
+        for name in numeric_fields:
+            value = getattr(self, name)
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not math.isfinite(float(value))
+            ):
+                raise ValueError(f"{name} must be a finite number.")
+            if name in positive and value <= 0.0:
+                raise ValueError(f"{name} must be greater than zero.")
+        if self.mach < 0.0 or self.cd < 0.0 or self.drag_per_span_n_m < 0.0:
+            raise ValueError("Mach and drag values must be non-negative.")
+        if not self.polar_sources or not all(self.polar_sources):
+            raise ValueError("polar_sources must contain non-empty source names.")
+        if len(set(self.polar_sources)) != len(self.polar_sources):
+            raise ValueError("polar_sources must be unique and ordered.")
+        allowed_dimensions = {"alpha_rad", "reynolds", "mach"}
+        for name in ("interpolated_dimensions", "clamped_dimensions"):
+            dimensions = getattr(self, name)
+            if len(set(dimensions)) != len(dimensions) or not set(dimensions) <= (
+                allowed_dimensions
+            ):
+                raise ValueError(f"{name} contains invalid or duplicate dimensions.")
+
     def as_mapping(self) -> dict[str, object]:
         """Return a JSON-serializable diagnostic mapping."""
         return asdict(self)
@@ -59,6 +120,37 @@ class PolarSectionAnalysisResult:
     sections: tuple[PolarSectionDiagnostic, ...]
     simulation_result: SimulationResult
 
+    def __post_init__(self) -> None:
+        if len(self.sections) < 2 or not all(
+            isinstance(section, PolarSectionDiagnostic) for section in self.sections
+        ):
+            raise ValueError("sections must contain at least two diagnostics.")
+        if tuple(section.station_index for section in self.sections) != tuple(
+            range(len(self.sections))
+        ):
+            raise ValueError("Section indices must be contiguous and zero-based.")
+        radii = tuple(section.radius_m for section in self.sections)
+        if any(upper <= lower for lower, upper in zip(radii, radii[1:])):
+            raise ValueError("Section radii must be strictly increasing.")
+        if not isinstance(self.simulation_result, SimulationResult):
+            raise TypeError("simulation_result must be a SimulationResult.")
+        if (
+            self.simulation_result.solver_name != POLAR_SECTION_SOLVER_NAME
+            or self.simulation_result.solver_version != POLAR_SECTION_SOLVER_VERSION
+            or not self.simulation_result.converged
+        ):
+            raise ValueError("SimulationResult solver identity is inconsistent.")
+        sources = tuple(dict.fromkeys(
+            source for section in self.sections for source in section.polar_sources
+        ))
+        if self.simulation_result.polar_sources != sources:
+            raise ValueError("SimulationResult polar sources do not match sections.")
+        provenance = self.simulation_result.metadata.get("polar_provenance")
+        if not isinstance(provenance, Mapping) or provenance.get("sections") != tuple(
+            section.as_mapping() for section in self.sections
+        ):
+            raise ValueError("SimulationResult section provenance is inconsistent.")
+
     def as_mapping(self) -> dict[str, object]:
         """Return a JSON-serializable representation."""
         return {
@@ -70,9 +162,21 @@ class PolarSectionAnalysisResult:
 def _reject_inconsistent_inputs(
     design: PropellerDesign,
     condition: OperatingCondition,
-    generation: PolarFamilyGenerationResult,
+    generation: PolarFamilyProvenance,
     config: PolarFamilyConfig,
-) -> None:
+) -> PolarFamily:
+    if not isinstance(design, PropellerDesign):
+        raise TypeError("design must be a PropellerDesign.")
+    if not isinstance(condition, OperatingCondition):
+        raise TypeError("condition must be an OperatingCondition.")
+    if not isinstance(
+        generation, (PolarFamilyGenerationResult, PolarFamilyBatchResult)
+    ):
+        raise TypeError(
+            "generation must be PolarFamilyGenerationResult or PolarFamilyBatchResult."
+        )
+    if not isinstance(config, PolarFamilyConfig):
+        raise TypeError("config must be a PolarFamilyConfig.")
     airfoil_ids = {station.airfoil_id for station in design.blade.stations}
     if len(airfoil_ids) != 1:
         raise PolarSectionAnalysisError("Mixed-airfoil blade designs are unsupported.")
@@ -88,16 +192,22 @@ def _reject_inconsistent_inputs(
         raise PolarSectionAnalysisError(
             "Generation plan does not match polar configuration provenance."
         )
-    if generation.family.airfoil_id != next(iter(airfoil_ids)):
+    family = generation.family
+    if family is None:
+        raise PolarSectionAnalysisError(
+            "Generation batch did not materialize a safe rectangular family."
+        )
+    if family.airfoil_id != next(iter(airfoil_ids)):
         raise PolarSectionAnalysisError("Polar family airfoil does not match the design.")
-    if generation.family.scenario_id != generation.plan.request_template.scenario_id:
+    if family.scenario_id != generation.plan.request_template.scenario_id:
         raise PolarSectionAnalysisError("Polar family scenario provenance is inconsistent.")
+    return family
 
 
 def analyze_generated_polar_sections(
     design: PropellerDesign,
     condition: OperatingCondition,
-    generation: PolarFamilyGenerationResult,
+    generation: PolarFamilyProvenance,
     polar_config: PolarFamilyConfig,
     *,
     bounds: PolarBoundsPolicy = "error",
@@ -111,9 +221,9 @@ def analyze_generated_polar_sections(
     """
     if bounds not in {"error", "clamp"}:
         raise PolarSectionAnalysisError(f"Unsupported bounds policy {bounds!r}.")
-    if not git_commit:
+    if not isinstance(git_commit, str) or not git_commit.strip():
         raise PolarSectionAnalysisError("git_commit must not be empty.")
-    _reject_inconsistent_inputs(design, condition, generation, polar_config)
+    family = _reject_inconsistent_inputs(design, condition, generation, polar_config)
 
     speed_of_sound = math.sqrt(1.4 * 287.05287 * condition.temperature_k)
     sections: list[PolarSectionDiagnostic] = []
@@ -131,9 +241,15 @@ def analyze_generated_polar_sections(
             / condition.dynamic_viscosity_pa_s
         )
         mach = relative / speed_of_sound
-        query = generation.family.query(
-            alpha_rad=alpha, reynolds=reynolds, mach=mach, bounds=bounds
-        )
+        try:
+            query = family.query(
+                alpha_rad=alpha, reynolds=reynolds, mach=mach, bounds=bounds
+            )
+        except PolarInterpolationError as error:
+            raise PolarSectionAnalysisError(
+                f"Station {index} at r/R={station.r_over_R:g} cannot be resolved: "
+                f"{error}"
+            ) from error
         if query.clamped_dimensions:
             warnings.append(
                 f"station {index} polar query clamped: "
@@ -174,18 +290,40 @@ def analyze_generated_polar_sections(
     clamped = tuple(sorted({
         dimension for section in sections for dimension in section.clamped_dimensions
     }))
+    batch_complete = (
+        generation.complete
+        if isinstance(generation, PolarFamilyBatchResult)
+        else True
+    )
+    if isinstance(generation, PolarFamilyBatchResult) and not generation.complete:
+        warnings.append(
+            "Analysis used an explicitly materialized partial polar-family sub-grid."
+        )
+    first_radius = sections[0].radius_m
+    last_radius = sections[-1].radius_m
+    if (
+        first_radius > design.blade.hub_radius_m + 1.0e-12
+        or last_radius < design.blade.radius_m - 1.0e-12
+    ):
+        warnings.append(
+            "Loads outside the first/last declared blade station were not estimated."
+        )
     provenance = {
         "schema_version": POLAR_SECTION_ANALYSIS_SCHEMA_VERSION,
         "polar_config_sha256": polar_config.source_sha256,
         "polar_config_path": str(polar_config.source_path),
         "generation_batch": generation.as_mapping(),
+        "generation_complete": batch_complete,
         "polar_sources": sources,
         "clamped_dimensions": clamped,
+        "integration_radius_m": (first_radius, last_radius),
+        "sections": tuple(section.as_mapping() for section in sections),
     }
     simulation = SimulationResult(
         design_id=design.id, operating_condition_id=condition.id,
-        solver_name="polar-section-analysis", solver_version="1",
-        git_commit=git_commit, converged=True, thrust_n=thrust, torque_nm=torque,
+        solver_name=POLAR_SECTION_SOLVER_NAME,
+        solver_version=POLAR_SECTION_SOLVER_VERSION,
+        git_commit=git_commit.strip(), converged=True, thrust_n=thrust, torque_nm=torque,
         shaft_power_w=torque * condition.angular_speed_rad_s,
         polar_sources=sources,
         model_options={
