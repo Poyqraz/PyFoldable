@@ -620,6 +620,7 @@ def generate_polar_family_batch(
     retry_policy: PolarRetryPolicy | None = None,
     cache: FilesystemPolarCache | None = None,
     health_registry: PolarProviderHealthRegistry | None = None,
+    result_policy: PolarResultQualificationPolicy | None = None,
 ) -> PolarFamilyBatchResult:
     """Generate all requested cells under explicit failure and sub-grid policy."""
     if not isinstance(plan, PolarFamilyGenerationPlan):
@@ -627,6 +628,15 @@ def generate_polar_family_batch(
     batch_policy = policy or PolarFamilyBatchPolicy()
     if not isinstance(batch_policy, PolarFamilyBatchPolicy):
         raise TypeError("policy must be a PolarFamilyBatchPolicy or None.")
+    qualification_policy = result_policy or _COMPLETE_RESULT_POLICY
+    if not isinstance(qualification_policy, PolarResultQualificationPolicy):
+        raise TypeError(
+            "result_policy must be a PolarResultQualificationPolicy or None."
+        )
+    if qualification_policy.minimum_usable_fraction != 1.0:
+        raise ValueError(
+            "Family generation requires minimum_usable_fraction=1.0."
+        )
     if isinstance(providers, (str, bytes)):
         raise TypeError(
             "providers must be an ordered iterable of PolarProvider objects."
@@ -653,7 +663,7 @@ def generate_polar_family_batch(
                 retry_policy=retry_policy,
                 cache=cache,
                 health_registry=health_registry,
-                result_policy=_COMPLETE_RESULT_POLICY,
+                result_policy=qualification_policy,
             )
             table = result.to_polar_table(require_complete=True)
         except PolarProviderError as error:

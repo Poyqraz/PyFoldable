@@ -1,0 +1,78 @@
+schema_version = 1
+
+[request]
+airfoil_file = "../airfoils/PYFOLDABLE_DEMO.dat"
+airfoil_id = "PYFOLDABLE_DEMO"
+airfoil_format = "selig"
+scenario_id = "clean"
+alpha = ["-10 deg", "-5 deg", "0 deg", "5 deg", "10 deg"]
+n_crit = 9.0
+xtr_upper = 1.0
+xtr_lower = 1.0
+timeout = "30 s"
+
+[grid]
+reynolds = [100000.0, 200000.0, 400000.0]
+mach = [0.0]
+
+[[providers]]
+kind = "xfoil"
+executable = "xfoil"
+version_timeout = "5 s"
+
+[[providers]]
+kind = "neuralfoil"
+
+[retry]
+max_attempts = 2
+initial_backoff = "50 ms"
+max_backoff = "500 ms"
+backoff_factor = 2.0
+retry_timeouts = true
+retry_execution_errors = false
+
+[cache]
+enabled = true
+root = "../../.cache/polars"
+
+[cache.lock]
+wait_timeout = "60 s"
+initial_poll_interval = "10 ms"
+max_poll_interval = "250 ms"
+backoff_factor = 1.5
+
+[health]
+enabled = true
+failure_threshold = 3
+recovery_timeout = "30 s"
+count_unavailable_errors = true
+count_timeout_errors = true
+count_execution_errors = true
+count_provider_errors = true
+isolate_unexpected_errors = true
+count_unexpected_errors = true
+
+[qualification]
+minimum_usable_fraction = 1.0
+minimum_usable_points = 2
+allow_low_confidence = true
+
+[batch]
+failure_mode = "fail_fast"
+subgrid_policy = "none"
+
+[acceptance]
+minimum_coverage = 1.0
+require_usable_match = true
+
+[acceptance.cl]
+absolute = 0.05
+relative = 0.02
+
+[acceptance.cd]
+absolute = 0.002
+relative = 0.10
+
+[acceptance.cm]
+absolute = 0.01
+relative = 0.05
