@@ -66,5 +66,24 @@ runtime = config.build_runtime(
 )
 ```
 
-The parsed `PolarAcceptanceCriteria` is retained for PR-05E benchmark qualification;
-runtime family generation uses the qualification and batch policies directly.
+The parsed `PolarAcceptanceCriteria` is consumed by the PR-05E real-backend runner;
+runtime family generation uses the result-qualification and batch policies directly.
+
+## Real-backend qualification
+
+PR-05E deliberately runs outside the deterministic test suite because it launches the
+installed XFOIL and NeuralFoil backends. Each reviewed golden fixture must match the
+configured airfoil, scenario, alpha sweep, and Reynolds/Mach grid cell. Each discovered
+backend must expose a concrete version; `unknown` and `unavailable` are rejected.
+
+```bash
+python examples/run_real_backend_qualification.py \
+  configs/polars/PYFOLDABLE_DEMO_FAMILY.toml \
+  path/to/reviewed-re100k.json path/to/reviewed-re200k.json \
+  --output reports/polar_backend_qualification.json
+```
+
+The standalone JSON contains the full benchmark matrix and acceptance criteria plus the
+polar configuration digest, every reviewed fixture digest, and discovered adapter/backend
+identities. Timing remains telemetry rather than a pass gate. The output is written
+atomically so an interrupted backend run cannot leave a plausible partial report.

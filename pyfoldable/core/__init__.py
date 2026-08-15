@@ -50,6 +50,11 @@ from .polar_acceptance import (
     load_polar_golden_fixture,
     run_polar_provider_benchmark,
 )
+from .polar_backend_qualification import (
+    POLAR_BACKEND_QUALIFICATION_SCHEMA_VERSION,
+    PolarBackendQualification,
+    qualify_real_polar_backends,
+)
 from .polar_cache import (
     POLAR_CACHE_SCHEMA_VERSION,
     CacheStatus,
@@ -159,6 +164,7 @@ __all__ = [
     "NormalizedQuantity",
     "OperatingCondition",
     "POLAR_ACCEPTANCE_SCHEMA_VERSION",
+    "POLAR_BACKEND_QUALIFICATION_SCHEMA_VERSION",
     "POLAR_CACHE_LOCK_SCHEMA_VERSION",
     "POLAR_CACHE_SCHEMA_VERSION",
     "POLAR_CONFIG_SCHEMA_VERSION",
@@ -174,6 +180,7 @@ __all__ = [
     "PolarBenchmarkEntry",
     "PolarBenchmarkProviderSummary",
     "PolarBenchmarkReport",
+    "PolarBackendQualification",
     "PolarCacheEntry",
     "PolarCacheError",
     "PolarCacheLockError",
@@ -254,4 +261,5 @@ __all__ = [
     "parse_airfoil_coordinates",
     "parse_quantity",
     "run_polar_provider_benchmark",
+    "qualify_real_polar_backends",
 ]
