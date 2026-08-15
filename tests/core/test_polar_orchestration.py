@@ -20,6 +20,8 @@ from pyfoldable.core import (
     PolarProviderExecutionError,
     PolarProviderHealthPolicy,
     PolarProviderHealthRegistry,
+    PolarProviderResultRejectedError,
+    PolarResultQualificationPolicy,
     PolarProviderTimeoutError,
     PolarProviderUnavailableError,
     PolarProviderUnexpectedError,
@@ -107,6 +109,41 @@ class ScriptedProvider:
             raise outcome
         metadata = outcome if isinstance(outcome, dict) else {}
         return _result(request, self.identity, metadata=metadata)
+
+
+class ResultProvider:
+    def __init__(self, identity: ProviderIdentity, statuses: tuple[str, ...]) -> None:
+        self.identity = identity
+        self.statuses = statuses
+        self.calls = 0
+        self.capabilities = replace(
+            CAPABILITIES,
+            supports_pointwise_confidence="low_confidence" in statuses,
+        )
+
+    def generate(self, request: PolarGenerationRequest) -> PolarGenerationResult:
+        self.calls += 1
+        points = []
+        for alpha, status in zip(request.alpha_rad, self.statuses):
+            if status == "not_converged":
+                points.append(PolarPointResult(alpha, status, message="fixture"))
+            else:
+                points.append(
+                    PolarPointResult(
+                        alpha,
+                        status,
+                        cl=10.0 * alpha,
+                        cd=0.01 + alpha * alpha,
+                        cm=-0.02,
+                        confidence=0.4 if status == "low_confidence" else None,
+                    )
+                )
+        return PolarGenerationResult(
+            request=request,
+            provider=self.identity,
+            points=tuple(points),
+            elapsed_s=0.1,
+        )
 
 
 def test_primary_success_records_selected_provider_and_preserves_metadata() -> None:
@@ -777,3 +814,149 @@ def test_health_provenance_contains_chain_snapshots() -> None:
     )
     assert health[0]["total_failures"] == 1
     assert health[1]["total_successes"] == 1
+
+
+def test_result_qualification_routes_partial_result_without_health_penalty() -> None:
+    primary = ResultProvider(
+        PRIMARY, ("converged", "not_converged", "converged")
+    )
+    secondary = ResultProvider(
+        SECONDARY, ("converged", "converged", "converged")
+    )
+    registry = PolarProviderHealthRegistry()
+
+    result = generate_polar_orchestrated(
+        (primary, secondary),
+        _request(),
+        result_policy=PolarResultQualificationPolicy(),
+        health_registry=registry,
+    )
+
+    attempts = result.metadata["orchestration"]["attempts"]
+    assert result.provider == SECONDARY
+    assert tuple(attempt["outcome"] for attempt in attempts) == (
+        "result_rejected",
+        "success",
+    )
+    assert attempts[0]["result_point_count"] == 3
+    assert attempts[0]["result_accepted_points"] == 2
+    assert attempts[0]["result_usable_fraction"] == pytest.approx(2.0 / 3.0)
+    assert attempts[0]["result_rejected_indices"] == (1,)
+    assert attempts[0]["will_retry"] is False
+    assert attempts[0]["health_counted"] is False
+    assert result.metadata["orchestration"]["result_rejection_count"] == 1
+    primary_health = registry.snapshot(PRIMARY)
+    assert primary_health.state == "closed"
+    assert primary_health.total_failures == 0
+    assert primary_health.total_successes == 0
+
+
+def test_result_qualification_is_opt_in_for_backward_compatibility() -> None:
+    primary = ResultProvider(
+        PRIMARY, ("converged", "not_converged", "converged")
+    )
+    secondary = ResultProvider(
+        SECONDARY, ("converged", "converged", "converged")
+    )
+
+    result = generate_polar_orchestrated((primary, secondary), _request())
+
+    assert result.provider == PRIMARY
+    assert not result.complete
+    assert secondary.calls == 0
+
+
+def test_cached_partial_result_is_rejected_before_circuit_admission(tmp_path) -> None:
+    cache = FilesystemPolarCache(tmp_path)
+    request = _request()
+    cached_primary = ResultProvider(
+        PRIMARY, ("converged", "not_converged", "converged")
+    )
+    generate_polar_orchestrated((cached_primary,), request, cache=cache)
+    primary = ResultProvider(
+        PRIMARY, ("converged", "converged", "converged")
+    )
+    secondary = ResultProvider(
+        SECONDARY, ("converged", "converged", "converged")
+    )
+    registry = PolarProviderHealthRegistry()
+
+    result = generate_polar_orchestrated(
+        (primary, secondary),
+        request,
+        cache=cache,
+        health_registry=registry,
+        result_policy=PolarResultQualificationPolicy(),
+    )
+
+    first = result.metadata["orchestration"]["attempts"][0]
+    assert result.provider == SECONDARY
+    assert primary.calls == 0
+    assert first["outcome"] == "result_rejected"
+    assert first["cache_status"] == "hit"
+    assert first["circuit_state_before"] == "closed"
+    assert first["health_counted"] is False
+    assert registry.snapshot(PRIMARY).total_failures == 0
+
+
+def test_low_confidence_can_be_accepted_or_rejected_explicitly() -> None:
+    primary = ResultProvider(
+        PRIMARY, ("converged", "low_confidence", "converged")
+    )
+    secondary = ResultProvider(
+        SECONDARY, ("converged", "converged", "converged")
+    )
+
+    accepted = generate_polar_orchestrated(
+        (primary, secondary),
+        _request(),
+        result_policy=PolarResultQualificationPolicy(),
+    )
+    rejected = generate_polar_orchestrated(
+        (primary, secondary),
+        _request(reynolds=300_000.0),
+        result_policy=PolarResultQualificationPolicy(allow_low_confidence=False),
+    )
+
+    assert accepted.provider == PRIMARY
+    assert rejected.provider == SECONDARY
+    assert rejected.metadata["orchestration"]["attempts"][0]["outcome"] == (
+        "result_rejected"
+    )
+
+
+def test_all_rejected_results_are_retained_as_chain_cause() -> None:
+    providers = (
+        ResultProvider(PRIMARY, ("converged", "not_converged", "converged")),
+        ResultProvider(SECONDARY, ("converged", "not_converged", "converged")),
+    )
+
+    with pytest.raises(PolarProviderChainExhaustedError) as captured:
+        generate_polar_orchestrated(
+            providers,
+            _request(),
+            result_policy=PolarResultQualificationPolicy(),
+        )
+
+    assert tuple(attempt.outcome for attempt in captured.value.attempts) == (
+        "result_rejected",
+        "result_rejected",
+    )
+    assert isinstance(captured.value.__cause__, PolarProviderResultRejectedError)
+    assert captured.value.__cause__.qualification.rejected_indices == (1,)
+
+
+def test_result_policy_and_attempt_qualification_invariants_are_strict() -> None:
+    with pytest.raises(TypeError, match="result_policy"):
+        generate_polar_orchestrated((ScriptedProvider(PRIMARY, ["ok"]),), _request(), result_policy=object())
+    with pytest.raises(ValueError, match="at least two"):
+        PolarProviderAttempt(
+            provider=PRIMARY,
+            provider_position=1,
+            attempt_number=1,
+            outcome="result_rejected",
+            elapsed_s=0.0,
+            result_point_count=0,
+            result_accepted_points=0,
+            result_usable_fraction=0.0,
+        )

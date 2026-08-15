@@ -169,6 +169,7 @@ from pyfoldable import (
     FilesystemPolarCache,
     NeuralFoilProvider,
     PolarRetryPolicy,
+    PolarResultQualificationPolicy,
     XfoilProvider,
     generate_polar_orchestrated,
 )
@@ -177,6 +178,7 @@ result = generate_polar_orchestrated(
     (XfoilProvider(), NeuralFoilProvider()),
     request,
     retry_policy=PolarRetryPolicy(max_attempts=2),
+    result_policy=PolarResultQualificationPolicy(),
     cache=FilesystemPolarCache(".cache/polars"),
 )
 ```
@@ -189,6 +191,7 @@ Failures have explicit routing behavior:
 | Backend unavailable | Never | Yes |
 | Timeout | Controlled by `retry_timeouts` | After attempts are exhausted |
 | Execution failure | Opt-in with `retry_execution_errors` | After attempts are exhausted |
+| Result rejected by qualification | Never | Yes |
 | Unexpected non-provider exception | Never | With health isolation; otherwise propagated |
 
 Execution retries are disabled by default because this error class also covers invalid
@@ -204,6 +207,13 @@ adds a versioned `orchestration` record containing the selected provider, retry/
 counts, and ordered `PolarProviderAttempt` entries. If every provider fails,
 `PolarProviderChainExhaustedError.attempts` exposes the same ordered audit trail and the
 last provider failure is preserved as the exception cause.
+
+Result qualification is opt-in at the generic orchestration boundary for backward
+compatibility. `PolarResultQualificationPolicy` controls minimum usable point count,
+minimum usable fraction, and whether low-confidence points are usable. Family generation
+uses the strict full-coverage policy. A valid but insufficient result produces a
+`result_rejected` attempt containing counts, coverage, and rejected point indices; it is
+not a backend execution failure and is never retried on the same provider.
 
 ## Provider health telemetry and circuit breaker
 
@@ -236,8 +246,9 @@ result = generate_polar_orchestrated(
 ```
 
 Availability, timeout, execution, generic provider, and isolated unexpected errors are
-counted by default. Capability mismatches and circuit rejections are request/routing
-decisions and never affect health. Individual failure classes can be excluded through
+counted by default. Capability mismatches, result-qualification rejections, and circuit
+rejections are request/routing decisions and never affect health. Individual failure
+classes can be excluded through
 the policy without changing retry behavior.
 
 When a registry is supplied, cache lookup occurs before circuit admission. An open
@@ -253,9 +264,9 @@ used, and can be disabled with `isolate_unexpected_errors=False`. `KeyboardInter
 `SystemExit`, and other `BaseException` types are never masked; an outstanding
 half-open reservation is released before they are re-raised.
 
-Version 2 orchestration provenance records circuit state before/after each attempt,
-whether it was the half-open probe, health failure counts, circuit rejections, and a
-snapshot for every provider in the configured chain. `snapshot()`, deterministic
+Version 3 orchestration provenance adds result-rejection counts and point-coverage
+diagnostics to the version 2 circuit state before/after each attempt, half-open probe,
+health failure counts, circuit rejections, and provider snapshots. `snapshot()`, deterministic
 `snapshots()`, and `reset()` provide direct operational telemetry and lifecycle control.
 Generation tokens prevent completions from an older circuit epoch or pre-reset call
 from mutating current state.

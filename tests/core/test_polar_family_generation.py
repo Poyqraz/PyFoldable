@@ -10,7 +10,10 @@ import pytest
 from pyfoldable.core import (
     AirfoilDefinition,
     FilesystemPolarCache,
+    POLAR_FAMILY_BATCH_SCHEMA_VERSION,
     POLAR_FAMILY_GENERATION_SCHEMA_VERSION,
+    PolarFamilyBatchPolicy,
+    PolarFamilyBatchResult,
     PolarFamilyGenerationError,
     PolarFamilyGenerationPlan,
     PolarFamilyGenerationResult,
@@ -26,6 +29,7 @@ from pyfoldable.core import (
     ProviderCapabilities,
     ProviderIdentity,
     generate_polar_family,
+    generate_polar_family_batch,
 )
 
 
@@ -316,9 +320,29 @@ def test_fail_fast_error_retains_completed_cells_and_failed_request() -> None:
     assert provider.calls == [(0.0, 100_000.0), (0.0, 200_000.0)]
 
 
-def test_partial_result_is_rejected_without_hidden_fallback() -> None:
+def test_partial_result_is_qualified_and_falls_back_before_family_conversion() -> None:
     primary = GridProvider(PRIMARY, partial_cells={(0.0, 100_000.0)})
     secondary = GridProvider(SECONDARY)
+
+    generated = generate_polar_family((primary, secondary), _plan())
+
+    first = generated.cells[0]
+    assert first.result.provider == SECONDARY
+    assert tuple(
+        attempt["outcome"]
+        for attempt in first.result.metadata["orchestration"]["attempts"]
+    ) == ("result_rejected", "success")
+    assert primary.calls == [
+        (0.0, 100_000.0),
+        (0.0, 200_000.0),
+        (0.0, 400_000.0),
+    ]
+    assert secondary.calls == [(0.0, 100_000.0)]
+
+
+def test_all_partial_providers_retain_failed_result_in_fail_fast_error() -> None:
+    primary = GridProvider(PRIMARY, partial_cells={(0.0, 100_000.0)})
+    secondary = GridProvider(SECONDARY, partial_cells={(0.0, 100_000.0)})
 
     with pytest.raises(PolarFamilyGenerationError) as captured:
         generate_polar_family((primary, secondary), _plan())
@@ -327,9 +351,7 @@ def test_partial_result_is_rejected_without_hidden_fallback() -> None:
     assert error.completed_cells == ()
     assert error.failed_result is not None
     assert not error.failed_result.complete
-    assert isinstance(error.__cause__, PolarProviderExecutionError)
-    assert primary.calls == [(0.0, 100_000.0)]
-    assert secondary.calls == []
+    assert isinstance(error.__cause__, PolarProviderChainExhaustedError)
 
 
 def test_unexpected_provider_exception_is_not_masked_without_health_isolation() -> None:
@@ -372,3 +394,169 @@ def test_generation_result_rejects_forged_grid_indices() -> None:
             forged,
             generated.elapsed_s,
         )
+
+
+def test_collect_all_reports_every_cell_without_materializing_sparse_family() -> None:
+    provider = GridProvider(
+        PRIMARY,
+        failures={(0.0, 200_000.0): PolarProviderExecutionError("bad cell")},
+    )
+
+    batch = generate_polar_family_batch(
+        (provider,),
+        _plan(),
+        policy=PolarFamilyBatchPolicy(failure_mode="collect_all"),
+    )
+
+    assert POLAR_FAMILY_BATCH_SCHEMA_VERSION == 1
+    assert isinstance(batch, PolarFamilyBatchResult)
+    assert provider.calls == [
+        (0.0, 100_000.0),
+        (0.0, 200_000.0),
+        (0.0, 400_000.0),
+    ]
+    assert tuple(cell.position for cell in batch.cells) == (1, 3)
+    assert tuple(failure.position for failure in batch.failures) == (2,)
+    assert batch.failures[0].error_type == "PolarProviderChainExhaustedError"
+    assert batch.failures[0].attempts[0].outcome == "execution_error"
+    assert batch.complete is False
+    assert batch.family is None
+    assert batch.family_cells == ()
+    mapping = batch.as_mapping()
+    assert mapping["successful_cell_count"] == 2
+    assert mapping["failed_cell_count"] == 1
+    json.dumps(mapping, allow_nan=False)
+
+
+def test_complete_axes_builds_explicit_rectangular_subgrid() -> None:
+    provider = GridProvider(
+        PRIMARY,
+        failures={(0.0, 200_000.0): PolarProviderExecutionError("bad cell")},
+    )
+
+    batch = generate_polar_family_batch(
+        (provider,),
+        _plan(),
+        policy=PolarFamilyBatchPolicy(
+            failure_mode="collect_all",
+            subgrid_policy="complete_axes",
+        ),
+    )
+
+    assert batch.family is not None
+    assert batch.family_mach_grid == (0.0,)
+    assert batch.family_reynolds_grid == (100_000.0, 400_000.0)
+    assert tuple(cell.position for cell in batch.family_cells) == (1, 3)
+    query = batch.family.query(
+        alpha_rad=0.05,
+        reynolds=200_000.0,
+        mach=0.0,
+    )
+    assert query.cl > 0.0
+
+
+def test_complete_axes_uses_deterministic_row_tie_break() -> None:
+    plan = _plan(
+        reynolds_grid=(100_000.0, 200_000.0),
+        mach_grid=(0.0, 0.2),
+    )
+    provider = GridProvider(
+        PRIMARY,
+        failures={(0.2, 200_000.0): PolarProviderExecutionError("corner")},
+    )
+
+    batch = generate_polar_family_batch(
+        (provider,),
+        plan,
+        policy=PolarFamilyBatchPolicy("collect_all", "complete_axes"),
+    )
+
+    assert batch.family_mach_grid == (0.0,)
+    assert batch.family_reynolds_grid == (100_000.0, 200_000.0)
+    assert tuple(cell.position for cell in batch.family_cells) == (1, 2)
+
+
+def test_complete_axes_refuses_nonrectangular_diagonal_successes() -> None:
+    plan = _plan(
+        reynolds_grid=(100_000.0, 200_000.0),
+        mach_grid=(0.0, 0.2),
+    )
+    provider = GridProvider(
+        PRIMARY,
+        failures={
+            (0.0, 200_000.0): PolarProviderExecutionError("upper"),
+            (0.2, 100_000.0): PolarProviderExecutionError("lower"),
+        },
+    )
+
+    batch = generate_polar_family_batch(
+        (provider,),
+        plan,
+        policy=PolarFamilyBatchPolicy("collect_all", "complete_axes"),
+    )
+
+    assert tuple(cell.position for cell in batch.cells) == (1, 4)
+    assert batch.family is None
+    assert batch.family_cells == ()
+
+
+def test_collect_all_preserves_rejected_result_qualification() -> None:
+    provider = GridProvider(
+        PRIMARY,
+        partial_cells={(0.0, 100_000.0), (0.0, 200_000.0)},
+    )
+    plan = _plan(reynolds_grid=(100_000.0, 200_000.0))
+
+    batch = generate_polar_family_batch(
+        (provider,),
+        plan,
+        policy=PolarFamilyBatchPolicy(failure_mode="collect_all"),
+    )
+
+    assert batch.cells == ()
+    assert tuple(failure.position for failure in batch.failures) == (1, 2)
+    first = batch.failures[0]
+    assert first.failed_result is not None
+    assert first.qualification is not None
+    assert first.qualification.rejected_indices == (1,)
+    assert first.attempts[0].outcome == "result_rejected"
+    assert first.as_mapping()["rejected_result"]["statuses"] == (
+        "converged",
+        "not_converged",
+        "converged",
+    )
+    assert first.as_mapping()["rejected_result"]["rejected_alpha_rad"] == (0.0,)
+    assert first.as_mapping()["rejected_result"]["rejected_alpha_range_rad"] == (
+        0.0,
+        0.0,
+    )
+
+
+def test_collect_all_never_masks_unexpected_or_base_exceptions() -> None:
+    policy = PolarFamilyBatchPolicy(failure_mode="collect_all")
+    runtime_provider = GridProvider(
+        PRIMARY,
+        failures={(0.0, 100_000.0): RuntimeError("programming bug")},
+    )
+    interrupt_provider = GridProvider(
+        PRIMARY,
+        failures={(0.0, 100_000.0): KeyboardInterrupt()},
+    )
+
+    with pytest.raises(RuntimeError, match="programming bug"):
+        generate_polar_family_batch((runtime_provider,), _plan(), policy=policy)
+    with pytest.raises(KeyboardInterrupt):
+        generate_polar_family_batch((interrupt_provider,), _plan(), policy=policy)
+
+
+def test_batch_policy_rejects_ambiguous_combinations_and_inputs() -> None:
+    with pytest.raises(ValueError, match="subgrid_policy requires"):
+        PolarFamilyBatchPolicy("fail_fast", "complete_axes")
+    with pytest.raises(ValueError, match="failure_mode"):
+        PolarFamilyBatchPolicy("unknown")
+    with pytest.raises(ValueError, match="subgrid_policy"):
+        PolarFamilyBatchPolicy("collect_all", "largest")
+    with pytest.raises(TypeError, match="policy"):
+        generate_polar_family_batch((GridProvider(PRIMARY),), _plan(), policy=object())
+    with pytest.raises(ValueError, match="at least one"):
+        generate_polar_family_batch((), _plan())
