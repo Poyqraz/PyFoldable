@@ -23,7 +23,7 @@ boundary between `PolarGenerationResult.to_polar_table()` and manually assembled
 | PR-05B | Partial-grid policy and batch diagnostics | Complete |
 | PR-05C | Strict configuration binding | Complete |
 | PR-05D | Analysis integration | Complete in this change |
-| PR-05E | Real-backend qualification | In progress: capture infrastructure |
+| PR-05E | Real-backend qualification | In progress: baseline review/promotion |
 
 ## PR-05 — provider-backed PolarFamily integration
 
@@ -54,10 +54,12 @@ multi-Reynolds/Mach family to an aerodynamic analysis consumer.
 5. **PR-05E — real-backend qualification.** Capture reviewed XFOIL and NeuralFoil outputs
    for a declared operating envelope, freeze backend versions, and publish the benchmark
    report separately from deterministic adapter-contract fixtures. **In progress.** The
-   manual capture workflow pins exact backend identities and preserves raw results in an
-   unreviewed, hash-manifested artifact. The reviewed-fixture runner then rejects
-   out-of-envelope inputs and identity drift. Completion still requires two reproducible
-   real-backend captures, review, and explicit baseline promotion.
+   capture workflow pins exact backend identities and preserves raw results in an
+   unreviewed, hash-manifested artifact. Two independent captures on revision `464dde5`
+   (workflow runs 31942197266 and 31943335405) passed. The review workflow verifies both
+   bundles and excludes only capture/elapsed-time telemetry. The reviewed-fixture runner
+   then rejects out-of-envelope inputs and identity drift. Completion still requires the
+   comparison report to pass, physical review, and explicit baseline promotion.
 
 ## Confirmed PR-05 design decisions
 

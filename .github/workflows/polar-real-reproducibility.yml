@@ -1,0 +1,77 @@
+name: Polar real-backend reproducibility review
+
+on:
+  workflow_dispatch:
+    inputs:
+      first_run_id:
+        description: First successful qualification workflow run ID
+        required: true
+        type: string
+      second_run_id:
+        description: Second successful qualification workflow run ID
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Validate distinct run IDs
+        env:
+          FIRST_RUN_ID: ${{ inputs.first_run_id }}
+          SECOND_RUN_ID: ${{ inputs.second_run_id }}
+        run: |
+          case "$FIRST_RUN_ID" in ''|*[!0-9]*) exit 2;; esac
+          case "$SECOND_RUN_ID" in ''|*[!0-9]*) exit 2;; esac
+          test "$FIRST_RUN_ID" != "$SECOND_RUN_ID"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install comparison runtime
+        run: python -m pip install --editable .
+
+      - name: Download first qualification bundle
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.first_run_id }}
+          path: downloads/first
+          digest-mismatch: error
+
+      - name: Download second qualification bundle
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.second_run_id }}
+          path: downloads/second
+          digest-mismatch: error
+
+      - name: Verify and compare physical evidence
+        run: |
+          python examples/compare_real_polar_qualification.py \
+            downloads/first \
+            downloads/second \
+            --output reports/polar-real-reproducibility.json
+
+      - name: Upload review report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: polar-real-reproducibility-${{ inputs.first_run_id }}-${{ inputs.second_run_id }}-${{ github.run_id }}
+          path: reports/polar-real-reproducibility.json
+          if-no-files-found: warn
+          retention-days: 30

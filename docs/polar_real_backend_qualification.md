@@ -13,7 +13,7 @@ input, but it is not physical XFOIL or NeuralFoil evidence.
 | Mach number | 0.0 |
 | Angles of attack | -6 to 10 degrees, inclusive, in 2-degree steps |
 | Transition | Natural, `Ncrit = 9`, `xtr_upper = xtr_lower = 1` |
-| Reference | XFOIL subprocess adapter v1, XFOIL 6.99 |
+| Reference | XFOIL subprocess adapter v2, XFOIL 6.99 |
 | Candidate | NeuralFoil adapter v1, NeuralFoil 0.3.3 |
 
 XFOIL 6.99 is built from MIT's official `xfoil6.99.tgz` source archive, pinned by
@@ -25,8 +25,9 @@ of silently changing this baseline. NeuralFoil is installed at exactly 0.3.3.
 
 ## Capture and review boundary
 
-The `Polar real-backend qualification` workflow is manual-only and has
-`contents: read` permission. It uploads a bundle containing:
+The `Polar real-backend qualification` workflow runs on relevant pull requests and can
+also be dispatched manually on `main`. It has `contents: read` permission and uploads a
+bundle containing:
 
 - `manifest.json`, with source revision, request fingerprint, exact expected and actual
   provider identities, environment versions, and SHA-256 file hashes;
@@ -49,6 +50,17 @@ Before promotion, a reviewer must verify every file hash, inspect XFOIL converge
 NeuralFoil confidence, reproduce the capture on the same source revision, and compare
 both raw result sets. Promotion is a separate code change that preserves the manifest
 and adds regression coverage. Until reviewed data is promoted, PR-05E is in progress.
+
+The `Polar real-backend reproducibility review` workflow accepts two distinct successful
+qualification run IDs. It downloads both artifacts with `actions: read`, rejects digest
+or manifest tampering, and compares source revision, solver inputs, provider/build
+identity, environment, benchmark decisions, and raw point results exactly. Only capture
+time and elapsed-time telemetry are excluded. Its report always remains review-only with
+`promotion_allowed: false`; a successful comparison cannot promote a baseline by itself.
+
+All first-party GitHub actions are pinned to verified release commits that use the
+Node.js 24 runtime. This avoids deprecated Node.js 20 execution and prevents moving
+major-version tags from silently changing the qualification environment.
 
 After promotion, `examples/run_real_backend_qualification.py` re-runs exact provider
 identities against reviewed fixtures. It is deliberately separate from deterministic
