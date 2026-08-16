@@ -138,12 +138,41 @@ def _validate_fixture_envelope(
     expected = plan.request_template
     for fixture in fixtures:
         request = fixture.reference.request
-        if request.airfoil != expected.airfoil or request.scenario_id != expected.scenario_id:
-            raise ValueError(f"Fixture {fixture.name!r} is outside the configured airfoil/scenario.")
+        if (
+            request.airfoil.id != expected.airfoil.id
+            or request.airfoil.coordinates != expected.airfoil.coordinates
+        ):
+            raise ValueError(
+                f"Fixture {fixture.name!r} is outside the configured airfoil geometry."
+            )
+        if request.scenario_id != expected.scenario_id:
+            raise ValueError(
+                f"Fixture {fixture.name!r} is outside the configured scenario."
+            )
         if request.alpha_rad != expected.alpha_rad:
-            raise ValueError(f"Fixture {fixture.name!r} does not cover the configured alpha sweep.")
+            raise ValueError(
+                f"Fixture {fixture.name!r} does not cover the configured alpha sweep."
+            )
         if (request.reynolds, request.mach) not in allowed_cells:
-            raise ValueError(f"Fixture {fixture.name!r} is outside the configured Re/Mach grid.")
+            raise ValueError(
+                f"Fixture {fixture.name!r} is outside the configured Re/Mach grid."
+            )
+        for field_name in (
+            "n_crit",
+            "xtr_upper",
+            "xtr_lower",
+            "max_iterations",
+            "timeout_s",
+        ):
+            if getattr(request, field_name) != getattr(expected, field_name):
+                raise ValueError(
+                    f"Fixture {fixture.name!r} has a different configured "
+                    f"{field_name} value."
+                )
+        if dict(request.options) != dict(expected.options):
+            raise ValueError(
+                f"Fixture {fixture.name!r} has different configured provider options."
+            )
 
 
 def _validate_digest(value: str, name: str) -> None:

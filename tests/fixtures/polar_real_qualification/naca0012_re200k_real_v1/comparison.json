@@ -1,0 +1,23 @@
+{
+  "differences": [],
+  "first_bundle": {
+    "captured_at_utc": "2026-08-16T10:39:30Z",
+    "path": "downloads/first/polar-real-qualification",
+    "semantic_sha256": "28501d0feded441dcf19b0a10981b097e26b783c394ebb2a373a1bf5d98d4453"
+  },
+  "ignored_telemetry_fields": [
+    "manifest.captured_at_utc",
+    "manifest.files",
+    "results.*.elapsed_s",
+    "benchmark.**.*elapsed_s"
+  ],
+  "kind": "polar-real-backend-qualification-comparison",
+  "promotion_allowed": false,
+  "reproducible": true,
+  "schema_version": 1,
+  "second_bundle": {
+    "captured_at_utc": "2026-08-16T11:05:10Z",
+    "path": "downloads/second/polar-real-qualification",
+    "semantic_sha256": "28501d0feded441dcf19b0a10981b097e26b783c394ebb2a373a1bf5d98d4453"
+  }
+}

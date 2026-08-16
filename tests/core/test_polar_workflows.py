@@ -40,3 +40,16 @@ def test_reproducibility_workflow_is_read_only_and_fail_closed() -> None:
     assert workflow.count("digest-mismatch: error") == 2
     assert "compare_real_polar_qualification.py" in workflow
     assert "if: always()" in workflow
+
+
+def test_capture_workflow_gates_on_promoted_real_baseline() -> None:
+    workflow = _workflow("polar-real-qualification.yml")
+
+    assert 'echo "$install_root" >> "$GITHUB_PATH"' in workflow
+    assert "run_real_backend_qualification.py" in workflow
+    assert "configs/polars/NACA0012_RE200K_REAL.toml" in workflow
+    assert (
+        "tests/fixtures/polar_real_qualification/"
+        "naca0012_re200k_real_v1/golden.json"
+    ) in workflow
+    assert "outputs/polar-real-baseline-regression/report.json" in workflow

@@ -1,0 +1,63 @@
+schema_version = 1
+
+[request]
+airfoil_file = "../airfoils/NACA0012_81.dat"
+airfoil_id = "NACA0012"
+airfoil_format = "selig"
+scenario_id = "naca0012-re200k-natural-transition"
+alpha = ["-6 deg", "-4 deg", "-2 deg", "0 deg", "2 deg", "4 deg", "6 deg", "8 deg", "10 deg"]
+n_crit = 9.0
+xtr_upper = 1.0
+xtr_lower = 1.0
+timeout = "30 s"
+
+[grid]
+reynolds = [200000.0]
+mach = [0.0]
+
+[[providers]]
+kind = "xfoil"
+executable = "xfoil"
+version_timeout = "5 s"
+
+[[providers]]
+kind = "neuralfoil"
+
+[retry]
+max_attempts = 1
+initial_backoff = "50 ms"
+max_backoff = "50 ms"
+backoff_factor = 1.0
+retry_timeouts = false
+retry_execution_errors = false
+
+[cache]
+enabled = false
+
+[health]
+enabled = false
+
+[qualification]
+minimum_usable_fraction = 1.0
+minimum_usable_points = 9
+allow_low_confidence = false
+
+[batch]
+failure_mode = "fail_fast"
+subgrid_policy = "none"
+
+[acceptance]
+minimum_coverage = 1.0
+require_usable_match = true
+
+[acceptance.cl]
+absolute = 0.05
+relative = 0.02
+
+[acceptance.cd]
+absolute = 0.002
+relative = 0.10
+
+[acceptance.cm]
+absolute = 0.01
+relative = 0.05

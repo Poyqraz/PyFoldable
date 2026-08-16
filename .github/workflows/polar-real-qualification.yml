@@ -8,10 +8,17 @@ on:
     paths:
       - .github/workflows/polar-real-qualification.yml
       - examples/capture_real_polar_qualification.py
+      - examples/run_real_backend_qualification.py
+      - configs/airfoils/NACA0012_81.dat
+      - configs/polars/NACA0012_RE200K_REAL.toml
       - pyfoldable/providers/xfoil.py
+      - pyfoldable/core/polar_backend_qualification.py
       - pyfoldable/core/polar_real_qualification.py
       - tests/providers/test_xfoil.py
+      - tests/core/test_polar_backend_qualification.py
+      - tests/core/test_polar_real_baseline.py
       - tests/core/test_polar_real_qualification.py
+      - tests/fixtures/polar_real_qualification/**
 
 permissions:
   contents: read
@@ -67,6 +74,7 @@ jobs:
           compiler_version="$(gfortran -dumpfullversion -dumpversion)"
           echo "XFOIL_BIN=$xfoil_bin" >> "$GITHUB_ENV"
           echo "OSMAP=$source_root/Xfoil/orrs/osmapDP.dat" >> "$GITHUB_ENV"
+          echo "$install_root" >> "$GITHUB_PATH"
           echo "XFOIL_BUILD_ID=mit-xfoil6.99.tgz;sha256=$XFOIL_SOURCE_SHA256;gfortran=$compiler_version;flags=-O2,-fdefault-real-8,-fallow-argument-mismatch" >> "$GITHUB_ENV"
 
       - id: install_python_dependencies
@@ -89,6 +97,16 @@ jobs:
           status=$?
           python -m json.tool outputs/polar-real-qualification/manifest.json >/dev/null
           exit "$status"
+
+      - id: reviewed_baseline
+        name: Verify promoted baseline against real backends
+        run: |
+          python examples/run_real_backend_qualification.py \
+            configs/polars/NACA0012_RE200K_REAL.toml \
+            tests/fixtures/polar_real_qualification/naca0012_re200k_real_v1/golden.json \
+            --output outputs/polar-real-baseline-regression/report.json
+          python -m json.tool \
+            outputs/polar-real-baseline-regression/report.json >/dev/null
 
       - name: Record workflow-level failure evidence
         if: failure()
@@ -124,6 +142,7 @@ jobs:
           name: polar-real-qualification-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             outputs/polar-real-qualification/
+            outputs/polar-real-baseline-regression/
             outputs/workflow-diagnostics/
           if-no-files-found: error
           retention-days: 30
