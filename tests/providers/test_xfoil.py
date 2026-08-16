@@ -50,6 +50,12 @@ def fake_xfoil(tmp_path: Path) -> Path:
                 pathlib.Path(cwd_capture).write_text(os.getcwd(), encoding="utf-8")
 
             mode = os.environ.get("FAKE_XFOIL_MODE", "success")
+            if "PACC\npolar.txt\n" in commands:
+                print(
+                    "Sequential READ or WRITE not allowed after EOF marker",
+                    file=sys.stderr,
+                )
+                raise SystemExit(2)
             if mode == "sleep":
                 time.sleep(2.0)
             if mode == "nonzero":
@@ -169,6 +175,9 @@ def test_successful_run_builds_commands_and_cleans_workspace(
     assert "N 7" in commands
     assert "XTR 0.8 0.7" in commands
     assert "ITER 80" in commands
+    assert "PACC\n\n\n" in commands
+    assert "PACC\nPWRT 1\npolar.txt\nQUIT\n" in commands
+    assert "PACC\npolar.txt\n" not in commands
     assert commands.index("ALFA -5.729") < commands.index("ALFA 0")
     assert commands.index("ALFA 0") < commands.index("ALFA 5.729")
 
@@ -176,6 +185,12 @@ def test_successful_run_builds_commands_and_cleans_workspace(
     assert airfoil.startswith("_PyFoldable_TEST_12_foil\n")
     assert "0 0" in airfoil
     assert not Path(cwd_capture.read_text(encoding="utf-8")).exists()
+
+
+def test_provider_identity_versions_deferred_polar_write(fake_xfoil: Path) -> None:
+    provider = _provider(fake_xfoil)
+
+    assert provider.identity.adapter_version == "2"
 
 
 def test_missing_row_becomes_explicit_partial_result(

@@ -58,8 +58,10 @@ must not turn a low-confidence point into a silent success.
 `XfoilProvider` discovers an executable from an explicit path or `PATH`, captures its
 reported version (falling back to a SHA-256 executable fingerprint), and runs each
 request in an isolated temporary directory. It sends commands on stdin without a
-shell, disables plotting, writes a normalized labeled coordinate file, enables `PACC`,
-and executes each requested angle in its original order.
+shell, disables plotting, writes a normalized labeled coordinate file, enables
+in-memory `PACC`, and executes each requested angle in its original order. It exports
+the completed polar once with `PWRT`, avoiding XFOIL 6.99's legacy pointwise append
+path and its EOF-marker failure on modern Fortran runtimes.
 
 Missing polar rows become `not_converged` point results instead of fabricated
 coefficients. Non-zero process exits, missing/malformed polar files, startup failures,

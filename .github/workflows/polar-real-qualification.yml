@@ -2,6 +2,16 @@ name: Polar real-backend qualification
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/polar-real-qualification.yml
+      - examples/capture_real_polar_qualification.py
+      - pyfoldable/providers/xfoil.py
+      - pyfoldable/core/polar_real_qualification.py
+      - tests/providers/test_xfoil.py
+      - tests/core/test_polar_real_qualification.py
 
 permissions:
   contents: read

@@ -24,7 +24,7 @@ from pyfoldable.core import (
 
 
 EXPECTED_XFOIL = ProviderIdentity(
-    "xfoil-subprocess", "1", "XFOIL", "6.99"
+    "xfoil-subprocess", "2", "XFOIL", "6.99"
 )
 EXPECTED_NEURALFOIL = ProviderIdentity(
     "neuralfoil", "1", "NeuralFoil", "0.3.3"
