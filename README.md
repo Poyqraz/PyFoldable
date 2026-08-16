@@ -160,7 +160,13 @@ doğrulama adımları için referans alınır. Ayrıntı:
 
 ## Lisans
 
-Apache-2.0 — bkz. `LICENSE`.
+Telif hakkı © 2026 Poyraz Baydemir.
+
+Kaynak [PolyForm Noncommercial 1.0.0](LICENSE) ile açıktır: kişisel ve akademik kullanım serbesttir. Ticari kullanım, satış ve ürünleştirme yasaktır; bunlar için GitHub üzerinden [@Poyqraz](https://github.com/Poyqraz) ile ayrı lisans gerekir.
+
+Bu değişiklik sonraki sürümler içindir. Daha önce Apache-2.0 altında alınmış kopyalar o lisansla kalır.
+
+Ayrıntı: `LICENSE`. Katkı koşulları: `CONTRIBUTING.md`.
 
 ---
 
