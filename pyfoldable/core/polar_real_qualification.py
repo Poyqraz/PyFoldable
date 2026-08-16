@@ -31,6 +31,7 @@ from .providers import (
 
 
 POLAR_REAL_QUALIFICATION_SCHEMA_VERSION = 1
+POLAR_REAL_QUALIFICATION_COMPARISON_SCHEMA_VERSION = 1
 _SAFE_FILE_COMPONENT = re.compile(r"[^a-z0-9._-]+")
 _SOURCE_REVISION = re.compile(r"[0-9a-f]{40}(?:[0-9a-f]{24})?", re.IGNORECASE)
 
@@ -355,6 +356,65 @@ def write_polar_real_qualification_failure_bundle(
     return destination
 
 
+def compare_polar_real_qualification_bundles(
+    first_directory: str | Path,
+    second_directory: str | Path,
+) -> dict[str, object]:
+    """Verify and compare two captures while excluding telemetry-only fields."""
+    first_root, first_manifest, first_documents = _load_verified_bundle(
+        first_directory
+    )
+    second_root, second_manifest, second_documents = _load_verified_bundle(
+        second_directory
+    )
+    first_semantic = _semantic_bundle_document(first_manifest, first_documents)
+    second_semantic = _semantic_bundle_document(second_manifest, second_documents)
+    differences = _json_differences(first_semantic, second_semantic)
+    return {
+        "schema_version": POLAR_REAL_QUALIFICATION_COMPARISON_SCHEMA_VERSION,
+        "kind": "polar-real-backend-qualification-comparison",
+        "reproducible": not differences,
+        "promotion_allowed": False,
+        "first_bundle": {
+            "path": str(first_root),
+            "captured_at_utc": first_manifest["captured_at_utc"],
+            "semantic_sha256": _document_sha256(first_semantic),
+        },
+        "second_bundle": {
+            "path": str(second_root),
+            "captured_at_utc": second_manifest["captured_at_utc"],
+            "semantic_sha256": _document_sha256(second_semantic),
+        },
+        "ignored_telemetry_fields": (
+            "manifest.captured_at_utc",
+            "manifest.files",
+            "results.*.elapsed_s",
+            "benchmark.**.*elapsed_s",
+        ),
+        "differences": differences,
+    }
+
+
+def write_polar_real_qualification_comparison(
+    first_directory: str | Path,
+    second_directory: str | Path,
+    output_file: str | Path,
+) -> tuple[Path, dict[str, object]]:
+    """Write a non-overwriting, review-only reproducibility comparison report."""
+    destination = Path(output_file)
+    if destination.exists():
+        raise FileExistsError(
+            f"Qualification comparison already exists and will not be overwritten: "
+            f"{destination}."
+        )
+    report = compare_polar_real_qualification_bundles(
+        first_directory, second_directory
+    )
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_bytes(_json_bytes(report))
+    return destination, report
+
+
 def _result_document(
     case_name: str, result: PolarGenerationResult
 ) -> dict[str, object]:
@@ -383,6 +443,175 @@ def _result_document(
         "complete": result.complete,
         "cache_key": result.cache_key,
     }
+
+
+def _load_verified_bundle(
+    directory: str | Path,
+) -> tuple[Path, dict[str, Any], dict[str, Any]]:
+    root = _resolve_bundle_root(Path(directory))
+    manifest = _read_json_object(root / "manifest.json")
+    if manifest.get("schema_version") != POLAR_REAL_QUALIFICATION_SCHEMA_VERSION:
+        raise ValueError(f"Unsupported qualification schema in {root}.")
+    if manifest.get("kind") != "polar-real-backend-qualification":
+        raise ValueError(f"Unexpected qualification kind in {root}.")
+    if manifest.get("capture_failed", False):
+        raise ValueError(f"Failed qualification capture cannot be compared: {root}.")
+    if manifest.get("benchmark_passed") is not True:
+        raise ValueError(f"Qualification benchmark did not pass: {root}.")
+    if manifest.get("review_state") != "unreviewed":
+        raise ValueError(f"Qualification bundle is not unreviewed: {root}.")
+    if manifest.get("promotion_allowed") is not False:
+        raise ValueError(f"Qualification bundle unexpectedly allows promotion: {root}.")
+    captured_at = manifest.get("captured_at_utc")
+    if not isinstance(captured_at, str) or not captured_at.endswith("Z"):
+        raise ValueError(f"Qualification capture time is invalid: {root}.")
+
+    entries = manifest.get("files")
+    if not isinstance(entries, list) or not entries:
+        raise ValueError(f"Qualification file manifest is empty: {root}.")
+    documents: dict[str, Any] = {}
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise ValueError(f"Qualification file entry is invalid: {root}.")
+        relative = entry.get("path")
+        expected_size = entry.get("size_bytes")
+        expected_sha256 = entry.get("sha256")
+        if not isinstance(relative, str):
+            raise ValueError(f"Qualification file path is invalid: {root}.")
+        relative_path = Path(relative)
+        if (
+            relative_path.is_absolute()
+            or ".." in relative_path.parts
+            or relative_path.as_posix() != relative
+        ):
+            raise ValueError(f"Unsafe qualification file path: {relative!r}.")
+        if relative in documents:
+            raise ValueError(f"Duplicate qualification file path: {relative!r}.")
+        payload_path = root / relative_path
+        if not payload_path.resolve().is_relative_to(root.resolve()):
+            raise ValueError(f"Qualification file escapes its bundle: {payload_path}.")
+        try:
+            payload = payload_path.read_bytes()
+        except OSError as error:
+            raise ValueError(f"Qualification file cannot be read: {payload_path}.") from error
+        if expected_size != len(payload):
+            raise ValueError(f"Qualification file size mismatch: {payload_path}.")
+        if not isinstance(expected_sha256, str) or not re.fullmatch(
+            r"[0-9a-f]{64}", expected_sha256
+        ):
+            raise ValueError(f"Qualification file hash is invalid: {payload_path}.")
+        if hashlib.sha256(payload).hexdigest() != expected_sha256:
+            raise ValueError(f"Qualification file hash mismatch: {payload_path}.")
+        documents[relative] = _read_json_object(payload_path)
+
+    if "benchmark.json" not in documents:
+        raise ValueError(f"Qualification bundle has no benchmark.json: {root}.")
+    result_paths = sorted(
+        path for path in documents if path.startswith("results/")
+    )
+    expected_providers = manifest.get("expected_providers")
+    if not isinstance(expected_providers, list) or len(result_paths) != len(
+        expected_providers
+    ):
+        raise ValueError(f"Qualification result count does not match providers: {root}.")
+    if set(documents) != {"benchmark.json", *result_paths}:
+        raise ValueError(f"Qualification bundle contains unexpected evidence files: {root}.")
+    return root, manifest, documents
+
+
+def _resolve_bundle_root(directory: Path) -> Path:
+    if not directory.is_dir():
+        raise ValueError(f"Qualification bundle directory does not exist: {directory}.")
+    direct = directory / "manifest.json"
+    if direct.is_file():
+        return directory
+    matches = tuple(directory.rglob("manifest.json"))
+    if len(matches) != 1:
+        raise ValueError(
+            f"Expected exactly one qualification bundle below {directory}; "
+            f"found {len(matches)}."
+        )
+    return matches[0].parent
+
+
+def _read_json_object(path: Path) -> dict[str, Any]:
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"Qualification JSON cannot be read: {path}.") from error
+    if not isinstance(document, dict):
+        raise ValueError(f"Qualification JSON must contain an object: {path}.")
+    return document
+
+
+def _semantic_bundle_document(
+    manifest: Mapping[str, Any], documents: Mapping[str, Any]
+) -> dict[str, Any]:
+    normalized_manifest = dict(manifest)
+    normalized_manifest.pop("captured_at_utc", None)
+    normalized_manifest.pop("files", None)
+    normalized_documents: dict[str, Any] = {}
+    for path, document in sorted(documents.items()):
+        normalized = _thaw_json(document)
+        if path == "benchmark.json":
+            if not isinstance(normalized.get("entries"), list):
+                raise ValueError("Qualification benchmark entries are invalid.")
+            normalized = _without_elapsed_telemetry(normalized)
+        elif path.startswith("results/"):
+            normalized.pop("elapsed_s", None)
+            request = normalized.get("request")
+            if not isinstance(request, dict):
+                raise ValueError("Qualification result request is invalid.")
+            airfoil = request.get("airfoil")
+            if not isinstance(airfoil, dict):
+                raise ValueError("Qualification result airfoil is invalid.")
+            airfoil.pop("source", None)
+            airfoil.pop("metadata", None)
+        normalized_documents[path] = normalized
+    return {
+        "manifest": normalized_manifest,
+        "documents": normalized_documents,
+    }
+
+
+def _without_elapsed_telemetry(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: _without_elapsed_telemetry(item)
+            for key, item in value.items()
+            if not key.endswith("elapsed_s")
+        }
+    if isinstance(value, list):
+        return [_without_elapsed_telemetry(item) for item in value]
+    return value
+
+
+def _json_differences(first: Any, second: Any, path: str = "$") -> list[str]:
+    if type(first) is not type(second):
+        return [f"{path}: type {type(first).__name__} != {type(second).__name__}"]
+    if isinstance(first, dict):
+        differences: list[str] = []
+        first_keys = set(first)
+        second_keys = set(second)
+        for key in sorted(first_keys - second_keys):
+            differences.append(f"{path}.{key}: missing from second bundle")
+        for key in sorted(second_keys - first_keys):
+            differences.append(f"{path}.{key}: missing from first bundle")
+        for key in sorted(first_keys & second_keys):
+            differences.extend(
+                _json_differences(first[key], second[key], f"{path}.{key}")
+            )
+        return differences
+    if isinstance(first, list):
+        differences = []
+        if len(first) != len(second):
+            differences.append(f"{path}: length {len(first)} != {len(second)}")
+        for index, (left, right) in enumerate(zip(first, second)):
+            differences.extend(_json_differences(left, right, f"{path}[{index}]"))
+        return differences
+    if first != second:
+        return [f"{path}: {first!r} != {second!r}"]
+    return []
 
 
 def _request_document(request: PolarGenerationRequest) -> dict[str, object]:

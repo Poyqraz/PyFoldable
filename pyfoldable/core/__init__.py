@@ -125,9 +125,12 @@ from .polar_qualification import (
     PolarResultQualificationPolicy,
 )
 from .polar_real_qualification import (
+    POLAR_REAL_QUALIFICATION_COMPARISON_SCHEMA_VERSION,
     POLAR_REAL_QUALIFICATION_SCHEMA_VERSION,
     PolarRealQualificationCapture,
     capture_real_polar_qualification,
+    compare_polar_real_qualification_bundles,
+    write_polar_real_qualification_comparison,
     write_polar_real_qualification_failure_bundle,
     write_polar_real_qualification_bundle,
 )
@@ -179,6 +182,7 @@ __all__ = [
     "POLAR_FAMILY_GENERATION_SCHEMA_VERSION",
     "POLAR_ORCHESTRATION_SCHEMA_VERSION",
     "POLAR_PROVIDER_HEALTH_SCHEMA_VERSION",
+    "POLAR_REAL_QUALIFICATION_COMPARISON_SCHEMA_VERSION",
     "POLAR_REAL_QUALIFICATION_SCHEMA_VERSION",
     "POLAR_RESULT_QUALIFICATION_SCHEMA_VERSION",
     "POLAR_SECTION_ANALYSIS_SCHEMA_VERSION",
@@ -255,6 +259,7 @@ __all__ = [
     "ValidationRecord",
     "canonical_unit",
     "capture_real_polar_qualification",
+    "compare_polar_real_qualification_bundles",
     "compare_polar_results",
     "analyze_generated_polar_sections",
     "generate_polar",
@@ -271,6 +276,7 @@ __all__ = [
     "parse_airfoil_coordinates",
     "parse_quantity",
     "write_polar_real_qualification_failure_bundle",
+    "write_polar_real_qualification_comparison",
     "run_polar_provider_benchmark",
     "qualify_real_polar_backends",
     "write_polar_real_qualification_bundle",
