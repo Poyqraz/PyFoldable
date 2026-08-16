@@ -176,7 +176,7 @@ def test_successful_run_builds_commands_and_cleans_workspace(
     assert "XTR 0.8 0.7" in commands
     assert "ITER 80" in commands
     assert "PACC\n\n\n" in commands
-    assert "PACC\nPWRT 1\npolar.txt\nQUIT\n" in commands
+    assert "PACC\nPWRT 1\npolar.txt\n\nQUIT\n" in commands
     assert "PACC\npolar.txt\n" not in commands
     assert commands.index("ALFA -5.729") < commands.index("ALFA 0")
     assert commands.index("ALFA 0") < commands.index("ALFA 5.729")

@@ -263,7 +263,7 @@ def _build_command_script(
     commands.extend(
         f"ALFA {_format_real(math.degrees(alpha))}" for alpha in request.alpha_rad
     )
-    commands.extend(["PACC", "PWRT 1", _POLAR_FILENAME, "QUIT", ""])
+    commands.extend(["PACC", "PWRT 1", _POLAR_FILENAME, "", "QUIT", ""])
     return "\n".join(commands)
 
 
