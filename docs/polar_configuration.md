@@ -92,3 +92,6 @@ atomically so an interrupted backend run cannot leave a plausible partial report
 Initial raw solver capture is performed by the manual GitHub Actions workflow documented
 in `docs/polar_real_backend_qualification.md`. Capture artifacts are explicitly
 unreviewed and cannot be treated as golden fixtures without a separate promotion review.
+The promoted NACA 0012 case uses
+`configs/polars/NACA0012_RE200K_REAL.toml`; its preserved evidence and reviewed golden
+fixture live under `tests/fixtures/polar_real_qualification/`.

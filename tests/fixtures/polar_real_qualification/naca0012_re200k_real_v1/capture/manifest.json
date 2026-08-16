@@ -1,0 +1,108 @@
+{
+  "actual_providers": [
+    {
+      "adapter_version": "2",
+      "backend_name": "XFOIL",
+      "backend_version": "6.99",
+      "name": "xfoil-subprocess"
+    },
+    {
+      "adapter_version": "1",
+      "backend_name": "NeuralFoil",
+      "backend_version": "0.3.3",
+      "name": "neuralfoil"
+    }
+  ],
+  "benchmark_passed": true,
+  "captured_at_utc": "2026-08-16T10:39:30Z",
+  "case_name": "naca0012_re200k_real_v1",
+  "criteria": {
+    "cd": {
+      "absolute": 0.002,
+      "relative": 0.1
+    },
+    "cl": {
+      "absolute": 0.05,
+      "relative": 0.02
+    },
+    "cm": {
+      "absolute": 0.01,
+      "relative": 0.05
+    },
+    "minimum_coverage": 1.0,
+    "require_usable_match": true
+  },
+  "environment": {
+    "packages": {
+      "AeroSandbox": "4.2.10",
+      "NeuralFoil": "0.3.3",
+      "casadi": "3.7.2",
+      "contourpy": "1.3.3",
+      "cycler": "0.12.1",
+      "dill": "0.4.1",
+      "fonttools": "4.63.0",
+      "kiwisolver": "1.5.0",
+      "matplotlib": "3.11.1",
+      "numpy": "2.4.6",
+      "packaging": "26.3",
+      "pandas": "3.0.5",
+      "pillow": "12.3.0",
+      "pip": "26.2.1",
+      "pyfoldable": "0.2.0",
+      "pyparsing": "3.3.2",
+      "python-dateutil": "2.9.0.post0",
+      "scipy": "1.17.1",
+      "seaborn": "0.13.2",
+      "setuptools": "79.0.1",
+      "six": "1.17.0",
+      "sortedcontainers": "2.4.0",
+      "tqdm": "4.70.0"
+    },
+    "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+    "python": "3.11.15 (main, Jun 16 2026, 21:41:52) [GCC 13.3.0]",
+    "xfoil_build_id": "mit-xfoil6.99.tgz;sha256=5c0250643f52ce0e75d7338ae2504ce7907f2d49a30f921826717b8ac12ebe40;gfortran=13.3.0;flags=-O2,-fdefault-real-8,-fallow-argument-mismatch"
+  },
+  "expected_providers": [
+    {
+      "adapter_version": "2",
+      "backend_name": "XFOIL",
+      "backend_version": "6.99",
+      "name": "xfoil-subprocess"
+    },
+    {
+      "adapter_version": "1",
+      "backend_name": "NeuralFoil",
+      "backend_version": "0.3.3",
+      "name": "neuralfoil"
+    }
+  ],
+  "files": [
+    {
+      "path": "results/00-xfoil-subprocess.json",
+      "sha256": "8f09607ea56a40737ff079ac2c1669d7acf7f718f6a86157e09b18786bcf0d41",
+      "size_bytes": 9367
+    },
+    {
+      "path": "results/01-neuralfoil.json",
+      "sha256": "6edd1155d6fbf99254d839902f96ef7131fa48696e247386f075fc48cec0e38e",
+      "size_bytes": 10119
+    },
+    {
+      "path": "benchmark.json",
+      "sha256": "251e92c55806527d1454c0997dddf4a604561d31a38ffda818768b9caa521ac5",
+      "size_bytes": 5866
+    }
+  ],
+  "kind": "polar-real-backend-qualification",
+  "promotion_allowed": false,
+  "reference_provider": {
+    "adapter_version": "2",
+    "backend_name": "XFOIL",
+    "backend_version": "6.99",
+    "name": "xfoil-subprocess"
+  },
+  "request_sha256": "e14e2f96b34c91477ef7ddd56e5e5d259cf6269b3feeddd42482265917d71b2d",
+  "review_state": "unreviewed",
+  "schema_version": 1,
+  "source_revision": "464dde5eea0a3266c830c6db6ff20f44fbc4e21e"
+}

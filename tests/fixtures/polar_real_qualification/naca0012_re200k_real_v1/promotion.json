@@ -1,0 +1,67 @@
+{
+  "case_name": "naca0012_re200k_real_v1",
+  "captures": [
+    {
+      "artifact_digest": "sha256:2caa4c4fc4bb37696ce6c2186642321260a64c0e32fcdc2439ad7b16af8a4ceb",
+      "artifact_id": 9262326103,
+      "captured_at_utc": "2026-08-16T10:39:30Z",
+      "manifest_sha256": "b9231a49c17f0f6896a24c8561c729f029963d8df3e29c2f2315621cee919e48",
+      "run_id": 31942197266
+    },
+    {
+      "artifact_digest": "sha256:b89beaaabb4457959de38ff4370c1a57e427066a529546e5895833f88981cd15",
+      "artifact_id": 9262613739,
+      "captured_at_utc": "2026-08-16T11:05:10Z",
+      "manifest_sha256": "f239575ba8b4f1172366d4d12db6ff0071586e631734f9b37b68e54d346072ef",
+      "run_id": 31943335405
+    }
+  ],
+  "kind": "polar-real-backend-baseline-promotion",
+  "physical_review": {
+    "all_points_converged": true,
+    "coverage": 1.0,
+    "decision": "accepted",
+    "neuralfoil_confidence_threshold": 0.5,
+    "neuralfoil_max_absolute_error": {
+      "cd": 0.0008637465734413381,
+      "cl": 0.025007356732436037,
+      "cm": 0.005129029978356799
+    },
+    "neuralfoil_minimum_confidence": 0.964351504329081,
+    "point_count": 9,
+    "xfoil_nonfatal_stderr": "Note: The following floating-point exceptions are signalling: IEEE_DIVIDE_BY_ZERO",
+    "xfoil_returncode": 0,
+    "xfoil_symmetry_max_residual": {
+      "cd_even": 0.00001,
+      "cl_odd": 0.0001,
+      "cm_odd": 0.0
+    },
+    "zero_alpha": {
+      "cd": 0.01055,
+      "cl": 0.0,
+      "cm": 0.0
+    }
+  },
+  "promoted_fixture": {
+    "path": "golden.json",
+    "sha256": "e115ccd405726c1f5592cea6d2c7f6f25461c0d469921c59d8d6f887c41afb40"
+  },
+  "promotion_allowed": true,
+  "reference_provider": {
+    "adapter_version": "2",
+    "backend_name": "XFOIL",
+    "backend_version": "6.99",
+    "name": "xfoil-subprocess"
+  },
+  "reproducibility_review": {
+    "artifact_digest": "sha256:6a9f65fdf77f580626d9b6b2567441b4b2b34207b4413092d7a6aba85efd3663",
+    "artifact_id": 9263251687,
+    "differences": [],
+    "report_sha256": "477248186e8e4b9575e4e2e1d075416f73f60cd3515d2877865d175d84bdec60",
+    "run_id": 31945859274,
+    "semantic_sha256": "28501d0feded441dcf19b0a10981b097e26b783c394ebb2a373a1bf5d98d4453"
+  },
+  "review_state": "approved",
+  "schema_version": 1,
+  "source_revision": "464dde5eea0a3266c830c6db6ff20f44fbc4e21e"
+}

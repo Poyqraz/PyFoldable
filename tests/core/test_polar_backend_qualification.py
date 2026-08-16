@@ -11,11 +11,14 @@ import pytest
 
 from pyfoldable.core import (
     PolarBackendQualification,
+    PolarGoldenFixture,
     ProviderCapabilities,
     ProviderIdentity,
+    load_polar_family_config,
     load_polar_golden_fixture,
     run_polar_provider_benchmark,
 )
+from pyfoldable.core.polar_backend_qualification import _validate_fixture_envelope
 
 
 FIXTURE = (
@@ -23,6 +26,19 @@ FIXTURE = (
     / "fixtures"
     / "polar_acceptance"
     / "naca0012_re200k.json"
+)
+REAL_FIXTURE = (
+    Path(__file__).parents[1]
+    / "fixtures"
+    / "polar_real_qualification"
+    / "naca0012_re200k_real_v1"
+    / "golden.json"
+)
+REAL_CONFIG = (
+    Path(__file__).parents[2]
+    / "configs"
+    / "polars"
+    / "NACA0012_RE200K_REAL.toml"
 )
 
 
@@ -90,3 +106,36 @@ def test_qualification_rejects_noncanonical_digests(digest: str) -> None:
         PolarBackendQualification(
             digest, qualification.fixture_sha256, qualification.report
         )
+
+
+def test_reviewed_fixture_matches_configured_semantic_airfoil_envelope() -> None:
+    config = load_polar_family_config(REAL_CONFIG)
+    fixture = load_polar_golden_fixture(REAL_FIXTURE)
+
+    _validate_fixture_envelope(config, (fixture,))
+
+
+@pytest.mark.parametrize(
+    ("field_name", "value"),
+    [
+        ("n_crit", 8.0),
+        ("xtr_upper", 0.9),
+        ("xtr_lower", 0.9),
+        ("max_iterations", 50),
+        ("timeout_s", 31.0),
+        ("options", {"changed": True}),
+    ],
+)
+def test_reviewed_fixture_rejects_solver_envelope_drift(
+    field_name: str, value: object
+) -> None:
+    config = load_polar_family_config(REAL_CONFIG)
+    fixture = load_polar_golden_fixture(REAL_FIXTURE)
+    changed_request = replace(fixture.reference.request, **{field_name: value})
+    changed_fixture = PolarGoldenFixture(
+        fixture.name,
+        replace(fixture.reference, request=changed_request),
+    )
+
+    with pytest.raises(ValueError, match=field_name):
+        _validate_fixture_envelope(config, (changed_fixture,))
