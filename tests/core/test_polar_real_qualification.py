@@ -97,7 +97,7 @@ def _request(*, source: str = "unit-test") -> PolarGenerationRequest:
 
 
 def _capture():
-    xfoil_identity = ProviderIdentity("xfoil-subprocess", "1", "XFOIL", "6.99")
+    xfoil_identity = ProviderIdentity("xfoil-subprocess", "2", "XFOIL", "6.99")
     neural_identity = ProviderIdentity("neuralfoil", "1", "NeuralFoil", "0.3.3")
     xfoil = CaptureProvider(xfoil_identity)
     neural = CaptureProvider(neural_identity, cl_offset=0.01)
@@ -115,9 +115,9 @@ def _capture():
 
 
 def test_capture_requires_exact_backend_identities_before_execution() -> None:
-    identity = ProviderIdentity("xfoil-subprocess", "1", "XFOIL", "6.99")
+    identity = ProviderIdentity("xfoil-subprocess", "2", "XFOIL", "6.99")
     provider = CaptureProvider(identity)
-    wrong = ProviderIdentity("xfoil-subprocess", "1", "XFOIL", "6.996")
+    wrong = ProviderIdentity("xfoil-subprocess", "2", "XFOIL", "6.996")
     with pytest.raises(ValueError, match="do not match the pinned"):
         capture_real_polar_qualification(
             (provider,),
@@ -132,7 +132,7 @@ def test_capture_requires_exact_backend_identities_before_execution() -> None:
 
 
 def test_capture_rejects_invalid_provenance_before_execution() -> None:
-    identity = ProviderIdentity("xfoil-subprocess", "1", "XFOIL", "6.99")
+    identity = ProviderIdentity("xfoil-subprocess", "2", "XFOIL", "6.99")
     provider = CaptureProvider(identity)
     with pytest.raises(ValueError, match="40- or 64-character"):
         capture_real_polar_qualification(
@@ -187,7 +187,7 @@ def test_bundle_never_overwrites_previous_evidence(tmp_path: Path) -> None:
 def test_provider_failure_is_preserved_as_unreviewed_hashed_evidence(
     tmp_path: Path,
 ) -> None:
-    xfoil_identity = ProviderIdentity("xfoil-subprocess", "1", "XFOIL", "6.99")
+    xfoil_identity = ProviderIdentity("xfoil-subprocess", "2", "XFOIL", "6.99")
     neural_identity = ProviderIdentity("neuralfoil", "1", "NeuralFoil", "0.3.3")
     destination = write_polar_real_qualification_failure_bundle(
         case_name="failed-execution",
@@ -216,7 +216,7 @@ def test_provider_failure_is_preserved_as_unreviewed_hashed_evidence(
 def test_unusable_reference_is_preserved_as_failed_review_evidence(
     tmp_path: Path,
 ) -> None:
-    xfoil_identity = ProviderIdentity("xfoil-subprocess", "1", "XFOIL", "6.99")
+    xfoil_identity = ProviderIdentity("xfoil-subprocess", "2", "XFOIL", "6.99")
     neural_identity = ProviderIdentity("neuralfoil", "1", "NeuralFoil", "0.3.3")
     capture = capture_real_polar_qualification(
         (

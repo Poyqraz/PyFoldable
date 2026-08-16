@@ -27,7 +27,7 @@ from ..core.providers import (
 )
 
 
-_ADAPTER_VERSION = "1"
+_ADAPTER_VERSION = "2"
 _AIRFOIL_FILENAME = "airfoil.dat"
 _POLAR_FILENAME = "polar.txt"
 _ALPHA_MATCH_TOLERANCE_DEG = 1.0e-3
@@ -253,11 +253,17 @@ def _build_command_script(
     )
     if request.max_iterations is not None:
         commands.append(f"ITER {request.max_iterations}")
-    commands.extend(["PACC", _POLAR_FILENAME, ""])
+    # Accumulate in memory and write once at the end. XFOIL 6.99's direct
+    # PACC-to-file path appends every converged point after positioning the
+    # sequential file at EOF. Modern gfortran rejects the subsequent WRITE
+    # unless XFOIL first issues BACKSPACE/REWIND, so that legacy path can abort
+    # an otherwise successful solve. Deferred PWRT uses a fresh whole-polar
+    # write and works across both legacy and current runtimes.
+    commands.extend(["PACC", "", ""])
     commands.extend(
         f"ALFA {_format_real(math.degrees(alpha))}" for alpha in request.alpha_rad
     )
-    commands.extend(["PACC", "", "QUIT", ""])
+    commands.extend(["PACC", "PWRT 1", _POLAR_FILENAME, "", "QUIT", ""])
     return "\n".join(commands)
 
 

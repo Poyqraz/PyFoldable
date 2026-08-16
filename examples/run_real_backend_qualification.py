@@ -12,7 +12,7 @@ from pyfoldable import (
 
 
 EXPECTED_PROVIDERS = (
-    ProviderIdentity("xfoil-subprocess", "1", "XFOIL", "6.99"),
+    ProviderIdentity("xfoil-subprocess", "2", "XFOIL", "6.99"),
     ProviderIdentity("neuralfoil", "1", "NeuralFoil", "0.3.3"),
 )
 
