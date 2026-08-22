@@ -65,6 +65,20 @@ from .rotational_augmentation import (
 )
 
 from .config import DesignConfigError, load_design_config
+from .foldable_rotor import (
+    FOLDABLE_BEM_ROTOR_SCHEMA_VERSION,
+    FixedLimitEquivalenceCase,
+    FixedLimitEquivalenceEvidence,
+    FoldableBEMRotorResult,
+    FoldableBladeProjection,
+    FoldableRotorGeometryError,
+    FoldableRotorState,
+    FoldableStationProjection,
+    assess_fixed_limit_equivalence,
+    project_foldable_blade,
+    project_spanwise_polar_schedule,
+    solve_foldable_bem_rotor,
+)
 from .models import (
     AirfoilDefinition,
     BladeGeometry,
@@ -231,6 +245,14 @@ __all__ = [
     "APCPE0Station",
     "BladeGeometry",
     "BladeStation",
+    "FOLDABLE_BEM_ROTOR_SCHEMA_VERSION",
+    "FixedLimitEquivalenceCase",
+    "FixedLimitEquivalenceEvidence",
+    "FoldableBEMRotorResult",
+    "FoldableBladeProjection",
+    "FoldableRotorGeometryError",
+    "FoldableRotorState",
+    "FoldableStationProjection",
     "BEM_ANNULUS_SCHEMA_VERSION",
     "BEMAnnulusError",
     "BEMAnnulusResult",
@@ -367,6 +389,7 @@ __all__ = [
     "generate_polar_cached",
     "generate_polar_family",
     "build_rotor_benchmark_proxy_polar_family",
+    "assess_fixed_limit_equivalence",
     "generate_polar_family_batch",
     "generate_polar_orchestrated",
     "evaluate_rotor_benchmark_variant",
@@ -380,6 +403,8 @@ __all__ = [
     "parse_airfoil_coordinates",
     "parse_apc_pe0",
     "parse_quantity",
+    "project_foldable_blade",
+    "project_spanwise_polar_schedule",
     "write_polar_real_qualification_failure_bundle",
     "write_polar_real_qualification_comparison",
     "run_polar_provider_benchmark",
@@ -388,6 +413,7 @@ __all__ = [
     "radial_convergence_evidence",
     "solve_bem_annulus",
     "solve_bem_rotor",
+    "solve_foldable_bem_rotor",
     "qualify_real_polar_backends",
     "write_polar_real_qualification_bundle",
 ]

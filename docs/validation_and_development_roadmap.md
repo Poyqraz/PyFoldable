@@ -18,7 +18,7 @@ sonunda; rotor fiziği doğrulamasının başında** bulunuyor.
 | 2B kesit aerodinamiği | Reynolds/Mach enterpolasyonu ve izlenebilir kesit yükleri mevcut | 3B dönel akış ve stall düzeltmeleri |
 | Rotor aerodinamiği | QPROP-tabanlı indüksiyon/swirl, uç/kök kaybı, radyal integrasyon ve üretici-geometri taraması mevcut | Temsili Reynolds-duyarlı spanwise polarlara dayalı rotor seviyesi doğrulama |
 | Motor–pervane etkileşimi | Referans-yük son işlemesi | Tork–devir denge noktasını birlikte çözen kapalı çevrim |
-| Katlanır mekanizma | Geometri/kinematik modeller ve karşılaştırma akışı mevcut | Açılma durumu–yük–performans geri beslemesi |
+| Katlanır mekanizma | PR-06D fold-state sınırı, etkin yarıçap projeksiyonu ve sabit-limit kanıtı mevcut | Fiziksel nitelikli açılma duyarlılığı ve yük–performans geri beslemesi |
 | CFD korelasyonu | Seviye-1 hazırlık/çıktı sözleşmeleri | Ağ bağımsızlığı ve BEM–CFD korelasyonu |
 | Yapısal doğrulama | Malzeme ve menteşe veri modelleri | FEA, yorulma, kilit/menteşe yükleri ve balans |
 | Deneysel doğrulama | Henüz birincil doğrulama verisi yok | Kalibre edilmiş itki standı, belirsizlik bütçesi, korelasyon |
@@ -63,14 +63,21 @@ kanıt paketi ve başarısızlığı görünür kılan regresyonu bulunduğunda 
   yerel, SHA sabitlenmiş güncel APC PE0 geometrisiyle proxy taraması toplam CT/CP
   WMAPE'yi %16,23/%16,98'e indirdi; ancak CT biası −%14,07, ileri-uçuş CT/CP WMAPE
   %25,68/%23,19 ve temsili spanwise polar kanıtı hâlâ kapı dışıdır. Bu nedenle PR-06D
-  blokludur. Ayrıntı [geometri/polar remediation](pr06c_geometry_polar_remediation.md)
+  fiziksel doğruluk iddiası blokludur; ancak bu başarısız karar açıkça korunarak
+  yazılım temeli başlatılmıştır. Ayrıntı [geometri/polar remediation](pr06c_geometry_polar_remediation.md)
   ve [kritik kapı review](pr06c_critical_gate_review.md) belgelerindedir. Temsili polar
   statüsü artık koordinat/provider sürümü, tam solver sorgu zarfı ve iki-capture
   promotion kaydı olmadan üretilemez. Snel-1993 düzeltmesi varsayılan tam no-op ve
   açık provenance ile eklendi; proxy ablation statik hatayı azaltırken ileri-uçuş
   hatasını kapatmadığı için fiziksel niteleme iddiası oluşturmadı.
-- **PR-06D — katlanır geometri bağlantısı.** Açılma açısı, etkin yarıçap ve yerel
-  kinematik rotor çözücüsüne taşınır; sabit–katlanır farkı fizik tabanlı hale gelir.
+- **PR-06D — katlanır geometri bağlantısı (yazılım temeli aktif).** Typed açılma
+  durumu, menteşe sınırı, etkin yarıçap ve malzeme-istasyonu projeksiyonu rotor
+  çözücüsüne taşındı. Tam açık yol, donmuş UIUC matrisindeki 50/50 propulsif noktada
+  sabit çözücüyle bit düzeyinde aynı sonuç verdi (maksimum |ΔT| ve |ΔQ| = 0).
+  Geçersiz/çökmüş durumlar kapalı biçimde hata veriyor; polar kimliği malzeme
+  yarıçapıyla taşınıyor ve sonuçlar nominal/etkin geometri provenance'ı içeriyor.
+  Bu [sabit-limit kanıtı](../reports/pr06d_fixed_limit_equivalence.md) yalnız yazılım
+  eşdeğerliğidir; katlanmış durumun fiziksel doğruluğu PR-06C geçmeden nitelikli değildir.
 
 PR-06A'nın denklemsel temeli Mark Drela'nın
 [QPROP formulation](https://web.mit.edu/drela/Public/web/qprop/qprop_theory.pdf)
@@ -129,7 +136,7 @@ arşiv bütünlüğü sürüm kapısıdır.
 | 1 | PR-06A yerel annulus çözücüsü | Tamamlandı: hover, denklem kalıntısı, loss-model ve açık kapsam regresyonları |
 | 2 | PR-06B rotor integrasyonu | Tamamlandı: radyal yakınsama, yük/toplam tutarlılığı ve provenance |
 | 3 | PR-06C referans benchmark | Kapsam + üretici-geometri/spanwise tüketim + typed kanıt/dönel ablation temeli tamamlandı; gerçek E63→APC12 ailesi ve ileri-uçuş doğruluğu başarısız |
-| 4 | PR-06D katlanır bağlantı | **Bloklu:** PR-06C tüm kapıları geçtikten sonra sabit-limit eşdeğerliği ve açılma duyarlılığı |
+| 4 | PR-06D katlanır bağlantı | **Aktif:** sabit-limit eşdeğerliği ve fold-state geometri temeli tamamlandı; fiziksel nitelikli açılma duyarlılığı PR-06C'ye bağlı |
 | 5 | PR-07 motor bağlantısı | Tork/enerji dengesi ve ölçüm korelasyonu |
 | 6 | PR-08/09 CFD ve FEA | Bağımsızlık, izlenebilir solver kanıtı, güvenlik kapıları |
 | 7 | PR-10 deney | Kalibrasyonlu veri ve belirsizlik içinde korelasyon |
@@ -153,5 +160,6 @@ aldı; PR-06A/06B kod ve integrasyon temelini kurdu. PR-06C düzeltmesi ileri u�
 yerel negatif yüklenen annulus dalını tamamladı ve tüm propulsif noktaları çözdü.
 Kritik yol artık **tested blade'i temsil eden E63→APC12 spanwise, Reynolds-duyarlı polar kanıtı**,
 **dönel/model-form hata düzeltmesi** ve **bağımsız aerodinamik review**dur. Aynı
-dondurulmuş UIUC fixture/politika üzerindeki tüm kapılar geçmeden PR-06D'ye veya
-doğruluk iddiasına ilerlenmez.
+dondurulmuş UIUC fixture/politika üzerindeki tüm kapılar geçmeden PR-06D'nin fiziksel
+doğruluk iddiasına veya nitelikli açılma duyarlılığına ilerlenmez. Sabit-limit yazılım
+eşdeğerliği bu sınırı değiştirmeden PR-06D uygulama aşamasına giriş sağlamıştır.

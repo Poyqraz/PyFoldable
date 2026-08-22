@@ -1,0 +1,490 @@
+{
+  "benchmark_id": "pr06d-uiuc-apcsf-10x4.7-fixed-limit-v1",
+  "cases": [
+    {
+      "operating_condition_id": "static-2377",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "static-2676",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "static-2947",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "static-3234",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "static-3494",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "static-3762",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "static-4029",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "static-4319",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "static-4590",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "static-4880",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "static-5147",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "static-5417",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "static-5715",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "static-5960",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "static-6226",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "static-6528",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-4997-j0487",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-4997-j0520",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-4997-j0547",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-4997-j0575",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-4997-j0604",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-4997-j0636",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6020-j0408",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6020-j0432",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6020-j0458",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6020-j0480",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6020-j0507",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6020-j0528",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6020-j0551",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6020-j0574",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6020-j0601",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6020-j0623",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6020-j0652",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6512-j0089",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6512-j0112",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6512-j0134",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6512-j0155",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6512-j0176",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6512-j0199",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6512-j0225",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6512-j0246",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6512-j0266",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6512-j0287",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6512-j0308",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6512-j0332",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6512-j0357",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6512-j0378",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6512-j0395",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6512-j0420",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    },
+    {
+      "operating_condition_id": "forward-6512-j0445",
+      "passed": true,
+      "power_coefficient_delta": 0.0,
+      "rotor_mapping_equal": true,
+      "thrust_coefficient_delta": 0.0,
+      "thrust_delta_n": 0.0,
+      "torque_delta_nm": 0.0
+    }
+  ],
+  "decision": "pr06d_software_fixed_limit_passed",
+  "fixture": {
+    "id": "uiuc-apcsf-10x4.7-volume1-v3-screening-v1",
+    "path": "tests/fixtures/rotor_benchmark/uiuc_apcsf_10x4.7_v1.json",
+    "qualification_point_count": 50,
+    "sha256": "c6f04a4d32ea9c4421db38ec67a2164be0b81b13c64b0a81718792dfd047531b"
+  },
+  "kind": "pr06d-fixed-limit-equivalence",
+  "maximum_absolute_thrust_delta_n": 0.0,
+  "maximum_absolute_torque_delta_nm": 0.0,
+  "passed": true,
+  "point_count": 50,
+  "polar_evidence": {
+    "airfoil_id": "APC-SF-4412-CLARKY-PROXY",
+    "evidence_class": "analytic_proxy",
+    "representative": false
+  },
+  "qualification": "software_equivalence_not_physical_accuracy",
+  "schema_version": 1,
+  "scope": "Exact software-path equivalence only. This does not pass the PR-06C physical-accuracy gates or qualify folded-state predictions.",
+  "solver": {
+    "annulus_count": 80,
+    "include_root_loss": false,
+    "include_tip_loss": true,
+    "loading_branch": "signed_nonreversed",
+    "radial_domain": "station_span"
+  },
+  "state": {
+    "angle_from_deployed_rad": 0.0,
+    "deployed_angle_rad": 0.0,
+    "hinge_radius_m": 0.09525,
+    "id": "fully-deployed-fixed-limit",
+    "opening_angle_rad": 0.0,
+    "projection_model": "radial_cosine_v1"
+  }
+}
