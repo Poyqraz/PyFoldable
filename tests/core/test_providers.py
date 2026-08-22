@@ -1,5 +1,7 @@
 """Provider contracts, cache identity, and partial-result behavior."""
 
+import hashlib
+
 from dataclasses import replace
 
 import pytest
@@ -238,12 +240,26 @@ def test_provider_metadata_cannot_override_required_provenance() -> None:
         IDENTITY,
         tuple(_point(alpha) for alpha in request.alpha_rad),
         0.01,
-        metadata={"cache_key": "forged", "provider": {"name": "forged"}},
+        metadata={
+            "cache_key": "forged",
+            "provider": {"name": "forged"},
+            "evidence_class": "analytic_proxy",
+            "airfoil_source": "forged",
+            "airfoil_coordinate_sha256": "0" * 64,
+        },
     )
 
     table = result.to_polar_table()
     assert table.metadata["cache_key"] == result.cache_key
     assert table.metadata["provider"] == IDENTITY.as_mapping()
+    assert table.metadata["evidence_class"] == "provider_generated_polar"
+    assert table.metadata["airfoil_source"] == AIRFOIL.source
+    coordinate_document = "\n".join(
+        f"{x:.17g},{y:.17g}" for x, y in AIRFOIL.coordinates
+    ).encode("utf-8")
+    assert table.metadata["airfoil_coordinate_sha256"] == hashlib.sha256(
+        coordinate_document
+    ).hexdigest()
 
 
 def test_request_rejects_duplicate_alpha_and_non_integer_iterations() -> None:

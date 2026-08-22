@@ -9,7 +9,7 @@ tip-loss relation.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Literal, Mapping
 
 from scipy.optimize import brentq
@@ -17,9 +17,13 @@ from scipy.optimize import brentq
 from .models import BladeGeometry, BladeStation, OperatingCondition
 from .polar import PolarBoundsPolicy, PolarFamily, PolarQueryResult
 from .polar_spanwise import SpanwisePolarSection
+from .rotational_augmentation import (
+    RotationalAugmentationModel,
+    RotationalAugmentationResult,
+)
 
 
-BEM_ANNULUS_SCHEMA_VERSION = 3
+BEM_ANNULUS_SCHEMA_VERSION = 5
 BEMLoadingBranch = Literal["positive_only", "signed_nonreversed"]
 BEMLoadingRegime = Literal["negative", "zero", "positive"]
 _AIR_GAMMA = 1.4
@@ -35,6 +39,112 @@ class BEMConvergenceError(RuntimeError):
 
 
 @dataclass(frozen=True)
+class BEMPolarQueryEnvelope:
+    """Complete polar-query envelope traversed by one or more root solves."""
+
+    query_count: int
+    alpha_rad_min: float
+    alpha_rad_max: float
+    reynolds_min: float
+    reynolds_max: float
+    mach_min: float
+    mach_max: float
+    sources: tuple[str, ...]
+    interpolated_dimensions: tuple[str, ...]
+    clamped_dimensions: tuple[str, ...]
+
+    @classmethod
+    def from_queries(
+        cls, queries: tuple[PolarQueryResult, ...]
+    ) -> "BEMPolarQueryEnvelope":
+        if not queries:
+            raise ValueError("Polar query envelope requires at least one query.")
+        return cls(
+            query_count=len(queries),
+            alpha_rad_min=min(query.alpha_rad for query in queries),
+            alpha_rad_max=max(query.alpha_rad for query in queries),
+            reynolds_min=min(query.reynolds for query in queries),
+            reynolds_max=max(query.reynolds for query in queries),
+            mach_min=min(query.mach for query in queries),
+            mach_max=max(query.mach for query in queries),
+            sources=tuple(
+                dict.fromkeys(source for query in queries for source in query.sources)
+            ),
+            interpolated_dimensions=tuple(
+                sorted(
+                    {
+                        dimension
+                        for query in queries
+                        for dimension in query.interpolated_dimensions
+                    }
+                )
+            ),
+            clamped_dimensions=tuple(
+                sorted(
+                    {
+                        dimension
+                        for query in queries
+                        for dimension in query.clamped_dimensions
+                    }
+                )
+            ),
+        )
+
+    @classmethod
+    def combine(
+        cls, envelopes: tuple["BEMPolarQueryEnvelope", ...]
+    ) -> "BEMPolarQueryEnvelope":
+        if not envelopes:
+            raise ValueError("Polar query envelope combination cannot be empty.")
+        return cls(
+            query_count=sum(envelope.query_count for envelope in envelopes),
+            alpha_rad_min=min(envelope.alpha_rad_min for envelope in envelopes),
+            alpha_rad_max=max(envelope.alpha_rad_max for envelope in envelopes),
+            reynolds_min=min(envelope.reynolds_min for envelope in envelopes),
+            reynolds_max=max(envelope.reynolds_max for envelope in envelopes),
+            mach_min=min(envelope.mach_min for envelope in envelopes),
+            mach_max=max(envelope.mach_max for envelope in envelopes),
+            sources=tuple(
+                dict.fromkeys(
+                    source for envelope in envelopes for source in envelope.sources
+                )
+            ),
+            interpolated_dimensions=tuple(
+                sorted(
+                    {
+                        dimension
+                        for envelope in envelopes
+                        for dimension in envelope.interpolated_dimensions
+                    }
+                )
+            ),
+            clamped_dimensions=tuple(
+                sorted(
+                    {
+                        dimension
+                        for envelope in envelopes
+                        for dimension in envelope.clamped_dimensions
+                    }
+                )
+            ),
+        )
+
+    def as_mapping(self) -> Mapping[str, Any]:
+        return {
+            "query_count": self.query_count,
+            "alpha_rad_min": self.alpha_rad_min,
+            "alpha_rad_max": self.alpha_rad_max,
+            "reynolds_min": self.reynolds_min,
+            "reynolds_max": self.reynolds_max,
+            "mach_min": self.mach_min,
+            "mach_max": self.mach_max,
+            "sources": list(self.sources),
+            "interpolated_dimensions": list(self.interpolated_dimensions),
+            "clamped_dimensions": list(self.clamped_dimensions),
+        }
+
+
+@dataclass(frozen=True)
 class BEMAnnulusSettings:
     """Numerical and loss-model controls for one annulus solution."""
 
@@ -47,6 +157,9 @@ class BEMAnnulusSettings:
     include_tip_loss: bool = True
     include_root_loss: bool = False
     loading_branch: BEMLoadingBranch = "positive_only"
+    rotational_augmentation: RotationalAugmentationModel = field(
+        default_factory=RotationalAugmentationModel.disabled
+    )
 
     def __post_init__(self) -> None:
         if not isinstance(self.bracket_samples, int) or isinstance(
@@ -82,6 +195,12 @@ class BEMAnnulusSettings:
             raise ValueError(
                 "loading_branch must be 'positive_only' or 'signed_nonreversed'."
             )
+        if not isinstance(
+            self.rotational_augmentation, RotationalAugmentationModel
+        ):
+            raise TypeError(
+                "rotational_augmentation must be a RotationalAugmentationModel."
+            )
 
     def as_mapping(self) -> Mapping[str, Any]:
         """Return the complete numerical/loss-model contract."""
@@ -95,6 +214,9 @@ class BEMAnnulusSettings:
             "include_tip_loss": self.include_tip_loss,
             "include_root_loss": self.include_root_loss,
             "loading_branch": self.loading_branch,
+            "rotational_augmentation": dict(
+                self.rotational_augmentation.as_mapping()
+            ),
         }
 
 
@@ -124,6 +246,9 @@ class BEMAnnulusResult:
     mach: float
     cl: float
     cd: float
+    raw_polar_cl: float
+    raw_polar_cd: float
+    rotational_augmentation: Mapping[str, Any]
     circulation_m2_s: float
     tip_loss_factor: float
     root_loss_factor: float
@@ -134,6 +259,7 @@ class BEMAnnulusResult:
     polar_sources: tuple[str, ...]
     interpolated_dimensions: tuple[str, ...]
     clamped_dimensions: tuple[str, ...]
+    polar_query_envelope: BEMPolarQueryEnvelope
 
     @property
     def converged(self) -> bool:
@@ -165,6 +291,9 @@ class BEMAnnulusResult:
             "mach": self.mach,
             "cl": self.cl,
             "cd": self.cd,
+            "raw_polar_cl": self.raw_polar_cl,
+            "raw_polar_cd": self.raw_polar_cd,
+            "rotational_augmentation": dict(self.rotational_augmentation),
             "circulation_m2_s": self.circulation_m2_s,
             "tip_loss_factor": self.tip_loss_factor,
             "root_loss_factor": self.root_loss_factor,
@@ -175,6 +304,7 @@ class BEMAnnulusResult:
             "polar_sources": list(self.polar_sources),
             "interpolated_dimensions": list(self.interpolated_dimensions),
             "clamped_dimensions": list(self.clamped_dimensions),
+            "polar_query_envelope": dict(self.polar_query_envelope.as_mapping()),
         }
 
 
@@ -190,6 +320,7 @@ class _AnnulusState:
     reynolds: float
     mach: float
     polar: PolarQueryResult
+    augmentation: RotationalAugmentationResult
     tip_loss: float
     root_loss: float
     combined_loss: float
@@ -304,6 +435,7 @@ def solve_bem_annulus(
     speed_of_sound = math.sqrt(
         _AIR_GAMMA * _AIR_GAS_CONSTANT_J_KG_K * condition.temperature_k
     )
+    polar_queries: list[PolarQueryResult] = []
 
     def evaluate(psi: float) -> _AnnulusState:
         wa = 0.5 * axial_external + 0.5 * external_speed * math.sin(psi)
@@ -324,6 +456,13 @@ def solve_bem_annulus(
             reynolds=reynolds,
             mach=mach,
             bounds=bounds,
+        )
+        polar_queries.append(polar)
+        augmentation = controls.rotational_augmentation.apply(
+            alpha_rad=station.twist_rad - phi,
+            cl_2d=polar.cl,
+            cd_2d=polar.cd,
+            chord_over_radius=station.chord_m / radius,
         )
         tip_loss, root_loss, combined_loss, wake_ratio = _loss_factors(
             blade=blade,
@@ -348,7 +487,9 @@ def solve_bem_annulus(
             * combined_loss
             * correction
         )
-        circulation_blade = 0.5 * relative_speed * station.chord_m * polar.cl
+        circulation_blade = (
+            0.5 * relative_speed * station.chord_m * augmentation.cl
+        )
         return _AnnulusState(
             psi,
             wa,
@@ -360,6 +501,7 @@ def solve_bem_annulus(
             reynolds,
             mach,
             polar,
+            augmentation,
             tip_loss,
             root_loss,
             combined_loss,
@@ -486,12 +628,12 @@ def solve_bem_annulus(
         * station.chord_m
     )
     differential_thrust = dynamic_force * (
-        solution.polar.cl * math.cos(solution.phi)
-        - solution.polar.cd * math.sin(solution.phi)
+        solution.augmentation.cl * math.cos(solution.phi)
+        - solution.augmentation.cd * math.sin(solution.phi)
     )
     differential_torque = dynamic_force * (
-        solution.polar.cl * math.sin(solution.phi)
-        + solution.polar.cd * math.cos(solution.phi)
+        solution.augmentation.cl * math.sin(solution.phi)
+        + solution.augmentation.cd * math.cos(solution.phi)
     ) * radius
 
     return BEMAnnulusResult(
@@ -515,8 +657,11 @@ def solve_bem_annulus(
         relative_speed_m_s=solution.relative_speed,
         reynolds=solution.reynolds,
         mach=solution.mach,
-        cl=solution.polar.cl,
-        cd=solution.polar.cd,
+        cl=solution.augmentation.cl,
+        cd=solution.augmentation.cd,
+        raw_polar_cl=solution.polar.cl,
+        raw_polar_cd=solution.polar.cd,
+        rotational_augmentation=solution.augmentation.as_mapping(),
         circulation_m2_s=solution.circulation_blade,
         tip_loss_factor=solution.tip_loss,
         root_loss_factor=solution.root_loss,
@@ -527,4 +672,5 @@ def solve_bem_annulus(
         polar_sources=solution.polar.sources,
         interpolated_dimensions=solution.polar.interpolated_dimensions,
         clamped_dimensions=solution.polar.clamped_dimensions,
+        polar_query_envelope=BEMPolarQueryEnvelope.from_queries(tuple(polar_queries)),
     )

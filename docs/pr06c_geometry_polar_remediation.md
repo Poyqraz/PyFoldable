@@ -61,6 +61,17 @@ analytic proxy against the target coefficients.
 - rotor integration support for a different local polar family at every annulus while
   retaining the original constant-airfoil API;
 - synthetic parser/schedule regressions that distribute no APC content.
+- complete root-search polar query envelopes (alpha, Reynolds, Mach, source,
+  interpolation and clamp state) aggregated to each rotor result;
+- typed, fail-closed representative-polar evidence tied to exact coordinate/provider,
+  operating-condition, query-count and reviewed promotion identities;
+- an opt-in Snel-1993 rotational-lift correction with default exact no-op behavior,
+  published-formula regression, explicit domain failure and annulus provenance.
+
+The approximate-geometry proxy ablation changed overall CT/CP WMAPE from
+26.40%/28.28% to 25.81%/27.83%. Static CT/CP improved to 10.00%/9.91%, while
+forward CT/CP remained 40.47%/38.44%. Therefore the correction is retained as a
+reviewable model component, not promoted as the PR-06C solution.
 
 ## Remaining critical path
 

@@ -12,6 +12,7 @@ from pyfoldable.core import (
     OperatingCondition,
     PolarFamily,
     PolarTable,
+    RotationalAugmentationModel,
     solve_bem_annulus,
 )
 
@@ -276,13 +277,18 @@ def test_result_mapping_preserves_polar_provenance_and_is_json_serializable():
     result = solve_bem_annulus(blade, station, _condition(), _family())
     payload = result.as_mapping()
 
-    assert payload["schema_version"] == 3
+    assert payload["schema_version"] == 5
     assert payload["loading_regime"] == "positive"
     assert payload["scenario_id"] == "synthetic-constant"
     assert payload["polar_bounds"] == "error"
     assert payload["settings"]["include_tip_loss"] is True
     assert payload["polar_sources"]
     assert "reynolds" in payload["interpolated_dimensions"]
+    assert payload["polar_query_envelope"]["query_count"] >= 1
+    assert payload["rotational_augmentation"]["model_id"] == "disabled"
+    assert payload["polar_query_envelope"]["alpha_rad_min"] <= result.angle_of_attack_rad
+    assert payload["polar_query_envelope"]["alpha_rad_max"] >= result.angle_of_attack_rad
+    assert payload["polar_query_envelope"]["clamped_dimensions"] == []
     json.dumps(payload)
 
 
@@ -296,6 +302,39 @@ def test_annulus_settings_mapping_records_every_model_switch():
     assert payload["loading_branch"] == "positive_only"
     assert payload["relative_residual_tolerance"] == pytest.approx(1.0e-10)
     json.dumps(payload)
+
+
+def test_rotational_augmentation_is_opt_in_and_default_is_exact_no_op():
+    blade, station = _blade()
+    default = solve_bem_annulus(blade, station, _condition(), _family())
+    explicit_disabled = solve_bem_annulus(
+        blade,
+        station,
+        _condition(),
+        _family(),
+        settings=BEMAnnulusSettings(
+            rotational_augmentation=RotationalAugmentationModel.disabled()
+        ),
+    )
+    assert default.as_mapping() == explicit_disabled.as_mapping()
+    assert default.cl == default.raw_polar_cl
+    assert default.cd == default.raw_polar_cd
+
+    enabled = solve_bem_annulus(
+        blade,
+        station,
+        _condition(),
+        _family(),
+        settings=BEMAnnulusSettings(
+            rotational_augmentation=RotationalAugmentationModel.snel_1993(
+                lift_curve_slope_per_rad=2.0 * math.pi,
+                zero_lift_angle_rad=-0.05,
+            )
+        ),
+    )
+    assert enabled.rotational_augmentation["model_id"] == "snel-1993-v1"
+    assert enabled.cl != enabled.raw_polar_cl
+    assert enabled.cd == enabled.raw_polar_cd
 
 
 @pytest.mark.parametrize(

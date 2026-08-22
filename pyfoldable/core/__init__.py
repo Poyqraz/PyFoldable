@@ -21,6 +21,7 @@ from .bem import (
     BEMConvergenceError,
     BEMLoadingBranch,
     BEMLoadingRegime,
+    BEMPolarQueryEnvelope,
     solve_bem_annulus,
 )
 from .bem_rotor import (
@@ -45,6 +46,22 @@ from .rotor_benchmark import (
     load_rotor_benchmark_fixture,
     radial_convergence_evidence,
     run_rotor_benchmark_cases,
+    run_rotor_benchmark_cases_with_results,
+)
+from .rotor_polar_evidence import (
+    AirfoilCoordinateIdentity,
+    PolarPromotionEvidence,
+    ROTOR_POLAR_EVIDENCE_SCHEMA_VERSION,
+    RotorPolarEvidence,
+    RotorPolarEvidencePolicy,
+    assess_rotor_polar_evidence,
+)
+from .rotational_augmentation import (
+    SNEL_1993_SOURCE,
+    RotationalAugmentationDomainError,
+    RotationalAugmentationKind,
+    RotationalAugmentationModel,
+    RotationalAugmentationResult,
 )
 
 from .config import DesignConfigError, load_design_config
@@ -205,6 +222,7 @@ from .units import (
 
 __all__ = [
     "AirfoilDefinition",
+    "AirfoilCoordinateIdentity",
     "AirfoilFileFormat",
     "AirfoilGeometryError",
     "APCPE0AirfoilTransition",
@@ -220,6 +238,7 @@ __all__ = [
     "BEMConvergenceError",
     "BEMLoadingBranch",
     "BEMLoadingRegime",
+    "BEMPolarQueryEnvelope",
     "BEM_ROTOR_SCHEMA_VERSION",
     "BEMRadialDomain",
     "BEMRotorElement",
@@ -250,6 +269,8 @@ __all__ = [
     "POLAR_RESULT_QUALIFICATION_SCHEMA_VERSION",
     "POLAR_SECTION_ANALYSIS_SCHEMA_VERSION",
     "ROTOR_BENCHMARK_SCHEMA_VERSION",
+    "ROTOR_POLAR_EVIDENCE_SCHEMA_VERSION",
+    "SNEL_1993_SOURCE",
     "PolarBoundsPolicy",
     "PolarAcceptanceCriteria",
     "PolarAcceptanceReport",
@@ -287,6 +308,7 @@ __all__ = [
     "PolarInterpolationError",
     "PolarPointResult",
     "PolarPointStatus",
+    "PolarPromotionEvidence",
     "PolarProvider",
     "PolarProviderConfig",
     "PolarProviderFactory",
@@ -320,6 +342,12 @@ __all__ = [
     "RotorBenchmarkPoint",
     "RotorBenchmarkPolicy",
     "RotorBenchmarkPrediction",
+    "RotorPolarEvidence",
+    "RotorPolarEvidencePolicy",
+    "RotationalAugmentationDomainError",
+    "RotationalAugmentationKind",
+    "RotationalAugmentationModel",
+    "RotationalAugmentationResult",
     "QuantityInput",
     "ProviderCapabilities",
     "ProviderIdentity",
@@ -334,6 +362,7 @@ __all__ = [
     "compare_polar_real_qualification_bundles",
     "compare_polar_results",
     "analyze_generated_polar_sections",
+    "assess_rotor_polar_evidence",
     "generate_polar",
     "generate_polar_cached",
     "generate_polar_family",
@@ -355,6 +384,7 @@ __all__ = [
     "write_polar_real_qualification_comparison",
     "run_polar_provider_benchmark",
     "run_rotor_benchmark_cases",
+    "run_rotor_benchmark_cases_with_results",
     "radial_convergence_evidence",
     "solve_bem_annulus",
     "solve_bem_rotor",

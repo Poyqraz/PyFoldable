@@ -234,9 +234,16 @@ def test_forward_flight_efficiency_and_provenance_are_serializable():
     assert result.polar_sources
     assert "reynolds" in result.interpolated_dimensions
     payload = result.as_mapping()
-    assert payload["schema_version"] == 3
+    assert payload["schema_version"] == 5
     assert payload["integration_method"] == "midpoint"
     assert payload["settings"]["annulus_count"] == 8
+    assert payload["polar_query_envelope"]["query_count"] == sum(
+        element.solution.polar_query_envelope.query_count
+        for element in result.elements
+    )
+    assert payload["polar_query_envelope"]["reynolds_min"] <= min(
+        element.solution.reynolds for element in result.elements
+    )
     json.dumps(payload)
 
 
@@ -276,7 +283,7 @@ def test_spanwise_polar_schedule_reaches_every_annulus_with_provenance():
         settings=BEMRotorSettings(annulus_count=4),
     )
 
-    assert result.schema_version == 3
+    assert result.schema_version == 5
     assert result.airfoil_id == "root-to-tip"
     assert all(
         "span" in element.solution.interpolated_dimensions

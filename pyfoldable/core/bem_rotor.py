@@ -12,14 +12,16 @@ from .bem import (
     BEMAnnulusResult,
     BEMAnnulusSettings,
     BEMConvergenceError,
+    BEMPolarQueryEnvelope,
     solve_bem_annulus,
 )
 from .models import BladeGeometry, BladeStation, OperatingCondition
 from .polar import PolarBoundsPolicy, PolarFamily, PolarInterpolationError
 from .polar_spanwise import SpanwisePolarSchedule
+from .rotational_augmentation import RotationalAugmentationDomainError
 
 
-BEM_ROTOR_SCHEMA_VERSION = 3
+BEM_ROTOR_SCHEMA_VERSION = 5
 BEMRadialDomain = Literal["station_span", "hub_to_tip"]
 
 
@@ -127,6 +129,7 @@ class BEMRotorResult:
     polar_sources: tuple[str, ...]
     interpolated_dimensions: tuple[str, ...]
     clamped_dimensions: tuple[str, ...]
+    polar_query_envelope: BEMPolarQueryEnvelope
 
     @property
     def annulus_count(self) -> int:
@@ -160,6 +163,7 @@ class BEMRotorResult:
             "polar_sources": list(self.polar_sources),
             "interpolated_dimensions": list(self.interpolated_dimensions),
             "clamped_dimensions": list(self.clamped_dimensions),
+            "polar_query_envelope": dict(self.polar_query_envelope.as_mapping()),
         }
 
 
@@ -316,6 +320,7 @@ def solve_bem_rotor(
             BEMConvergenceError,
             BEMRotorError,
             PolarInterpolationError,
+            RotationalAugmentationDomainError,
         ) as exc:
             raise BEMRotorElementError(
                 f"Annulus {index} at r/R={ratio:.8g} failed: {exc}"
@@ -397,4 +402,7 @@ def solve_bem_rotor(
         polar_sources=sources,
         interpolated_dimensions=interpolated,
         clamped_dimensions=clamped,
+        polar_query_envelope=BEMPolarQueryEnvelope.combine(
+            tuple(element.solution.polar_query_envelope for element in element_tuple)
+        ),
     )
