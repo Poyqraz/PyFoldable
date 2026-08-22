@@ -6,7 +6,8 @@ PR-06C is numerically mature but is **not physically qualified**. The implementa
 now prevents a boolean or hand-edited metadata field from promoting a polar family,
 records every polar query made during root finding, and supports an opt-in,
 versioned rotational-lift ablation. The unchanged UIUC gates still fail, so PR-06D
-remains blocked.
+physical qualification remains blocked. The PR-06D software foundation may proceed
+only with that non-qualification encoded in its result and evidence contracts.
 
 ## What this review verified
 
@@ -74,11 +75,14 @@ The review isolated the remaining error with unchanged inputs:
 | 4 | Real-family ablation | `2-D → 2-D+rotation → 2-D+rotation+wake`, no UIUC fitting | Pending step 3 |
 | 5 | Tip/wake model review | Independent QPROP/XROTOR/CCBlade comparison at high advance ratio | Pending |
 | 6 | PR-06C promotion | All overall/static/forward CT/CP, bias, coverage, convergence and evidence gates pass | Blocked |
-| 7 | PR-06D | Fixed-limit equivalence before opening-angle sensitivity | Blocked by step 6 |
+| 7 | PR-06D software foundation | Exact fixed-limit equivalence before opening-angle sensitivity | Implemented: 50/50 exact matches, zero thrust/torque delta |
+| 8 | PR-06D physical sensitivity | Qualified opening-angle loads and performance | Blocked by step 6 |
 
 The next run must use caller-supplied, license-compatible E63 and APC PE0 inputs. If
 any coverage, confidence, reproducibility, physics or accuracy gate fails, the result
-remains a diagnostic artifact and PR-06D stays blocked.
+remains a diagnostic artifact and PR-06D physical predictions stay non-qualifying.
+The separate [fixed-limit evidence](../reports/pr06d_fixed_limit_equivalence.md)
+proves software compatibility only and cannot promote PR-06C.
 
 ## Primary references
 
