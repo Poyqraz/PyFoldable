@@ -119,6 +119,10 @@ def test_solution_satisfies_qprop_circulation_and_local_load_equations():
         swirl_circulation - blade_circulation, abs=1.0e-9
     )
     assert result.circulation_m2_s == pytest.approx(blade_circulation)
+    assert (
+        result.axial_induced_velocity_m_s * wa
+        - result.tangential_induced_velocity_m_s * wt
+    ) == pytest.approx(0.0, abs=1.0e-10)
     assert result.differential_thrust_n_m == pytest.approx(
         force_scale
         * (
@@ -166,6 +170,36 @@ def test_tip_loss_can_be_disabled_explicitly():
     assert with_loss.psi_rad != pytest.approx(without_loss.psi_rad)
 
 
+def test_root_loss_is_an_explicit_non_qprop_extension():
+    blade, _ = _blade()
+    station = BladeStation(0.2, 0.04, math.radians(30.0), "foil")
+
+    qprop = solve_bem_annulus(blade, station, _condition(), _family())
+    with_root_loss = solve_bem_annulus(
+        blade,
+        station,
+        _condition(),
+        _family(),
+        settings=BEMAnnulusSettings(include_root_loss=True),
+    )
+
+    assert qprop.root_loss_factor == 1.0
+    assert 0.0 < with_root_loss.root_loss_factor < 1.0
+    radius = station.r_over_R * blade.radius_m
+    root_argument = (
+        0.5
+        * blade.blade_count
+        * (radius - blade.hub_radius_m)
+        / (blade.hub_radius_m * math.sin(with_root_loss.inflow_angle_rad))
+    )
+    expected_root_loss = (2.0 / math.pi) * math.acos(math.exp(-root_argument))
+    assert with_root_loss.root_loss_factor == pytest.approx(expected_root_loss)
+    assert with_root_loss.combined_loss_factor == pytest.approx(
+        with_root_loss.tip_loss_factor * with_root_loss.root_loss_factor
+    )
+    assert with_root_loss.psi_rad != pytest.approx(qprop.psi_rad)
+
+
 @pytest.mark.parametrize(
     ("station", "condition", "family", "message"),
     (
@@ -209,8 +243,35 @@ def test_result_mapping_preserves_polar_provenance_and_is_json_serializable():
     result = solve_bem_annulus(blade, station, _condition(), _family())
     payload = result.as_mapping()
 
-    assert payload["schema_version"] == 1
+    assert payload["schema_version"] == 2
     assert payload["scenario_id"] == "synthetic-constant"
+    assert payload["polar_bounds"] == "error"
+    assert payload["settings"]["include_tip_loss"] is True
     assert payload["polar_sources"]
     assert "reynolds" in payload["interpolated_dimensions"]
     json.dumps(payload)
+
+
+def test_annulus_settings_mapping_records_every_model_switch():
+    settings = BEMAnnulusSettings(include_tip_loss=False, include_root_loss=True)
+
+    payload = settings.as_mapping()
+
+    assert payload["include_tip_loss"] is False
+    assert payload["include_root_loss"] is True
+    assert payload["relative_residual_tolerance"] == pytest.approx(1.0e-10)
+    json.dumps(payload)
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    (
+        {"bracket_samples": 2.5},
+        {"max_iterations": True},
+        {"include_tip_loss": 1},
+        {"include_root_loss": "yes"},
+    ),
+)
+def test_annulus_settings_reject_ambiguous_runtime_types(kwargs):
+    with pytest.raises(TypeError):
+        BEMAnnulusSettings(**kwargs)
