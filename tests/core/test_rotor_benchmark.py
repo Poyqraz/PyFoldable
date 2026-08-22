@@ -31,7 +31,11 @@ REPORT = PROJECT_ROOT / "reports" / "pr06c_fixed_propeller_benchmark.json"
 def _selected_variant():
     fixture = load_rotor_benchmark_fixture(FIXTURE)
     family = build_rotor_benchmark_proxy_polar_family()
-    annulus = BEMAnnulusSettings(include_tip_loss=True, include_root_loss=False)
+    annulus = BEMAnnulusSettings(
+        include_tip_loss=True,
+        include_root_loss=False,
+        loading_branch="signed_nonreversed",
+    )
     settings = BEMRotorSettings(80, "station_span", annulus)
     convergence = radial_convergence_evidence(
         fixture,
@@ -44,7 +48,7 @@ def _selected_variant():
         fixture,
         predictions,
         RotorBenchmarkPolicy(),
-        variant_id="qprop-tip_proxy-baseline",
+        variant_id="qprop-signed-tip_proxy-baseline",
         representative_polar_evidence=False,
         radial_terminal_delta=convergence["maximum_terminal_relative_delta"],
         settings=settings,
@@ -86,6 +90,7 @@ def test_selected_pr06c_variant_reproduces_frozen_failure_evidence():
     fixture, convergence, actual = _selected_variant()
     stored = json.loads(REPORT.read_text(encoding="utf-8"))
 
+    assert stored["schema_version"] == 2
     assert stored["fixture"]["sha256"] == fixture.source_sha256
     assert {
         key: value
@@ -96,23 +101,23 @@ def test_selected_pr06c_variant_reproduces_frozen_failure_evidence():
         "analytic_proxy"
     )
     assert stored["radial_convergence"] == convergence
-    assert len(stored["sensitivity_variants"]) == 4
+    assert len(stored["sensitivity_variants"]) == 5
     assert not any(
         variant["passed"] for variant in stored["sensitivity_variants"]
     )
     assert not actual["passed"]
-    assert actual["successful_point_count"] == 23
-    assert actual["solution_coverage"] == pytest.approx(0.46)
-    assert actual["failure_counts"] == {"BEMConvergenceError": 27}
+    assert actual["successful_point_count"] == 50
+    assert actual["solution_coverage"] == pytest.approx(1.0)
+    assert actual["failure_counts"] == {}
     assert actual["gates"] == {
-        "solution_coverage": False,
-        "ct_wmape": True,
-        "cp_wmape": True,
+        "solution_coverage": True,
+        "ct_wmape": False,
+        "cp_wmape": False,
         "ct_bias": False,
-        "cp_bias": True,
+        "cp_bias": False,
         "radial_convergence": True,
         "representative_polar_evidence": False,
-        "regime_solution_coverage": False,
+        "regime_solution_coverage": True,
         "regime_ct_wmape": False,
         "regime_cp_wmape": False,
         "regime_ct_bias": False,

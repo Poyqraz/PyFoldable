@@ -55,7 +55,10 @@ def _condition(*, forward_speed: float = 0.0) -> OperatingCondition:
     )
 
 
-def _family(*, cl: float = 0.8, airfoil_id: str = "foil") -> PolarFamily:
+def _family(
+    *, cl: float | tuple[float, float] = 0.8, airfoil_id: str = "foil"
+) -> PolarFamily:
+    cl_values = (cl, cl) if isinstance(cl, float) else cl
     return PolarFamily(
         tuple(
             PolarTable(
@@ -64,7 +67,7 @@ def _family(*, cl: float = 0.8, airfoil_id: str = "foil") -> PolarFamily:
                 reynolds=reynolds,
                 mach=mach,
                 alpha_rad=(-math.pi / 2.0, math.pi / 2.0),
-                cl=(cl, cl),
+                cl=cl_values,
                 cd=(0.02, 0.02),
                 cm=(0.0, 0.0),
                 source=f"rotor-m{mach}-re{reynolds}",
@@ -228,9 +231,30 @@ def test_forward_flight_efficiency_and_provenance_are_serializable():
     assert result.polar_sources
     assert "reynolds" in result.interpolated_dimensions
     payload = result.as_mapping()
+    assert payload["schema_version"] == 2
     assert payload["integration_method"] == "midpoint"
     assert payload["settings"]["annulus_count"] == 8
     json.dumps(payload)
+
+
+def test_signed_branch_integrates_mixed_local_loading_without_partial_results():
+    result = solve_bem_rotor(
+        _blade(),
+        _condition(forward_speed=28.0),
+        {"foil": _family(cl=(-0.5, 1.0))},
+        settings=BEMRotorSettings(
+            annulus_count=24,
+            annulus_settings=BEMAnnulusSettings(
+                loading_branch="signed_nonreversed"
+            ),
+        ),
+    )
+
+    regimes = {element.solution.loading_regime for element in result.elements}
+    assert regimes == {"negative", "positive"}
+    assert all(
+        element.solution.relative_speed_m_s > 0.0 for element in result.elements
+    )
 
 
 def test_promoted_real_xfoil_polar_reaches_the_rotor_consumer():

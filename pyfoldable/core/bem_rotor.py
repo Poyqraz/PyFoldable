@@ -18,7 +18,7 @@ from .models import BladeGeometry, BladeStation, OperatingCondition
 from .polar import PolarBoundsPolicy, PolarFamily, PolarInterpolationError
 
 
-BEM_ROTOR_SCHEMA_VERSION = 1
+BEM_ROTOR_SCHEMA_VERSION = 2
 BEMRadialDomain = Literal["station_span", "hub_to_tip"]
 
 

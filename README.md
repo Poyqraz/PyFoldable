@@ -64,8 +64,9 @@ PR-06A/06B akışı için `solve_bem_annulus()` ve `solve_bem_rotor()` ayrı, fa
 sözleşmelerdir. Rotor çözücüsü varsayılan olarak yalnız blade station aralığını midpoint
 kuralıyla integre eder; hub-tip geometri uzatması ve Prandtl kök faktörü açıkça seçilir.
 PR-06C, UIUC APC 10×4.7 rüzgâr-tüneli verisiyle 60 noktalı benchmark, ağ ve model/polar
-duyarlılığı üretir. Güncel sonuç sayısal yakınsama kapısını geçirir; fakat ileri uçuş
-çözüm kapsamı ve temsili polar kanıtı geçmediği için fiziksel doğruluk ve PR-06D geçişi
+duyarlılığı üretir. İmzalı, ters-akışsız yerel yükleme dalı ileri-uçuş çözüm kapsamını
+%20,6'dan %100'e çıkardı. Bununla birlikte dondurulmuş tam zarfta CT/CP hataları ve
+temsili polar kanıtı kapıları geçmediği için fiziksel doğruluk ve PR-06D geçişi
 kapalıdır. Denklem/kapsam incelemesi `docs/pr06_foundation_review.md`, geçmiş review
 `docs/pr04_pr06_retrospective_review.md`, çıktı ise
 `reports/pr06c_fixed_propeller_benchmark.md` altındadır.

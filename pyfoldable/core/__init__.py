@@ -12,6 +12,8 @@ from .bem import (
     BEMAnnulusResult,
     BEMAnnulusSettings,
     BEMConvergenceError,
+    BEMLoadingBranch,
+    BEMLoadingRegime,
     solve_bem_annulus,
 )
 from .bem_rotor import (
@@ -200,6 +202,8 @@ __all__ = [
     "BEMAnnulusResult",
     "BEMAnnulusSettings",
     "BEMConvergenceError",
+    "BEMLoadingBranch",
+    "BEMLoadingRegime",
     "BEM_ROTOR_SCHEMA_VERSION",
     "BEMRadialDomain",
     "BEMRotorElement",

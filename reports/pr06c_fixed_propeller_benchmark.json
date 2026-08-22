@@ -4,19 +4,21 @@
   "evaluation": {
     "data_interpretation": "The existing APC 202602 repository table is manufacturer vortex-model output, not wind-tunnel validation; UIUC measurements are the physical reference used here.",
     "next_required_actions": [
-      "add a reviewed mixed/local-negative-loading forward-flight branch",
-      "obtain or generate a span-representative, Reynolds-aware APC polar family",
-      "rerun this frozen fixture without weakening the predeclared policy"
+      "reconstruct or obtain the tested blade's spanwise section geometry",
+      "generate Reynolds-aware polars with recorded solver confidence and limits",
+      "address rotational/model-form error and rerun this unchanged frozen policy",
+      "obtain independent aerodynamic review before physical promotion"
     ],
     "numerical_integration": "passes the declared terminal annulus-sensitivity gate",
-    "physical_accuracy": "not qualified: solution coverage and representative polar evidence must pass before coefficient error can authorize PR-06D",
-    "principal_failure_mode": "The positive-loading-only local branch rejects forward-flight cases when an inner annulus becomes locally unloaded or negative-loaded."
+    "physical_accuracy": "not qualified: full-envelope coefficient accuracy and representative polar evidence fail, so PR-06D remains blocked",
+    "principal_failure_mode": "The signed local branch restores full solution coverage, exposing large forward-flight model-form/polar error that subset-only metrics hid."
   },
   "failed_gates": [
-    "solution_coverage",
+    "ct_wmape",
+    "cp_wmape",
     "ct_bias",
+    "cp_bias",
     "representative_polar_evidence",
-    "regime_solution_coverage",
     "regime_ct_wmape",
     "regime_cp_wmape",
     "regime_ct_bias",
@@ -143,44 +145,42 @@
     ],
     "maximum_terminal_relative_delta": 0.00021303152951582057
   },
-  "schema_version": 1,
+  "schema_version": 2,
   "selected_variant": {
     "cp_metrics": {
-      "mae": 0.006892932166148588,
-      "maximum_absolute_error": 0.010637429934425152,
-      "mean_prediction": 0.041876633051242715,
-      "mean_reference": 0.0487695652173913,
-      "normalized_bias": -0.14133675654936037,
-      "normalized_rmse": 0.1591559456097845,
-      "rmse": 0.0077619662691519676,
-      "wmape": 0.14133675654936037
+      "mae": 0.011673893356891849,
+      "maximum_absolute_error": 0.024056516253383575,
+      "mean_prediction": 0.02960410664310815,
+      "mean_reference": 0.041277999999999995,
+      "normalized_bias": -0.2828115062961348,
+      "normalized_rmse": 0.3152410757884091,
+      "rmse": 0.01301252112639395,
+      "wmape": 0.2828115062961347
     },
     "ct_metrics": {
-      "mae": 0.017039232406656352,
-      "maximum_absolute_error": 0.02601823590916008,
-      "mean_prediction": 0.09864772411508277,
-      "mean_reference": 0.11568695652173913,
-      "normalized_bias": -0.14728741181340052,
-      "normalized_rmse": 0.16448680741149038,
-      "rmse": 0.019028978137412767,
-      "wmape": 0.14728741181340052
+      "mae": 0.02079851505257921,
+      "maximum_absolute_error": 0.026640582508866025,
+      "mean_prediction": 0.05798748494742079,
+      "mean_reference": 0.078786,
+      "normalized_bias": -0.26398744767571913,
+      "normalized_rmse": 0.278038733295739,
+      "rmse": 0.021905559641438095,
+      "wmape": 0.2639874476757192
     },
-    "failure_counts": {
-      "BEMConvergenceError": 27
-    },
+    "failure_counts": {},
     "gates": {
-      "cp_bias": true,
-      "cp_wmape": true,
+      "cp_bias": false,
+      "cp_wmape": false,
       "ct_bias": false,
-      "ct_wmape": true,
+      "ct_wmape": false,
       "radial_convergence": true,
       "regime_cp_bias": false,
       "regime_cp_wmape": false,
       "regime_ct_bias": false,
       "regime_ct_wmape": false,
-      "regime_solution_coverage": false,
+      "regime_solution_coverage": true,
       "representative_polar_evidence": false,
-      "solution_coverage": false
+      "solution_coverage": true
     },
     "passed": false,
     "point_count": 50,
@@ -291,106 +291,106 @@
         "thrust_coefficient": 0.10496473397331596
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-4997-j0487",
-        "status": "unsupported"
+        "power_coefficient": 0.01911418170655218,
+        "status": "success",
+        "thrust_coefficient": 0.020165346007196102
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-4997-j0520",
-        "status": "unsupported"
+        "power_coefficient": 0.015361218553319086,
+        "status": "success",
+        "thrust_coefficient": 0.012562775435707498
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-4997-j0547",
-        "status": "unsupported"
+        "power_coefficient": 0.01201396506666831,
+        "status": "success",
+        "thrust_coefficient": 0.00620417694928977
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-4997-j0575",
-        "status": "unsupported"
+        "power_coefficient": 0.008267988119245444,
+        "status": "success",
+        "thrust_coefficient": -0.0005181461593517694
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-4997-j0604",
-        "status": "unsupported"
+        "power_coefficient": 0.004106066611524881,
+        "status": "success",
+        "thrust_coefficient": -0.007607475248996061
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-4997-j0636",
-        "status": "unsupported"
+        "power_coefficient": -0.0007681275522221241,
+        "status": "success",
+        "thrust_coefficient": -0.015592690455417557
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-6020-j0408",
-        "status": "unsupported"
+        "power_coefficient": 0.026766011749362283,
+        "status": "success",
+        "thrust_coefficient": 0.03756262948126307
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-6020-j0432",
-        "status": "unsupported"
+        "power_coefficient": 0.024635864056445193,
+        "status": "success",
+        "thrust_coefficient": 0.03240127404294943
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-6020-j0458",
-        "status": "unsupported"
+        "power_coefficient": 0.022136345621934447,
+        "status": "success",
+        "thrust_coefficient": 0.026683760087190596
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-6020-j0480",
-        "status": "unsupported"
+        "power_coefficient": 0.01986698313186701,
+        "status": "success",
+        "thrust_coefficient": 0.021753863948451795
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-6020-j0507",
-        "status": "unsupported"
+        "power_coefficient": 0.01688102287878701,
+        "status": "success",
+        "thrust_coefficient": 0.015580796727666114
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-6020-j0528",
-        "status": "unsupported"
+        "power_coefficient": 0.014395965371754622,
+        "status": "success",
+        "thrust_coefficient": 0.010689872352823532
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-6020-j0551",
-        "status": "unsupported"
+        "power_coefficient": 0.011496163785167093,
+        "status": "success",
+        "thrust_coefficient": 0.005252407182658802
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-6020-j0574",
-        "status": "unsupported"
+        "power_coefficient": 0.00840650009917048,
+        "status": "success",
+        "thrust_coefficient": -0.0002759447621936058
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-6020-j0601",
-        "status": "unsupported"
+        "power_coefficient": 0.0045483368200319105,
+        "status": "success",
+        "thrust_coefficient": -0.00686685426541732
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-6020-j0623",
-        "status": "unsupported"
+        "power_coefficient": 0.0012596191098328984,
+        "status": "success",
+        "thrust_coefficient": -0.012330386509713286
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-6020-j0652",
-        "status": "unsupported"
+        "power_coefficient": -0.003356516253383576,
+        "status": "success",
+        "thrust_coefficient": -0.019641259588114454
       },
       {
         "point_id": "forward-6512-j0089",
@@ -435,92 +435,92 @@
         "thrust_coefficient": 0.07296504212651765
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-6512-j0246",
-        "status": "unsupported"
+        "power_coefficient": 0.03718416169858853,
+        "status": "success",
+        "thrust_coefficient": 0.06926478703476113
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-6512-j0266",
-        "status": "unsupported"
+        "power_coefficient": 0.036231703413203725,
+        "status": "success",
+        "thrust_coefficient": 0.06565270683420449
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-6512-j0287",
-        "status": "unsupported"
+        "power_coefficient": 0.03513939627695606,
+        "status": "success",
+        "thrust_coefficient": 0.06176785725840158
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-6512-j0308",
-        "status": "unsupported"
+        "power_coefficient": 0.03394860498229313,
+        "status": "success",
+        "thrust_coefficient": 0.05778878366889216
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-6512-j0332",
-        "status": "unsupported"
+        "power_coefficient": 0.03246156111612115,
+        "status": "success",
+        "thrust_coefficient": 0.05312563884009432
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-6512-j0357",
-        "status": "unsupported"
+        "power_coefficient": 0.030759345517324278,
+        "status": "success",
+        "thrust_coefficient": 0.04813877088235309
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-6512-j0378",
-        "status": "unsupported"
+        "power_coefficient": 0.029201370966679952,
+        "status": "success",
+        "thrust_coefficient": 0.043849169134166976
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-6512-j0395",
-        "status": "unsupported"
+        "power_coefficient": 0.027852056522654392,
+        "status": "success",
+        "thrust_coefficient": 0.040309647343027354
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-6512-j0420",
-        "status": "unsupported"
+        "power_coefficient": 0.02572212034493204,
+        "status": "success",
+        "thrust_coefficient": 0.03499566901110784
       },
       {
-        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
-        "error_type": "BEMConvergenceError",
         "point_id": "forward-6512-j0445",
-        "status": "unsupported"
+        "power_coefficient": 0.02341086226201472,
+        "status": "success",
+        "thrust_coefficient": 0.029559417491133975
       }
     ],
     "radial_terminal_delta": 0.00021303152951582057,
     "regime_metrics": {
       "forward": {
         "cp_metrics": {
-          "mae": 0.010305438389611895,
-          "maximum_absolute_error": 0.010637429934425152,
-          "mean_prediction": 0.040323133038959534,
-          "mean_reference": 0.050628571428571426,
-          "normalized_bias": -0.20354985532529138,
-          "normalized_rmse": 0.20358815179870157,
-          "rmse": 0.010307377285351405,
-          "wmape": 0.20354985532529138
+          "mae": 0.014626332257366415,
+          "maximum_absolute_error": 0.024056516253383575,
+          "mean_prediction": 0.023508961860280644,
+          "mean_reference": 0.03813529411764706,
+          "normalized_bias": -0.38353794288944787,
+          "normalized_rmse": 0.3977914378982591,
+          "rmse": 0.015169893481731846,
+          "wmape": 0.3835379428894479
         },
         "ct_metrics": {
-          "mae": 0.025134012703736015,
-          "maximum_absolute_error": 0.02601823590916008,
-          "mean_prediction": 0.08420884443912113,
-          "mean_reference": 0.10934285714285714,
-          "normalized_bias": -0.22986423951679136,
-          "normalized_rmse": 0.22992877966890643,
-          "rmse": 0.025141069708368713,
-          "wmape": 0.22986423951679136
+          "mae": 0.024234161653000488,
+          "maximum_absolute_error": 0.026640582508866025,
+          "mean_prediction": 0.035880544229352454,
+          "mean_reference": 0.06011470588235294,
+          "normalized_bias": -0.4031320006859517,
+          "normalized_rmse": 0.404349858151397,
+          "rmse": 0.02430737279634236,
+          "wmape": 0.4031320006859517
         },
         "point_count": 34,
-        "solution_coverage": 0.20588235294117646,
-        "successful_point_count": 7
+        "solution_coverage": 1.0,
+        "successful_point_count": 34
       },
       "static": {
         "cp_metrics": {
@@ -556,6 +556,7 @@
         "bracket_samples": 128,
         "include_root_loss": false,
         "include_tip_loss": true,
+        "loading_branch": "signed_nonreversed",
         "max_iterations": 100,
         "minimum_tip_loss_factor": 1e-06,
         "relative_residual_tolerance": 1e-10,
@@ -563,48 +564,46 @@
       },
       "radial_domain": "station_span"
     },
-    "solution_coverage": 0.46,
-    "successful_point_count": 23,
-    "variant_id": "qprop-tip_proxy-baseline"
+    "solution_coverage": 1.0,
+    "successful_point_count": 50,
+    "variant_id": "qprop-signed-tip_proxy-baseline"
   },
   "sensitivity_variants": [
     {
       "cp_metrics": {
-        "mae": 0.0068929362195423675,
-        "maximum_absolute_error": 0.01063743870210631,
-        "mean_prediction": 0.041876628997848934,
-        "mean_reference": 0.0487695652173913,
-        "normalized_bias": -0.14133683966254298,
-        "normalized_rmse": 0.15915605838803218,
-        "rmse": 0.007761971769298073,
-        "wmape": 0.14133683966254298
+        "mae": 0.0116734232112499,
+        "maximum_absolute_error": 0.024054790640537723,
+        "mean_prediction": 0.0296045767887501,
+        "mean_reference": 0.041277999999999995,
+        "normalized_bias": -0.2828001165572436,
+        "normalized_rmse": 0.31522529550802214,
+        "rmse": 0.013011869747980137,
+        "wmape": 0.2828001165572436
       },
       "ct_metrics": {
-        "mae": 0.017039260134022533,
-        "maximum_absolute_error": 0.026018298858619407,
-        "mean_prediction": 0.09864769638771659,
-        "mean_reference": 0.11568695652173913,
-        "normalized_bias": -0.14728765148922063,
-        "normalized_rmse": 0.1644871031392773,
-        "rmse": 0.019029012349260393,
-        "wmape": 0.14728765148922063
+        "mae": 0.020798208598828465,
+        "maximum_absolute_error": 0.026638936989094364,
+        "mean_prediction": 0.05798779140117153,
+        "mean_reference": 0.078786,
+        "normalized_bias": -0.2639835579776669,
+        "normalized_rmse": 0.2780342028360516,
+        "rmse": 0.021905202704641163,
+        "wmape": 0.2639835579776669
       },
-      "failure_counts": {
-        "BEMConvergenceError": 27
-      },
+      "failure_counts": {},
       "gates": {
-        "cp_bias": true,
-        "cp_wmape": true,
+        "cp_bias": false,
+        "cp_wmape": false,
         "ct_bias": false,
-        "ct_wmape": true,
+        "ct_wmape": false,
         "radial_convergence": true,
         "regime_cp_bias": false,
         "regime_cp_wmape": false,
         "regime_ct_bias": false,
         "regime_ct_wmape": false,
-        "regime_solution_coverage": false,
+        "regime_solution_coverage": true,
         "representative_polar_evidence": false,
-        "solution_coverage": false
+        "solution_coverage": true
       },
       "passed": false,
       "point_count": 50,
@@ -621,28 +620,28 @@
       "regime_metrics": {
         "forward": {
           "cp_metrics": {
-            "mae": 0.01030545242120952,
-            "maximum_absolute_error": 0.01063743870210631,
-            "mean_prediction": 0.04032311900736191,
-            "mean_reference": 0.050628571428571426,
-            "normalized_bias": -0.20355013247310003,
-            "normalized_rmse": 0.20358842798136054,
-            "rmse": 0.010307391268084881,
-            "wmape": 0.2035501324731
+            "mae": 0.014625641013573151,
+            "maximum_absolute_error": 0.024054790640537723,
+            "mean_prediction": 0.023509653104073908,
+            "mean_reference": 0.03813529411764706,
+            "normalized_bias": -0.3835198167989258,
+            "normalized_rmse": 0.39776989274810365,
+            "rmse": 0.01516907185109386,
+            "wmape": 0.3835198167989258
           },
           "ct_metrics": {
-            "mae": 0.025134091491628097,
-            "maximum_absolute_error": 0.026018298858619407,
-            "mean_prediction": 0.08420876565122905,
-            "mean_reference": 0.10934285714285714,
-            "normalized_bias": -0.22986496007498913,
-            "normalized_rmse": 0.22992949731638906,
-            "rmse": 0.025141148177994885,
-            "wmape": 0.22986496007498913
+            "mae": 0.02423370845000887,
+            "maximum_absolute_error": 0.026638936989094364,
+            "mean_prediction": 0.03588099743234407,
+            "mean_reference": 0.06011470588235294,
+            "normalized_bias": -0.4031244617154957,
+            "normalized_rmse": 0.4043419657432012,
+            "rmse": 0.024306898346544967,
+            "wmape": 0.4031244617154957
           },
           "point_count": 34,
-          "solution_coverage": 0.20588235294117646,
-          "successful_point_count": 7
+          "solution_coverage": 1.0,
+          "successful_point_count": 34
         },
         "static": {
           "cp_metrics": {
@@ -678,6 +677,7 @@
           "bracket_samples": 128,
           "include_root_loss": true,
           "include_tip_loss": true,
+          "loading_branch": "signed_nonreversed",
           "max_iterations": 100,
           "minimum_tip_loss_factor": 1e-06,
           "relative_residual_tolerance": 1e-10,
@@ -685,47 +685,45 @@
         },
         "radial_domain": "station_span"
       },
-      "solution_coverage": 0.46,
-      "successful_point_count": 23,
-      "variant_id": "qprop-tip-prandtl-root_proxy-baseline"
+      "solution_coverage": 1.0,
+      "successful_point_count": 50,
+      "variant_id": "qprop-signed-tip-prandtl-root_proxy-baseline"
     },
     {
       "cp_metrics": {
-        "mae": 0.006590153865560772,
-        "maximum_absolute_error": 0.010360191469042324,
-        "mean_prediction": 0.04217941135183053,
-        "mean_reference": 0.0487695652173913,
-        "normalized_bias": -0.13512841125782096,
-        "normalized_rmse": 0.1526118307202348,
-        "rmse": 0.007442812631255972,
-        "wmape": 0.13512841125782096
+        "mae": 0.011320747014280293,
+        "maximum_absolute_error": 0.02509238127586522,
+        "mean_prediction": 0.029957252985719707,
+        "mean_reference": 0.041277999999999995,
+        "normalized_bias": -0.274256190083829,
+        "normalized_rmse": 0.3091661472443706,
+        "rmse": 0.012761760225953126,
+        "wmape": 0.274256190083829
       },
       "ct_metrics": {
-        "mae": 0.014111638148099199,
-        "maximum_absolute_error": 0.022689399137725233,
-        "mean_prediction": 0.10177785112228585,
-        "mean_reference": 0.11568695652173913,
-        "normalized_bias": -0.12023054126105892,
-        "normalized_rmse": 0.1404131471439862,
-        "rmse": 0.016243969648726892,
-        "wmape": 0.12198123775040648
+        "mae": 0.018795843999115845,
+        "maximum_absolute_error": 0.024861608625655576,
+        "mean_prediction": 0.06008332106526128,
+        "mean_reference": 0.078786,
+        "normalized_bias": -0.2373858164488453,
+        "normalized_rmse": 0.2547117103648221,
+        "rmse": 0.020067716812802873,
+        "wmape": 0.23856832431035774
       },
-      "failure_counts": {
-        "BEMConvergenceError": 27
-      },
+      "failure_counts": {},
       "gates": {
-        "cp_bias": true,
-        "cp_wmape": true,
+        "cp_bias": false,
+        "cp_wmape": false,
         "ct_bias": false,
-        "ct_wmape": true,
+        "ct_wmape": false,
         "radial_convergence": true,
         "regime_cp_bias": false,
-        "regime_cp_wmape": true,
+        "regime_cp_wmape": false,
         "regime_ct_bias": false,
         "regime_ct_wmape": false,
-        "regime_solution_coverage": false,
+        "regime_solution_coverage": true,
         "representative_polar_evidence": false,
-        "solution_coverage": false
+        "solution_coverage": true
       },
       "passed": false,
       "point_count": 50,
@@ -742,28 +740,28 @@
       "regime_metrics": {
         "forward": {
           "cp_metrics": {
-            "mae": 0.00973006791474578,
-            "maximum_absolute_error": 0.010182284132767255,
-            "mean_prediction": 0.040898503513825644,
-            "mean_reference": 0.050628571428571426,
-            "normalized_bias": -0.19218531434317285,
-            "normalized_rmse": 0.19226308465920194,
-            "rmse": 0.00973400531474588,
-            "wmape": 0.19218531434317287
+            "mae": 0.01419336138850992,
+            "maximum_absolute_error": 0.02509238127586522,
+            "mean_prediction": 0.02394193272913714,
+            "mean_reference": 0.03813529411764706,
+            "normalized_bias": -0.3721843955031138,
+            "normalized_rmse": 0.39029848064734207,
+            "rmse": 0.014884147353157169,
+            "wmape": 0.3721843955031137
           },
           "ct_metrics": {
-            "mae": 0.021809252300625033,
-            "maximum_absolute_error": 0.022689399137725233,
-            "mean_prediction": 0.08753360484223212,
-            "mean_reference": 0.10934285714285714,
-            "normalized_bias": -0.19945749425708809,
-            "normalized_rmse": 0.19953102344698964,
-            "rmse": 0.021817292192332267,
-            "wmape": 0.1994574942570881
+            "mae": 0.02258497907805547,
+            "maximum_absolute_error": 0.024861608625655576,
+            "mean_prediction": 0.037529726804297475,
+            "mean_reference": 0.06011470588235294,
+            "normalized_bias": -0.37569807165413477,
+            "normalized_rmse": 0.3763033754561426,
+            "rmse": 0.022621366738082644,
+            "wmape": 0.37569807165413477
           },
           "point_count": 34,
-          "solution_coverage": 0.20588235294117646,
-          "successful_point_count": 7
+          "solution_coverage": 1.0,
+          "successful_point_count": 34
         },
         "static": {
           "cp_metrics": {
@@ -799,6 +797,7 @@
           "bracket_samples": 128,
           "include_root_loss": false,
           "include_tip_loss": false,
+          "loading_branch": "signed_nonreversed",
           "max_iterations": 100,
           "minimum_tip_loss_factor": 1e-06,
           "relative_residual_tolerance": 1e-10,
@@ -806,47 +805,45 @@
         },
         "radial_domain": "station_span"
       },
-      "solution_coverage": 0.46,
-      "successful_point_count": 23,
-      "variant_id": "no-loss_proxy-baseline"
+      "solution_coverage": 1.0,
+      "successful_point_count": 50,
+      "variant_id": "qprop-signed-no-loss_proxy-baseline"
     },
     {
       "cp_metrics": {
-        "mae": 0.009140238300941282,
-        "maximum_absolute_error": 0.012884249488635195,
-        "mean_prediction": 0.039629326916450026,
-        "mean_reference": 0.0487695652173913,
-        "normalized_bias": -0.18741685024663415,
-        "normalized_rmse": 0.2005582380261628,
-        "rmse": 0.009781138069302035,
-        "wmape": 0.18741685024663413
+        "mae": 0.013580409187390537,
+        "maximum_absolute_error": 0.02564723573317847,
+        "mean_prediction": 0.027697590812609463,
+        "mean_reference": 0.041277999999999995,
+        "normalized_bias": -0.32899872056278257,
+        "normalized_rmse": 0.3546078404297426,
+        "rmse": 0.014637502437258912,
+        "wmape": 0.3289987205627825
       },
       "ct_metrics": {
-        "mae": 0.01687068623822785,
-        "maximum_absolute_error": 0.025843836660694036,
-        "mean_prediction": 0.09881627028351128,
-        "mean_reference": 0.11568695652173913,
-        "normalized_bias": -0.14583049589568572,
-        "normalized_rmse": 0.16317366241220063,
-        "rmse": 0.018877064388973193,
-        "wmape": 0.14583049589568572
+        "mae": 0.020615570123992247,
+        "maximum_absolute_error": 0.02645688207345551,
+        "mean_prediction": 0.058170429876007755,
+        "mean_reference": 0.078786,
+        "normalized_bias": -0.2616653989794157,
+        "normalized_rmse": 0.2758127293460225,
+        "rmse": 0.02173018169425573,
+        "wmape": 0.26166539897941576
       },
-      "failure_counts": {
-        "BEMConvergenceError": 27
-      },
+      "failure_counts": {},
       "gates": {
         "cp_bias": false,
-        "cp_wmape": true,
+        "cp_wmape": false,
         "ct_bias": false,
-        "ct_wmape": true,
+        "ct_wmape": false,
         "radial_convergence": true,
         "regime_cp_bias": false,
         "regime_cp_wmape": false,
         "regime_ct_bias": false,
         "regime_ct_wmape": false,
-        "regime_solution_coverage": false,
+        "regime_solution_coverage": true,
         "representative_polar_evidence": false,
-        "solution_coverage": false
+        "solution_coverage": true
       },
       "passed": false,
       "point_count": 50,
@@ -863,28 +860,28 @@
       "regime_metrics": {
         "forward": {
           "cp_metrics": {
-            "mae": 0.01233964130049805,
-            "maximum_absolute_error": 0.012760313738301547,
-            "mean_prediction": 0.03828893012807338,
-            "mean_reference": 0.050628571428571426,
-            "normalized_bias": -0.24372880672541297,
-            "normalized_rmse": 0.24378062863337382,
-            "rmse": 0.01234226496966681,
-            "wmape": 0.24372880672541294
+            "mae": 0.016328601986804813,
+            "maximum_absolute_error": 0.02564723573317847,
+            "mean_prediction": 0.021806692130842246,
+            "mean_reference": 0.03813529411764706,
+            "normalized_bias": -0.4281755881161219,
+            "normalized_rmse": 0.44013627343852435,
+            "rmse": 0.016784726239423255,
+            "wmape": 0.4281755881161219
           },
           "ct_metrics": {
-            "mae": 0.02495937087771449,
-            "maximum_absolute_error": 0.025843836660694036,
-            "mean_prediction": 0.08438348626514267,
-            "mean_reference": 0.10934285714285714,
-            "normalized_bias": -0.22826704487065771,
-            "normalized_rmse": 0.2283320946954485,
-            "rmse": 0.024966483611413754,
-            "wmape": 0.22826704487065774
+            "mae": 0.024043185848952153,
+            "maximum_absolute_error": 0.02645688207345551,
+            "mean_prediction": 0.03607152003340079,
+            "mean_reference": 0.06011470588235294,
+            "normalized_bias": -0.3999551440209273,
+            "normalized_rmse": 0.4012033761565088,
+            "rmse": 0.024118222956655538,
+            "wmape": 0.3999551440209273
           },
           "point_count": 34,
-          "solution_coverage": 0.20588235294117646,
-          "successful_point_count": 7
+          "solution_coverage": 1.0,
+          "successful_point_count": 34
         },
         "static": {
           "cp_metrics": {
@@ -920,6 +917,7 @@
           "bracket_samples": 128,
           "include_root_loss": false,
           "include_tip_loss": true,
+          "loading_branch": "signed_nonreversed",
           "max_iterations": 100,
           "minimum_tip_loss_factor": 1e-06,
           "relative_residual_tolerance": 1e-10,
@@ -927,47 +925,45 @@
         },
         "radial_domain": "station_span"
       },
-      "solution_coverage": 0.46,
-      "successful_point_count": 23,
-      "variant_id": "qprop-tip_proxy-low-drag"
+      "solution_coverage": 1.0,
+      "successful_point_count": 50,
+      "variant_id": "qprop-signed-tip_proxy-low-drag"
     },
     {
       "cp_metrics": {
-        "mae": 0.003710376386372042,
-        "maximum_absolute_error": 0.00603583432528363,
-        "mean_prediction": 0.046533028806933566,
-        "mean_reference": 0.0487695652173913,
-        "normalized_bias": -0.04585926490195953,
-        "normalized_rmse": 0.08399263290863154,
-        "rmse": 0.004096284188417913,
-        "wmape": 0.07607975116925825
+        "mae": 0.007267950380400067,
+        "maximum_absolute_error": 0.018223821048728175,
+        "mean_prediction": 0.03468801600852051,
+        "mean_reference": 0.041277999999999995,
+        "normalized_bias": -0.15964881998835914,
+        "normalized_rmse": 0.20536607069346474,
+        "rmse": 0.008477100666084836,
+        "wmape": 0.17607322012694576
       },
       "ct_metrics": {
-        "mae": 0.010725891896583939,
-        "maximum_absolute_error": 0.01748953445300376,
-        "mean_prediction": 0.10674828081557605,
-        "mean_reference": 0.11568695652173913,
-        "normalized_bias": -0.07726606330492732,
-        "normalized_rmse": 0.10538004419663578,
-        "rmse": 0.012191096591235151,
-        "wmape": 0.09271479014635846
+        "mae": 0.012983885248564184,
+        "maximum_absolute_error": 0.017709381148436933,
+        "mean_prediction": 0.06662423419902941,
+        "mean_reference": 0.078786,
+        "normalized_bias": -0.15436455462862164,
+        "normalized_rmse": 0.1754645298862171,
+        "rmse": 0.0138241484516155,
+        "wmape": 0.16479939644815303
       },
-      "failure_counts": {
-        "BEMConvergenceError": 27
-      },
+      "failure_counts": {},
       "gates": {
-        "cp_bias": true,
+        "cp_bias": false,
         "cp_wmape": true,
-        "ct_bias": true,
-        "ct_wmape": true,
+        "ct_bias": false,
+        "ct_wmape": false,
         "radial_convergence": true,
-        "regime_cp_bias": true,
-        "regime_cp_wmape": true,
+        "regime_cp_bias": false,
+        "regime_cp_wmape": false,
         "regime_ct_bias": false,
         "regime_ct_wmape": false,
-        "regime_solution_coverage": false,
+        "regime_solution_coverage": true,
         "representative_polar_evidence": false,
-        "solution_coverage": false
+        "solution_coverage": true
       },
       "passed": false,
       "point_count": 50,
@@ -984,28 +980,28 @@
       "regime_metrics": {
         "forward": {
           "cp_metrics": {
-            "mae": 0.0053095697479985295,
-            "maximum_absolute_error": 0.005684405999478094,
-            "mean_prediction": 0.0453190016805729,
-            "mean_reference": 0.050628571428571426,
-            "normalized_bias": -0.1048729916365398,
-            "normalized_rmse": 0.10497826659114792,
-            "rmse": 0.005314899668557546,
-            "wmape": 0.1048729916365398
+            "mae": 0.009271348540277531,
+            "maximum_absolute_error": 0.018223821048728175,
+            "mean_prediction": 0.028863945577369526,
+            "mean_reference": 0.03813529411764706,
+            "normalized_bias": -0.24311726852493912,
+            "normalized_rmse": 0.2624119866132363,
+            "rmse": 0.010007158289491828,
+            "wmape": 0.24311726852493912
           },
           "ct_metrics": {
-            "mae": 0.016588442435605536,
-            "maximum_absolute_error": 0.01748953445300376,
-            "mean_prediction": 0.09275441470725161,
-            "mean_reference": 0.10934285714285714,
-            "normalized_bias": -0.15171034367551445,
-            "normalized_rmse": 0.15182775896140088,
-            "rmse": 0.016601280958436604,
-            "wmape": 0.15171034367551445
+            "mae": 0.015253466054588745,
+            "maximum_absolute_error": 0.017709381148436933,
+            "mean_prediction": 0.044861239827764195,
+            "mean_reference": 0.06011470588235294,
+            "normalized_bias": -0.2537393443201807,
+            "normalized_rmse": 0.256221494247622,
+            "rmse": 0.015402679767432781,
+            "wmape": 0.25373934432018075
           },
           "point_count": 34,
-          "solution_coverage": 0.20588235294117646,
-          "successful_point_count": 7
+          "solution_coverage": 1.0,
+          "successful_point_count": 34
         },
         "static": {
           "cp_metrics": {
@@ -1041,6 +1037,129 @@
           "bracket_samples": 128,
           "include_root_loss": false,
           "include_tip_loss": true,
+          "loading_branch": "signed_nonreversed",
+          "max_iterations": 100,
+          "minimum_tip_loss_factor": 1e-06,
+          "relative_residual_tolerance": 1e-10,
+          "residual_tolerance_m2_s": 1e-08
+        },
+        "radial_domain": "station_span"
+      },
+      "solution_coverage": 1.0,
+      "successful_point_count": 50,
+      "variant_id": "qprop-signed-tip_proxy-higher-camber"
+    },
+    {
+      "cp_metrics": {
+        "mae": 0.006892932166148588,
+        "maximum_absolute_error": 0.010637429934425152,
+        "mean_prediction": 0.041876633051242715,
+        "mean_reference": 0.0487695652173913,
+        "normalized_bias": -0.14133675654936037,
+        "normalized_rmse": 0.1591559456097845,
+        "rmse": 0.0077619662691519676,
+        "wmape": 0.14133675654936037
+      },
+      "ct_metrics": {
+        "mae": 0.017039232406656352,
+        "maximum_absolute_error": 0.02601823590916008,
+        "mean_prediction": 0.09864772411508277,
+        "mean_reference": 0.11568695652173913,
+        "normalized_bias": -0.14728741181340052,
+        "normalized_rmse": 0.16448680741149038,
+        "rmse": 0.019028978137412767,
+        "wmape": 0.14728741181340052
+      },
+      "failure_counts": {
+        "BEMConvergenceError": 27
+      },
+      "gates": {
+        "cp_bias": true,
+        "cp_wmape": true,
+        "ct_bias": false,
+        "ct_wmape": true,
+        "radial_convergence": true,
+        "regime_cp_bias": false,
+        "regime_cp_wmape": false,
+        "regime_ct_bias": false,
+        "regime_ct_wmape": false,
+        "regime_solution_coverage": false,
+        "representative_polar_evidence": false,
+        "solution_coverage": false
+      },
+      "passed": false,
+      "point_count": 50,
+      "polar_contract": {
+        "airfoil_id": "APC-SF-4412-CLARKY-PROXY",
+        "basis_url": "https://www.apcprop.com/technical-information/engineering/",
+        "evidence_class": "analytic_proxy",
+        "limitation": "APC publishes spanwise geometry but not an exact, qualified polar family for the tested blade; this declared proxy cannot pass the physical-polar gate.",
+        "representative_polar_evidence": false,
+        "scenario_id": "pr06c-analytic-proxy-v1",
+        "source": "analytic-proxy:a0=-4:clmax=1.2:cd0=0.025:k=0.025"
+      },
+      "radial_terminal_delta": 0.00021303152951582057,
+      "regime_metrics": {
+        "forward": {
+          "cp_metrics": {
+            "mae": 0.010305438389611895,
+            "maximum_absolute_error": 0.010637429934425152,
+            "mean_prediction": 0.040323133038959534,
+            "mean_reference": 0.050628571428571426,
+            "normalized_bias": -0.20354985532529138,
+            "normalized_rmse": 0.20358815179870157,
+            "rmse": 0.010307377285351405,
+            "wmape": 0.20354985532529138
+          },
+          "ct_metrics": {
+            "mae": 0.025134012703736015,
+            "maximum_absolute_error": 0.02601823590916008,
+            "mean_prediction": 0.08420884443912113,
+            "mean_reference": 0.10934285714285714,
+            "normalized_bias": -0.22986423951679136,
+            "normalized_rmse": 0.22992877966890643,
+            "rmse": 0.025141069708368713,
+            "wmape": 0.22986423951679136
+          },
+          "point_count": 34,
+          "solution_coverage": 0.20588235294117646,
+          "successful_point_count": 7
+        },
+        "static": {
+          "cp_metrics": {
+            "mae": 0.005399960693383391,
+            "maximum_absolute_error": 0.01054371069338339,
+            "mean_prediction": 0.04255628930661661,
+            "mean_reference": 0.04795625,
+            "normalized_bias": -0.11260181297293662,
+            "normalized_rmse": 0.13208897286584972,
+            "rmse": 0.006334491804997906,
+            "wmape": 0.11260181297293662
+          },
+          "ct_metrics": {
+            "mae": 0.013497766026683998,
+            "maximum_absolute_error": 0.024935266026684028,
+            "mean_prediction": 0.104964733973316,
+            "mean_reference": 0.1184625,
+            "normalized_bias": -0.11394125589687874,
+            "normalized_rmse": 0.1318574591829032,
+            "rmse": 0.015620164258454671,
+            "wmape": 0.11394125589687874
+          },
+          "point_count": 16,
+          "solution_coverage": 1.0,
+          "successful_point_count": 16
+        }
+      },
+      "representative_polar_evidence": false,
+      "settings": {
+        "annulus_count": 80,
+        "annulus_settings": {
+          "angle_tolerance_rad": 1e-10,
+          "bracket_samples": 128,
+          "include_root_loss": false,
+          "include_tip_loss": true,
+          "loading_branch": "positive_only",
           "max_iterations": 100,
           "minimum_tip_loss_factor": 1e-06,
           "relative_residual_tolerance": 1e-10,
@@ -1050,7 +1169,7 @@
       },
       "solution_coverage": 0.46,
       "successful_point_count": 23,
-      "variant_id": "qprop-tip_proxy-higher-camber"
+      "variant_id": "qprop-positive-only-tip_proxy-historical"
     }
   ]
 }

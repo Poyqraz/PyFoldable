@@ -30,7 +30,7 @@ substitute for independent aerodynamic or legal review.
 | PR-04H acceptance | Versioned golden fixture, coefficient/coverage gates, non-gating timing | Correctly separates deterministic regression from performance telemetry | The original golden data was adapter evidence, not a propeller experiment |
 | PR-05 family integration | Complete/partial grid policies, runtime config, section consumer | Complete-axis and rejection policies prevent sparse/interpolated ambiguity | Blade-level airfoil changes remain unsupported in PR-06B |
 | PR-05E real qualification | Pinned XFOIL 6.99 build, NeuralFoil 0.3.3, repeat capture, semantic comparison, promotion record | Strong reproducibility chain; the XFOIL append EOF incident was diagnosed and fixed with preserved failure evidence | NACA 0012 at one Re/Mach envelope is not representative of APC SF 10x4.7 spanwise aerodynamics |
-| PR-06A annulus | QPROP flow-angle parameterization, typed convergence/domain failures, residual and loss evidence | Equations and numerical residual gate remain sound in the declared positive-loading branch | Locally unloaded/negative-loaded annuli are outside the branch |
+| PR-06A annulus | QPROP flow-angle parameterization, typed convergence/domain failures, residual and loss evidence | Equations and numerical residual gate remain sound; the reviewed signed extension preserves the historical positive-only default | Reversed flow, descent, and whole-rotor physical accuracy remain outside this code gate |
 | PR-06B rotor | Midpoint integration, explicit radial domain, rotor coefficients, per-annulus provenance | Numerical integration is traceable and convergent; no partial totals are returned | Whole-rotor physical qualification and broader forward-flight branch were absent |
 
 ## Findings and dispositions
@@ -39,14 +39,14 @@ substitute for independent aerodynamic or legal review.
 | --- | --- | --- | --- |
 | High | The repository APC 202602 table could be mistaken for experiment. | APC states that its performance files are produced by proprietary vortex analysis using actual geometry. | Metadata now marks it `manufacturer_vortex_model_prediction`, `experimental=false`; PR-06C uses UIUC measurements. |
 | High | PR-06B had no measured whole-rotor accuracy gate. | Prior tests covered equations, convergence, totals, and a real polar consumer only. | A frozen 60-point UIUC fixture, 50-point propulsive envelope, policy, runner, JSON/Markdown report, and regression were added. |
-| High | Positive total thrust does not imply every annulus has positive loading. | 27 of 50 propulsive benchmark points fail when an inner annulus has no positive-loading solution. | Failure is retained by point/type; coverage is 46%, below 95%; PR-06D is blocked. |
+| High | Positive total thrust does not imply every annulus has positive loading. | The historical positive-only variant fails 27 of 50 propulsive points. | `signed_nonreversed` now solves locally negative loading while rejecting reversed flow; frozen-fixture coverage is 100%. |
 | High | The tested APC blade's exact spanwise polar family is unavailable in-repo. | APC says its dominant shapes are only *similar* to NACA 4412/Clark-Y and may vary with span. | The analytic proxy is labeled non-qualifying; the representative-polar gate fails regardless of coefficient fit. |
 | Medium | UIUC coefficient files do not encode run-specific atmosphere. | The downloaded files contain RPM/J/CT/CP/eta, not tunnel density, viscosity, temperature, or pressure. | Standard atmosphere is declared as a modeling assumption and included in fixture/report provenance. |
 | Medium | Geometry is approximate and starts at r/R=0.15. | UIUC Volume 1 identifies some geometry as approximate digitization. | Default `station_span` is retained; hub/tip geometry is not invented. |
 | Medium | Loss-model choice was unqualified. | PR-06B left root loss opt-in pending benchmark selection. | Baseline, root-loss, no-loss, low-drag, and higher-camber variants are reported; none bypasses coverage/polar gates. |
 | Medium | Review independence is limited. | GitHub reports no review submissions or inline threads for PRs #4–#28. | This retrospective is recorded, but future physical promotion should require an independent aerodynamic reviewer. |
 
-## Frozen PR-06C result
+## Original frozen PR-06C result
 
 The benchmark uses UIUC Volume 1 version 3 wind-tunnel measurements and approximate
 digitized geometry for APC Slow Flyer 10x4.7. All negative-thrust/windmilling rows are
@@ -96,14 +96,16 @@ counsel should review the commercial agreement before a material transaction.
 
 ## Required next increment
 
-PR-06D must not start until a PR-06C remediation increment:
+PR-06D must not start until the remaining PR-06C remediation gates are complete:
 
-1. implements and reviews a branch that permits locally unloaded/negative-loaded
-   annuli within an overall propulsive rotor solution;
-2. supplies a span-representative, Reynolds-aware polar family with source/version
+1. ~~implement and review a branch that permits locally unloaded/negative-loaded
+   annuli within an overall propulsive rotor solution~~ — completed by the
+   `signed_nonreversed` branch and frozen-fixture regression;
+2. supply a span-representative, Reynolds-aware polar family with source/version
    evidence instead of tuning the analytic proxy to the target coefficients;
-3. reruns the frozen fixture and unchanged policy;
-4. obtains independent aerodynamic review before physical promotion.
+3. rerun the frozen fixture and unchanged policy after the aerodynamic input/model
+   update;
+4. obtain independent aerodynamic review before physical promotion.
 
 Primary references:
 
@@ -114,3 +116,28 @@ Primary references:
 - [APC performance-data description](https://www.apcprop.com/technical-information/performance-data/)
 - [APC engineering/airfoil description](https://www.apcprop.com/technical-information/engineering/)
 - [PolyForm Noncommercial 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0)
+
+## Mandatory remediation recheck
+
+The original fixture and policy were rerun without relaxing a threshold. The signed,
+non-reversed branch raises total coverage from 46% to 100% and forward coverage from
+20.6% to 100%; the historical positive-only variant remains in the sensitivity record.
+This closes the numerical-domain finding, not the physical-accuracy gate.
+
+| Gate | Recheck | Observation | Policy |
+| --- | --- | ---: | ---: |
+| Solution coverage | Pass | 50/50 = 100% | ≥95% |
+| CT WMAPE | Fail | 26.40% | ≤15% |
+| CP WMAPE | Fail | 28.28% | ≤20% |
+| CT normalized bias | Fail | −26.40% | ±10% |
+| CP normalized bias | Fail | −28.28% | ±15% |
+| Maximum 80→160 annulus delta | Pass | 0.0213% | ≤0.5% |
+| Representative polar evidence | Fail | analytic proxy | required |
+| Forward CT / CP WMAPE | Fail / Fail | 40.31% / 38.35% | ≤15% / ≤20% |
+
+The mandatory code update is therefore complete and regression-protected, but the
+unchanged scientific gate still blocks PR-06D. The broader solved envelope shows that
+the earlier solved-subset errors understated the proxy/model-form deficiency. Required
+evidence is now exact or traceably reconstructed spanwise section geometry, qualified
+Reynolds-aware polars over the observed annulus envelope, rotational/model-form
+validation, and independent aerodynamic review.
