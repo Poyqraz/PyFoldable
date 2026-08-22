@@ -84,6 +84,12 @@ remains a diagnostic artifact and PR-06D physical predictions stay non-qualifyin
 The separate [fixed-limit evidence](../reports/pr06d_fixed_limit_equivalence.md)
 proves software compatibility only and cannot promote PR-06C.
 
+The final composite decision is now machine-enforced by
+`examples/run_pr06c_physical_gate.py` and preserved in
+`reports/pr06c_physical_gate.json`. It binds benchmark identity, the unchanged
+policy, typed polar evidence/query coverage, and independent model-form review;
+the current decision is `pr06c_blocked`.
+
 ## Primary references
 
 - [Snel, Houwink and Bosschers rotational augmentation report](https://publicaties.ecn.nl/PdfFetch.aspx?nr=ECN-C--93-052)

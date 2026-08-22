@@ -54,7 +54,8 @@ kanıt paketi ve başarısızlığı görünür kılan regresyonu bulunduğunda 
   chord/twist enterpolasyonu, açık radial-domain politikası, seçilebilir kök/uç
   kayıpları, rotor toplamları ve boyutsuz performans katsayıları eklendi. Fiziksel
   doğruluk iddiası PR-06C benchmark kapısına bağlıdır.
-- **PR-06C — sabit pervane benchmark'ı (üretici-geometri altyapısı tamamlandı;
+- **PR-06C — sabit pervane benchmark'ı (nihai fiziksel kapı yürütüldü ve fail-closed;
+  üretici-geometri altyapısı tamamlandı;
   kanıt/dönel-model temeli tamamlandı; polar/ileri-uçuş kapıları başarısız).** UIUC APC SF 10×4.7 rüzgâr-tüneli verisi üzerinde 60
   ham/50 propulsif nokta ve değişmeyen CT/CP politikası korunuyor. İncelenmiş
   `signed_nonreversed` dalı yerel negatif yüklemeyi ters akışa izin vermeden çözüyor;
@@ -135,7 +136,7 @@ arşiv bütünlüğü sürüm kapısıdır.
 | --- | --- | --- |
 | 1 | PR-06A yerel annulus çözücüsü | Tamamlandı: hover, denklem kalıntısı, loss-model ve açık kapsam regresyonları |
 | 2 | PR-06B rotor integrasyonu | Tamamlandı: radyal yakınsama, yük/toplam tutarlılığı ve provenance |
-| 3 | PR-06C referans benchmark | Kapsam + üretici-geometri/spanwise tüketim + typed kanıt/dönel ablation temeli tamamlandı; gerçek E63→APC12 ailesi ve ileri-uçuş doğruluğu başarısız |
+| 3 | PR-06C referans benchmark | Nihai kapı kodu ve yeniden üretilebilir karar tamamlandı; donmuş fixture/politika geçiyor, gerçek E63→APC12 sağlayıcı zinciri, ileri-uçuş doğruluğu ve bağımsız model-form review başarısız |
 | 4 | PR-06D katlanır bağlantı | **Aktif:** sabit-limit eşdeğerliği ve fold-state geometri temeli tamamlandı; fiziksel nitelikli açılma duyarlılığı PR-06C'ye bağlı |
 | 5 | PR-07 motor bağlantısı | Tork/enerji dengesi ve ölçüm korelasyonu |
 | 6 | PR-08/09 CFD ve FEA | Bağımsızlık, izlenebilir solver kanıtı, güvenlik kapıları |

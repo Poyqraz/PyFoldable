@@ -18,6 +18,12 @@ decision is explicit and machine-enforced.
 
 ## Execution status
 
+- The final PR-06C physical gate is now implemented and executed as a single,
+  fail-closed decision. See
+  [`reports/pr06c_physical_gate.json`](../reports/pr06c_physical_gate.json) and the
+  [review summary](../reports/pr06c_physical_gate.md). The fixture and frozen-policy
+  identities pass; physical accuracy, representative provider evidence and the
+  independent model-form review remain blocked.
 - Stage 1: the evidence/provenance contracts are merged; the caller-supplied,
   representative E63→APC12 family and its two-capture promotion remain outstanding.
 - Stage 2: the rotational-ablation foundation is merged; the real-family ablation
@@ -79,6 +85,10 @@ If every gate passes, publish the reviewed promotion bundle and mark PR-06C comp
 If any gate fails, preserve the failure artifact, identify the unresolved physical
 mechanism and keep accuracy qualification blocked. No threshold may be changed inside
 the remediation pull request.
+
+The preserved decision currently follows the failure branch. Re-running
+`examples/run_pr06c_physical_gate.py` reproduces that decision; `--require-pass`
+provides a non-zero automation gate for a future complete evidence bundle.
 
 ### Stage 4 — PR-06D fixed-limit foundation (implemented)
 
