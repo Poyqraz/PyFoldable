@@ -58,6 +58,19 @@ class KinematicsConfig:
     model: str
     k_open: float = 1.0
     kinematics_mode: str = "rpm_only"
+    curve_sharpness: float = 0.0
+
+
+@dataclass(frozen=True)
+class AeroClosingConfig:
+    """Advance ratio / eksenel akışa bağlı aero kapanma momenti parametreleri.
+
+    Varsayılan **kapalı** (``close_moment_gain = 0`` veya ``axial_velocity_m_s = 0``).
+    Bu durumda kapanma momenti sıfırdır ve mevcut V1/V2 davranışı birebir korunur.
+    """
+
+    close_moment_gain: float = 0.0
+    axial_velocity_m_s: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -115,6 +128,7 @@ class FoldablePropellerConfig:
     motor: MotorConfig
     battery: BatteryConfig
     system: SystemConfig
+    aero_closing: AeroClosingConfig = AeroClosingConfig()
 
 
 @dataclass(frozen=True)
@@ -164,6 +178,9 @@ def load_config(path: str | Path) -> FoldablePropellerConfig:
     motor_raw = _require_mapping(raw, "motor")
     battery_raw = _require_mapping(raw, "battery")
     system_raw = _require_mapping(raw, "system")
+    aero_closing_raw = raw.get("aero_closing", {})
+    if not isinstance(aero_closing_raw, dict):
+        raise ValueError("Config field 'aero_closing' must be an object.")
 
     return FoldablePropellerConfig(
         id=str(raw["id"]),
@@ -227,6 +244,7 @@ def load_config(path: str | Path) -> FoldablePropellerConfig:
             model=str(kinematics_raw.get("model", "linear_saturation")),
             k_open=float(kinematics_raw.get("k_open", 1.0)),
             kinematics_mode=kinematics_mode,
+            curve_sharpness=float(kinematics_raw.get("curve_sharpness", 0.0)),
         ),
         calibration=CalibrationConfig(
             k_thrust=float(calibration_raw["k_thrust"]),
@@ -259,5 +277,9 @@ def load_config(path: str | Path) -> FoldablePropellerConfig:
         ),
         system=SystemConfig(
             resistance_ohm=float(system_raw.get("resistance_ohm", 0.0)),
+        ),
+        aero_closing=AeroClosingConfig(
+            close_moment_gain=float(aero_closing_raw.get("close_moment_gain", 0.0)),
+            axial_velocity_m_s=float(aero_closing_raw.get("axial_velocity_m_s", 0.0)),
         ),
     )

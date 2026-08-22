@@ -2,6 +2,7 @@
 
 __version__ = "0.2.0"
 
+from .aero_closing import closing_moment_nm
 from .comparison import (
     COMPARISON_COLUMNS,
     COMPARISON_MODEL_NOTE,
@@ -162,8 +163,9 @@ from .integration import (
     post_process_from_operating_point,
     solve_pythrust_operating_point,
 )
-from .kinematics import theta_deg_from_rpm
+from .kinematics import theta_deg_from_rpm, theta_deg_nonlinear_saturation
 from .models import (
+    AeroClosingConfig,
     CalibrationConfig,
     FoldableGeometry,
     FoldablePropellerConfig,
@@ -213,6 +215,7 @@ __all__ = [
     "DESIGN_VARIANT_DECISION_COLUMNS",
     "DESIGN_VARIANT_SWEEP_COLUMNS",
     "DESIGN_VARIANT_SUMMARY_COLUMNS",
+    "AeroClosingConfig",
     "CalibrationConfig",
     "AirfoilDefinition",
     "AirfoilFileFormat",
@@ -345,6 +348,7 @@ __all__ = [
     "compare_fixed_vs_foldable_sweep",
     "compactness_ratio",
     "compute_thrust_difference_percent",
+    "closing_moment_nm",
     "effective_diameter_m",
     "estimate_foldable_thrust_n",
     "estimate_thrust_n",
@@ -380,6 +384,7 @@ __all__ = [
     "sweep_design_variants",
     "thrust_model_note",
     "theta_deg_from_rpm",
+    "theta_deg_nonlinear_saturation",
     "validate_comparison_columns",
     "validate_design_variant_columns",
     "validate_operating_point_columns",
