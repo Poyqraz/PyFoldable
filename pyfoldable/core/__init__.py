@@ -6,6 +6,14 @@ from .airfoil import (
     load_airfoil_coordinates,
     parse_airfoil_coordinates,
 )
+from .bem import (
+    BEM_ANNULUS_SCHEMA_VERSION,
+    BEMAnnulusError,
+    BEMAnnulusResult,
+    BEMAnnulusSettings,
+    BEMConvergenceError,
+    solve_bem_annulus,
+)
 
 from .config import DesignConfigError, load_design_config
 from .models import (
@@ -164,6 +172,11 @@ __all__ = [
     "AirfoilGeometryError",
     "BladeGeometry",
     "BladeStation",
+    "BEM_ANNULUS_SCHEMA_VERSION",
+    "BEMAnnulusError",
+    "BEMAnnulusResult",
+    "BEMAnnulusSettings",
+    "BEMConvergenceError",
     "CacheStatus",
     "DesignConfigError",
     "FilesystemPolarCache",
@@ -278,6 +291,7 @@ __all__ = [
     "write_polar_real_qualification_failure_bundle",
     "write_polar_real_qualification_comparison",
     "run_polar_provider_benchmark",
+    "solve_bem_annulus",
     "qualify_real_polar_backends",
     "write_polar_real_qualification_bundle",
 ]
