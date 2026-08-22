@@ -68,7 +68,8 @@ duyarlılığı üretir. İmzalı, ters-akışsız yerel yükleme dalı ileri-u�
 %20,6'dan %100'e çıkardı. Bununla birlikte dondurulmuş tam zarfta CT/CP hataları ve
 temsili polar kanıtı kapıları geçmediği için fiziksel doğruluk ve PR-06D geçişi
 kapalıdır. Denklem/kapsam incelemesi `docs/pr06_foundation_review.md`, geçmiş review
-`docs/pr04_pr06_retrospective_review.md`, çıktı ise
+`docs/pr04_pr06_retrospective_review.md`, üretici-geometrisi/polar remediation kaydı
+`docs/pr06c_geometry_polar_remediation.md`, çıktı ise
 `reports/pr06c_fixed_propeller_benchmark.md` altındadır.
 
 ## Kurulum

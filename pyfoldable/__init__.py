@@ -11,6 +11,10 @@ from .comparison import (
     evaluate_fixed_vs_foldable_comparison,
 )
 from .core import (
+    APCPE0AirfoilTransition,
+    APCPE0Error,
+    APCPE0Geometry,
+    APCPE0Station,
     AirfoilDefinition,
     AirfoilFileFormat,
     AirfoilGeometryError,
@@ -126,6 +130,9 @@ from .core import (
     ProviderCapabilities,
     ProviderIdentity,
     SimulationResult,
+    SpanwisePolarAnchor,
+    SpanwisePolarSchedule,
+    SpanwisePolarSection,
     UnitError,
     ValidationRecord,
     capture_real_polar_qualification,
@@ -148,6 +155,7 @@ from .core import (
     load_rotor_benchmark_fixture,
     normalize_quantity,
     parse_airfoil_coordinates,
+    parse_apc_pe0,
     parse_quantity,
     run_polar_provider_benchmark,
     run_rotor_benchmark_cases,
@@ -220,6 +228,10 @@ from .validation import (
 )
 
 __all__ = [
+    "APCPE0AirfoilTransition",
+    "APCPE0Error",
+    "APCPE0Geometry",
+    "APCPE0Station",
     "COMPARISON_COLUMNS",
     "COMPARISON_MODEL_NOTE",
     "DEFAULT_ROOT_TIP_RATIOS",
@@ -353,6 +365,9 @@ __all__ = [
     "ProviderIdentity",
     "SWEEP_COLUMNS",
     "SimulationResult",
+    "SpanwisePolarAnchor",
+    "SpanwisePolarSchedule",
+    "SpanwisePolarSection",
     "UnitError",
     "ValidationRecord",
     "XfoilProvider",
@@ -393,6 +408,7 @@ __all__ = [
     "post_process_from_operating_point",
     "normalize_quantity",
     "parse_airfoil_coordinates",
+    "parse_apc_pe0",
     "parse_quantity",
     "run_polar_provider_benchmark",
     "run_rotor_benchmark_cases",

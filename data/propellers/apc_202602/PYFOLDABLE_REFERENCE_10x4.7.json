@@ -1,0 +1,13 @@
+{
+  "id": "PYFOLDABLE_REFERENCE_10x4.7",
+  "manufacturer": "PyFoldable",
+  "model": "Synthetic 10x4.7 test reference",
+  "diameter_in": 10.0,
+  "pitch_in": 4.7,
+  "blade_count": 2,
+  "data_csv": "PYFOLDABLE_REFERENCE_10x4.7.csv",
+  "evidence_class": "first_party_synthetic_test_fixture",
+  "experimental": false,
+  "qualification_eligible": false,
+  "license_scope": "project_license"
+}

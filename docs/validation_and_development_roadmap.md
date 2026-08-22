@@ -16,7 +16,7 @@ sonunda; rotor fiziği doğrulamasının başında** bulunuyor.
 | --- | --- | --- |
 | Polar sağlayıcı altyapısı | Gerçek XFOIL/NeuralFoil regresyonlarıyla nitelikli | Yeni airfoil ve çalışma zarfı büyüdükçe yeniden niteleme |
 | 2B kesit aerodinamiği | Reynolds/Mach enterpolasyonu ve izlenebilir kesit yükleri mevcut | 3B dönel akış ve stall düzeltmeleri |
-| Rotor aerodinamiği | İndüksiyonsuz kesit integrasyonu mevcut | İndüksiyon, swirl, uç/kök kaybı ve rotor seviyesi doğrulama |
+| Rotor aerodinamiği | QPROP-tabanlı indüksiyon/swirl, uç/kök kaybı, radyal integrasyon ve üretici-geometri taraması mevcut | Temsili Reynolds-duyarlı spanwise polarlara dayalı rotor seviyesi doğrulama |
 | Motor–pervane etkileşimi | Referans-yük son işlemesi | Tork–devir denge noktasını birlikte çözen kapalı çevrim |
 | Katlanır mekanizma | Geometri/kinematik modeller ve karşılaştırma akışı mevcut | Açılma durumu–yük–performans geri beslemesi |
 | CFD korelasyonu | Seviye-1 hazırlık/çıktı sözleşmeleri | Ağ bağımsızlığı ve BEM–CFD korelasyonu |
@@ -54,14 +54,17 @@ kanıt paketi ve başarısızlığı görünür kılan regresyonu bulunduğunda 
   chord/twist enterpolasyonu, açık radial-domain politikası, seçilebilir kök/uç
   kayıpları, rotor toplamları ve boyutsuz performans katsayıları eklendi. Fiziksel
   doğruluk iddiası PR-06C benchmark kapısına bağlıdır.
-- **PR-06C — sabit pervane benchmark'ı (negatif-yükleme düzeltmesi tamamlandı;
-  doğruluk kapısı başarısız).** UIUC APC SF 10×4.7 rüzgâr-tüneli verisi üzerinde 60
+- **PR-06C — sabit pervane benchmark'ı (üretici-geometri altyapısı tamamlandı;
+  polar/ileri-uçuş kapıları başarısız).** UIUC APC SF 10×4.7 rüzgâr-tüneli verisi üzerinde 60
   ham/50 propulsif nokta ve değişmeyen CT/CP politikası korunuyor. İncelenmiş
   `signed_nonreversed` dalı yerel negatif yüklemeyi ters akışa izin vermeden çözüyor;
   toplam/ileri-uçuş kapsamı %46/%20,6'dan %100/%100'e çıktı. Tam zarf artık proxy
-  modelin CT/CP'yi sırasıyla %26,40/%28,28 eksik tahmin ettiğini gösteriyor; ileri-uçuş
-  WMAPE %40,31/%38,35. Temsili spanwise polar kanıtı da yok. Bu nedenle PR-06D
-  blokludur.
+  modelin CT/CP'yi sırasıyla %26,40/%28,28 eksik tahmin ettiğini gösterdi. Kullanıcı-
+  yerel, SHA sabitlenmiş güncel APC PE0 geometrisiyle proxy taraması toplam CT/CP
+  WMAPE'yi %16,23/%16,98'e indirdi; ancak CT biası −%14,07, ileri-uçuş CT/CP WMAPE
+  %25,68/%23,19 ve temsili spanwise polar kanıtı hâlâ kapı dışıdır. Bu nedenle PR-06D
+  blokludur. Ayrıntı [geometri/polar remediation](pr06c_geometry_polar_remediation.md)
+  belgesindedir.
 - **PR-06D — katlanır geometri bağlantısı.** Açılma açısı, etkin yarıçap ve yerel
   kinematik rotor çözücüsüne taşınır; sabit–katlanır farkı fizik tabanlı hale gelir.
 
@@ -121,7 +124,7 @@ arşiv bütünlüğü sürüm kapısıdır.
 | --- | --- | --- |
 | 1 | PR-06A yerel annulus çözücüsü | Tamamlandı: hover, denklem kalıntısı, loss-model ve açık kapsam regresyonları |
 | 2 | PR-06B rotor integrasyonu | Tamamlandı: radyal yakınsama, yük/toplam tutarlılığı ve provenance |
-| 3 | PR-06C referans benchmark | Negatif-yükleme kapsam düzeltmesi tamamlandı; doğruluk/polar kapıları başarısız |
+| 3 | PR-06C referans benchmark | Kapsam + üretici-geometri/spanwise tüketim temeli tamamlandı; ileri-uçuş doğruluğu ve temsili polar kanıtı başarısız |
 | 4 | PR-06D katlanır bağlantı | **Bloklu:** PR-06C tüm kapıları geçtikten sonra sabit-limit eşdeğerliği ve açılma duyarlılığı |
 | 5 | PR-07 motor bağlantısı | Tork/enerji dengesi ve ölçüm korelasyonu |
 | 6 | PR-08/09 CFD ve FEA | Bağımsızlık, izlenebilir solver kanıtı, güvenlik kapıları |
@@ -144,7 +147,7 @@ arşiv bütünlüğü sürüm kapısıdır.
 Gerçek polar regresyonları temel veri hattının tekrar üretilebilirliğini kontrol altına
 aldı; PR-06A/06B kod ve integrasyon temelini kurdu. PR-06C düzeltmesi ileri uçuşta
 yerel negatif yüklenen annulus dalını tamamladı ve tüm propulsif noktaları çözdü.
-Kritik yol artık **tested blade'i temsil eden spanwise, Reynolds-duyarlı polar kanıtı**,
+Kritik yol artık **tested blade'i temsil eden E63→APC12 spanwise, Reynolds-duyarlı polar kanıtı**,
 **dönel/model-form hata düzeltmesi** ve **bağımsız aerodinamik review**dur. Aynı
 dondurulmuş UIUC fixture/politika üzerindeki tüm kapılar geçmeden PR-06D'ye veya
 doğruluk iddiasına ilerlenmez.

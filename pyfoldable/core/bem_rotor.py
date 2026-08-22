@@ -16,9 +16,10 @@ from .bem import (
 )
 from .models import BladeGeometry, BladeStation, OperatingCondition
 from .polar import PolarBoundsPolicy, PolarFamily, PolarInterpolationError
+from .polar_spanwise import SpanwisePolarSchedule
 
 
-BEM_ROTOR_SCHEMA_VERSION = 2
+BEM_ROTOR_SCHEMA_VERSION = 3
 BEMRadialDomain = Literal["station_span", "hub_to_tip"]
 
 
@@ -140,7 +141,7 @@ class BEMRotorResult:
             "scenario_id": self.scenario_id,
             "radial_domain": self.radial_domain,
             "integration_method": "midpoint",
-            "geometry_interpolation": "linear_chord_twist_constant_airfoil",
+            "geometry_interpolation": "linear_chord_twist",
             "inner_radius_m": self.inner_radius_m,
             "outer_radius_m": self.outer_radius_m,
             "geometry_extended": self.geometry_extended,
@@ -177,26 +178,39 @@ def _radial_limits(
 
 
 def _interpolate_station(
-    blade: BladeGeometry, radius_m: float
+    blade: BladeGeometry,
+    radius_m: float,
+    *,
+    airfoil_id_override: str | None = None,
 ) -> tuple[BladeStation, bool]:
     ratio = radius_m / blade.radius_m
     stations = blade.stations
     ratios = tuple(station.r_over_R for station in stations)
     if ratio <= ratios[0]:
         source = stations[0]
-        return BladeStation(ratio, source.chord_m, source.twist_rad, source.airfoil_id), (
+        return BladeStation(
+            ratio,
+            source.chord_m,
+            source.twist_rad,
+            airfoil_id_override or source.airfoil_id,
+        ), (
             ratio < ratios[0] - 1.0e-12
         )
     if ratio >= ratios[-1]:
         source = stations[-1]
-        return BladeStation(ratio, source.chord_m, source.twist_rad, source.airfoil_id), (
+        return BladeStation(
+            ratio,
+            source.chord_m,
+            source.twist_rad,
+            airfoil_id_override or source.airfoil_id,
+        ), (
             ratio > ratios[-1] + 1.0e-12
         )
 
     upper_index = bisect_right(ratios, ratio)
     lower = stations[upper_index - 1]
     upper = stations[upper_index]
-    if lower.airfoil_id != upper.airfoil_id:
+    if lower.airfoil_id != upper.airfoil_id and airfoil_id_override is None:
         raise BEMRotorError(
             "PR-06B does not interpolate across different station airfoil_id values."
         )
@@ -206,7 +220,7 @@ def _interpolate_station(
             r_over_R=ratio,
             chord_m=lower.chord_m + weight * (upper.chord_m - lower.chord_m),
             twist_rad=lower.twist_rad + weight * (upper.twist_rad - lower.twist_rad),
-            airfoil_id=lower.airfoil_id,
+            airfoil_id=airfoil_id_override or lower.airfoil_id,
         ),
         False,
     )
@@ -215,7 +229,7 @@ def _interpolate_station(
 def solve_bem_rotor(
     blade: BladeGeometry,
     condition: OperatingCondition,
-    polar_families: Mapping[str, PolarFamily],
+    polar_families: Mapping[str, PolarFamily] | SpanwisePolarSchedule,
     *,
     bounds: PolarBoundsPolicy = "error",
     settings: BEMRotorSettings | None = None,
@@ -223,27 +237,46 @@ def solve_bem_rotor(
     """Integrate converged local annuli across an explicit radial domain.
 
     A failure at any element aborts the result; partial rotor totals are never
-    returned. PR-06B supports one constant airfoil identity across the blade.
-    Airfoil blending and foldable-geometry coupling remain later increments.
+    returned. A mapping preserves the original constant-airfoil contract. An
+    explicit :class:`SpanwisePolarSchedule` queries and blends its endpoint polar
+    families at every annulus while preserving their provenance.
     """
     controls = BEMRotorSettings() if settings is None else settings
     if not isinstance(controls, BEMRotorSettings):
         raise BEMRotorError("settings must be a BEMRotorSettings instance.")
     if bounds not in {"error", "clamp"}:
         raise BEMRotorError("bounds must be 'error' or 'clamp'.")
-    airfoil_ids = {station.airfoil_id for station in blade.stations}
-    if len(airfoil_ids) != 1:
-        raise BEMRotorError(
-            "PR-06B requires one airfoil_id across all blade stations."
-        )
-    airfoil_id = next(iter(airfoil_ids))
-    if airfoil_id not in polar_families:
-        raise BEMRotorError(f"No polar family was supplied for airfoil_id {airfoil_id!r}.")
-    family = polar_families[airfoil_id]
-    if family.airfoil_id != airfoil_id:
-        raise BEMRotorError(
-            "Polar-family mapping key does not match the family's airfoil_id."
-        )
+    schedule = (
+        polar_families
+        if isinstance(polar_families, SpanwisePolarSchedule)
+        else None
+    )
+    if schedule is None:
+        if not isinstance(polar_families, Mapping):
+            raise BEMRotorError(
+                "polar_families must be a mapping or SpanwisePolarSchedule."
+            )
+        airfoil_ids = {station.airfoil_id for station in blade.stations}
+        if len(airfoil_ids) != 1:
+            raise BEMRotorError(
+                "Constant-polar mode requires one airfoil_id across all blade stations."
+            )
+        airfoil_id = next(iter(airfoil_ids))
+        if airfoil_id not in polar_families:
+            raise BEMRotorError(
+                f"No polar family was supplied for airfoil_id {airfoil_id!r}."
+            )
+        family = polar_families[airfoil_id]
+        if family.airfoil_id != airfoil_id:
+            raise BEMRotorError(
+                "Polar-family mapping key does not match the family's airfoil_id."
+            )
+        result_airfoil_id = airfoil_id
+        result_scenario_id = family.scenario_id
+    else:
+        family = None
+        result_airfoil_id = schedule.id
+        result_scenario_id = ",".join(schedule.scenario_ids)
 
     inner_radius, outer_radius, geometry_extended = _radial_limits(
         blade, controls.radial_domain
@@ -254,19 +287,38 @@ def solve_bem_rotor(
         inner = inner_radius + index * width
         outer = inner_radius + (index + 1) * width
         midpoint = 0.5 * (inner + outer)
-        station, geometry_extrapolated = _interpolate_station(blade, midpoint)
         try:
+            ratio = midpoint / blade.radius_m
+            local_family = (
+                schedule.section(ratio, bounds=bounds)
+                if schedule is not None
+                else family
+            )
+            if local_family is None:  # defensive type narrowing
+                raise BEMRotorError("No local polar family is available.")
+            station, geometry_extrapolated = _interpolate_station(
+                blade,
+                midpoint,
+                airfoil_id_override=(
+                    local_family.airfoil_id if schedule is not None else None
+                ),
+            )
             solution = solve_bem_annulus(
                 blade,
                 station,
                 condition,
-                family,
+                local_family,
                 bounds=bounds,
                 settings=controls.annulus_settings,
             )
-        except (BEMAnnulusError, BEMConvergenceError, PolarInterpolationError) as exc:
+        except (
+            BEMAnnulusError,
+            BEMConvergenceError,
+            BEMRotorError,
+            PolarInterpolationError,
+        ) as exc:
             raise BEMRotorElementError(
-                f"Annulus {index} at r/R={station.r_over_R:.8g} failed: {exc}"
+                f"Annulus {index} at r/R={ratio:.8g} failed: {exc}"
             ) from exc
         elements.append(
             BEMRotorElement(index, inner, outer, geometry_extrapolated, solution)
@@ -323,8 +375,8 @@ def solve_bem_rotor(
     return BEMRotorResult(
         schema_version=BEM_ROTOR_SCHEMA_VERSION,
         operating_condition_id=condition.id,
-        airfoil_id=airfoil_id,
-        scenario_id=family.scenario_id,
+        airfoil_id=result_airfoil_id,
+        scenario_id=result_scenario_id,
         radial_domain=controls.radial_domain,
         inner_radius_m=inner_radius,
         outer_radius_m=outer_radius,

@@ -6,6 +6,13 @@ from .airfoil import (
     load_airfoil_coordinates,
     parse_airfoil_coordinates,
 )
+from .apc_pe0 import (
+    APCPE0AirfoilTransition,
+    APCPE0Error,
+    APCPE0Geometry,
+    APCPE0Station,
+    parse_apc_pe0,
+)
 from .bem import (
     BEM_ANNULUS_SCHEMA_VERSION,
     BEMAnnulusError,
@@ -61,6 +68,11 @@ from .polar import (
     PolarInterpolationError,
     PolarQueryResult,
     load_polar_csv,
+)
+from .polar_spanwise import (
+    SpanwisePolarAnchor,
+    SpanwisePolarSchedule,
+    SpanwisePolarSection,
 )
 from .polar_analysis import (
     POLAR_SECTION_ANALYSIS_SCHEMA_VERSION,
@@ -195,6 +207,10 @@ __all__ = [
     "AirfoilDefinition",
     "AirfoilFileFormat",
     "AirfoilGeometryError",
+    "APCPE0AirfoilTransition",
+    "APCPE0Error",
+    "APCPE0Geometry",
+    "APCPE0Station",
     "BladeGeometry",
     "BladeStation",
     "BEM_ANNULUS_SCHEMA_VERSION",
@@ -308,6 +324,9 @@ __all__ = [
     "ProviderCapabilities",
     "ProviderIdentity",
     "SimulationResult",
+    "SpanwisePolarAnchor",
+    "SpanwisePolarSchedule",
+    "SpanwisePolarSection",
     "UnitError",
     "ValidationRecord",
     "canonical_unit",
@@ -330,6 +349,7 @@ __all__ = [
     "load_rotor_benchmark_fixture",
     "normalize_quantity",
     "parse_airfoil_coordinates",
+    "parse_apc_pe0",
     "parse_quantity",
     "write_polar_real_qualification_failure_bundle",
     "write_polar_real_qualification_comparison",

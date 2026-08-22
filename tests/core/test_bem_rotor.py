@@ -13,7 +13,10 @@ from pyfoldable.core import (
     BladeStation,
     OperatingCondition,
     PolarFamily,
+    PolarInterpolationError,
     PolarTable,
+    SpanwisePolarAnchor,
+    SpanwisePolarSchedule,
     load_design_config,
     solve_bem_rotor,
 )
@@ -231,7 +234,7 @@ def test_forward_flight_efficiency_and_provenance_are_serializable():
     assert result.polar_sources
     assert "reynolds" in result.interpolated_dimensions
     payload = result.as_mapping()
-    assert payload["schema_version"] == 2
+    assert payload["schema_version"] == 3
     assert payload["integration_method"] == "midpoint"
     assert payload["settings"]["annulus_count"] == 8
     json.dumps(payload)
@@ -255,6 +258,51 @@ def test_signed_branch_integrates_mixed_local_loading_without_partial_results():
     assert all(
         element.solution.relative_speed_m_s > 0.0 for element in result.elements
     )
+
+
+def test_spanwise_polar_schedule_reaches_every_annulus_with_provenance():
+    schedule = SpanwisePolarSchedule(
+        "root-to-tip",
+        (
+            SpanwisePolarAnchor(0.2, _family(cl=0.4)),
+            SpanwisePolarAnchor(0.8, _family(cl=0.8, airfoil_id="tip-foil")),
+        ),
+    )
+
+    result = solve_bem_rotor(
+        _blade(second_airfoil="tip-foil"),
+        _condition(),
+        schedule,
+        settings=BEMRotorSettings(annulus_count=4),
+    )
+
+    assert result.schema_version == 3
+    assert result.airfoil_id == "root-to-tip"
+    assert all(
+        "span" in element.solution.interpolated_dimensions
+        for element in result.elements
+    )
+    assert any("rotor-m0.0" in source for source in result.polar_sources)
+
+
+def test_spanwise_schedule_failure_is_wrapped_with_annulus_context():
+    schedule = SpanwisePolarSchedule(
+        "tip-only",
+        (
+            SpanwisePolarAnchor(0.7, _family(cl=0.4)),
+            SpanwisePolarAnchor(0.8, _family(cl=0.8, airfoil_id="tip-foil")),
+        ),
+    )
+
+    with pytest.raises(BEMRotorElementError, match=r"Annulus 0 at r/R=") as error:
+        solve_bem_rotor(
+            _blade(second_airfoil="tip-foil"),
+            _condition(),
+            schedule,
+            settings=BEMRotorSettings(annulus_count=4),
+        )
+
+    assert isinstance(error.value.__cause__, PolarInterpolationError)
 
 
 def test_promoted_real_xfoil_polar_reaches_the_rotor_consumer():
@@ -286,7 +334,11 @@ def test_promoted_real_xfoil_polar_reaches_the_rotor_consumer():
 @pytest.mark.parametrize(
     ("blade", "families", "message"),
     (
-        (_blade(second_airfoil="tip-foil"), {"foil": _family()}, "one airfoil_id"),
+        (
+            _blade(second_airfoil="tip-foil"),
+            {"foil": _family()},
+            "requires one airfoil_id",
+        ),
         (_blade(), {}, "No polar family"),
         (_blade(), {"foil": _family(airfoil_id="other")}, "mapping key"),
     ),

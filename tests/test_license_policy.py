@@ -49,20 +49,23 @@ def test_license_notice_contribution_gate_and_history_are_explicit():
     assert "does not revoke rights already granted" in scope
 
 
-def test_third_party_apc_data_is_not_mislabeled_as_experiment_or_relicensed():
+def test_apc_material_is_not_distributed_or_relicensed():
     metadata = json.loads(
         (
             PROJECT_ROOT
             / "data"
             / "propellers"
             / "apc_202602"
-            / "APC_10x4.7SF.json"
+            / "PYFOLDABLE_REFERENCE_10x4.7.json"
         ).read_text(encoding="utf-8")
     )
     notices = (PROJECT_ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
 
-    assert metadata["evidence_class"] == "manufacturer_vortex_model_prediction"
+    assert metadata["evidence_class"] == "first_party_synthetic_test_fixture"
     assert metadata["experimental"] is False
-    assert metadata["license_scope"] == "third_party_source_terms_apply"
+    assert metadata["qualification_eligible"] is False
+    assert metadata["license_scope"] == "project_license"
+    assert not list((PROJECT_ROOT / "data").rglob("*APC_10x4.7SF*"))
     assert "does not relicense third-party material" in notices
+    assert "does not distribute APC geometry or performance tables" in notices
     assert "UIUC Propeller Database benchmark evidence" in notices

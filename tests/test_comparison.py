@@ -24,7 +24,7 @@ def project_config():
 def prop_entry():
     db = PropellerDatabase()
     db.load(Path("data/propellers/apc_202602"), strict=False)
-    entry = db.get("APC_10x4.7SF")
+    entry = db.get("PYFOLDABLE_REFERENCE_10x4.7")
     assert entry is not None
     return entry
 
