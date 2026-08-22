@@ -75,14 +75,15 @@ The review isolated the remaining error with unchanged inputs:
 | 4 | Real-family ablation | `2-D → 2-D+rotation → 2-D+rotation+wake`, no UIUC fitting | Pending step 3 |
 | 5 | Tip/wake model review | Independent QPROP/XROTOR/CCBlade comparison at high advance ratio | Pending |
 | 6 | PR-06C promotion | All overall/static/forward CT/CP, bias, coverage, convergence and evidence gates pass | Blocked |
-| 7 | PR-06D software foundation | Exact fixed-limit equivalence before opening-angle sensitivity | Implemented: 50/50 exact matches, zero thrust/torque delta |
+| 7 | PR-06D software foundation | Exact fixed-limit plus non-qualifying opening-angle sensitivity | Implemented: 50/50 exact matches and complete 250-case, five-angle screen |
 | 8 | PR-06D physical sensitivity | Qualified opening-angle loads and performance | Blocked by step 6 |
 
 The next run must use caller-supplied, license-compatible E63 and APC PE0 inputs. If
 any coverage, confidence, reproducibility, physics or accuracy gate fails, the result
 remains a diagnostic artifact and PR-06D physical predictions stay non-qualifying.
-The separate [fixed-limit evidence](../reports/pr06d_fixed_limit_equivalence.md)
-proves software compatibility only and cannot promote PR-06C.
+The separate [fixed-limit evidence](../reports/pr06d_fixed_limit_equivalence.md) and
+[opening screen](../reports/pr06d_opening_sensitivity.md) prove software compatibility
+and sensitivity plumbing only; neither can promote PR-06C.
 
 The final composite decision is now machine-enforced by
 `examples/run_pr06c_physical_gate.py` and preserved in

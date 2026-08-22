@@ -79,6 +79,18 @@ kanıt paketi ve başarısızlığı görünür kılan regresyonu bulunduğunda 
   yarıçapıyla taşınıyor ve sonuçlar nominal/etkin geometri provenance'ı içeriyor.
   Bu [sabit-limit kanıtı](../reports/pr06d_fixed_limit_equivalence.md) yalnız yazılım
   eşdeğerliğidir; katlanmış durumun fiziksel doğruluğu PR-06C geçmeden nitelikli değildir.
+  Açılma duyarlılığı yazılım adımı da tamamlandı: donmuş 50 propulsif nokta üzerinde
+  0/15/30/45/60 derece için 250 vakalık eksiksiz tarama üretildi ve tam açık uç yeniden
+  birebir doğrulandı. Sonuç [açılma taraması](../reports/pr06d_opening_sensitivity.md)
+  içinde `screening_only_until_pr06c_passes` olarak kilitlidir; tasarım kararı veya
+  fiziksel niteleme değildir.
+
+Yayımlanmış APC 10x4.7 CFD taraması da makine-okunur bir kapsam sözleşmesine bağlandı.
+ICAS Fluent SST k-omega sonuçları, aynı UIUC statik CP noktalarında yeniden hesaplanan
+en çok %1,27 hata gösterirken mevcut analitik-proxy BEM yolu yaklaşık %10,22 ve %19,86
+eksik kalıyor. Bu bulgu eşikleri değiştirmiyor; temsili Reynolds-duyarlı polar zincirini
+öncelikli tutuyor. Ayrıntılar [yayımlanmış CFD review](../reports/pr06c_published_cfd_review.md)
+ve [bağımsız ANSYS isterinde](independent_aerodynamic_review_request.md) kayıtlıdır.
 
 PR-06A'nın denklemsel temeli Mark Drela'nın
 [QPROP formulation](https://web.mit.edu/drela/Public/web/qprop/qprop_theory.pdf)
@@ -137,7 +149,7 @@ arşiv bütünlüğü sürüm kapısıdır.
 | 1 | PR-06A yerel annulus çözücüsü | Tamamlandı: hover, denklem kalıntısı, loss-model ve açık kapsam regresyonları |
 | 2 | PR-06B rotor integrasyonu | Tamamlandı: radyal yakınsama, yük/toplam tutarlılığı ve provenance |
 | 3 | PR-06C referans benchmark | Nihai kapı kodu ve yeniden üretilebilir karar tamamlandı; donmuş fixture/politika geçiyor, gerçek E63→APC12 sağlayıcı zinciri, ileri-uçuş doğruluğu ve bağımsız model-form review başarısız |
-| 4 | PR-06D katlanır bağlantı | **Aktif:** sabit-limit eşdeğerliği ve fold-state geometri temeli tamamlandı; fiziksel nitelikli açılma duyarlılığı PR-06C'ye bağlı |
+| 4 | PR-06D katlanır bağlantı | **Yazılım taraması tamamlandı:** sabit-limit ve 250-vaka açılma duyarlılığı kanıtı mevcut; fiziksel nitelikli açılma duyarlılığı PR-06C'ye bağlı |
 | 5 | PR-07 motor bağlantısı | Tork/enerji dengesi ve ölçüm korelasyonu |
 | 6 | PR-08/09 CFD ve FEA | Bağımsızlık, izlenebilir solver kanıtı, güvenlik kapıları |
 | 7 | PR-10 deney | Kalibrasyonlu veri ve belirsizlik içinde korelasyon |

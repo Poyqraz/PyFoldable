@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "id": "apcsf-10x4.7-published-cfd-v1",
+  "target_geometry_id": "APC Slow Flyer 10x4.7",
+  "rights_scope": "Factual values and bibliographic metadata transcribed with attribution; source publications, figures, and PDFs are not redistributed or relicensed.",
+  "independent_project_review": false,
+  "qualification": "model_form_context_only",
+  "sources": [
+    {
+      "id": "wan-tsai-icas2020",
+      "title": "Numerical Study of Quad-Rotor Aircraft Performance under Adverse Situations",
+      "authors": "Tung Wan and Meng-Han Tsai",
+      "year": 2020,
+      "url": "https://www.icas.org/icas_archive/ICAS2020/data/papers/ICAS2020_0482_paper.pdf",
+      "geometry_match": "exact",
+      "evidence_form": "tabulated",
+      "solver": "ANSYS Fluent; MRF; incompressible SIMPLEC",
+      "result_scope": "Static single-rotor CP at 4319 and 6528 rpm; turbulence-model and y-plus comparison against UIUC experiment. Companion thesis DOI: 10.6846/TKU.2020.00377.",
+      "rights_scope": "ICAS proceedings publication; only factual table values and citation metadata are recorded here."
+    },
+    {
+      "id": "sunan-bau-2014",
+      "title": "Computational Fluid Dynamics Analysis of a Quadrotor",
+      "authors": "Burak Sunan",
+      "year": 2014,
+      "url": "https://hdl.handle.net/20.500.14719/1403",
+      "geometry_match": "exact",
+      "evidence_form": "tabulated",
+      "solver": "ANSYS Fluent; MRF; SIMPLE; multiple RANS and transient variants",
+      "result_scope": "5000 rpm hover thrust sensitivity across domains, grids, boundary conditions, turbulence models, and a periodic half-domain check.",
+      "rights_scope": "Institutional-repository thesis; only factual table values and citation metadata are recorded here."
+    },
+    {
+      "id": "fevralskikh-flowvision-2024",
+      "title": "Computer Simulation of Propeller Aerodynamics in the Russian FlowVision Software Package",
+      "authors": "A. V. Fevralskikh",
+      "year": 2024,
+      "url": "https://www.pressmk.ru/storage/pdf/RI_4_2024.pdf",
+      "geometry_match": "exact",
+      "evidence_form": "figure_only",
+      "solver": "FlowVision 3.14.02; sliding-surface rotor/stator; approximately 2.1 million cells",
+      "result_scope": "Thrust and power versus rpm compared graphically with experiment; wake pressure and acoustic spectrum.",
+      "rights_scope": "Publisher-hosted article; figures are not copied or digitized into qualification data."
+    },
+    {
+      "id": "patience-nahon-qeios-2024",
+      "title": "A Simplified Model for Propeller Thrust in Oblique Flow",
+      "authors": "Christian Patience and Meyer Nahon",
+      "year": 2024,
+      "url": "https://www.qeios.com/read/WG08LV",
+      "doi": "10.32388/WG08LV",
+      "geometry_match": "exact",
+      "evidence_form": "figure_only",
+      "solver": "Simplified axial-component advance-ratio model",
+      "result_scope": "APC Slow Flyer 10x4.7 oblique-flow experiment/model comparison; most conditions reported within 5 percent, with pure crossflow worst.",
+      "rights_scope": "CC BY 4.0 publication; no figure digitization is included in this fixture."
+    },
+    {
+      "id": "kutty-rajendran-aerospace-2017",
+      "title": "3D CFD Simulation and Experimental Validation of Small APC Slow Flyer Propeller Blade",
+      "authors": "Hairuniza Ahmed Kutty and Parvathy Rajendran",
+      "year": 2017,
+      "url": "https://www.mdpi.com/2226-4310/4/1/10",
+      "doi": "10.3390/aerospace4010010",
+      "geometry_match": "different_pitch",
+      "evidence_form": "methodology_only",
+      "solver": "ANSYS Fluent; MRF; standard k-omega",
+      "result_scope": "APC Slow Flyer 10x7 methodology precedent; not target-geometry validation.",
+      "rights_scope": "CC BY publication; geometry mismatch excludes its results from target comparison."
+    }
+  ],
+  "points": [
+    {"id":"icas-4319-kepsilon","source_id":"wan-tsai-icas2020","quantity":"power_coefficient","value":0.0504,"rpm":4319,"evidence_form":"tabulated","qualification_eligible":false,"cells":3200000,"turbulence_model":"k-epsilon","y_plus_min":1.14,"y_plus_max":21.4,"reported_deviation_percent":6.3},
+    {"id":"icas-4319-komega","source_id":"wan-tsai-icas2020","quantity":"power_coefficient","value":0.0486,"rpm":4319,"evidence_form":"tabulated","qualification_eligible":false,"cells":3200000,"turbulence_model":"k-omega","y_plus_min":0.2,"y_plus_max":17.9,"reported_deviation_percent":2.5},
+    {"id":"icas-4319-sst","source_id":"wan-tsai-icas2020","quantity":"power_coefficient","value":0.0480,"rpm":4319,"evidence_form":"tabulated","qualification_eligible":false,"cells":3200000,"turbulence_model":"SST k-omega","y_plus_min":0.09,"y_plus_max":17.9,"reported_deviation_percent":1.3},
+    {"id":"icas-6528-kepsilon-3m2","source_id":"wan-tsai-icas2020","quantity":"power_coefficient","value":0.0536,"rpm":6528,"evidence_form":"tabulated","qualification_eligible":false,"cells":3200000,"turbulence_model":"k-epsilon","y_plus_min":0.9,"y_plus_max":23.6,"reported_deviation_percent":0.9},
+    {"id":"icas-6528-sst","source_id":"wan-tsai-icas2020","quantity":"power_coefficient","value":0.0528,"rpm":6528,"evidence_form":"tabulated","qualification_eligible":false,"cells":3200000,"turbulence_model":"SST k-omega","y_plus_min":0.48,"y_plus_max":14.9,"reported_deviation_percent":0.4},
+    {"id":"icas-6528-kepsilon-7m","source_id":"wan-tsai-icas2020","quantity":"power_coefficient","value":0.0525,"rpm":6528,"evidence_form":"tabulated","qualification_eligible":false,"cells":7000000,"turbulence_model":"k-epsilon","y_plus_min":0.8,"y_plus_max":19.2,"reported_deviation_percent":-0.9},
+    {"id":"bau-5000-mean","source_id":"sunan-bau-2014","quantity":"thrust_n","value":2.020253471,"rpm":5000,"evidence_form":"tabulated","qualification_eligible":false,"cells":5865228,"statistic":"mean of 14 author-selected cases"},
+    {"id":"bau-5000-standard-deviation","source_id":"sunan-bau-2014","quantity":"thrust_standard_deviation_n","value":0.23,"rpm":5000,"evidence_form":"tabulated","qualification_eligible":false,"statistic":"standard deviation of 14 author-selected cases"},
+    {"id":"bau-5000-periodic-half-domain","source_id":"sunan-bau-2014","quantity":"thrust_n","value":2.0533038,"rpm":5000,"evidence_form":"tabulated","qualification_eligible":false,"cells":4150244,"turbulence_model":"k-epsilon RNG","statistic":"two times one-blade periodic-half-domain result"}
+  ]
+}

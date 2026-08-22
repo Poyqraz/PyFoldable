@@ -10,6 +10,7 @@ from pyfoldable.core import (
     BladeStation,
     FixedLimitEquivalenceCase,
     FixedLimitEquivalenceEvidence,
+    FoldableOpeningSweepEvidence,
     FoldableRotorGeometryError,
     FoldableRotorState,
     OperatingCondition,
@@ -18,6 +19,7 @@ from pyfoldable.core import (
     SpanwisePolarAnchor,
     SpanwisePolarSchedule,
     assess_fixed_limit_equivalence,
+    assess_foldable_opening_sensitivity,
     project_foldable_blade,
     project_spanwise_polar_schedule,
     solve_bem_rotor,
@@ -330,4 +332,64 @@ def test_fixed_limit_assessment_rejects_invalid_state_type_cleanly():
     with pytest.raises(TypeError, match="FoldableRotorState"):
         assess_fixed_limit_equivalence(
             _blade(), object(), (_condition(),), _schedule()
+        )
+
+
+def test_opening_sweep_preserves_deployed_baseline_and_is_screening_only():
+    blade = _blade()
+    states = tuple(
+        FoldableRotorState(
+            f"fold-{degrees}", 0.075, math.radians(-degrees), 0.0
+        )
+        for degrees in (0, 15, 30, 45, 60)
+    )
+    evidence = assess_foldable_opening_sensitivity(
+        blade,
+        states,
+        (_condition(),),
+        _schedule(),
+        settings=BEMRotorSettings(
+            8,
+            "station_span",
+            BEMAnnulusSettings(loading_branch="signed_nonreversed"),
+        ),
+    )
+
+    assert isinstance(evidence, FoldableOpeningSweepEvidence)
+    assert evidence.state_count == 5
+    assert evidence.condition_count == 1
+    assert evidence.case_count == 5
+    assert evidence.deployed_endpoint_exact
+    assert evidence.qualification == "screening_only_until_pr06c_passes"
+    assert evidence.cases[0].thrust_ratio_to_deployed == 1.0
+    assert evidence.cases[0].torque_ratio_to_deployed == 1.0
+    assert all(
+        upper.effective_diameter_m < lower.effective_diameter_m
+        for lower, upper in zip(evidence.cases, evidence.cases[1:])
+    )
+    assert evidence.as_mapping()["physical_qualification"] is False
+
+
+def test_opening_sweep_rejects_missing_endpoint_duplicate_and_disordered_states():
+    partial = FoldableRotorState("partial", 0.075, -0.2, 0.0)
+    deployed = FoldableRotorState("deployed", 0.075, 0.0, 0.0)
+
+    with pytest.raises(FoldableRotorGeometryError, match="deployed state first"):
+        assess_foldable_opening_sensitivity(
+            _blade(), (partial,), (_condition(),), _schedule()
+        )
+    with pytest.raises(ValueError, match="unique"):
+        assess_foldable_opening_sensitivity(
+            _blade(), (deployed, deployed), (_condition(),), _schedule()
+        )
+    with pytest.raises(ValueError, match="strictly increase"):
+        assess_foldable_opening_sensitivity(
+            _blade(),
+            (
+                deployed,
+                FoldableRotorState("more", 0.075, -0.4, 0.0),
+                FoldableRotorState("less", 0.075, -0.2, 0.0),
+            ),
+            (_condition(),),
+            _schedule(),
         )

@@ -66,11 +66,15 @@ kuralıyla integre eder; hub-tip geometri uzatması ve Prandtl kök faktörü a�
 PR-06C, UIUC APC 10×4.7 rüzgâr-tüneli verisiyle 60 noktalı benchmark, ağ ve model/polar
 duyarlılığı üretir. İmzalı, ters-akışsız yerel yükleme dalı ileri-uçuş çözüm kapsamını
 %20,6'dan %100'e çıkardı. Bununla birlikte dondurulmuş tam zarfta CT/CP hataları ve
-temsili polar kanıtı kapıları geçmediği için fiziksel doğruluk ve PR-06D geçişi
-kapalıdır. Denklem/kapsam incelemesi `docs/pr06_foundation_review.md`, geçmiş review
+temsili polar kanıtı kapıları geçmediği için fiziksel doğruluk ve PR-06D'nin fiziksel
+niteleme geçişi kapalıdır. Sabit-limit yazılım eşdeğerliği ve 250-vaka açılma taraması
+tamamlanmıştır; açılma sonuçları screening-only kalır. Denklem/kapsam incelemesi
+`docs/pr06_foundation_review.md`, geçmiş review
 `docs/pr04_pr06_retrospective_review.md`, üretici-geometrisi/polar remediation kaydı
 `docs/pr06c_geometry_polar_remediation.md`, çıktı ise
-`reports/pr06c_fixed_propeller_benchmark.md` altındadır.
+`reports/pr06c_fixed_propeller_benchmark.md`, yayımlanmış CFD karşılaştırması
+`reports/pr06c_published_cfd_review.md` ve açılma taraması
+`reports/pr06d_opening_sensitivity.md` altındadır.
 
 ## Kurulum
 

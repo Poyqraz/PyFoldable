@@ -69,3 +69,5 @@ def test_apc_material_is_not_distributed_or_relicensed():
     assert "does not relicense third-party material" in notices
     assert "does not distribute APC geometry or performance tables" in notices
     assert "UIUC Propeller Database benchmark evidence" in notices
+    assert "Published CFD context" in notices
+    assert "does not contain publication PDFs, figures, meshes, CAD" in notices
