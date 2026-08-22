@@ -46,12 +46,14 @@ kanıt paketi ve başarısızlığı görünür kılan regresyonu bulunduğunda 
 
 ### PR-06 — rotor aerodinamiği
 
-- **PR-06A — yerel indüklenmiş-akış çekirdeği (başlatıldı).** Hover'da tekillik
+- **PR-06A — yerel indüklenmiş-akış çekirdeği (tamamlandı ve review edildi).** Hover'da tekillik
   üretmeyen QPROP akış açısı parametrelemesiyle bir pal annulusunda eksenel indüksiyon,
   swirl, değiştirilmiş Prandtl uç kaybı ve diferansiyel itki/tork çözülür. Çözüm
   yakınsamazsa kapalı biçimde hata verir; tam rotor BEM iddiası taşımaz.
-- **PR-06B — radyal rotor integrasyonu.** Annulus orta noktaları, chord/twist
-  enterpolasyonu, kök/uç kayıpları ve rotor toplamları eklenir.
+- **PR-06B — radyal rotor integrasyonu (tamamlandı).** Annulus orta noktaları,
+  chord/twist enterpolasyonu, açık radial-domain politikası, seçilebilir kök/uç
+  kayıpları, rotor toplamları ve boyutsuz performans katsayıları eklendi. Fiziksel
+  doğruluk iddiası PR-06C benchmark kapısına bağlıdır.
 - **PR-06C — sabit pervane benchmark'ı.** APC veya eşdeğer açık deney verisi üzerinde
   itki ve tork hata eşikleri, ağ/annulus duyarlılığı ve polar duyarlılığı yayımlanır.
 - **PR-06D — katlanır geometri bağlantısı.** Açılma açısı, etkin yarıçap ve yerel
@@ -60,8 +62,11 @@ kanıt paketi ve başarısızlığı görünür kılan regresyonu bulunduğunda 
 PR-06A'nın denklemsel temeli Mark Drela'nın
 [QPROP formulation](https://web.mit.edu/drela/Public/web/qprop/qprop_theory.pdf)
 notudur. Daha geniş çalışma rejimleri ve garantili kök bulma tasarımı için Andrew
-Ning'in [BEM solution method](https://scholarsarchive.byu.edu/facpub/1694/) çalışması
+Ning'in [BEM solution method](https://scholarsarchive.byu.edu/facpub/1673/) çalışması
 PR-06B/06C'de referans alınacaktır.
+
+PR-06A/06B denklem, sayısal davranış ve kapsam incelemesi
+[PR-06 foundation review](pr06_foundation_review.md) belgesinde kayıtlıdır.
 
 ### PR-07 — tam bağlı motor–pervane çözümü
 
@@ -106,8 +111,8 @@ arşiv bütünlüğü sürüm kapısıdır.
 
 | Sıra | Teslimat | Tamamlanma kapısı |
 | --- | --- | --- |
-| 1 | PR-06A yerel annulus çözücüsü | Hover testi, denklem kalıntısı, uç-kayıp testi, açık kapsam sınırı |
-| 2 | PR-06B rotor integrasyonu | Radyal yakınsama ve yük/toplam tutarlılığı |
+| 1 | PR-06A yerel annulus çözücüsü | Tamamlandı: hover, denklem kalıntısı, loss-model ve açık kapsam regresyonları |
+| 2 | PR-06B rotor integrasyonu | Tamamlandı: radyal yakınsama, yük/toplam tutarlılığı ve provenance |
 | 3 | PR-06C referans benchmark | Önceden ilan edilmiş itki/tork hata eşiği |
 | 4 | PR-06D katlanır bağlantı | Sabit-limit eşdeğerliği ve açılma duyarlılığı |
 | 5 | PR-07 motor bağlantısı | Tork/enerji dengesi ve ölçüm korelasyonu |

@@ -60,6 +60,12 @@ politikası fail-closed `error`dır; açıkça seçilen `clamp` işlemleri tanı
 indüksiyon, swirl, Prandtl kök/uç kaybı, dinamik stall ve sıkıştırılabilirlik düzeltmesi
 uygulamaz.
 
+PR-06A/06B akışı için `solve_bem_annulus()` ve `solve_bem_rotor()` ayrı, fail-closed
+sözleşmelerdir. Rotor çözücüsü varsayılan olarak yalnız blade station aralığını midpoint
+kuralıyla integre eder; hub-tip geometri uzatması ve Prandtl kök faktörü açıkça seçilir.
+Bu katman henüz deneysel doğrulama anlamına gelmez. Denklem ve kapsam incelemesi:
+`docs/pr06_foundation_review.md`.
+
 ## Kurulum
 
 ```bash

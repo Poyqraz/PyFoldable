@@ -14,6 +14,16 @@ from .bem import (
     BEMConvergenceError,
     solve_bem_annulus,
 )
+from .bem_rotor import (
+    BEM_ROTOR_SCHEMA_VERSION,
+    BEMRadialDomain,
+    BEMRotorElement,
+    BEMRotorElementError,
+    BEMRotorError,
+    BEMRotorResult,
+    BEMRotorSettings,
+    solve_bem_rotor,
+)
 
 from .config import DesignConfigError, load_design_config
 from .models import (
@@ -177,6 +187,13 @@ __all__ = [
     "BEMAnnulusResult",
     "BEMAnnulusSettings",
     "BEMConvergenceError",
+    "BEM_ROTOR_SCHEMA_VERSION",
+    "BEMRadialDomain",
+    "BEMRotorElement",
+    "BEMRotorElementError",
+    "BEMRotorError",
+    "BEMRotorResult",
+    "BEMRotorSettings",
     "CacheStatus",
     "DesignConfigError",
     "FilesystemPolarCache",
@@ -292,6 +309,7 @@ __all__ = [
     "write_polar_real_qualification_comparison",
     "run_polar_provider_benchmark",
     "solve_bem_annulus",
+    "solve_bem_rotor",
     "qualify_real_polar_backends",
     "write_polar_real_qualification_bundle",
 ]

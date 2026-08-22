@@ -1,8 +1,9 @@
 """Fail-closed local blade-element/momentum annulus solution.
 
 This module implements the hover-capable flow-angle parameterization from QPROP.
-It deliberately stops at one annulus: radial geometry interpolation, root loss, and
-whole-rotor integration belong to the next development increment.
+It deliberately stops at one annulus; radial interpolation and integration are in
+``bem_rotor``. The optional root factor is an explicit extension to QPROP's modified
+tip-loss relation.
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ from .models import BladeGeometry, BladeStation, OperatingCondition
 from .polar import PolarBoundsPolicy, PolarFamily, PolarQueryResult
 
 
-BEM_ANNULUS_SCHEMA_VERSION = 1
+BEM_ANNULUS_SCHEMA_VERSION = 2
 _AIR_GAMMA = 1.4
 _AIR_GAS_CONSTANT_J_KG_K = 287.05
 
@@ -27,7 +28,7 @@ class BEMAnnulusError(ValueError):
 
 
 class BEMConvergenceError(RuntimeError):
-    """Raised when no supported propulsive annulus solution can be bracketed."""
+    """Raised when a supported propulsive annulus solution is not obtained."""
 
 
 @dataclass(frozen=True)
@@ -38,10 +39,20 @@ class BEMAnnulusSettings:
     max_iterations: int = 100
     angle_tolerance_rad: float = 1.0e-10
     residual_tolerance_m2_s: float = 1.0e-8
+    relative_residual_tolerance: float = 1.0e-10
     minimum_tip_loss_factor: float = 1.0e-6
     include_tip_loss: bool = True
+    include_root_loss: bool = False
 
     def __post_init__(self) -> None:
+        if not isinstance(self.bracket_samples, int) or isinstance(
+            self.bracket_samples, bool
+        ):
+            raise TypeError("bracket_samples must be an integer.")
+        if not isinstance(self.max_iterations, int) or isinstance(
+            self.max_iterations, bool
+        ):
+            raise TypeError("max_iterations must be an integer.")
         if self.bracket_samples < 2:
             raise ValueError("bracket_samples must be at least 2.")
         if self.max_iterations < 1:
@@ -49,6 +60,7 @@ class BEMAnnulusSettings:
         for name in (
             "angle_tolerance_rad",
             "residual_tolerance_m2_s",
+            "relative_residual_tolerance",
             "minimum_tip_loss_factor",
         ):
             value = getattr(self, name)
@@ -56,6 +68,23 @@ class BEMAnnulusSettings:
                 raise ValueError(f"{name} must be finite and greater than zero.")
         if self.minimum_tip_loss_factor > 1.0:
             raise ValueError("minimum_tip_loss_factor cannot exceed one.")
+        if not isinstance(self.include_tip_loss, bool):
+            raise TypeError("include_tip_loss must be boolean.")
+        if not isinstance(self.include_root_loss, bool):
+            raise TypeError("include_root_loss must be boolean.")
+
+    def as_mapping(self) -> Mapping[str, Any]:
+        """Return the complete numerical/loss-model contract."""
+        return {
+            "bracket_samples": self.bracket_samples,
+            "max_iterations": self.max_iterations,
+            "angle_tolerance_rad": self.angle_tolerance_rad,
+            "residual_tolerance_m2_s": self.residual_tolerance_m2_s,
+            "relative_residual_tolerance": self.relative_residual_tolerance,
+            "minimum_tip_loss_factor": self.minimum_tip_loss_factor,
+            "include_tip_loss": self.include_tip_loss,
+            "include_root_loss": self.include_root_loss,
+        }
 
 
 @dataclass(frozen=True)
@@ -66,6 +95,8 @@ class BEMAnnulusResult:
     operating_condition_id: str
     airfoil_id: str
     scenario_id: str
+    polar_bounds: PolarBoundsPolicy
+    settings: BEMAnnulusSettings
     radius_m: float
     r_over_R: float
     chord_m: float
@@ -83,6 +114,8 @@ class BEMAnnulusResult:
     cd: float
     circulation_m2_s: float
     tip_loss_factor: float
+    root_loss_factor: float
+    combined_loss_factor: float
     differential_thrust_n_m: float
     differential_torque_nm_m: float
     residual_m2_s: float
@@ -101,6 +134,8 @@ class BEMAnnulusResult:
             "operating_condition_id": self.operating_condition_id,
             "airfoil_id": self.airfoil_id,
             "scenario_id": self.scenario_id,
+            "polar_bounds": self.polar_bounds,
+            "settings": dict(self.settings.as_mapping()),
             "radius_m": self.radius_m,
             "r_over_R": self.r_over_R,
             "chord_m": self.chord_m,
@@ -119,6 +154,8 @@ class BEMAnnulusResult:
             "cd": self.cd,
             "circulation_m2_s": self.circulation_m2_s,
             "tip_loss_factor": self.tip_loss_factor,
+            "root_loss_factor": self.root_loss_factor,
+            "combined_loss_factor": self.combined_loss_factor,
             "differential_thrust_n_m": self.differential_thrust_n_m,
             "differential_torque_nm_m": self.differential_torque_nm_m,
             "residual_m2_s": self.residual_m2_s,
@@ -141,6 +178,8 @@ class _AnnulusState:
     mach: float
     polar: PolarQueryResult
     tip_loss: float
+    root_loss: float
+    combined_loss: float
     circulation_swirl: float
     circulation_blade: float
 
@@ -149,15 +188,61 @@ class _AnnulusState:
         return self.circulation_swirl - self.circulation_blade
 
 
-def _tip_loss_factor(
-    *, blade_count: int, r_over_R: float, wa: float, wt: float, minimum: float
-) -> tuple[float, float]:
+def _prandtl_factor(exponent_argument: float, minimum: float) -> float:
+    factor = (2.0 / math.pi) * math.acos(math.exp(-max(exponent_argument, 0.0)))
+    return max(factor, minimum)
+
+
+def _loss_factors(
+    *,
+    blade: BladeGeometry,
+    radius: float,
+    wa: float,
+    wt: float,
+    settings: BEMAnnulusSettings,
+) -> tuple[float, float, float, float]:
+    r_over_R = radius / blade.radius_m
     wake_ratio = r_over_R * wa / wt
     if wake_ratio <= 1.0e-15:
-        return 1.0, wake_ratio
-    exponent = -0.5 * blade_count * (1.0 - r_over_R) / wake_ratio
-    factor = (2.0 / math.pi) * math.acos(math.exp(exponent))
-    return max(factor, minimum), wake_ratio
+        return 1.0, 1.0, 1.0, wake_ratio
+
+    if settings.include_tip_loss:
+        tip_argument = (
+            0.5 * blade.blade_count * (1.0 - r_over_R) / wake_ratio
+        )
+        tip_loss = _prandtl_factor(
+            tip_argument, settings.minimum_tip_loss_factor
+        )
+    else:
+        tip_loss = 1.0
+
+    if settings.include_root_loss:
+        sine_phi = wa / math.hypot(wa, wt)
+        root_argument = (
+            0.5
+            * blade.blade_count
+            * (radius - blade.hub_radius_m)
+            / (blade.hub_radius_m * sine_phi)
+        )
+        root_loss = _prandtl_factor(
+            root_argument, settings.minimum_tip_loss_factor
+        )
+    else:
+        root_loss = 1.0
+
+    return tip_loss, root_loss, tip_loss * root_loss, wake_ratio
+
+
+def _residual_limit(state: _AnnulusState, settings: BEMAnnulusSettings) -> float:
+    scale = max(
+        abs(state.circulation_swirl),
+        abs(state.circulation_blade),
+        1.0e-30,
+    )
+    return (
+        settings.residual_tolerance_m2_s
+        + settings.relative_residual_tolerance * scale
+    )
 
 
 def solve_bem_annulus(
@@ -175,7 +260,9 @@ def solve_bem_annulus(
     and an annulus strictly between hub and tip. Windmilling and descent solutions
     are intentionally rejected until their solution branches are modeled explicitly.
     """
-    controls = settings or BEMAnnulusSettings()
+    controls = BEMAnnulusSettings() if settings is None else settings
+    if not isinstance(controls, BEMAnnulusSettings):
+        raise BEMAnnulusError("settings must be a BEMAnnulusSettings instance.")
     if bounds not in {"error", "clamp"}:
         raise BEMAnnulusError("bounds must be 'error' or 'clamp'.")
     if condition.angular_speed_rad_s <= 0.0:
@@ -185,6 +272,10 @@ def solve_bem_annulus(
     if station.airfoil_id != polar_family.airfoil_id:
         raise BEMAnnulusError(
             "Blade station airfoil_id does not match the polar family airfoil_id."
+        )
+    if controls.include_root_loss and blade.hub_radius_m <= 0.0:
+        raise BEMAnnulusError(
+            "include_root_loss requires a strictly positive hub_radius_m."
         )
 
     radius = station.r_over_R * blade.radius_m
@@ -219,17 +310,13 @@ def solve_bem_annulus(
             mach=mach,
             bounds=bounds,
         )
-        if controls.include_tip_loss:
-            tip_loss, wake_ratio = _tip_loss_factor(
-                blade_count=blade.blade_count,
-                r_over_R=station.r_over_R,
-                wa=wa,
-                wt=wt,
-                minimum=controls.minimum_tip_loss_factor,
-            )
-        else:
-            tip_loss = 1.0
-            wake_ratio = station.r_over_R * wa / wt
+        tip_loss, root_loss, combined_loss, wake_ratio = _loss_factors(
+            blade=blade,
+            radius=radius,
+            wa=wa,
+            wt=wt,
+            settings=controls,
+        )
         correction = math.sqrt(
             1.0
             + (
@@ -241,7 +328,10 @@ def solve_bem_annulus(
             ** 2
         )
         circulation_swirl = (
-            vt * (4.0 * math.pi * radius / blade.blade_count) * tip_loss * correction
+            vt
+            * (4.0 * math.pi * radius / blade.blade_count)
+            * combined_loss
+            * correction
         )
         circulation_blade = 0.5 * relative_speed * station.chord_m * polar.cl
         return _AnnulusState(
@@ -256,50 +346,78 @@ def solve_bem_annulus(
             mach,
             polar,
             tip_loss,
+            root_loss,
+            combined_loss,
             circulation_swirl,
             circulation_blade,
         )
 
     lower_state = evaluate(no_induction_psi)
-    if abs(lower_state.residual) <= controls.residual_tolerance_m2_s:
+    if abs(lower_state.residual) <= _residual_limit(lower_state, controls):
         solution = lower_state
         iterations = 0
     else:
         upper_psi = 0.5 * math.pi - controls.angle_tolerance_rad
+        if no_induction_psi >= upper_psi:
+            raise BEMConvergenceError(
+                "The propulsive psi search interval collapsed at this advance ratio."
+            )
         previous = lower_state
         bracket: tuple[float, float] | None = None
+        scanned_root: _AnnulusState | None = None
         for index in range(1, controls.bracket_samples + 1):
             psi = no_induction_psi + (upper_psi - no_induction_psi) * (
                 index / controls.bracket_samples
             )
             current = evaluate(psi)
+            if abs(current.residual) <= _residual_limit(current, controls):
+                scanned_root = current
+                break
             if previous.residual * current.residual <= 0.0:
                 bracket = (previous.psi, current.psi)
                 break
             previous = current
-        if bracket is None:
+        if scanned_root is not None:
+            solution = scanned_root
+            iterations = 0
+        elif bracket is None:
             raise BEMConvergenceError(
                 "No positive-loading propulsive annulus solution was bracketed."
             )
-        try:
-            root, details = brentq(
-                lambda psi: evaluate(psi).residual,
-                *bracket,
-                xtol=controls.angle_tolerance_rad,
-                maxiter=controls.max_iterations,
-                full_output=True,
-                disp=False,
-            )
-        except (RuntimeError, ValueError) as exc:
-            raise BEMConvergenceError("Annulus root solve did not converge.") from exc
-        if not details.converged:
-            raise BEMConvergenceError("Annulus root solve did not converge.")
-        solution = evaluate(root)
-        iterations = details.iterations
+        else:
+            try:
+                root, details = brentq(
+                    lambda psi: evaluate(psi).residual,
+                    *bracket,
+                    xtol=controls.angle_tolerance_rad,
+                    maxiter=controls.max_iterations,
+                    full_output=True,
+                    disp=False,
+                )
+            except (RuntimeError, ValueError) as exc:
+                raise BEMConvergenceError(
+                    "Annulus root solve did not converge."
+                ) from exc
+            if not details.converged:
+                raise BEMConvergenceError("Annulus root solve did not converge.")
+            solution = evaluate(root)
+            iterations = details.iterations
 
-    if abs(solution.residual) > controls.residual_tolerance_m2_s:
+    if abs(solution.residual) > _residual_limit(solution, controls):
         raise BEMConvergenceError(
-            "Annulus circulation residual exceeds residual_tolerance_m2_s."
+            "Annulus circulation residual exceeds the configured tolerance."
+        )
+
+    if solution.circulation_blade < -_residual_limit(solution, controls):
+        raise BEMConvergenceError(
+            "Converged root is not on the supported non-negative circulation branch."
+        )
+    flow_tolerance = controls.angle_tolerance_rad * max(
+        solution.relative_speed, 1.0
+    )
+    if solution.va < -flow_tolerance or solution.vt < -flow_tolerance:
+        raise BEMConvergenceError(
+            "Converged root is not on the supported propulsive induced-flow branch."
         )
 
     dynamic_force = (
@@ -323,6 +441,8 @@ def solve_bem_annulus(
         operating_condition_id=condition.id,
         airfoil_id=station.airfoil_id,
         scenario_id=polar_family.scenario_id,
+        polar_bounds=bounds,
+        settings=controls,
         radius_m=radius,
         r_over_R=station.r_over_R,
         chord_m=station.chord_m,
@@ -340,6 +460,8 @@ def solve_bem_annulus(
         cd=solution.polar.cd,
         circulation_m2_s=solution.circulation_blade,
         tip_loss_factor=solution.tip_loss,
+        root_loss_factor=solution.root_loss,
+        combined_loss_factor=solution.combined_loss,
         differential_thrust_n_m=differential_thrust,
         differential_torque_nm_m=differential_torque,
         residual_m2_s=solution.residual,
