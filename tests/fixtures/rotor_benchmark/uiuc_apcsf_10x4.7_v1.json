@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "id": "uiuc-apcsf-10x4.7-volume1-v3-screening-v1",
+  "description": "UIUC wind-tunnel measurements and digitized geometry for the APC Slow Flyer 10x4.7 propeller. Negative-thrust/windmilling points are retained but excluded from the declared propulsive qualification envelope.",
+  "rights_scope": "Publicly downloadable third-party factual data; not relicensed under the PyFoldable project license. Source terms and attribution apply.",
+  "environment": {
+    "air_density_kg_m3": 1.225,
+    "dynamic_viscosity_pa_s": 1.81e-05,
+    "temperature_k": 288.15,
+    "pressure_pa": 101325.0,
+    "status": "standard-atmosphere modeling assumption; the fixture files do not encode run-specific tunnel conditions"
+  },
+  "geometry": {
+    "diameter_m": 0.254,
+    "hub_radius_m": 0.00635,
+    "blade_count": 2,
+    "status": "UIUC approximate digitization; chord is normalized by radius and twist is the chord-line beta angle",
+    "stations": [
+      {"r_over_R": 0.15, "chord_over_R": 0.109, "twist_deg": 21.11},
+      {"r_over_R": 0.20, "chord_over_R": 0.132, "twist_deg": 23.90},
+      {"r_over_R": 0.25, "chord_over_R": 0.156, "twist_deg": 24.65},
+      {"r_over_R": 0.30, "chord_over_R": 0.176, "twist_deg": 24.11},
+      {"r_over_R": 0.35, "chord_over_R": 0.193, "twist_deg": 22.78},
+      {"r_over_R": 0.40, "chord_over_R": 0.206, "twist_deg": 21.01},
+      {"r_over_R": 0.45, "chord_over_R": 0.216, "twist_deg": 19.00},
+      {"r_over_R": 0.50, "chord_over_R": 0.223, "twist_deg": 17.06},
+      {"r_over_R": 0.55, "chord_over_R": 0.226, "twist_deg": 15.33},
+      {"r_over_R": 0.60, "chord_over_R": 0.225, "twist_deg": 13.82},
+      {"r_over_R": 0.65, "chord_over_R": 0.219, "twist_deg": 12.51},
+      {"r_over_R": 0.70, "chord_over_R": 0.210, "twist_deg": 11.36},
+      {"r_over_R": 0.75, "chord_over_R": 0.197, "twist_deg": 10.27},
+      {"r_over_R": 0.80, "chord_over_R": 0.179, "twist_deg": 9.32},
+      {"r_over_R": 0.85, "chord_over_R": 0.157, "twist_deg": 8.36},
+      {"r_over_R": 0.90, "chord_over_R": 0.130, "twist_deg": 7.27},
+      {"r_over_R": 0.95, "chord_over_R": 0.087, "twist_deg": 6.15},
+      {"r_over_R": 1.00, "chord_over_R": 0.042, "twist_deg": 5.04}
+    ]
+  },
+  "sources": [
+    {
+      "id": "uiuc-geometry",
+      "kind": "digitized_geometry",
+      "url": "https://m-selig.ae.illinois.edu/props/volume-1/data/apcsf_10x4.7_geom.txt",
+      "citation": "J.B. Brandt, R.W. Deters, G.K. Ananda, O.D. Dantsker, and M.S. Selig, UIUC Propeller Database, Volume 1 version 3"
+    },
+    {
+      "id": "uiuc-static-kt0835",
+      "kind": "wind_tunnel_static_measurement",
+      "url": "https://m-selig.ae.illinois.edu/props/volume-1/data/apcsf_10x4.7_static_kt0835.txt",
+      "citation": "UIUC Propeller Database, APC Slow Flyer 10x4.7 static run kt0835"
+    },
+    {
+      "id": "uiuc-forward-rd0838-4997",
+      "kind": "wind_tunnel_forward_measurement",
+      "url": "https://m-selig.ae.illinois.edu/props/volume-1/data/apcsf_10x4.7_rd0838_4997.txt",
+      "citation": "UIUC Propeller Database, APC Slow Flyer 10x4.7 run rd0838 at 4997 rpm"
+    },
+    {
+      "id": "uiuc-forward-rd0840-6020",
+      "kind": "wind_tunnel_forward_measurement",
+      "url": "https://m-selig.ae.illinois.edu/props/volume-1/data/apcsf_10x4.7_rd0840_6020.txt",
+      "citation": "UIUC Propeller Database, APC Slow Flyer 10x4.7 run rd0840 at 6020 rpm"
+    },
+    {
+      "id": "uiuc-forward-rd0841-6512",
+      "kind": "wind_tunnel_forward_measurement",
+      "url": "https://m-selig.ae.illinois.edu/props/volume-1/data/apcsf_10x4.7_rd0841_6512.txt",
+      "citation": "UIUC Propeller Database, APC Slow Flyer 10x4.7 run rd0841 at 6512 rpm"
+    }
+  ],
+  "points": [
+    {"id":"static-2377","regime":"static","rpm":2377,"advance_ratio":0.0,"thrust_coefficient":0.1059,"power_coefficient":0.0431,"source_id":"uiuc-static-kt0835","qualification_eligible":true},
+    {"id":"static-2676","regime":"static","rpm":2676,"advance_ratio":0.0,"thrust_coefficient":0.1079,"power_coefficient":0.0437,"source_id":"uiuc-static-kt0835","qualification_eligible":true},
+    {"id":"static-2947","regime":"static","rpm":2947,"advance_ratio":0.0,"thrust_coefficient":0.1079,"power_coefficient":0.0437,"source_id":"uiuc-static-kt0835","qualification_eligible":true},
+    {"id":"static-3234","regime":"static","rpm":3234,"advance_ratio":0.0,"thrust_coefficient":0.1104,"power_coefficient":0.0444,"source_id":"uiuc-static-kt0835","qualification_eligible":true},
+    {"id":"static-3494","regime":"static","rpm":3494,"advance_ratio":0.0,"thrust_coefficient":0.1117,"power_coefficient":0.0450,"source_id":"uiuc-static-kt0835","qualification_eligible":true},
+    {"id":"static-3762","regime":"static","rpm":3762,"advance_ratio":0.0,"thrust_coefficient":0.1143,"power_coefficient":0.0460,"source_id":"uiuc-static-kt0835","qualification_eligible":true},
+    {"id":"static-4029","regime":"static","rpm":4029,"advance_ratio":0.0,"thrust_coefficient":0.1158,"power_coefficient":0.0466,"source_id":"uiuc-static-kt0835","qualification_eligible":true},
+    {"id":"static-4319","regime":"static","rpm":4319,"advance_ratio":0.0,"thrust_coefficient":0.1177,"power_coefficient":0.0474,"source_id":"uiuc-static-kt0835","qualification_eligible":true},
+    {"id":"static-4590","regime":"static","rpm":4590,"advance_ratio":0.0,"thrust_coefficient":0.1200,"power_coefficient":0.0484,"source_id":"uiuc-static-kt0835","qualification_eligible":true},
+    {"id":"static-4880","regime":"static","rpm":4880,"advance_ratio":0.0,"thrust_coefficient":0.1223,"power_coefficient":0.0494,"source_id":"uiuc-static-kt0835","qualification_eligible":true},
+    {"id":"static-5147","regime":"static","rpm":5147,"advance_ratio":0.0,"thrust_coefficient":0.1237,"power_coefficient":0.0500,"source_id":"uiuc-static-kt0835","qualification_eligible":true},
+    {"id":"static-5417","regime":"static","rpm":5417,"advance_ratio":0.0,"thrust_coefficient":0.1252,"power_coefficient":0.0508,"source_id":"uiuc-static-kt0835","qualification_eligible":true},
+    {"id":"static-5715","regime":"static","rpm":5715,"advance_ratio":0.0,"thrust_coefficient":0.1263,"power_coefficient":0.0513,"source_id":"uiuc-static-kt0835","qualification_eligible":true},
+    {"id":"static-5960","regime":"static","rpm":5960,"advance_ratio":0.0,"thrust_coefficient":0.1278,"power_coefficient":0.0520,"source_id":"uiuc-static-kt0835","qualification_eligible":true},
+    {"id":"static-6226","regime":"static","rpm":6226,"advance_ratio":0.0,"thrust_coefficient":0.1286,"power_coefficient":0.0524,"source_id":"uiuc-static-kt0835","qualification_eligible":true},
+    {"id":"static-6528","regime":"static","rpm":6528,"advance_ratio":0.0,"thrust_coefficient":0.1299,"power_coefficient":0.0531,"source_id":"uiuc-static-kt0835","qualification_eligible":true},
+
+    {"id":"forward-4997-j0487","regime":"forward","rpm":4997,"advance_ratio":0.487,"thrust_coefficient":0.0425,"power_coefficient":0.0334,"source_id":"uiuc-forward-rd0838-4997","qualification_eligible":true},
+    {"id":"forward-4997-j0520","regime":"forward","rpm":4997,"advance_ratio":0.520,"thrust_coefficient":0.0347,"power_coefficient":0.0311,"source_id":"uiuc-forward-rd0838-4997","qualification_eligible":true},
+    {"id":"forward-4997-j0547","regime":"forward","rpm":4997,"advance_ratio":0.547,"thrust_coefficient":0.0278,"power_coefficient":0.0290,"source_id":"uiuc-forward-rd0838-4997","qualification_eligible":true},
+    {"id":"forward-4997-j0575","regime":"forward","rpm":4997,"advance_ratio":0.575,"thrust_coefficient":0.0204,"power_coefficient":0.0267,"source_id":"uiuc-forward-rd0838-4997","qualification_eligible":true},
+    {"id":"forward-4997-j0604","regime":"forward","rpm":4997,"advance_ratio":0.604,"thrust_coefficient":0.0125,"power_coefficient":0.0242,"source_id":"uiuc-forward-rd0838-4997","qualification_eligible":true},
+    {"id":"forward-4997-j0636","regime":"forward","rpm":4997,"advance_ratio":0.636,"thrust_coefficient":0.0040,"power_coefficient":0.0215,"source_id":"uiuc-forward-rd0838-4997","qualification_eligible":true},
+    {"id":"forward-4997-j0661","regime":"forward","rpm":4997,"advance_ratio":0.661,"thrust_coefficient":-0.0032,"power_coefficient":0.0191,"source_id":"uiuc-forward-rd0838-4997","qualification_eligible":false},
+    {"id":"forward-4997-j0692","regime":"forward","rpm":4997,"advance_ratio":0.692,"thrust_coefficient":-0.0120,"power_coefficient":0.0161,"source_id":"uiuc-forward-rd0838-4997","qualification_eligible":false},
+    {"id":"forward-4997-j0719","regime":"forward","rpm":4997,"advance_ratio":0.719,"thrust_coefficient":-0.0198,"power_coefficient":0.0134,"source_id":"uiuc-forward-rd0838-4997","qualification_eligible":false},
+    {"id":"forward-4997-j0749","regime":"forward","rpm":4997,"advance_ratio":0.749,"thrust_coefficient":-0.0289,"power_coefficient":0.0104,"source_id":"uiuc-forward-rd0838-4997","qualification_eligible":false},
+    {"id":"forward-4997-j0782","regime":"forward","rpm":4997,"advance_ratio":0.782,"thrust_coefficient":-0.0386,"power_coefficient":0.0073,"source_id":"uiuc-forward-rd0838-4997","qualification_eligible":false},
+
+    {"id":"forward-6020-j0408","regime":"forward","rpm":6020,"advance_ratio":0.408,"thrust_coefficient":0.0624,"power_coefficient":0.0397,"source_id":"uiuc-forward-rd0840-6020","qualification_eligible":true},
+    {"id":"forward-6020-j0432","regime":"forward","rpm":6020,"advance_ratio":0.432,"thrust_coefficient":0.0576,"power_coefficient":0.0383,"source_id":"uiuc-forward-rd0840-6020","qualification_eligible":true},
+    {"id":"forward-6020-j0458","regime":"forward","rpm":6020,"advance_ratio":0.458,"thrust_coefficient":0.0519,"power_coefficient":0.0366,"source_id":"uiuc-forward-rd0840-6020","qualification_eligible":true},
+    {"id":"forward-6020-j0480","regime":"forward","rpm":6020,"advance_ratio":0.480,"thrust_coefficient":0.0471,"power_coefficient":0.0351,"source_id":"uiuc-forward-rd0840-6020","qualification_eligible":true},
+    {"id":"forward-6020-j0507","regime":"forward","rpm":6020,"advance_ratio":0.507,"thrust_coefficient":0.0405,"power_coefficient":0.0331,"source_id":"uiuc-forward-rd0840-6020","qualification_eligible":true},
+    {"id":"forward-6020-j0528","regime":"forward","rpm":6020,"advance_ratio":0.528,"thrust_coefficient":0.0354,"power_coefficient":0.0315,"source_id":"uiuc-forward-rd0840-6020","qualification_eligible":true},
+    {"id":"forward-6020-j0551","regime":"forward","rpm":6020,"advance_ratio":0.551,"thrust_coefficient":0.0296,"power_coefficient":0.0297,"source_id":"uiuc-forward-rd0840-6020","qualification_eligible":true},
+    {"id":"forward-6020-j0574","regime":"forward","rpm":6020,"advance_ratio":0.574,"thrust_coefficient":0.0235,"power_coefficient":0.0279,"source_id":"uiuc-forward-rd0840-6020","qualification_eligible":true},
+    {"id":"forward-6020-j0601","regime":"forward","rpm":6020,"advance_ratio":0.601,"thrust_coefficient":0.0160,"power_coefficient":0.0254,"source_id":"uiuc-forward-rd0840-6020","qualification_eligible":true},
+    {"id":"forward-6020-j0623","regime":"forward","rpm":6020,"advance_ratio":0.623,"thrust_coefficient":0.0100,"power_coefficient":0.0234,"source_id":"uiuc-forward-rd0840-6020","qualification_eligible":true},
+    {"id":"forward-6020-j0652","regime":"forward","rpm":6020,"advance_ratio":0.652,"thrust_coefficient":0.0017,"power_coefficient":0.0207,"source_id":"uiuc-forward-rd0840-6020","qualification_eligible":true},
+    {"id":"forward-6020-j0671","regime":"forward","rpm":6020,"advance_ratio":0.671,"thrust_coefficient":-0.0039,"power_coefficient":0.0189,"source_id":"uiuc-forward-rd0840-6020","qualification_eligible":false},
+    {"id":"forward-6020-j0700","regime":"forward","rpm":6020,"advance_ratio":0.700,"thrust_coefficient":-0.0123,"power_coefficient":0.0160,"source_id":"uiuc-forward-rd0840-6020","qualification_eligible":false},
+    {"id":"forward-6020-j0719","regime":"forward","rpm":6020,"advance_ratio":0.719,"thrust_coefficient":-0.0178,"power_coefficient":0.0141,"source_id":"uiuc-forward-rd0840-6020","qualification_eligible":false},
+    {"id":"forward-6020-j0747","regime":"forward","rpm":6020,"advance_ratio":0.747,"thrust_coefficient":-0.0265,"power_coefficient":0.0112,"source_id":"uiuc-forward-rd0840-6020","qualification_eligible":false},
+    {"id":"forward-6020-j0774","regime":"forward","rpm":6020,"advance_ratio":0.774,"thrust_coefficient":-0.0347,"power_coefficient":0.0085,"source_id":"uiuc-forward-rd0840-6020","qualification_eligible":false},
+
+    {"id":"forward-6512-j0089","regime":"forward","rpm":6512,"advance_ratio":0.089,"thrust_coefficient":0.1201,"power_coefficient":0.0523,"source_id":"uiuc-forward-rd0841-6512","qualification_eligible":true},
+    {"id":"forward-6512-j0112","regime":"forward","rpm":6512,"advance_ratio":0.112,"thrust_coefficient":0.1171,"power_coefficient":0.0522,"source_id":"uiuc-forward-rd0841-6512","qualification_eligible":true},
+    {"id":"forward-6512-j0134","regime":"forward","rpm":6512,"advance_ratio":0.134,"thrust_coefficient":0.1129,"power_coefficient":0.0512,"source_id":"uiuc-forward-rd0841-6512","qualification_eligible":true},
+    {"id":"forward-6512-j0155","regime":"forward","rpm":6512,"advance_ratio":0.155,"thrust_coefficient":0.1101,"power_coefficient":0.0511,"source_id":"uiuc-forward-rd0841-6512","qualification_eligible":true},
+    {"id":"forward-6512-j0176","regime":"forward","rpm":6512,"advance_ratio":0.176,"thrust_coefficient":0.1059,"power_coefficient":0.0500,"source_id":"uiuc-forward-rd0841-6512","qualification_eligible":true},
+    {"id":"forward-6512-j0199","regime":"forward","rpm":6512,"advance_ratio":0.199,"thrust_coefficient":0.1019,"power_coefficient":0.0493,"source_id":"uiuc-forward-rd0841-6512","qualification_eligible":true},
+    {"id":"forward-6512-j0225","regime":"forward","rpm":6512,"advance_ratio":0.225,"thrust_coefficient":0.0974,"power_coefficient":0.0483,"source_id":"uiuc-forward-rd0841-6512","qualification_eligible":true},
+    {"id":"forward-6512-j0246","regime":"forward","rpm":6512,"advance_ratio":0.246,"thrust_coefficient":0.0935,"power_coefficient":0.0475,"source_id":"uiuc-forward-rd0841-6512","qualification_eligible":true},
+    {"id":"forward-6512-j0266","regime":"forward","rpm":6512,"advance_ratio":0.266,"thrust_coefficient":0.0895,"power_coefficient":0.0465,"source_id":"uiuc-forward-rd0841-6512","qualification_eligible":true},
+    {"id":"forward-6512-j0287","regime":"forward","rpm":6512,"advance_ratio":0.287,"thrust_coefficient":0.0865,"power_coefficient":0.0460,"source_id":"uiuc-forward-rd0841-6512","qualification_eligible":true},
+    {"id":"forward-6512-j0308","regime":"forward","rpm":6512,"advance_ratio":0.308,"thrust_coefficient":0.0833,"power_coefficient":0.0454,"source_id":"uiuc-forward-rd0841-6512","qualification_eligible":true},
+    {"id":"forward-6512-j0332","regime":"forward","rpm":6512,"advance_ratio":0.332,"thrust_coefficient":0.0787,"power_coefficient":0.0444,"source_id":"uiuc-forward-rd0841-6512","qualification_eligible":true},
+    {"id":"forward-6512-j0357","regime":"forward","rpm":6512,"advance_ratio":0.357,"thrust_coefficient":0.0743,"power_coefficient":0.0434,"source_id":"uiuc-forward-rd0841-6512","qualification_eligible":true},
+    {"id":"forward-6512-j0378","regime":"forward","rpm":6512,"advance_ratio":0.378,"thrust_coefficient":0.0704,"power_coefficient":0.0424,"source_id":"uiuc-forward-rd0841-6512","qualification_eligible":true},
+    {"id":"forward-6512-j0395","regime":"forward","rpm":6512,"advance_ratio":0.395,"thrust_coefficient":0.0669,"power_coefficient":0.0414,"source_id":"uiuc-forward-rd0841-6512","qualification_eligible":true},
+    {"id":"forward-6512-j0420","regime":"forward","rpm":6512,"advance_ratio":0.420,"thrust_coefficient":0.0616,"power_coefficient":0.0398,"source_id":"uiuc-forward-rd0841-6512","qualification_eligible":true},
+    {"id":"forward-6512-j0445","regime":"forward","rpm":6512,"advance_ratio":0.445,"thrust_coefficient":0.0562,"power_coefficient":0.0381,"source_id":"uiuc-forward-rd0841-6512","qualification_eligible":true}
+  ]
+}

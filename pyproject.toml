@@ -1,14 +1,15 @@
 [build-system]
-requires = ["setuptools>=61.0.0", "wheel"]
+requires = ["setuptools>=77.0.3", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyfoldable"
-version = "0.2.0"
+version = "0.3.0"
 description = "Tip-hinged foldable propeller analysis for UAV electric propulsion ."
 readme = "README.md"
-authors = [{ name = "Hüseyin Karakaya" }]
-license = { text = "Apache-2.0" }
+authors = [{ name = "Poyraz Baydemir" }]
+license = "PolyForm-Noncommercial-1.0.0"
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "CLA.md"]
 requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.20",

@@ -1,0 +1,1056 @@
+{
+  "benchmark_id": "pr06c-uiuc-apcsf-10x4.7-screening-v1",
+  "decision": "pr06d_blocked",
+  "evaluation": {
+    "data_interpretation": "The existing APC 202602 repository table is manufacturer vortex-model output, not wind-tunnel validation; UIUC measurements are the physical reference used here.",
+    "next_required_actions": [
+      "add a reviewed mixed/local-negative-loading forward-flight branch",
+      "obtain or generate a span-representative, Reynolds-aware APC polar family",
+      "rerun this frozen fixture without weakening the predeclared policy"
+    ],
+    "numerical_integration": "passes the declared terminal annulus-sensitivity gate",
+    "physical_accuracy": "not qualified: solution coverage and representative polar evidence must pass before coefficient error can authorize PR-06D",
+    "principal_failure_mode": "The positive-loading-only local branch rejects forward-flight cases when an inner annulus becomes locally unloaded or negative-loaded."
+  },
+  "failed_gates": [
+    "solution_coverage",
+    "ct_bias",
+    "representative_polar_evidence",
+    "regime_solution_coverage",
+    "regime_ct_wmape",
+    "regime_cp_wmape",
+    "regime_ct_bias",
+    "regime_cp_bias"
+  ],
+  "fixture": {
+    "environment_status": "standard atmosphere assumed because run-specific tunnel state is not encoded in the downloaded coefficient files",
+    "excluded_windmilling_point_count": 10,
+    "id": "uiuc-apcsf-10x4.7-volume1-v3-screening-v1",
+    "path": "tests/fixtures/rotor_benchmark/uiuc_apcsf_10x4.7_v1.json",
+    "qualification_point_count": 50,
+    "raw_point_count": 60,
+    "rights_scope": "Third-party factual data; source terms apply and the project license does not relicense it.",
+    "sha256": "c6f04a4d32ea9c4421db38ec67a2164be0b81b13c64b0a81718792dfd047531b",
+    "sources": [
+      {
+        "citation": "J.B. Brandt, R.W. Deters, G.K. Ananda, O.D. Dantsker, and M.S. Selig, UIUC Propeller Database, Volume 1 version 3",
+        "id": "uiuc-geometry",
+        "kind": "digitized_geometry",
+        "url": "https://m-selig.ae.illinois.edu/props/volume-1/data/apcsf_10x4.7_geom.txt"
+      },
+      {
+        "citation": "UIUC Propeller Database, APC Slow Flyer 10x4.7 static run kt0835",
+        "id": "uiuc-static-kt0835",
+        "kind": "wind_tunnel_static_measurement",
+        "url": "https://m-selig.ae.illinois.edu/props/volume-1/data/apcsf_10x4.7_static_kt0835.txt"
+      },
+      {
+        "citation": "UIUC Propeller Database, APC Slow Flyer 10x4.7 run rd0838 at 4997 rpm",
+        "id": "uiuc-forward-rd0838-4997",
+        "kind": "wind_tunnel_forward_measurement",
+        "url": "https://m-selig.ae.illinois.edu/props/volume-1/data/apcsf_10x4.7_rd0838_4997.txt"
+      },
+      {
+        "citation": "UIUC Propeller Database, APC Slow Flyer 10x4.7 run rd0840 at 6020 rpm",
+        "id": "uiuc-forward-rd0840-6020",
+        "kind": "wind_tunnel_forward_measurement",
+        "url": "https://m-selig.ae.illinois.edu/props/volume-1/data/apcsf_10x4.7_rd0840_6020.txt"
+      },
+      {
+        "citation": "UIUC Propeller Database, APC Slow Flyer 10x4.7 run rd0841 at 6512 rpm",
+        "id": "uiuc-forward-rd0841-6512",
+        "kind": "wind_tunnel_forward_measurement",
+        "url": "https://m-selig.ae.illinois.edu/props/volume-1/data/apcsf_10x4.7_rd0841_6512.txt"
+      }
+    ]
+  },
+  "passed": false,
+  "policy": {
+    "maximum_absolute_cp_normalized_bias": 0.15,
+    "maximum_absolute_ct_normalized_bias": 0.1,
+    "maximum_cp_wmape": 0.2,
+    "maximum_ct_wmape": 0.15,
+    "maximum_radial_terminal_delta": 0.005,
+    "minimum_solution_coverage": 0.95,
+    "require_representative_polar_evidence": true
+  },
+  "radial_convergence": {
+    "annulus_counts": [
+      20,
+      40,
+      80,
+      160
+    ],
+    "cases": [
+      {
+        "point_id": "static-6528",
+        "results": [
+          {
+            "annulus_count": 20,
+            "power_coefficient": 0.04260853444608801,
+            "thrust_coefficient": 0.1051518152498211
+          },
+          {
+            "annulus_count": 40,
+            "power_coefficient": 0.04256680326926129,
+            "thrust_coefficient": 0.10501171938300183
+          },
+          {
+            "annulus_count": 80,
+            "power_coefficient": 0.04255628930661661,
+            "thrust_coefficient": 0.10496473397331596
+          },
+          {
+            "annulus_count": 160,
+            "power_coefficient": 0.04255126529819414,
+            "thrust_coefficient": 0.1049423779380328
+          }
+        ],
+        "terminal_relative_delta": {
+          "power_coefficient": 0.00011806954240403229,
+          "thrust_coefficient": 0.00021303152951582057
+        }
+      },
+      {
+        "point_id": "forward-6512-j0199",
+        "results": [
+          {
+            "annulus_count": 20,
+            "power_coefficient": 0.03916623373159758,
+            "thrust_coefficient": 0.07755266775243906
+          },
+          {
+            "annulus_count": 40,
+            "power_coefficient": 0.03911784017486915,
+            "thrust_coefficient": 0.07744543391815818
+          },
+          {
+            "annulus_count": 80,
+            "power_coefficient": 0.03910695197620507,
+            "thrust_coefficient": 0.07741416863118514
+          },
+          {
+            "annulus_count": 160,
+            "power_coefficient": 0.03910140295149505,
+            "thrust_coefficient": 0.07739934453593486
+          }
+        ],
+        "terminal_relative_delta": {
+          "power_coefficient": 0.00014191369851620914,
+          "thrust_coefficient": 0.00019152740038249282
+        }
+      }
+    ],
+    "maximum_terminal_relative_delta": 0.00021303152951582057
+  },
+  "schema_version": 1,
+  "selected_variant": {
+    "cp_metrics": {
+      "mae": 0.006892932166148588,
+      "maximum_absolute_error": 0.010637429934425152,
+      "mean_prediction": 0.041876633051242715,
+      "mean_reference": 0.0487695652173913,
+      "normalized_bias": -0.14133675654936037,
+      "normalized_rmse": 0.1591559456097845,
+      "rmse": 0.0077619662691519676,
+      "wmape": 0.14133675654936037
+    },
+    "ct_metrics": {
+      "mae": 0.017039232406656352,
+      "maximum_absolute_error": 0.02601823590916008,
+      "mean_prediction": 0.09864772411508277,
+      "mean_reference": 0.11568695652173913,
+      "normalized_bias": -0.14728741181340052,
+      "normalized_rmse": 0.16448680741149038,
+      "rmse": 0.019028978137412767,
+      "wmape": 0.14728741181340052
+    },
+    "failure_counts": {
+      "BEMConvergenceError": 27
+    },
+    "gates": {
+      "cp_bias": true,
+      "cp_wmape": true,
+      "ct_bias": false,
+      "ct_wmape": true,
+      "radial_convergence": true,
+      "regime_cp_bias": false,
+      "regime_cp_wmape": false,
+      "regime_ct_bias": false,
+      "regime_ct_wmape": false,
+      "regime_solution_coverage": false,
+      "representative_polar_evidence": false,
+      "solution_coverage": false
+    },
+    "passed": false,
+    "point_count": 50,
+    "polar_contract": {
+      "airfoil_id": "APC-SF-4412-CLARKY-PROXY",
+      "basis_url": "https://www.apcprop.com/technical-information/engineering/",
+      "evidence_class": "analytic_proxy",
+      "limitation": "APC publishes spanwise geometry but not an exact, qualified polar family for the tested blade; this declared proxy cannot pass the physical-polar gate.",
+      "representative_polar_evidence": false,
+      "scenario_id": "pr06c-analytic-proxy-v1",
+      "source": "analytic-proxy:a0=-4:clmax=1.2:cd0=0.025:k=0.025"
+    },
+    "predictions": [
+      {
+        "point_id": "static-2377",
+        "power_coefficient": 0.04255628930661661,
+        "status": "success",
+        "thrust_coefficient": 0.10496473397331599
+      },
+      {
+        "point_id": "static-2676",
+        "power_coefficient": 0.0425562893066166,
+        "status": "success",
+        "thrust_coefficient": 0.104964733973316
+      },
+      {
+        "point_id": "static-2947",
+        "power_coefficient": 0.04255628930661661,
+        "status": "success",
+        "thrust_coefficient": 0.10496473397331597
+      },
+      {
+        "point_id": "static-3234",
+        "power_coefficient": 0.04255628930661662,
+        "status": "success",
+        "thrust_coefficient": 0.10496473397331599
+      },
+      {
+        "point_id": "static-3494",
+        "power_coefficient": 0.04255628930661661,
+        "status": "success",
+        "thrust_coefficient": 0.10496473397331604
+      },
+      {
+        "point_id": "static-3762",
+        "power_coefficient": 0.04255628930661662,
+        "status": "success",
+        "thrust_coefficient": 0.10496473397331604
+      },
+      {
+        "point_id": "static-4029",
+        "power_coefficient": 0.042556289306616604,
+        "status": "success",
+        "thrust_coefficient": 0.10496473397331599
+      },
+      {
+        "point_id": "static-4319",
+        "power_coefficient": 0.0425562893066166,
+        "status": "success",
+        "thrust_coefficient": 0.10496473397331597
+      },
+      {
+        "point_id": "static-4590",
+        "power_coefficient": 0.04255628930661662,
+        "status": "success",
+        "thrust_coefficient": 0.104964733973316
+      },
+      {
+        "point_id": "static-4880",
+        "power_coefficient": 0.04255628930661661,
+        "status": "success",
+        "thrust_coefficient": 0.10496473397331602
+      },
+      {
+        "point_id": "static-5147",
+        "power_coefficient": 0.0425562893066166,
+        "status": "success",
+        "thrust_coefficient": 0.10496473397331599
+      },
+      {
+        "point_id": "static-5417",
+        "power_coefficient": 0.0425562893066166,
+        "status": "success",
+        "thrust_coefficient": 0.10496473397331599
+      },
+      {
+        "point_id": "static-5715",
+        "power_coefficient": 0.042556289306616604,
+        "status": "success",
+        "thrust_coefficient": 0.104964733973316
+      },
+      {
+        "point_id": "static-5960",
+        "power_coefficient": 0.042556289306616625,
+        "status": "success",
+        "thrust_coefficient": 0.10496473397331604
+      },
+      {
+        "point_id": "static-6226",
+        "power_coefficient": 0.042556289306616604,
+        "status": "success",
+        "thrust_coefficient": 0.10496473397331599
+      },
+      {
+        "point_id": "static-6528",
+        "power_coefficient": 0.04255628930661661,
+        "status": "success",
+        "thrust_coefficient": 0.10496473397331596
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-4997-j0487",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-4997-j0520",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-4997-j0547",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-4997-j0575",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-4997-j0604",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-4997-j0636",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-6020-j0408",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-6020-j0432",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-6020-j0458",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-6020-j0480",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-6020-j0507",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-6020-j0528",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-6020-j0551",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-6020-j0574",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-6020-j0601",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-6020-j0623",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-6020-j0652",
+        "status": "unsupported"
+      },
+      {
+        "point_id": "forward-6512-j0089",
+        "power_coefficient": 0.041957220565436854,
+        "status": "success",
+        "thrust_coefficient": 0.09429883541584708
+      },
+      {
+        "point_id": "forward-6512-j0112",
+        "power_coefficient": 0.04156257006557485,
+        "status": "success",
+        "thrust_coefficient": 0.09108176409083991
+      },
+      {
+        "point_id": "forward-6512-j0134",
+        "power_coefficient": 0.041095841314536356,
+        "status": "success",
+        "thrust_coefficient": 0.08786042285869092
+      },
+      {
+        "point_id": "forward-6512-j0155",
+        "power_coefficient": 0.04054410163783332,
+        "status": "success",
+        "thrust_coefficient": 0.08461288926623425
+      },
+      {
+        "point_id": "forward-6512-j0176",
+        "power_coefficient": 0.0398996764939493,
+        "status": "success",
+        "thrust_coefficient": 0.08122878868453294
+      },
+      {
+        "point_id": "forward-6512-j0199",
+        "power_coefficient": 0.03910695197620507,
+        "status": "success",
+        "thrust_coefficient": 0.07741416863118514
+      },
+      {
+        "point_id": "forward-6512-j0225",
+        "power_coefficient": 0.038095569219181,
+        "status": "success",
+        "thrust_coefficient": 0.07296504212651765
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-6512-j0246",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-6512-j0266",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-6512-j0287",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-6512-j0308",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-6512-j0332",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-6512-j0357",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-6512-j0378",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-6512-j0395",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-6512-j0420",
+        "status": "unsupported"
+      },
+      {
+        "error_message": "Annulus 0 at r/R=0.1553125 failed: No positive-loading propulsive annulus solution was bracketed.",
+        "error_type": "BEMConvergenceError",
+        "point_id": "forward-6512-j0445",
+        "status": "unsupported"
+      }
+    ],
+    "radial_terminal_delta": 0.00021303152951582057,
+    "regime_metrics": {
+      "forward": {
+        "cp_metrics": {
+          "mae": 0.010305438389611895,
+          "maximum_absolute_error": 0.010637429934425152,
+          "mean_prediction": 0.040323133038959534,
+          "mean_reference": 0.050628571428571426,
+          "normalized_bias": -0.20354985532529138,
+          "normalized_rmse": 0.20358815179870157,
+          "rmse": 0.010307377285351405,
+          "wmape": 0.20354985532529138
+        },
+        "ct_metrics": {
+          "mae": 0.025134012703736015,
+          "maximum_absolute_error": 0.02601823590916008,
+          "mean_prediction": 0.08420884443912113,
+          "mean_reference": 0.10934285714285714,
+          "normalized_bias": -0.22986423951679136,
+          "normalized_rmse": 0.22992877966890643,
+          "rmse": 0.025141069708368713,
+          "wmape": 0.22986423951679136
+        },
+        "point_count": 34,
+        "solution_coverage": 0.20588235294117646,
+        "successful_point_count": 7
+      },
+      "static": {
+        "cp_metrics": {
+          "mae": 0.005399960693383391,
+          "maximum_absolute_error": 0.01054371069338339,
+          "mean_prediction": 0.04255628930661661,
+          "mean_reference": 0.04795625,
+          "normalized_bias": -0.11260181297293662,
+          "normalized_rmse": 0.13208897286584972,
+          "rmse": 0.006334491804997906,
+          "wmape": 0.11260181297293662
+        },
+        "ct_metrics": {
+          "mae": 0.013497766026683998,
+          "maximum_absolute_error": 0.024935266026684028,
+          "mean_prediction": 0.104964733973316,
+          "mean_reference": 0.1184625,
+          "normalized_bias": -0.11394125589687874,
+          "normalized_rmse": 0.1318574591829032,
+          "rmse": 0.015620164258454671,
+          "wmape": 0.11394125589687874
+        },
+        "point_count": 16,
+        "solution_coverage": 1.0,
+        "successful_point_count": 16
+      }
+    },
+    "representative_polar_evidence": false,
+    "settings": {
+      "annulus_count": 80,
+      "annulus_settings": {
+        "angle_tolerance_rad": 1e-10,
+        "bracket_samples": 128,
+        "include_root_loss": false,
+        "include_tip_loss": true,
+        "max_iterations": 100,
+        "minimum_tip_loss_factor": 1e-06,
+        "relative_residual_tolerance": 1e-10,
+        "residual_tolerance_m2_s": 1e-08
+      },
+      "radial_domain": "station_span"
+    },
+    "solution_coverage": 0.46,
+    "successful_point_count": 23,
+    "variant_id": "qprop-tip_proxy-baseline"
+  },
+  "sensitivity_variants": [
+    {
+      "cp_metrics": {
+        "mae": 0.0068929362195423675,
+        "maximum_absolute_error": 0.01063743870210631,
+        "mean_prediction": 0.041876628997848934,
+        "mean_reference": 0.0487695652173913,
+        "normalized_bias": -0.14133683966254298,
+        "normalized_rmse": 0.15915605838803218,
+        "rmse": 0.007761971769298073,
+        "wmape": 0.14133683966254298
+      },
+      "ct_metrics": {
+        "mae": 0.017039260134022533,
+        "maximum_absolute_error": 0.026018298858619407,
+        "mean_prediction": 0.09864769638771659,
+        "mean_reference": 0.11568695652173913,
+        "normalized_bias": -0.14728765148922063,
+        "normalized_rmse": 0.1644871031392773,
+        "rmse": 0.019029012349260393,
+        "wmape": 0.14728765148922063
+      },
+      "failure_counts": {
+        "BEMConvergenceError": 27
+      },
+      "gates": {
+        "cp_bias": true,
+        "cp_wmape": true,
+        "ct_bias": false,
+        "ct_wmape": true,
+        "radial_convergence": true,
+        "regime_cp_bias": false,
+        "regime_cp_wmape": false,
+        "regime_ct_bias": false,
+        "regime_ct_wmape": false,
+        "regime_solution_coverage": false,
+        "representative_polar_evidence": false,
+        "solution_coverage": false
+      },
+      "passed": false,
+      "point_count": 50,
+      "polar_contract": {
+        "airfoil_id": "APC-SF-4412-CLARKY-PROXY",
+        "basis_url": "https://www.apcprop.com/technical-information/engineering/",
+        "evidence_class": "analytic_proxy",
+        "limitation": "APC publishes spanwise geometry but not an exact, qualified polar family for the tested blade; this declared proxy cannot pass the physical-polar gate.",
+        "representative_polar_evidence": false,
+        "scenario_id": "pr06c-analytic-proxy-v1",
+        "source": "analytic-proxy:a0=-4:clmax=1.2:cd0=0.025:k=0.025"
+      },
+      "radial_terminal_delta": 0.00021303550255730218,
+      "regime_metrics": {
+        "forward": {
+          "cp_metrics": {
+            "mae": 0.01030545242120952,
+            "maximum_absolute_error": 0.01063743870210631,
+            "mean_prediction": 0.04032311900736191,
+            "mean_reference": 0.050628571428571426,
+            "normalized_bias": -0.20355013247310003,
+            "normalized_rmse": 0.20358842798136054,
+            "rmse": 0.010307391268084881,
+            "wmape": 0.2035501324731
+          },
+          "ct_metrics": {
+            "mae": 0.025134091491628097,
+            "maximum_absolute_error": 0.026018298858619407,
+            "mean_prediction": 0.08420876565122905,
+            "mean_reference": 0.10934285714285714,
+            "normalized_bias": -0.22986496007498913,
+            "normalized_rmse": 0.22992949731638906,
+            "rmse": 0.025141148177994885,
+            "wmape": 0.22986496007498913
+          },
+          "point_count": 34,
+          "solution_coverage": 0.20588235294117646,
+          "successful_point_count": 7
+        },
+        "static": {
+          "cp_metrics": {
+            "mae": 0.005399960381312989,
+            "maximum_absolute_error": 0.010543710381312986,
+            "mean_prediction": 0.04255628961868701,
+            "mean_reference": 0.04795625,
+            "normalized_bias": -0.11260180646553866,
+            "normalized_rmse": 0.13208896731849187,
+            "rmse": 0.006334491538967426,
+            "wmape": 0.11260180646553866
+          },
+          "ct_metrics": {
+            "mae": 0.013497771415070099,
+            "maximum_absolute_error": 0.024935271415070112,
+            "mean_prediction": 0.1049647285849299,
+            "mean_reference": 0.1184625,
+            "normalized_bias": -0.11394130138288572,
+            "normalized_rmse": 0.13185749848847644,
+            "rmse": 0.01562016891469114,
+            "wmape": 0.11394130138288572
+          },
+          "point_count": 16,
+          "solution_coverage": 1.0,
+          "successful_point_count": 16
+        }
+      },
+      "representative_polar_evidence": false,
+      "settings": {
+        "annulus_count": 80,
+        "annulus_settings": {
+          "angle_tolerance_rad": 1e-10,
+          "bracket_samples": 128,
+          "include_root_loss": true,
+          "include_tip_loss": true,
+          "max_iterations": 100,
+          "minimum_tip_loss_factor": 1e-06,
+          "relative_residual_tolerance": 1e-10,
+          "residual_tolerance_m2_s": 1e-08
+        },
+        "radial_domain": "station_span"
+      },
+      "solution_coverage": 0.46,
+      "successful_point_count": 23,
+      "variant_id": "qprop-tip-prandtl-root_proxy-baseline"
+    },
+    {
+      "cp_metrics": {
+        "mae": 0.006590153865560772,
+        "maximum_absolute_error": 0.010360191469042324,
+        "mean_prediction": 0.04217941135183053,
+        "mean_reference": 0.0487695652173913,
+        "normalized_bias": -0.13512841125782096,
+        "normalized_rmse": 0.1526118307202348,
+        "rmse": 0.007442812631255972,
+        "wmape": 0.13512841125782096
+      },
+      "ct_metrics": {
+        "mae": 0.014111638148099199,
+        "maximum_absolute_error": 0.022689399137725233,
+        "mean_prediction": 0.10177785112228585,
+        "mean_reference": 0.11568695652173913,
+        "normalized_bias": -0.12023054126105892,
+        "normalized_rmse": 0.1404131471439862,
+        "rmse": 0.016243969648726892,
+        "wmape": 0.12198123775040648
+      },
+      "failure_counts": {
+        "BEMConvergenceError": 27
+      },
+      "gates": {
+        "cp_bias": true,
+        "cp_wmape": true,
+        "ct_bias": false,
+        "ct_wmape": true,
+        "radial_convergence": true,
+        "regime_cp_bias": false,
+        "regime_cp_wmape": true,
+        "regime_ct_bias": false,
+        "regime_ct_wmape": false,
+        "regime_solution_coverage": false,
+        "representative_polar_evidence": false,
+        "solution_coverage": false
+      },
+      "passed": false,
+      "point_count": 50,
+      "polar_contract": {
+        "airfoil_id": "APC-SF-4412-CLARKY-PROXY",
+        "basis_url": "https://www.apcprop.com/technical-information/engineering/",
+        "evidence_class": "analytic_proxy",
+        "limitation": "APC publishes spanwise geometry but not an exact, qualified polar family for the tested blade; this declared proxy cannot pass the physical-polar gate.",
+        "representative_polar_evidence": false,
+        "scenario_id": "pr06c-analytic-proxy-v1",
+        "source": "analytic-proxy:a0=-4:clmax=1.2:cd0=0.025:k=0.025"
+      },
+      "radial_terminal_delta": 6.616127734673662e-05,
+      "regime_metrics": {
+        "forward": {
+          "cp_metrics": {
+            "mae": 0.00973006791474578,
+            "maximum_absolute_error": 0.010182284132767255,
+            "mean_prediction": 0.040898503513825644,
+            "mean_reference": 0.050628571428571426,
+            "normalized_bias": -0.19218531434317285,
+            "normalized_rmse": 0.19226308465920194,
+            "rmse": 0.00973400531474588,
+            "wmape": 0.19218531434317287
+          },
+          "ct_metrics": {
+            "mae": 0.021809252300625033,
+            "maximum_absolute_error": 0.022689399137725233,
+            "mean_prediction": 0.08753360484223212,
+            "mean_reference": 0.10934285714285714,
+            "normalized_bias": -0.19945749425708809,
+            "normalized_rmse": 0.19953102344698964,
+            "rmse": 0.021817292192332267,
+            "wmape": 0.1994574942570881
+          },
+          "point_count": 34,
+          "solution_coverage": 0.20588235294117646,
+          "successful_point_count": 7
+        },
+        "static": {
+          "cp_metrics": {
+            "mae": 0.0052164414690423315,
+            "maximum_absolute_error": 0.010360191469042324,
+            "mean_prediction": 0.04273980853095767,
+            "mean_reference": 0.04795625,
+            "normalized_bias": -0.10877500782572307,
+            "normalized_rmse": 0.12884227099616452,
+            "rmse": 0.0061787921584598145,
+            "wmape": 0.10877500782572307
+          },
+          "ct_metrics": {
+            "mae": 0.010743931956369145,
+            "maximum_absolute_error": 0.021890291130190642,
+            "mean_prediction": 0.10800970886980935,
+            "mean_reference": 0.1184625,
+            "normalized_bias": -0.08823713099242922,
+            "normalized_rmse": 0.11040639036119276,
+            "rmse": 0.013079017018162798,
+            "wmape": 0.09069479334278059
+          },
+          "point_count": 16,
+          "solution_coverage": 1.0,
+          "successful_point_count": 16
+        }
+      },
+      "representative_polar_evidence": false,
+      "settings": {
+        "annulus_count": 80,
+        "annulus_settings": {
+          "angle_tolerance_rad": 1e-10,
+          "bracket_samples": 128,
+          "include_root_loss": false,
+          "include_tip_loss": false,
+          "max_iterations": 100,
+          "minimum_tip_loss_factor": 1e-06,
+          "relative_residual_tolerance": 1e-10,
+          "residual_tolerance_m2_s": 1e-08
+        },
+        "radial_domain": "station_span"
+      },
+      "solution_coverage": 0.46,
+      "successful_point_count": 23,
+      "variant_id": "no-loss_proxy-baseline"
+    },
+    {
+      "cp_metrics": {
+        "mae": 0.009140238300941282,
+        "maximum_absolute_error": 0.012884249488635195,
+        "mean_prediction": 0.039629326916450026,
+        "mean_reference": 0.0487695652173913,
+        "normalized_bias": -0.18741685024663415,
+        "normalized_rmse": 0.2005582380261628,
+        "rmse": 0.009781138069302035,
+        "wmape": 0.18741685024663413
+      },
+      "ct_metrics": {
+        "mae": 0.01687068623822785,
+        "maximum_absolute_error": 0.025843836660694036,
+        "mean_prediction": 0.09881627028351128,
+        "mean_reference": 0.11568695652173913,
+        "normalized_bias": -0.14583049589568572,
+        "normalized_rmse": 0.16317366241220063,
+        "rmse": 0.018877064388973193,
+        "wmape": 0.14583049589568572
+      },
+      "failure_counts": {
+        "BEMConvergenceError": 27
+      },
+      "gates": {
+        "cp_bias": false,
+        "cp_wmape": true,
+        "ct_bias": false,
+        "ct_wmape": true,
+        "radial_convergence": true,
+        "regime_cp_bias": false,
+        "regime_cp_wmape": false,
+        "regime_ct_bias": false,
+        "regime_ct_wmape": false,
+        "regime_solution_coverage": false,
+        "representative_polar_evidence": false,
+        "solution_coverage": false
+      },
+      "passed": false,
+      "point_count": 50,
+      "polar_contract": {
+        "airfoil_id": "APC-SF-4412-CLARKY-PROXY",
+        "basis_url": "https://www.apcprop.com/technical-information/engineering/",
+        "evidence_class": "analytic_proxy",
+        "limitation": "APC publishes spanwise geometry but not an exact, qualified polar family for the tested blade; this declared proxy cannot pass the physical-polar gate.",
+        "representative_polar_evidence": false,
+        "scenario_id": "pr06c-analytic-proxy-v1",
+        "source": "analytic-proxy:a0=-4:clmax=1.2:cd0=0.02:k=0.02"
+      },
+      "radial_terminal_delta": 0.00021265458594821245,
+      "regime_metrics": {
+        "forward": {
+          "cp_metrics": {
+            "mae": 0.01233964130049805,
+            "maximum_absolute_error": 0.012760313738301547,
+            "mean_prediction": 0.03828893012807338,
+            "mean_reference": 0.050628571428571426,
+            "normalized_bias": -0.24372880672541297,
+            "normalized_rmse": 0.24378062863337382,
+            "rmse": 0.01234226496966681,
+            "wmape": 0.24372880672541294
+          },
+          "ct_metrics": {
+            "mae": 0.02495937087771449,
+            "maximum_absolute_error": 0.025843836660694036,
+            "mean_prediction": 0.08438348626514267,
+            "mean_reference": 0.10934285714285714,
+            "normalized_bias": -0.22826704487065771,
+            "normalized_rmse": 0.2283320946954485,
+            "rmse": 0.024966483611413754,
+            "wmape": 0.22826704487065774
+          },
+          "point_count": 34,
+          "solution_coverage": 0.20588235294117646,
+          "successful_point_count": 7
+        },
+        "static": {
+          "cp_metrics": {
+            "mae": 0.007740499488635198,
+            "maximum_absolute_error": 0.012884249488635195,
+            "mean_prediction": 0.0402157505113648,
+            "mean_reference": 0.04795625,
+            "normalized_bias": -0.16140752224444568,
+            "normalized_rmse": 0.17555830001755604,
+            "rmse": 0.008419117725216922,
+            "wmape": 0.16140752224444568
+          },
+          "ct_metrics": {
+            "mae": 0.013331886708452444,
+            "maximum_absolute_error": 0.024769386708452468,
+            "mean_prediction": 0.10513061329154755,
+            "mean_reference": 0.1184625,
+            "normalized_bias": -0.11254098730359771,
+            "normalized_rmse": 0.13064935350043458,
+            "rmse": 0.015477049039045232,
+            "wmape": 0.11254098730359771
+          },
+          "point_count": 16,
+          "solution_coverage": 1.0,
+          "successful_point_count": 16
+        }
+      },
+      "representative_polar_evidence": false,
+      "settings": {
+        "annulus_count": 80,
+        "annulus_settings": {
+          "angle_tolerance_rad": 1e-10,
+          "bracket_samples": 128,
+          "include_root_loss": false,
+          "include_tip_loss": true,
+          "max_iterations": 100,
+          "minimum_tip_loss_factor": 1e-06,
+          "relative_residual_tolerance": 1e-10,
+          "residual_tolerance_m2_s": 1e-08
+        },
+        "radial_domain": "station_span"
+      },
+      "solution_coverage": 0.46,
+      "successful_point_count": 23,
+      "variant_id": "qprop-tip_proxy-low-drag"
+    },
+    {
+      "cp_metrics": {
+        "mae": 0.003710376386372042,
+        "maximum_absolute_error": 0.00603583432528363,
+        "mean_prediction": 0.046533028806933566,
+        "mean_reference": 0.0487695652173913,
+        "normalized_bias": -0.04585926490195953,
+        "normalized_rmse": 0.08399263290863154,
+        "rmse": 0.004096284188417913,
+        "wmape": 0.07607975116925825
+      },
+      "ct_metrics": {
+        "mae": 0.010725891896583939,
+        "maximum_absolute_error": 0.01748953445300376,
+        "mean_prediction": 0.10674828081557605,
+        "mean_reference": 0.11568695652173913,
+        "normalized_bias": -0.07726606330492732,
+        "normalized_rmse": 0.10538004419663578,
+        "rmse": 0.012191096591235151,
+        "wmape": 0.09271479014635846
+      },
+      "failure_counts": {
+        "BEMConvergenceError": 27
+      },
+      "gates": {
+        "cp_bias": true,
+        "cp_wmape": true,
+        "ct_bias": true,
+        "ct_wmape": true,
+        "radial_convergence": true,
+        "regime_cp_bias": true,
+        "regime_cp_wmape": true,
+        "regime_ct_bias": false,
+        "regime_ct_wmape": false,
+        "regime_solution_coverage": false,
+        "representative_polar_evidence": false,
+        "solution_coverage": false
+      },
+      "passed": false,
+      "point_count": 50,
+      "polar_contract": {
+        "airfoil_id": "APC-SF-4412-CLARKY-PROXY",
+        "basis_url": "https://www.apcprop.com/technical-information/engineering/",
+        "evidence_class": "analytic_proxy",
+        "limitation": "APC publishes spanwise geometry but not an exact, qualified polar family for the tested blade; this declared proxy cannot pass the physical-polar gate.",
+        "representative_polar_evidence": false,
+        "scenario_id": "pr06c-analytic-proxy-v1",
+        "source": "analytic-proxy:a0=-5:clmax=1.2:cd0=0.025:k=0.025"
+      },
+      "radial_terminal_delta": 0.00021144685224876186,
+      "regime_metrics": {
+        "forward": {
+          "cp_metrics": {
+            "mae": 0.0053095697479985295,
+            "maximum_absolute_error": 0.005684405999478094,
+            "mean_prediction": 0.0453190016805729,
+            "mean_reference": 0.050628571428571426,
+            "normalized_bias": -0.1048729916365398,
+            "normalized_rmse": 0.10497826659114792,
+            "rmse": 0.005314899668557546,
+            "wmape": 0.1048729916365398
+          },
+          "ct_metrics": {
+            "mae": 0.016588442435605536,
+            "maximum_absolute_error": 0.01748953445300376,
+            "mean_prediction": 0.09275441470725161,
+            "mean_reference": 0.10934285714285714,
+            "normalized_bias": -0.15171034367551445,
+            "normalized_rmse": 0.15182775896140088,
+            "rmse": 0.016601280958436604,
+            "wmape": 0.15171034367551445
+          },
+          "point_count": 34,
+          "solution_coverage": 0.20588235294117646,
+          "successful_point_count": 7
+        },
+        "static": {
+          "cp_metrics": {
+            "mae": 0.003010729290660454,
+            "maximum_absolute_error": 0.00603583432528363,
+            "mean_prediction": 0.04706416567471636,
+            "mean_reference": 0.04795625,
+            "normalized_bias": -0.01860204509909853,
+            "normalized_rmse": 0.07151478553300625,
+            "rmse": 0.003429580933717231,
+            "wmape": 0.06278074892554054
+          },
+          "ct_metrics": {
+            "mae": 0.008161026035761989,
+            "maximum_absolute_error": 0.017029402762031992,
+            "mean_prediction": 0.11287059723796801,
+            "mean_reference": 0.1184625,
+            "normalized_bias": -0.047203990815929,
+            "normalized_rmse": 0.08143707077101484,
+            "rmse": 0.009647238996211345,
+            "wmape": 0.0688912190419921
+          },
+          "point_count": 16,
+          "solution_coverage": 1.0,
+          "successful_point_count": 16
+        }
+      },
+      "representative_polar_evidence": false,
+      "settings": {
+        "annulus_count": 80,
+        "annulus_settings": {
+          "angle_tolerance_rad": 1e-10,
+          "bracket_samples": 128,
+          "include_root_loss": false,
+          "include_tip_loss": true,
+          "max_iterations": 100,
+          "minimum_tip_loss_factor": 1e-06,
+          "relative_residual_tolerance": 1e-10,
+          "residual_tolerance_m2_s": 1e-08
+        },
+        "radial_domain": "station_span"
+      },
+      "solution_coverage": 0.46,
+      "successful_point_count": 23,
+      "variant_id": "qprop-tip_proxy-higher-camber"
+    }
+  ]
+}

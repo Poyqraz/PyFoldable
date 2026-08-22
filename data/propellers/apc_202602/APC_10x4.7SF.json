@@ -5,5 +5,10 @@
   "diameter_in": 10.0,
   "pitch_in": 4.7,
   "blade_count": 2,
-  "data_csv": "APC_10x4.7SF.csv"
+  "data_csv": "APC_10x4.7SF.csv",
+  "source_release": "PERFILES_WEB-202602",
+  "source_url": "https://www.apcprop.com/technical-information/performance-data/",
+  "evidence_class": "manufacturer_vortex_model_prediction",
+  "experimental": false,
+  "license_scope": "third_party_source_terms_apply"
 }

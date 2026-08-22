@@ -63,8 +63,12 @@ uygulamaz.
 PR-06A/06B akışı için `solve_bem_annulus()` ve `solve_bem_rotor()` ayrı, fail-closed
 sözleşmelerdir. Rotor çözücüsü varsayılan olarak yalnız blade station aralığını midpoint
 kuralıyla integre eder; hub-tip geometri uzatması ve Prandtl kök faktörü açıkça seçilir.
-Bu katman henüz deneysel doğrulama anlamına gelmez. Denklem ve kapsam incelemesi:
-`docs/pr06_foundation_review.md`.
+PR-06C, UIUC APC 10×4.7 rüzgâr-tüneli verisiyle 60 noktalı benchmark, ağ ve model/polar
+duyarlılığı üretir. Güncel sonuç sayısal yakınsama kapısını geçirir; fakat ileri uçuş
+çözüm kapsamı ve temsili polar kanıtı geçmediği için fiziksel doğruluk ve PR-06D geçişi
+kapalıdır. Denklem/kapsam incelemesi `docs/pr06_foundation_review.md`, geçmiş review
+`docs/pr04_pr06_retrospective_review.md`, çıktı ise
+`reports/pr06c_fixed_propeller_benchmark.md` altındadır.
 
 ## Kurulum
 
@@ -157,8 +161,8 @@ Bu aşama **sayısal ön tasarım ve model tabanlı değerlendirme** üretir. Pa
 - motor bağlantısını `reference_load_postprocess` seviyesinde modeller (RPM/akım/güç referans
   pervane dengesinden; katlanabilir `D_aero` yükü sonradan işlenir).
 
-Deneysel doğrulama, ileri aerodinamik çözüm (CFD/BEM çalıştırması) ve yapısal analiz sonraki
-doğrulama adımları için referans alınır. Ayrıntı:
+Kalibrasyonlu proje pervanesi deneyi, tam ileri-uçuş BEM kapsamı, CFD korelasyonu ve yapısal
+analiz sonraki doğrulama adımları için referans alınır. Ayrıntı:
 `reports/foldable_v2_engineering_design/model_assumptions_and_limits.md`
 
 ## Kapsam özeti
@@ -168,7 +172,16 @@ doğrulama adımları için referans alınır. Ayrıntı:
 
 ## Lisans
 
-Apache-2.0 — bkz. `LICENSE`.
+Telif hakkı © 2026 Poyraz Baydemir.
+
+İlk-taraf proje malzemesi [PolyForm Noncommercial 1.0.0](LICENSE) altındadır. Kişisel,
+akademik ve diğer lisans-tanımlı ticari olmayan kullanımlar serbesttir; ticari kullanım
+için [@Poyqraz](https://github.com/Poyqraz) ile ayrı lisans gerekir. Bu, 0.3.0 ve sonrası
+için ileriye dönük değişikliktir; daha önce Apache-2.0 altında edinilmiş kopyalar o
+kopyaya eşlik eden lisansı korur.
+
+Kapsam/üçüncü taraf sınırları: `docs/licensing.md` ve `THIRD_PARTY_NOTICES.md`. Katkı
+koşulları: `CONTRIBUTING.md` ve `CLA.md`.
 
 ---
 
