@@ -217,11 +217,44 @@ def test_unsupported_annulus_requests_are_rejected(station, condition, family, m
         solve_bem_annulus(blade, station, condition, family)
 
 
-def test_no_positive_loading_solution_fails_closed():
+def test_negative_loading_requires_explicit_signed_branch():
     blade, station = _blade()
 
-    with pytest.raises(BEMConvergenceError, match="No positive-loading"):
+    with pytest.raises(BEMConvergenceError, match="selected loading branch"):
         solve_bem_annulus(blade, station, _condition(), _family(cl=-0.5, cd=0.0))
+
+
+def test_signed_nonreversed_branch_solves_local_negative_loading():
+    blade, station = _blade()
+    condition = _condition(forward_speed=20.0)
+
+    result = solve_bem_annulus(
+        blade,
+        station,
+        condition,
+        _family(cl=-0.5, cd=0.0),
+        settings=BEMAnnulusSettings(loading_branch="signed_nonreversed"),
+    )
+
+    assert result.loading_regime == "negative"
+    assert result.circulation_m2_s < 0.0
+    assert result.axial_induced_velocity_m_s < 0.0
+    assert result.tangential_induced_velocity_m_s < 0.0
+    assert condition.forward_speed_m_s + result.axial_induced_velocity_m_s > 0.0
+    assert result.differential_thrust_n_m < 0.0
+
+
+def test_signed_branch_still_rejects_reversed_flow_at_hover():
+    blade, station = _blade()
+
+    with pytest.raises(BEMConvergenceError, match="interval collapsed"):
+        solve_bem_annulus(
+            blade,
+            station,
+            _condition(),
+            _family(cl=-0.5, cd=0.0),
+            settings=BEMAnnulusSettings(loading_branch="signed_nonreversed"),
+        )
 
 
 def test_root_solver_failure_uses_typed_convergence_error():
@@ -243,7 +276,8 @@ def test_result_mapping_preserves_polar_provenance_and_is_json_serializable():
     result = solve_bem_annulus(blade, station, _condition(), _family())
     payload = result.as_mapping()
 
-    assert payload["schema_version"] == 2
+    assert payload["schema_version"] == 3
+    assert payload["loading_regime"] == "positive"
     assert payload["scenario_id"] == "synthetic-constant"
     assert payload["polar_bounds"] == "error"
     assert payload["settings"]["include_tip_loss"] is True
@@ -259,6 +293,7 @@ def test_annulus_settings_mapping_records_every_model_switch():
 
     assert payload["include_tip_loss"] is False
     assert payload["include_root_loss"] is True
+    assert payload["loading_branch"] == "positive_only"
     assert payload["relative_residual_tolerance"] == pytest.approx(1.0e-10)
     json.dumps(payload)
 
@@ -270,8 +305,14 @@ def test_annulus_settings_mapping_records_every_model_switch():
         {"max_iterations": True},
         {"include_tip_loss": 1},
         {"include_root_loss": "yes"},
+        {"loading_branch": ["signed_nonreversed"]},
     ),
 )
 def test_annulus_settings_reject_ambiguous_runtime_types(kwargs):
     with pytest.raises(TypeError):
         BEMAnnulusSettings(**kwargs)
+
+
+def test_annulus_settings_reject_unknown_loading_branch():
+    with pytest.raises(ValueError, match="loading_branch"):
+        BEMAnnulusSettings(loading_branch="anything")

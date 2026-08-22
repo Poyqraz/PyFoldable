@@ -54,29 +54,58 @@ def _polar_contract(family: PolarFamily) -> Mapping[str, Any]:
 def _variant_specs() -> tuple[Mapping[str, Any], ...]:
     return (
         {
-            "id": "qprop-tip_proxy-baseline",
+            "id": "qprop-signed-tip_proxy-baseline",
             "polar": {},
-            "annulus": {"include_tip_loss": True, "include_root_loss": False},
+            "annulus": {
+                "include_tip_loss": True,
+                "include_root_loss": False,
+                "loading_branch": "signed_nonreversed",
+            },
         },
         {
-            "id": "qprop-tip-prandtl-root_proxy-baseline",
+            "id": "qprop-signed-tip-prandtl-root_proxy-baseline",
             "polar": {},
-            "annulus": {"include_tip_loss": True, "include_root_loss": True},
+            "annulus": {
+                "include_tip_loss": True,
+                "include_root_loss": True,
+                "loading_branch": "signed_nonreversed",
+            },
         },
         {
-            "id": "no-loss_proxy-baseline",
+            "id": "qprop-signed-no-loss_proxy-baseline",
             "polar": {},
-            "annulus": {"include_tip_loss": False, "include_root_loss": False},
+            "annulus": {
+                "include_tip_loss": False,
+                "include_root_loss": False,
+                "loading_branch": "signed_nonreversed",
+            },
         },
         {
-            "id": "qprop-tip_proxy-low-drag",
+            "id": "qprop-signed-tip_proxy-low-drag",
             "polar": {"drag_offset": 0.020, "drag_quadratic": 0.020},
-            "annulus": {"include_tip_loss": True, "include_root_loss": False},
+            "annulus": {
+                "include_tip_loss": True,
+                "include_root_loss": False,
+                "loading_branch": "signed_nonreversed",
+            },
         },
         {
-            "id": "qprop-tip_proxy-higher-camber",
+            "id": "qprop-signed-tip_proxy-higher-camber",
             "polar": {"zero_lift_deg": -5.0},
-            "annulus": {"include_tip_loss": True, "include_root_loss": False},
+            "annulus": {
+                "include_tip_loss": True,
+                "include_root_loss": False,
+                "loading_branch": "signed_nonreversed",
+            },
+        },
+        {
+            "id": "qprop-positive-only-tip_proxy-historical",
+            "polar": {},
+            "annulus": {
+                "include_tip_loss": True,
+                "include_root_loss": False,
+                "loading_branch": "positive_only",
+            },
         },
     )
 
@@ -164,12 +193,12 @@ def build_report(fixture_path: Path = DEFAULT_FIXTURE) -> Mapping[str, Any]:
                 else "fails the declared terminal annulus-sensitivity gate"
             ),
             "physical_accuracy": (
-                "not qualified: solution coverage and representative polar evidence "
-                "must pass before coefficient error can authorize PR-06D"
+                "not qualified: full-envelope coefficient accuracy and representative "
+                "polar evidence fail, so PR-06D remains blocked"
             ),
             "principal_failure_mode": (
-                "The positive-loading-only local branch rejects forward-flight cases "
-                "when an inner annulus becomes locally unloaded or negative-loaded."
+                "The signed local branch restores full solution coverage, exposing "
+                "large forward-flight model-form/polar error that subset-only metrics hid."
             ),
             "data_interpretation": (
                 "The existing APC 202602 repository table is manufacturer vortex-model "
@@ -177,9 +206,10 @@ def build_report(fixture_path: Path = DEFAULT_FIXTURE) -> Mapping[str, Any]:
                 "reference used here."
             ),
             "next_required_actions": [
-                "add a reviewed mixed/local-negative-loading forward-flight branch",
-                "obtain or generate a span-representative, Reynolds-aware APC polar family",
-                "rerun this frozen fixture without weakening the predeclared policy",
+                "reconstruct or obtain the tested blade's spanwise section geometry",
+                "generate Reynolds-aware polars with recorded solver confidence and limits",
+                "address rotational/model-form error and rerun this unchanged frozen policy",
+                "obtain independent aerodynamic review before physical promotion",
             ],
         },
     }

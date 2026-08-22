@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any, Literal, Mapping
 
 from scipy.optimize import brentq
 
@@ -18,7 +18,9 @@ from .models import BladeGeometry, BladeStation, OperatingCondition
 from .polar import PolarBoundsPolicy, PolarFamily, PolarQueryResult
 
 
-BEM_ANNULUS_SCHEMA_VERSION = 2
+BEM_ANNULUS_SCHEMA_VERSION = 3
+BEMLoadingBranch = Literal["positive_only", "signed_nonreversed"]
+BEMLoadingRegime = Literal["negative", "zero", "positive"]
 _AIR_GAMMA = 1.4
 _AIR_GAS_CONSTANT_J_KG_K = 287.05
 
@@ -43,6 +45,7 @@ class BEMAnnulusSettings:
     minimum_tip_loss_factor: float = 1.0e-6
     include_tip_loss: bool = True
     include_root_loss: bool = False
+    loading_branch: BEMLoadingBranch = "positive_only"
 
     def __post_init__(self) -> None:
         if not isinstance(self.bracket_samples, int) or isinstance(
@@ -72,6 +75,12 @@ class BEMAnnulusSettings:
             raise TypeError("include_tip_loss must be boolean.")
         if not isinstance(self.include_root_loss, bool):
             raise TypeError("include_root_loss must be boolean.")
+        if not isinstance(self.loading_branch, str):
+            raise TypeError("loading_branch must be a string.")
+        if self.loading_branch not in {"positive_only", "signed_nonreversed"}:
+            raise ValueError(
+                "loading_branch must be 'positive_only' or 'signed_nonreversed'."
+            )
 
     def as_mapping(self) -> Mapping[str, Any]:
         """Return the complete numerical/loss-model contract."""
@@ -84,6 +93,7 @@ class BEMAnnulusSettings:
             "minimum_tip_loss_factor": self.minimum_tip_loss_factor,
             "include_tip_loss": self.include_tip_loss,
             "include_root_loss": self.include_root_loss,
+            "loading_branch": self.loading_branch,
         }
 
 
@@ -101,6 +111,7 @@ class BEMAnnulusResult:
     r_over_R: float
     chord_m: float
     twist_rad: float
+    loading_regime: BEMLoadingRegime
     iterations: int
     psi_rad: float
     inflow_angle_rad: float
@@ -140,6 +151,7 @@ class BEMAnnulusResult:
             "r_over_R": self.r_over_R,
             "chord_m": self.chord_m,
             "twist_rad": self.twist_rad,
+            "loading_regime": self.loading_regime,
             "converged": self.converged,
             "iterations": self.iterations,
             "psi_rad": self.psi_rad,
@@ -254,11 +266,13 @@ def solve_bem_annulus(
     bounds: PolarBoundsPolicy = "error",
     settings: BEMAnnulusSettings | None = None,
 ) -> BEMAnnulusResult:
-    """Solve one propulsive axial-flow annulus with QPROP's psi parameterization.
+    """Solve one axial-flow annulus with QPROP's psi parameterization.
 
     The supported domain is positive shaft speed, non-negative axial freestream,
-    and an annulus strictly between hub and tip. Windmilling and descent solutions
-    are intentionally rejected until their solution branches are modeled explicitly.
+    and an annulus strictly between hub and tip. ``signed_nonreversed`` additionally
+    permits locally unloaded or negative-loaded sections while requiring positive
+    through-disk axial and blade-relative tangential velocities. Reversed flow and
+    descent remain outside the modeled branch.
     """
     controls = BEMAnnulusSettings() if settings is None else settings
     if not isinstance(controls, BEMAnnulusSettings):
@@ -352,21 +366,32 @@ def solve_bem_annulus(
             circulation_blade,
         )
 
-    lower_state = evaluate(no_induction_psi)
-    if abs(lower_state.residual) <= _residual_limit(lower_state, controls):
-        solution = lower_state
+    no_induction_state = evaluate(no_induction_psi)
+    if abs(no_induction_state.residual) <= _residual_limit(
+        no_induction_state, controls
+    ):
+        solution = no_induction_state
         iterations = 0
     else:
-        upper_psi = 0.5 * math.pi - controls.angle_tolerance_rad
-        if no_induction_psi >= upper_psi:
-            raise BEMConvergenceError(
-                "The propulsive psi search interval collapsed at this advance ratio."
+        positive_loading = no_induction_state.residual < 0.0
+        if positive_loading or controls.loading_branch == "positive_only":
+            terminal_psi = 0.5 * math.pi - controls.angle_tolerance_rad
+        else:
+            minimum_nonreversed_psi = math.asin(
+                max(-1.0, min(1.0, -axial_external / external_speed))
             )
-        previous = lower_state
+            terminal_psi = (
+                minimum_nonreversed_psi + controls.angle_tolerance_rad
+            )
+        if abs(terminal_psi - no_induction_psi) <= controls.angle_tolerance_rad:
+            raise BEMConvergenceError(
+                "The QPROP psi search interval collapsed for the selected loading branch."
+            )
+        previous = no_induction_state
         bracket: tuple[float, float] | None = None
         scanned_root: _AnnulusState | None = None
         for index in range(1, controls.bracket_samples + 1):
-            psi = no_induction_psi + (upper_psi - no_induction_psi) * (
+            psi = no_induction_psi + (terminal_psi - no_induction_psi) * (
                 index / controls.bracket_samples
             )
             current = evaluate(psi)
@@ -374,7 +399,7 @@ def solve_bem_annulus(
                 scanned_root = current
                 break
             if previous.residual * current.residual <= 0.0:
-                bracket = (previous.psi, current.psi)
+                bracket = tuple(sorted((previous.psi, current.psi)))
                 break
             previous = current
         if scanned_root is not None:
@@ -382,7 +407,7 @@ def solve_bem_annulus(
             iterations = 0
         elif bracket is None:
             raise BEMConvergenceError(
-                "No positive-loading propulsive annulus solution was bracketed."
+                "No annulus solution was bracketed on the selected loading branch."
             )
         else:
             try:
@@ -408,17 +433,49 @@ def solve_bem_annulus(
             "Annulus circulation residual exceeds the configured tolerance."
         )
 
-    if solution.circulation_blade < -_residual_limit(solution, controls):
+    residual_limit = _residual_limit(solution, controls)
+    if (
+        controls.loading_branch == "positive_only"
+        and solution.circulation_blade < -residual_limit
+    ):
         raise BEMConvergenceError(
             "Converged root is not on the supported non-negative circulation branch."
         )
     flow_tolerance = controls.angle_tolerance_rad * max(
         solution.relative_speed, 1.0
     )
-    if solution.va < -flow_tolerance or solution.vt < -flow_tolerance:
+    if controls.loading_branch == "positive_only" and (
+        solution.va < -flow_tolerance or solution.vt < -flow_tolerance
+    ):
         raise BEMConvergenceError(
             "Converged root is not on the supported propulsive induced-flow branch."
         )
+    if controls.loading_branch == "signed_nonreversed":
+        if solution.wa <= flow_tolerance or solution.wt <= flow_tolerance:
+            raise BEMConvergenceError(
+                "Converged root leaves the supported non-reversed-flow branch."
+            )
+        circulation_sign = (
+            1
+            if solution.circulation_blade > residual_limit
+            else -1
+            if solution.circulation_blade < -residual_limit
+            else 0
+        )
+        if circulation_sign and (
+            circulation_sign * solution.va < -flow_tolerance
+            or circulation_sign * solution.vt < -flow_tolerance
+        ):
+            raise BEMConvergenceError(
+                "Induced-flow signs are inconsistent with signed circulation."
+            )
+
+    if solution.circulation_blade > residual_limit:
+        loading_regime: BEMLoadingRegime = "positive"
+    elif solution.circulation_blade < -residual_limit:
+        loading_regime = "negative"
+    else:
+        loading_regime = "zero"
 
     dynamic_force = (
         blade.blade_count
@@ -447,6 +504,7 @@ def solve_bem_annulus(
         r_over_R=station.r_over_R,
         chord_m=station.chord_m,
         twist_rad=station.twist_rad,
+        loading_regime=loading_regime,
         iterations=iterations,
         psi_rad=solution.psi,
         inflow_angle_rad=solution.phi,

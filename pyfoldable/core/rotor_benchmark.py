@@ -19,7 +19,8 @@ from .models import BladeGeometry, BladeStation, OperatingCondition
 from .polar import PolarFamily, PolarTable
 
 
-ROTOR_BENCHMARK_SCHEMA_VERSION = 1
+ROTOR_BENCHMARK_SCHEMA_VERSION = 2
+_ROTOR_BENCHMARK_FIXTURE_SCHEMA_VERSION = 1
 BenchmarkRegime = Literal["static", "forward"]
 PredictionStatus = Literal["success", "unsupported", "error"]
 
@@ -344,8 +345,8 @@ def load_rotor_benchmark_fixture(path: str | Path) -> RotorBenchmarkFixture:
     source = Path(path)
     raw = source.read_bytes()
     payload = json.loads(raw)
-    if payload.get("schema_version") != ROTOR_BENCHMARK_SCHEMA_VERSION or isinstance(
-        payload.get("schema_version"), bool
+    if payload.get("schema_version") != _ROTOR_BENCHMARK_FIXTURE_SCHEMA_VERSION or (
+        isinstance(payload.get("schema_version"), bool)
     ):
         raise RotorBenchmarkError("Unsupported rotor benchmark fixture schema.")
     geometry = payload["geometry"]
