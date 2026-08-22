@@ -1,0 +1,111 @@
+{
+  "benchmark_report": {
+    "path": "reports/pr06c_fixed_propeller_benchmark.json",
+    "sha256": "aa8b91a69a3a4cd942d0152ae9154cb8ef9bd34717bf21a60b223221ff548514"
+  },
+  "benchmark_variant_sha256": "e52edc7fcc0f96aa7cd4fe3595d7eda4c24a677d220058d742723f66ae253620",
+  "blockers": [
+    "the qualification benchmark id is not the pinned PR-06C id",
+    "one or more overall, regime, coverage, bias, or convergence gates failed",
+    "the exact E63-to-APC12 provider, coordinate, confidence, and two-capture chain is incomplete",
+    "polar evidence is not bound to every benchmark annulus query",
+    "an approved independent no-target-fitting model-form comparison is absent",
+    "the model-form review is not bound to the selected benchmark variant digest"
+  ],
+  "decision": "pr06c_blocked",
+  "evidence_inventory": {
+    "apc12_coordinate_identity": {
+      "reason": "No reviewed APC12/NACA-4412 coordinate document and digest is bound to a provider capture.",
+      "status": "required_not_captured"
+    },
+    "apc_pe0_geometry": {
+      "section_note": "PE0 declares APC12 equivalent to NACA 4412.",
+      "sha256": "f38bdb92f65053a7791a6ba492a89da69651f1a11983724953272211db5d39c8",
+      "simulation_date": "2026-02-24",
+      "source": "https://www.apcprop.com/technical-information/file-downloads/",
+      "status": "official_caller_supplied_input_verified",
+      "version": "v2025-1001"
+    },
+    "e63_coordinates": {
+      "sha256": "eb90138d5e0b2476c99e431651475e3a6b058872b368e0793e3b5e0383988f9d",
+      "source": "https://m-selig.ae.illinois.edu/ads/coord_seligFmt/e63.dat",
+      "status": "official_public_caller_supplied_input_available"
+    },
+    "independent_model_form_review": {
+      "status": "required_not_supplied"
+    },
+    "representative_provider_capture": {
+      "required_backend": "XFOIL 6.99 via xfoil-subprocess adapter 2",
+      "status": "required_not_captured"
+    }
+  },
+  "failed_gates": [
+    "benchmark_identity",
+    "benchmark_accuracy",
+    "representative_polar_evidence",
+    "benchmark_query_binding",
+    "independent_model_form_review",
+    "review_binds_benchmark"
+  ],
+  "gates": {
+    "benchmark_accuracy": false,
+    "benchmark_identity": false,
+    "benchmark_query_binding": false,
+    "fixture_identity": true,
+    "frozen_policy": true,
+    "independent_model_form_review": false,
+    "representative_polar_evidence": false,
+    "review_binds_benchmark": false
+  },
+  "model_form_review_sha256": null,
+  "passed": false,
+  "policy": {
+    "allowed_provider_names": [
+      "xfoil-subprocess"
+    ],
+    "benchmark_id": "pr06c-uiuc-apcsf-10x4.7-qualification-v1",
+    "fixture_sha256": "c6f04a4d32ea9c4421db38ec67a2164be0b81b13c64b0a81718792dfd047531b",
+    "frozen_benchmark_policy": {
+      "maximum_absolute_cp_normalized_bias": 0.15,
+      "maximum_absolute_ct_normalized_bias": 0.1,
+      "maximum_cp_wmape": 0.2,
+      "maximum_ct_wmape": 0.15,
+      "maximum_radial_terminal_delta": 0.005,
+      "minimum_solution_coverage": 0.95,
+      "require_representative_polar_evidence": true
+    },
+    "required_airfoil_ids": [
+      "E63",
+      "APC12"
+    ],
+    "required_model_variants": [
+      "qualified_2d",
+      "rotational_augmentation",
+      "tip_wake_candidate"
+    ]
+  },
+  "qualification_boundary": "PR-06D software equivalence remains usable, but folded-state physical accuracy remains screening-only until this report passes.",
+  "reviewed_manufacturer_geometry_screen": {
+    "forward": {
+      "cp_wmape": 0.2319212605223408,
+      "ct_wmape": 0.2567939730710669
+    },
+    "input_sha256": "f38bdb92f65053a7791a6ba492a89da69651f1a11983724953272211db5d39c8",
+    "overall": {
+      "cp_normalized_bias": -0.13418960462057053,
+      "cp_wmape": 0.16976253779131012,
+      "ct_normalized_bias": -0.14073505165828132,
+      "ct_wmape": 0.16226950219319236
+    },
+    "passed": false,
+    "point_count": 50,
+    "qualification": "manufacturer_geometry_with_nonrepresentative_analytic_proxy",
+    "solution_coverage": 1.0,
+    "static": {
+      "cp_wmape": 0.06472539470118317,
+      "ct_wmape": 0.060339267927450244
+    },
+    "variant_id": "apc-pe0-v2025-1001_proxy-screening"
+  },
+  "schema_version": 1
+}

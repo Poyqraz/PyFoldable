@@ -56,6 +56,13 @@ from .rotor_polar_evidence import (
     RotorPolarEvidencePolicy,
     assess_rotor_polar_evidence,
 )
+from .pr06c_physical_gate import (
+    PR06C_PHYSICAL_GATE_SCHEMA_VERSION,
+    PR06CPhysicalGateDecision,
+    PR06CPhysicalGatePolicy,
+    assess_pr06c_physical_gate,
+    canonical_json_sha256,
+)
 from .rotational_augmentation import (
     SNEL_1993_SOURCE,
     RotationalAugmentationDomainError,
@@ -290,6 +297,7 @@ __all__ = [
     "POLAR_REAL_QUALIFICATION_SCHEMA_VERSION",
     "POLAR_RESULT_QUALIFICATION_SCHEMA_VERSION",
     "POLAR_SECTION_ANALYSIS_SCHEMA_VERSION",
+    "PR06C_PHYSICAL_GATE_SCHEMA_VERSION",
     "ROTOR_BENCHMARK_SCHEMA_VERSION",
     "ROTOR_POLAR_EVIDENCE_SCHEMA_VERSION",
     "SNEL_1993_SOURCE",
@@ -331,6 +339,8 @@ __all__ = [
     "PolarPointResult",
     "PolarPointStatus",
     "PolarPromotionEvidence",
+    "PR06CPhysicalGateDecision",
+    "PR06CPhysicalGatePolicy",
     "PolarProvider",
     "PolarProviderConfig",
     "PolarProviderFactory",
@@ -385,6 +395,8 @@ __all__ = [
     "compare_polar_results",
     "analyze_generated_polar_sections",
     "assess_rotor_polar_evidence",
+    "assess_pr06c_physical_gate",
+    "canonical_json_sha256",
     "generate_polar",
     "generate_polar_cached",
     "generate_polar_family",
