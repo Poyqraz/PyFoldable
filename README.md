@@ -48,6 +48,8 @@ design = load_design_config("configs/designs/TIP_HINGED_250_CANONICAL.toml")
 `docs/canonical_design_config.md`.
 Polar provider platformundan provider-backed `PolarFamily` entegrasyonuna geçiş haritası:
 `docs/development_roadmap.md`.
+PR-05 sonrası güncel hedef, doğrulama açıkları ve PR-06–PR-12 yürütme kapıları:
+`docs/validation_and_development_roadmap.md`.
 Sürümlü polar grid/provider/runtime ayarları ve güvenlik kuralları:
 `docs/polar_configuration.md`.
 

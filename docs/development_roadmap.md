@@ -1,5 +1,9 @@
 # Polar-to-analysis development roadmap
 
+> PR-05 sonrası güncel hedefler, olgunluk açıkları ve yürütme kapıları için
+> [validation and development roadmap](validation_and_development_roadmap.md) belgesine
+> bakın. Bu belge PR-04/PR-05 tarihçesini korur.
+
 This map records the transition from the external polar-provider platform (PR-04) to
 provider-generated polar families consumed by the analysis stack (PR-05). PR-05 had no
 explicit definition in the repository before PR-04H; its scope below follows the current
