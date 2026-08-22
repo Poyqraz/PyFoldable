@@ -73,3 +73,8 @@ uygulanmamıştır:
 
 Bu sınırlar nedeniyle PR-06B'nin tamamlanması **kod ve sayısal integrasyon kapısını**
 geçirir. Fiziksel tahmin doğruluğu kapısı PR-06C benchmark'ı ile açılacaktır.
+
+PR-06C sonrası durum ve geriye dönük PR-04–PR-06 bulguları
+[`pr04_pr06_retrospective_review.md`](pr04_pr06_retrospective_review.md) belgesinde
+kayıtlıdır. İlk kapsamlı UIUC sonucu sayısal yakınsamayı geçirirken ileri-uçuş çözüm
+kapsamı ve temsili polar kapılarını geçememiştir; bu nedenle PR-06D henüz açılmamıştır.

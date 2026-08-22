@@ -54,8 +54,12 @@ kanıt paketi ve başarısızlığı görünür kılan regresyonu bulunduğunda 
   chord/twist enterpolasyonu, açık radial-domain politikası, seçilebilir kök/uç
   kayıpları, rotor toplamları ve boyutsuz performans katsayıları eklendi. Fiziksel
   doğruluk iddiası PR-06C benchmark kapısına bağlıdır.
-- **PR-06C — sabit pervane benchmark'ı.** APC veya eşdeğer açık deney verisi üzerinde
-  itki ve tork hata eşikleri, ağ/annulus duyarlılığı ve polar duyarlılığı yayımlanır.
+- **PR-06C — sabit pervane benchmark'ı (karakterizasyon tamamlandı; doğruluk kapısı
+  başarısız).** UIUC APC SF 10×4.7 rüzgâr-tüneli verisi üzerinde 60 ham/50 propulsif
+  nokta, önceden ilan edilmiş CT/CP eşikleri, 20–160 annulus yakınsaması ve beş
+  loss/polar varyantı yayımlandı. Sayısal yakınsama geçti; çözüm kapsamı %46 ve temsili
+  polar kanıtı bulunmadığı için fiziksel yeterlilik geçmedi. PR-06D, PR-06C düzeltme
+  artımına kadar blokludur.
 - **PR-06D — katlanır geometri bağlantısı.** Açılma açısı, etkin yarıçap ve yerel
   kinematik rotor çözücüsüne taşınır; sabit–katlanır farkı fizik tabanlı hale gelir.
 
@@ -67,6 +71,8 @@ PR-06B/06C'de referans alınacaktır.
 
 PR-06A/06B denklem, sayısal davranış ve kapsam incelemesi
 [PR-06 foundation review](pr06_foundation_review.md) belgesinde kayıtlıdır.
+PR-04–PR-06 retrospektifi, benchmark kararı ve lisans sınırı
+[retrospective review](pr04_pr06_retrospective_review.md) belgesindedir.
 
 ### PR-07 — tam bağlı motor–pervane çözümü
 
@@ -113,8 +119,8 @@ arşiv bütünlüğü sürüm kapısıdır.
 | --- | --- | --- |
 | 1 | PR-06A yerel annulus çözücüsü | Tamamlandı: hover, denklem kalıntısı, loss-model ve açık kapsam regresyonları |
 | 2 | PR-06B rotor integrasyonu | Tamamlandı: radyal yakınsama, yük/toplam tutarlılığı ve provenance |
-| 3 | PR-06C referans benchmark | Önceden ilan edilmiş itki/tork hata eşiği |
-| 4 | PR-06D katlanır bağlantı | Sabit-limit eşdeğerliği ve açılma duyarlılığı |
+| 3 | PR-06C referans benchmark | Karakterizasyon tamamlandı; kapsam/polar kapıları başarısız, düzeltme gerekli |
+| 4 | PR-06D katlanır bağlantı | **Bloklu:** PR-06C tüm kapıları geçtikten sonra sabit-limit eşdeğerliği ve açılma duyarlılığı |
 | 5 | PR-07 motor bağlantısı | Tork/enerji dengesi ve ölçüm korelasyonu |
 | 6 | PR-08/09 CFD ve FEA | Bağımsızlık, izlenebilir solver kanıtı, güvenlik kapıları |
 | 7 | PR-10 deney | Kalibrasyonlu veri ve belirsizlik içinde korelasyon |
@@ -133,7 +139,8 @@ arşiv bütünlüğü sürüm kapısıdır.
 
 ## Karar özeti
 
-Gerçek polar regresyonlarının eklenmesi temel veri katmanındaki en büyük belirsizliği
-kontrol altına aldı. Hedefe giden kritik yol artık polar üretmek değil, bu polarlardan
-rotor seviyesinde güvenilir yük çıkarmak ve onu CFD/deney ile sınamaktır. Bu yolun ilk
-uygulanabilir adımı PR-06A'dır; ardından doğrusal öncelik PR-06B ve PR-06C olmalıdır.
+Gerçek polar regresyonları temel veri hattının tekrar üretilebilirliğini kontrol altına
+aldı; PR-06A/06B kod ve integrasyon temelini kurdu. PR-06C karakterizasyonu ise kritik
+yolun artık **ileri uçuşta yerel negatif yüklenen annulus dalı** ve **temsili,
+Reynolds-duyarlı pervane polarları** olduğunu gösterdi. Bu iki kapı aynı dondurulmuş
+UIUC fixture/politika üzerinde geçmeden PR-06D'ye veya doğruluk iddiasına ilerlenmez.
