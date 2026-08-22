@@ -4,12 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from examples.run_pr06c_fixed_propeller_benchmark import build_proxy_polar_family
 from pyfoldable.core import (
     BEMAnnulusSettings,
     BEMRotorSettings,
     RotorBenchmarkError,
     RotorBenchmarkPolicy,
+    build_rotor_benchmark_proxy_polar_family,
     evaluate_rotor_benchmark_variant,
     load_rotor_benchmark_fixture,
     radial_convergence_evidence,
@@ -30,7 +30,7 @@ REPORT = PROJECT_ROOT / "reports" / "pr06c_fixed_propeller_benchmark.json"
 
 def _selected_variant():
     fixture = load_rotor_benchmark_fixture(FIXTURE)
-    family = build_proxy_polar_family()
+    family = build_rotor_benchmark_proxy_polar_family()
     annulus = BEMAnnulusSettings(include_tip_loss=True, include_root_loss=False)
     settings = BEMRotorSettings(80, "station_span", annulus)
     convergence = radial_convergence_evidence(
@@ -122,7 +122,7 @@ def test_selected_pr06c_variant_reproduces_frozen_failure_evidence():
 
 def test_benchmark_rejects_missing_or_duplicate_prediction_evidence():
     fixture = load_rotor_benchmark_fixture(FIXTURE)
-    family = build_proxy_polar_family()
+    family = build_rotor_benchmark_proxy_polar_family()
     settings = BEMRotorSettings(2)
     predictions = run_rotor_benchmark_cases(fixture, family, settings=settings)
 

@@ -16,7 +16,7 @@ from .bem_rotor import (
     solve_bem_rotor,
 )
 from .models import BladeGeometry, BladeStation, OperatingCondition
-from .polar import PolarFamily
+from .polar import PolarFamily, PolarTable
 
 
 ROTOR_BENCHMARK_SCHEMA_VERSION = 1
@@ -279,6 +279,64 @@ class RotorBenchmarkPolicy:
                 self.require_representative_polar_evidence
             ),
         }
+
+
+def build_rotor_benchmark_proxy_polar_family(
+    *,
+    zero_lift_deg: float = -4.0,
+    lift_limit: float = 1.2,
+    drag_offset: float = 0.025,
+    drag_quadratic: float = 0.025,
+) -> PolarFamily:
+    """Build the declared, deliberately non-qualifying APC airfoil proxy.
+
+    APC describes its dominant airfoil basis as similar to NACA 4412 and Clark-Y,
+    while also stating that shapes can vary along the span. This analytic family is
+    therefore useful for model screening and sensitivity only; it is not an exact
+    representation of the tested blade.
+    """
+    alpha_rad = tuple(math.radians(value) for value in range(-90, 91, 2))
+    lift = tuple(
+        max(
+            -lift_limit,
+            min(
+                lift_limit,
+                2.0 * math.pi * (alpha - math.radians(zero_lift_deg)),
+            ),
+        )
+        for alpha in alpha_rad
+    )
+    drag = tuple(
+        drag_offset + drag_quadratic * coefficient**2 for coefficient in lift
+    )
+    contract = (
+        f"analytic-proxy:a0={zero_lift_deg:g}:clmax={lift_limit:g}:"
+        f"cd0={drag_offset:g}:k={drag_quadratic:g}"
+    )
+    return PolarFamily(
+        tuple(
+            PolarTable(
+                airfoil_id="APC-SF-4412-CLARKY-PROXY",
+                scenario_id="pr06c-analytic-proxy-v1",
+                reynolds=reynolds,
+                mach=mach,
+                alpha_rad=alpha_rad,
+                cl=lift,
+                cd=drag,
+                cm=tuple(0.0 for _ in alpha_rad),
+                source=contract,
+                metadata={
+                    "evidence_class": "analytic_proxy",
+                    "representative_polar_evidence": False,
+                    "basis_url": (
+                        "https://www.apcprop.com/technical-information/engineering/"
+                    ),
+                },
+            )
+            for mach in (0.0, 0.4)
+            for reynolds in (1.0e3, 5.0e5)
+        )
+    )
 
 
 def load_rotor_benchmark_fixture(path: str | Path) -> RotorBenchmarkFixture:
