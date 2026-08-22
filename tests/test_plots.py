@@ -31,7 +31,7 @@ def foldable_csv_bundle(tmp_path):
     config = load_config("configs/foldable/TIP_HINGED_250_V01.json")
     db = PropellerDatabase()
     db.load(Path("data/propellers/apc_202602"), strict=False)
-    prop_entry = db.get("APC_10x4.7SF")
+    prop_entry = db.get("PYFOLDABLE_REFERENCE_10x4.7")
     assert prop_entry is not None
 
     sweep_rows = sweep_design_variants(

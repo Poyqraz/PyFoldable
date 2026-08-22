@@ -16,6 +16,7 @@ from scipy.optimize import brentq
 
 from .models import BladeGeometry, BladeStation, OperatingCondition
 from .polar import PolarBoundsPolicy, PolarFamily, PolarQueryResult
+from .polar_spanwise import SpanwisePolarSection
 
 
 BEM_ANNULUS_SCHEMA_VERSION = 3
@@ -261,7 +262,7 @@ def solve_bem_annulus(
     blade: BladeGeometry,
     station: BladeStation,
     condition: OperatingCondition,
-    polar_family: PolarFamily,
+    polar_family: PolarFamily | SpanwisePolarSection,
     *,
     bounds: PolarBoundsPolicy = "error",
     settings: BEMAnnulusSettings | None = None,

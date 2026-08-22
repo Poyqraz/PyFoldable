@@ -201,9 +201,9 @@ def build_report(fixture_path: Path = DEFAULT_FIXTURE) -> Mapping[str, Any]:
                 "large forward-flight model-form/polar error that subset-only metrics hid."
             ),
             "data_interpretation": (
-                "The existing APC 202602 repository table is manufacturer vortex-model "
-                "output, not wind-tunnel validation; UIUC measurements are the physical "
-                "reference used here."
+                "No APC performance table is distributed. UIUC measurements are the "
+                "attributed physical reference; the bundled first-party synthetic "
+                "software fixture is not qualification evidence."
             ),
             "next_required_actions": [
                 "reconstruct or obtain the tested blade's spanwise section geometry",

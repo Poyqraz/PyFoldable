@@ -15,6 +15,7 @@ from pyfoldable.core import (
     radial_convergence_evidence,
     run_rotor_benchmark_cases,
 )
+from pyfoldable.core.models import BladeGeometry
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -141,4 +142,32 @@ def test_benchmark_rejects_missing_or_duplicate_prediction_evidence():
             radial_terminal_delta=0.0,
             settings=settings,
             polar_contract={},
+        )
+
+
+def test_benchmark_override_rejects_incompatible_blade_identity():
+    fixture = load_rotor_benchmark_fixture(FIXTURE)
+    family = build_rotor_benchmark_proxy_polar_family()
+    blade = fixture.blade(family.airfoil_id)
+    wrong_diameter = BladeGeometry(
+        diameter_m=blade.diameter_m * 0.99,
+        hub_radius_m=blade.hub_radius_m,
+        blade_count=blade.blade_count,
+        stations=blade.stations,
+    )
+    wrong_count = BladeGeometry(
+        diameter_m=blade.diameter_m,
+        hub_radius_m=blade.hub_radius_m,
+        blade_count=blade.blade_count + 1,
+        stations=blade.stations,
+    )
+
+    with pytest.raises(RotorBenchmarkError, match="diameter"):
+        run_rotor_benchmark_cases(fixture, family, blade=wrong_diameter)
+    with pytest.raises(RotorBenchmarkError, match="blade count"):
+        radial_convergence_evidence(
+            fixture,
+            family,
+            point_ids=("static-6528",),
+            blade=wrong_count,
         )

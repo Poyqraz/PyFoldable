@@ -2,7 +2,7 @@
   "benchmark_id": "pr06c-uiuc-apcsf-10x4.7-screening-v1",
   "decision": "pr06d_blocked",
   "evaluation": {
-    "data_interpretation": "The existing APC 202602 repository table is manufacturer vortex-model output, not wind-tunnel validation; UIUC measurements are the physical reference used here.",
+    "data_interpretation": "No APC performance table is distributed. UIUC measurements are the attributed physical reference; the bundled first-party synthetic software fixture is not qualification evidence.",
     "next_required_actions": [
       "reconstruct or obtain the tested blade's spanwise section geometry",
       "generate Reynolds-aware polars with recorded solver confidence and limits",

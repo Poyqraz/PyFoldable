@@ -36,7 +36,7 @@
     "eta_profile": 1.0,
     "reference_diameter_m": 0.254
   },
-  "reference_propeller_id": "APC_10x4.7SF",
+  "reference_propeller_id": "PYFOLDABLE_REFERENCE_10x4.7",
   "motor": {
     "kv_rpm_per_v": 980.0,
     "resistance_ohm": 0.06,

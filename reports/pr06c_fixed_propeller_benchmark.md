@@ -22,7 +22,7 @@
 - passes the declared terminal annulus-sensitivity gate.
 - not qualified: full-envelope coefficient accuracy and representative polar evidence fail, so PR-06D remains blocked.
 - Principal failure: The signed local branch restores full solution coverage, exposing large forward-flight model-form/polar error that subset-only metrics hid.
-- Data boundary: The existing APC 202602 repository table is manufacturer vortex-model output, not wind-tunnel validation; UIUC measurements are the physical reference used here.
+- Data boundary: No APC performance table is distributed. UIUC measurements are the attributed physical reference; the bundled first-party synthetic software fixture is not qualification evidence.
 - Timing is telemetry only and is not an acceptance gate.
 
 ## Coverage by regime

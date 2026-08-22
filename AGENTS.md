@@ -27,9 +27,10 @@ work happens through `pytest` and the standalone scripts in `examples/`.
   `run_design_variant_decision_matrix`; and
   `run_moment_kinematics_validation` → `run_foldable_visuals`;
   `run_deployment_diagnostics` → `generate_foldable_engineering_report`.
-- `examples/run_foldable_sweep.py` uses `reference_scaled` thrust mode and loads the APC
-  propeller database to supply `fixed_thrust_n` per RPM (hover J=0). Requires
-  `data/propellers/apc_202602/` on disk.
+- `examples/run_foldable_sweep.py` uses `reference_scaled` thrust mode and loads the
+  first-party synthetic software fixture to supply `fixed_thrust_n` per RPM (hover
+  J=0). It is not physical qualification evidence. The legacy path
+  `data/propellers/apc_202602/` remains temporarily stable.
 - Standalone quick-start scripts (no pipeline): `run_foldable_sweep`, `run_foldable_operating_point`,
   `run_prescribed_rpm_physics`, `run_cfd_preparation`.
 - Generated artifacts land in `outputs/` (gitignored) and `reports/`.

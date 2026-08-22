@@ -37,7 +37,7 @@ substitute for independent aerodynamic or legal review.
 
 | Severity | Finding | Evidence | Disposition |
 | --- | --- | --- | --- |
-| High | The repository APC 202602 table could be mistaken for experiment. | APC states that its performance files are produced by proprietary vortex analysis using actual geometry. | Metadata now marks it `manufacturer_vortex_model_prediction`, `experimental=false`; PR-06C uses UIUC measurements. |
+| High | The repository APC 202602 derivative could be mistaken for experiment and its redistribution was not established. | APC describes proprietary vortex analysis and its source terms restrict reuse. | The derivative is removed from the current distribution; a first-party synthetic software fixture replaces it. APC PE0 screening requires explicit user-local input and pinned provenance. |
 | High | PR-06B had no measured whole-rotor accuracy gate. | Prior tests covered equations, convergence, totals, and a real polar consumer only. | A frozen 60-point UIUC fixture, 50-point propulsive envelope, policy, runner, JSON/Markdown report, and regression were added. |
 | High | Positive total thrust does not imply every annulus has positive loading. | The historical positive-only variant fails 27 of 50 propulsive points. | `signed_nonreversed` now solves locally negative loading while rejecting reversed flow; frozen-fixture coverage is 100%. |
 | High | The tested APC blade's exact spanwise polar family is unavailable in-repo. | APC says its dominant shapes are only *similar* to NACA 4412/Clark-Y and may vary with span. | The analytic proxy is labeled non-qualifying; the representative-polar gate fails regardless of coefficient fit. |
@@ -79,7 +79,7 @@ and its human-readable
 
 ## License review
 
-The proposed PolyForm Noncommercial license can cover first-party Project material
+The PolyForm Noncommercial license can cover first-party Project material
 controlled by the owner. It cannot relicense APC/UIUC data or external solver software.
 Activation therefore includes:
 
@@ -91,6 +91,9 @@ Activation therefore includes:
 - a prospective-license statement preserving Apache-2.0 rights already granted for
   earlier copies.
 
+The later APC terms recheck also removed the normalized APC derivative from the current
+tree. A third-party notice alone cannot create redistribution permission.
+
 See [`docs/licensing.md`](licensing.md) for the full engineering scope review. Legal
 counsel should review the commercial agreement before a material transaction.
 
@@ -101,11 +104,14 @@ PR-06D must not start until the remaining PR-06C remediation gates are complete:
 1. ~~implement and review a branch that permits locally unloaded/negative-loaded
    annuli within an overall propulsive rotor solution~~ — completed by the
    `signed_nonreversed` branch and frozen-fixture regression;
-2. supply a span-representative, Reynolds-aware polar family with source/version
+2. ~~add strict manufacturer-geometry ingestion and spanwise polar consumption~~ —
+   completed without vendoring APC material; the unchanged geometry/proxy screen still
+   fails the full scientific gate;
+3. supply a span-representative, Reynolds-aware polar family with source/version
    evidence instead of tuning the analytic proxy to the target coefficients;
-3. rerun the frozen fixture and unchanged policy after the aerodynamic input/model
+4. rerun the frozen fixture and unchanged policy after the aerodynamic input/model
    update;
-4. obtain independent aerodynamic review before physical promotion.
+5. obtain independent aerodynamic review before physical promotion.
 
 Primary references:
 

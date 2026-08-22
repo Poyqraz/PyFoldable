@@ -402,15 +402,22 @@ def run_rotor_benchmark_cases(
     polar_family: PolarFamily,
     *,
     settings: BEMRotorSettings | None = None,
+    blade: BladeGeometry | None = None,
 ) -> tuple[RotorBenchmarkPrediction, ...]:
     """Run every eligible point while preserving unsupported-domain evidence."""
     controls = BEMRotorSettings() if settings is None else settings
-    blade = fixture.blade(polar_family.airfoil_id)
+    rotor = fixture.blade(polar_family.airfoil_id) if blade is None else blade
+    if not isinstance(rotor, BladeGeometry):
+        raise RotorBenchmarkError("blade must be a BladeGeometry instance.")
+    if not math.isclose(rotor.diameter_m, fixture.diameter_m, abs_tol=1.0e-12):
+        raise RotorBenchmarkError("Benchmark blade diameter must match the fixture.")
+    if rotor.blade_count != fixture.blade_count:
+        raise RotorBenchmarkError("Benchmark blade count must match the fixture.")
     predictions: list[RotorBenchmarkPrediction] = []
     for point in fixture.eligible_points:
         try:
             result = solve_bem_rotor(
-                blade,
+                rotor,
                 fixture.condition(point),
                 {polar_family.airfoil_id: polar_family},
                 bounds="error",
@@ -645,6 +652,7 @@ def radial_convergence_evidence(
     point_ids: Sequence[str],
     annulus_counts: Sequence[int] = (20, 40, 80, 160),
     annulus_settings: BEMAnnulusSettings | None = None,
+    blade: BladeGeometry | None = None,
 ) -> Mapping[str, Any]:
     """Measure terminal 80→160 annulus sensitivity on declared cases."""
     if len(annulus_counts) < 2 or any(
@@ -658,7 +666,13 @@ def radial_convergence_evidence(
     if not point_ids or any(point_id not in by_id for point_id in point_ids):
         raise RotorBenchmarkError("Convergence point ids must be eligible benchmark points.")
     local = BEMAnnulusSettings() if annulus_settings is None else annulus_settings
-    blade = fixture.blade(polar_family.airfoil_id)
+    rotor = fixture.blade(polar_family.airfoil_id) if blade is None else blade
+    if not isinstance(rotor, BladeGeometry):
+        raise RotorBenchmarkError("blade must be a BladeGeometry instance.")
+    if not math.isclose(rotor.diameter_m, fixture.diameter_m, abs_tol=1.0e-12):
+        raise RotorBenchmarkError("Benchmark blade diameter must match the fixture.")
+    if rotor.blade_count != fixture.blade_count:
+        raise RotorBenchmarkError("Benchmark blade count must match the fixture.")
     cases: list[Mapping[str, Any]] = []
     terminal_deltas: list[float] = []
     for point_id in point_ids:
@@ -666,7 +680,7 @@ def radial_convergence_evidence(
         results: list[Mapping[str, Any]] = []
         for count in annulus_counts:
             result = solve_bem_rotor(
-                blade,
+                rotor,
                 fixture.condition(point),
                 {polar_family.airfoil_id: polar_family},
                 bounds="error",
