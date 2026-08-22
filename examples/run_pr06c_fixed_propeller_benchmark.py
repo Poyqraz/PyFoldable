@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -11,6 +12,7 @@ from pyfoldable.core import (
     BEMAnnulusSettings,
     BEMRotorSettings,
     PolarFamily,
+    RotationalAugmentationModel,
     build_rotor_benchmark_proxy_polar_family,
 )
 from pyfoldable.core.rotor_benchmark import (
@@ -60,6 +62,19 @@ def _variant_specs() -> tuple[Mapping[str, Any], ...]:
                 "include_tip_loss": True,
                 "include_root_loss": False,
                 "loading_branch": "signed_nonreversed",
+            },
+        },
+        {
+            "id": "qprop-signed-tip_proxy-snel-1993-screen",
+            "polar": {},
+            "annulus": {
+                "include_tip_loss": True,
+                "include_root_loss": False,
+                "loading_branch": "signed_nonreversed",
+                "rotational_augmentation": RotationalAugmentationModel.snel_1993(
+                    lift_curve_slope_per_rad=2.0 * math.pi,
+                    zero_lift_angle_rad=math.radians(-4.0),
+                ),
             },
         },
         {
@@ -313,6 +328,21 @@ def render_markdown(report: Mapping[str, Any]) -> str:
         )
     rows.extend(
         [
+        "",
+        "## Rotational-model ablation",
+        "",
+        "| Variant | CT WMAPE | CP WMAPE | Forward CT WMAPE | Forward CP WMAPE |",
+        "| --- | ---: | ---: | ---: | ---: |",
+        *(
+            (
+                f"| {variant['variant_id']} | {variant['ct_metrics']['wmape']:.2%} | "
+                f"{variant['cp_metrics']['wmape']:.2%} | "
+                f"{variant['regime_metrics']['forward']['ct_metrics']['wmape']:.2%} | "
+                f"{variant['regime_metrics']['forward']['cp_metrics']['wmape']:.2%} |"
+            )
+            for variant in report["sensitivity_variants"]
+            if "snel-1993" in variant["variant_id"]
+        ),
         "",
         "## Evidence scope",
         "",

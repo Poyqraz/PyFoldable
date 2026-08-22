@@ -145,7 +145,7 @@
     ],
     "maximum_terminal_relative_delta": 0.00021303152951582057
   },
-  "schema_version": 2,
+  "schema_version": 3,
   "selected_variant": {
     "cp_metrics": {
       "mae": 0.011673893356891849,
@@ -560,7 +560,16 @@
         "max_iterations": 100,
         "minimum_tip_loss_factor": 1e-06,
         "relative_residual_tolerance": 1e-10,
-        "residual_tolerance_m2_s": 1e-08
+        "residual_tolerance_m2_s": 1e-08,
+        "rotational_augmentation": {
+          "kind": "disabled",
+          "lift_curve_slope_per_rad": null,
+          "maximum_absolute_alpha_rad": 0.7853981633974483,
+          "maximum_chord_over_radius": 0.75,
+          "model_id": "disabled",
+          "source": null,
+          "zero_lift_angle_rad": null
+        }
       },
       "radial_domain": "station_span"
     },
@@ -569,6 +578,135 @@
     "variant_id": "qprop-signed-tip_proxy-baseline"
   },
   "sensitivity_variants": [
+    {
+      "cp_metrics": {
+        "mae": 0.01148879545047839,
+        "maximum_absolute_error": 0.02431644864987486,
+        "mean_prediction": 0.029794014086614484,
+        "mean_reference": 0.041277999999999995,
+        "normalized_bias": -0.2782108123791249,
+        "normalized_rmse": 0.3142009800287697,
+        "rmse": 0.012969588053627554,
+        "wmape": 0.27832732812826183
+      },
+      "ct_metrics": {
+        "mae": 0.02033422319911872,
+        "maximum_absolute_error": 0.026647126637690255,
+        "mean_prediction": 0.05848426026114605,
+        "mean_reference": 0.078786,
+        "normalized_bias": -0.2576820721810213,
+        "normalized_rmse": 0.2747001240992469,
+        "rmse": 0.021642523977283265,
+        "wmape": 0.25809437208537966
+      },
+      "failure_counts": {},
+      "gates": {
+        "cp_bias": false,
+        "cp_wmape": false,
+        "ct_bias": false,
+        "ct_wmape": false,
+        "radial_convergence": true,
+        "regime_cp_bias": false,
+        "regime_cp_wmape": false,
+        "regime_ct_bias": false,
+        "regime_ct_wmape": false,
+        "regime_solution_coverage": true,
+        "representative_polar_evidence": false,
+        "solution_coverage": true
+      },
+      "passed": false,
+      "point_count": 50,
+      "polar_contract": {
+        "airfoil_id": "APC-SF-4412-CLARKY-PROXY",
+        "basis_url": "https://www.apcprop.com/technical-information/engineering/",
+        "evidence_class": "analytic_proxy",
+        "limitation": "APC publishes spanwise geometry but not an exact, qualified polar family for the tested blade; this declared proxy cannot pass the physical-polar gate.",
+        "representative_polar_evidence": false,
+        "scenario_id": "pr06c-analytic-proxy-v1",
+        "source": "analytic-proxy:a0=-4:clmax=1.2:cd0=0.025:k=0.025"
+      },
+      "radial_terminal_delta": 0.00021070636052223648,
+      "regime_metrics": {
+        "forward": {
+          "cp_metrics": {
+            "mae": 0.014659503250188964,
+            "maximum_absolute_error": 0.02431644864987486,
+            "mean_prediction": 0.023475790867458095,
+            "mean_reference": 0.03813529411764706,
+            "normalized_bias": -0.38440776685672123,
+            "normalized_rmse": 0.3991086170544565,
+            "rmse": 0.015220124496259067,
+            "wmape": 0.3844077668567213
+          },
+          "ct_metrics": {
+            "mae": 0.024325893266135563,
+            "maximum_absolute_error": 0.026647126637690255,
+            "mean_prediction": 0.03578881261621738,
+            "mean_reference": 0.06011470588235294,
+            "normalized_bias": -0.4046579436609468,
+            "normalized_rmse": 0.40568761747025683,
+            "rmse": 0.024387791804337,
+            "wmape": 0.4046579436609468
+          },
+          "point_count": 34,
+          "solution_coverage": 1.0,
+          "successful_point_count": 34
+        },
+        "static": {
+          "cp_metrics": {
+            "mae": 0.0047510413760934195,
+            "maximum_absolute_error": 0.00987976157267819,
+            "mean_prediction": 0.04322023842732181,
+            "mean_reference": 0.04795625,
+            "normalized_bias": -0.09875692058236817,
+            "normalized_rmse": 0.1205041817982893,
+            "rmse": 0.005778928668364211,
+            "wmape": 0.09907032714387426
+          },
+          "ct_metrics": {
+            "mae": 0.011851924306707935,
+            "maximum_absolute_error": 0.023187913493380508,
+            "mean_prediction": 0.10671208650661951,
+            "mean_reference": 0.1184625,
+            "normalized_bias": -0.09919099709511868,
+            "normalized_rmse": 0.11934250563624353,
+            "rmse": 0.0141376115739335,
+            "wmape": 0.10004789960289488
+          },
+          "point_count": 16,
+          "solution_coverage": 1.0,
+          "successful_point_count": 16
+        }
+      },
+      "representative_polar_evidence": false,
+      "settings": {
+        "annulus_count": 80,
+        "annulus_settings": {
+          "angle_tolerance_rad": 1e-10,
+          "bracket_samples": 128,
+          "include_root_loss": false,
+          "include_tip_loss": true,
+          "loading_branch": "signed_nonreversed",
+          "max_iterations": 100,
+          "minimum_tip_loss_factor": 1e-06,
+          "relative_residual_tolerance": 1e-10,
+          "residual_tolerance_m2_s": 1e-08,
+          "rotational_augmentation": {
+            "kind": "snel_1993",
+            "lift_curve_slope_per_rad": 6.283185307179586,
+            "maximum_absolute_alpha_rad": 0.7853981633974483,
+            "maximum_chord_over_radius": 0.75,
+            "model_id": "snel-1993-v1",
+            "source": "https://publicaties.ecn.nl/PdfFetch.aspx?nr=ECN-C--93-052",
+            "zero_lift_angle_rad": -0.06981317007977318
+          }
+        },
+        "radial_domain": "station_span"
+      },
+      "solution_coverage": 1.0,
+      "successful_point_count": 50,
+      "variant_id": "qprop-signed-tip_proxy-snel-1993-screen"
+    },
     {
       "cp_metrics": {
         "mae": 0.0116734232112499,
@@ -681,7 +819,16 @@
           "max_iterations": 100,
           "minimum_tip_loss_factor": 1e-06,
           "relative_residual_tolerance": 1e-10,
-          "residual_tolerance_m2_s": 1e-08
+          "residual_tolerance_m2_s": 1e-08,
+          "rotational_augmentation": {
+            "kind": "disabled",
+            "lift_curve_slope_per_rad": null,
+            "maximum_absolute_alpha_rad": 0.7853981633974483,
+            "maximum_chord_over_radius": 0.75,
+            "model_id": "disabled",
+            "source": null,
+            "zero_lift_angle_rad": null
+          }
         },
         "radial_domain": "station_span"
       },
@@ -801,7 +948,16 @@
           "max_iterations": 100,
           "minimum_tip_loss_factor": 1e-06,
           "relative_residual_tolerance": 1e-10,
-          "residual_tolerance_m2_s": 1e-08
+          "residual_tolerance_m2_s": 1e-08,
+          "rotational_augmentation": {
+            "kind": "disabled",
+            "lift_curve_slope_per_rad": null,
+            "maximum_absolute_alpha_rad": 0.7853981633974483,
+            "maximum_chord_over_radius": 0.75,
+            "model_id": "disabled",
+            "source": null,
+            "zero_lift_angle_rad": null
+          }
         },
         "radial_domain": "station_span"
       },
@@ -921,7 +1077,16 @@
           "max_iterations": 100,
           "minimum_tip_loss_factor": 1e-06,
           "relative_residual_tolerance": 1e-10,
-          "residual_tolerance_m2_s": 1e-08
+          "residual_tolerance_m2_s": 1e-08,
+          "rotational_augmentation": {
+            "kind": "disabled",
+            "lift_curve_slope_per_rad": null,
+            "maximum_absolute_alpha_rad": 0.7853981633974483,
+            "maximum_chord_over_radius": 0.75,
+            "model_id": "disabled",
+            "source": null,
+            "zero_lift_angle_rad": null
+          }
         },
         "radial_domain": "station_span"
       },
@@ -1041,7 +1206,16 @@
           "max_iterations": 100,
           "minimum_tip_loss_factor": 1e-06,
           "relative_residual_tolerance": 1e-10,
-          "residual_tolerance_m2_s": 1e-08
+          "residual_tolerance_m2_s": 1e-08,
+          "rotational_augmentation": {
+            "kind": "disabled",
+            "lift_curve_slope_per_rad": null,
+            "maximum_absolute_alpha_rad": 0.7853981633974483,
+            "maximum_chord_over_radius": 0.75,
+            "model_id": "disabled",
+            "source": null,
+            "zero_lift_angle_rad": null
+          }
         },
         "radial_domain": "station_span"
       },
@@ -1163,7 +1337,16 @@
           "max_iterations": 100,
           "minimum_tip_loss_factor": 1e-06,
           "relative_residual_tolerance": 1e-10,
-          "residual_tolerance_m2_s": 1e-08
+          "residual_tolerance_m2_s": 1e-08,
+          "rotational_augmentation": {
+            "kind": "disabled",
+            "lift_curve_slope_per_rad": null,
+            "maximum_absolute_alpha_rad": 0.7853981633974483,
+            "maximum_chord_over_radius": 0.75,
+            "model_id": "disabled",
+            "source": null,
+            "zero_lift_angle_rad": null
+          }
         },
         "radial_domain": "station_span"
       },

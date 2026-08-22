@@ -32,6 +32,12 @@
 | static | 16/16 | 100.0% | 11.39% | 11.26% |
 | forward | 34/34 | 100.0% | 40.31% | 38.35% |
 
+## Rotational-model ablation
+
+| Variant | CT WMAPE | CP WMAPE | Forward CT WMAPE | Forward CP WMAPE |
+| --- | ---: | ---: | ---: | ---: |
+| qprop-signed-tip_proxy-snel-1993-screen | 25.81% | 27.83% | 40.47% | 38.44% |
+
 ## Evidence scope
 
 The frozen fixture contains 60 measured points; 50 positive-thrust points are in the declared propulsive envelope and 10 windmilling points are retained but excluded.

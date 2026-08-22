@@ -7,13 +7,18 @@ import pytest
 from pyfoldable.core import (
     BEMAnnulusSettings,
     BEMRotorSettings,
+    PolarFamily,
+    PolarTable,
     RotorBenchmarkError,
     RotorBenchmarkPolicy,
+    SpanwisePolarAnchor,
+    SpanwisePolarSchedule,
     build_rotor_benchmark_proxy_polar_family,
     evaluate_rotor_benchmark_variant,
     load_rotor_benchmark_fixture,
     radial_convergence_evidence,
     run_rotor_benchmark_cases,
+    run_rotor_benchmark_cases_with_results,
 )
 from pyfoldable.core.models import BladeGeometry
 
@@ -91,7 +96,7 @@ def test_selected_pr06c_variant_reproduces_frozen_failure_evidence():
     fixture, convergence, actual = _selected_variant()
     stored = json.loads(REPORT.read_text(encoding="utf-8"))
 
-    assert stored["schema_version"] == 2
+    assert stored["schema_version"] == 3
     assert stored["fixture"]["sha256"] == fixture.source_sha256
     assert {
         key: value
@@ -102,7 +107,16 @@ def test_selected_pr06c_variant_reproduces_frozen_failure_evidence():
         "analytic_proxy"
     )
     assert stored["radial_convergence"] == convergence
-    assert len(stored["sensitivity_variants"]) == 5
+    assert len(stored["sensitivity_variants"]) == 6
+    snel = next(
+        variant
+        for variant in stored["sensitivity_variants"]
+        if "snel-1993" in variant["variant_id"]
+    )
+    assert not snel["passed"]
+    assert snel["settings"]["annulus_settings"]["rotational_augmentation"][
+        "model_id"
+    ] == "snel-1993-v1"
     assert not any(
         variant["passed"] for variant in stored["sensitivity_variants"]
     )
@@ -144,6 +158,18 @@ def test_benchmark_rejects_missing_or_duplicate_prediction_evidence():
             polar_contract={},
         )
 
+    with pytest.raises(RotorBenchmarkError, match="typed polar evidence"):
+        evaluate_rotor_benchmark_variant(
+            fixture,
+            predictions,
+            RotorBenchmarkPolicy(),
+            variant_id="forged-representative-evidence",
+            representative_polar_evidence=True,
+            radial_terminal_delta=0.0,
+            settings=settings,
+            polar_contract={},
+        )
+
 
 def test_benchmark_override_rejects_incompatible_blade_identity():
     fixture = load_rotor_benchmark_fixture(FIXTURE)
@@ -171,3 +197,58 @@ def test_benchmark_override_rejects_incompatible_blade_identity():
             point_ids=("static-6528",),
             blade=wrong_count,
         )
+
+
+def test_benchmark_and_convergence_consume_the_same_spanwise_schedule():
+    fixture = load_rotor_benchmark_fixture(FIXTURE)
+    base = build_rotor_benchmark_proxy_polar_family()
+
+    def renamed(airfoil_id: str) -> PolarFamily:
+        return PolarFamily(
+            tuple(
+                PolarTable(
+                    airfoil_id=airfoil_id,
+                    scenario_id=table.scenario_id,
+                    reynolds=table.reynolds,
+                    mach=table.mach,
+                    alpha_rad=table.alpha_rad,
+                    cl=table.cl,
+                    cd=table.cd,
+                    cm=table.cm,
+                    source=f"{table.source}:{airfoil_id}",
+                    metadata=table.metadata,
+                )
+                for table in base.tables
+            )
+        )
+
+    blade = fixture.blade("geometry-only")
+    schedule = SpanwisePolarSchedule(
+        "E63-to-APC12-screen",
+        (
+            SpanwisePolarAnchor(blade.stations[0].r_over_R, renamed("E63")),
+            SpanwisePolarAnchor(blade.stations[-1].r_over_R, renamed("APC12")),
+        ),
+    )
+    settings = BEMRotorSettings(
+        4,
+        "station_span",
+        BEMAnnulusSettings(loading_branch="signed_nonreversed"),
+    )
+
+    predictions, rotor_results = run_rotor_benchmark_cases_with_results(
+        fixture, schedule, settings=settings, blade=blade
+    )
+    convergence = radial_convergence_evidence(
+        fixture,
+        schedule,
+        point_ids=("static-6528", "forward-6512-j0199"),
+        annulus_counts=(2, 4),
+        annulus_settings=settings.annulus_settings,
+        blade=blade,
+    )
+
+    assert len(predictions) == 50
+    assert len(rotor_results) == 50
+    assert sum(result.annulus_count for result in rotor_results) == 200
+    assert convergence["maximum_terminal_relative_delta"] >= 0.0

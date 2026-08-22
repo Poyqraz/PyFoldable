@@ -12,17 +12,21 @@ from typing import Any, Literal, Mapping, Sequence
 from .bem import BEMAnnulusSettings
 from .bem_rotor import (
     BEMRotorElementError,
+    BEMRotorResult,
     BEMRotorSettings,
     solve_bem_rotor,
 )
 from .models import BladeGeometry, BladeStation, OperatingCondition
 from .polar import PolarFamily, PolarTable
+from .polar_spanwise import SpanwisePolarSchedule
+from .rotor_polar_evidence import RotorPolarEvidence
 
 
-ROTOR_BENCHMARK_SCHEMA_VERSION = 2
+ROTOR_BENCHMARK_SCHEMA_VERSION = 3
 _ROTOR_BENCHMARK_FIXTURE_SCHEMA_VERSION = 1
 BenchmarkRegime = Literal["static", "forward"]
 PredictionStatus = Literal["success", "unsupported", "error"]
+RotorPolarInput = PolarFamily | SpanwisePolarSchedule
 
 
 class RotorBenchmarkError(ValueError):
@@ -397,16 +401,29 @@ def load_rotor_benchmark_fixture(path: str | Path) -> RotorBenchmarkFixture:
     )
 
 
-def run_rotor_benchmark_cases(
+def _polar_solver_input(
+    polar_input: RotorPolarInput,
+) -> tuple[str, Mapping[str, PolarFamily] | SpanwisePolarSchedule]:
+    if isinstance(polar_input, PolarFamily):
+        return polar_input.airfoil_id, {polar_input.airfoil_id: polar_input}
+    if isinstance(polar_input, SpanwisePolarSchedule):
+        return polar_input.id, polar_input
+    raise RotorBenchmarkError(
+        "polar input must be a PolarFamily or SpanwisePolarSchedule."
+    )
+
+
+def _run_rotor_benchmark_cases(
     fixture: RotorBenchmarkFixture,
-    polar_family: PolarFamily,
+    polar_input: RotorPolarInput,
     *,
     settings: BEMRotorSettings | None = None,
     blade: BladeGeometry | None = None,
-) -> tuple[RotorBenchmarkPrediction, ...]:
+) -> tuple[tuple[RotorBenchmarkPrediction, ...], tuple[BEMRotorResult, ...]]:
     """Run every eligible point while preserving unsupported-domain evidence."""
     controls = BEMRotorSettings() if settings is None else settings
-    rotor = fixture.blade(polar_family.airfoil_id) if blade is None else blade
+    geometry_airfoil_id, solver_input = _polar_solver_input(polar_input)
+    rotor = fixture.blade(geometry_airfoil_id) if blade is None else blade
     if not isinstance(rotor, BladeGeometry):
         raise RotorBenchmarkError("blade must be a BladeGeometry instance.")
     if not math.isclose(rotor.diameter_m, fixture.diameter_m, abs_tol=1.0e-12):
@@ -414,12 +431,13 @@ def run_rotor_benchmark_cases(
     if rotor.blade_count != fixture.blade_count:
         raise RotorBenchmarkError("Benchmark blade count must match the fixture.")
     predictions: list[RotorBenchmarkPrediction] = []
+    rotor_results: list[BEMRotorResult] = []
     for point in fixture.eligible_points:
         try:
             result = solve_bem_rotor(
                 rotor,
                 fixture.condition(point),
-                {polar_family.airfoil_id: polar_family},
+                solver_input,
                 bounds="error",
                 settings=controls,
             )
@@ -446,6 +464,7 @@ def run_rotor_benchmark_cases(
                 )
             )
         else:
+            rotor_results.append(result)
             predictions.append(
                 RotorBenchmarkPrediction(
                     point_id=point.id,
@@ -454,7 +473,34 @@ def run_rotor_benchmark_cases(
                     power_coefficient=result.power_coefficient,
                 )
             )
-    return tuple(predictions)
+    return tuple(predictions), tuple(rotor_results)
+
+
+def run_rotor_benchmark_cases(
+    fixture: RotorBenchmarkFixture,
+    polar_family: RotorPolarInput,
+    *,
+    settings: BEMRotorSettings | None = None,
+    blade: BladeGeometry | None = None,
+) -> tuple[RotorBenchmarkPrediction, ...]:
+    """Run benchmark predictions without retaining full per-annulus results."""
+    predictions, _ = _run_rotor_benchmark_cases(
+        fixture, polar_family, settings=settings, blade=blade
+    )
+    return predictions
+
+
+def run_rotor_benchmark_cases_with_results(
+    fixture: RotorBenchmarkFixture,
+    polar_input: RotorPolarInput,
+    *,
+    settings: BEMRotorSettings | None = None,
+    blade: BladeGeometry | None = None,
+) -> tuple[tuple[RotorBenchmarkPrediction, ...], tuple[BEMRotorResult, ...]]:
+    """Run benchmark predictions and retain successful annulus query evidence."""
+    return _run_rotor_benchmark_cases(
+        fixture, polar_input, settings=settings, blade=blade
+    )
 
 
 def _coefficient_metrics(
@@ -495,12 +541,24 @@ def evaluate_rotor_benchmark_variant(
     radial_terminal_delta: float,
     settings: BEMRotorSettings,
     polar_contract: Mapping[str, Any],
+    polar_evidence: RotorPolarEvidence | None = None,
 ) -> Mapping[str, Any]:
     """Evaluate coverage, coefficient error, convergence, and evidence gates."""
     if not variant_id:
         raise RotorBenchmarkError("variant_id is required.")
     if not isinstance(representative_polar_evidence, bool):
         raise RotorBenchmarkError("representative_polar_evidence must be boolean.")
+    if representative_polar_evidence and polar_evidence is None:
+        raise RotorBenchmarkError(
+            "Representative status requires typed polar evidence."
+        )
+    if polar_evidence is not None and (
+        not isinstance(polar_evidence, RotorPolarEvidence)
+        or representative_polar_evidence != polar_evidence.passed
+    ):
+        raise RotorBenchmarkError(
+            "representative_polar_evidence must match typed polar evidence."
+        )
     if not isinstance(settings, BEMRotorSettings):
         raise RotorBenchmarkError("settings must be a BEMRotorSettings instance.")
     _finite("radial_terminal_delta", radial_terminal_delta)
@@ -508,6 +566,13 @@ def evaluate_rotor_benchmark_variant(
         raise RotorBenchmarkError("radial_terminal_delta cannot be negative.")
     eligible = fixture.eligible_points
     point_ids = tuple(point.id for point in eligible)
+    if polar_evidence is not None and polar_evidence.passed and not (
+        polar_evidence.matches_benchmark(point_ids, settings.annulus_count)
+    ):
+        raise RotorBenchmarkError(
+            "Typed polar evidence does not match the benchmark condition set "
+            "and annulus count."
+        )
     by_id = {prediction.point_id: prediction for prediction in predictions}
     if len(by_id) != len(predictions) or set(by_id) != set(point_ids):
         raise RotorBenchmarkError("Predictions must cover each eligible point exactly once.")
@@ -626,7 +691,7 @@ def evaluate_rotor_benchmark_variant(
         if prediction.status != "success":
             key = str(prediction.error_type)
             failure_counts[key] = failure_counts.get(key, 0) + 1
-    return {
+    report = {
         "variant_id": variant_id,
         "passed": all(gates.values()),
         "gates": gates,
@@ -643,11 +708,14 @@ def evaluate_rotor_benchmark_variant(
         "polar_contract": dict(polar_contract),
         "predictions": [dict(prediction.as_mapping()) for prediction in predictions],
     }
+    if polar_evidence is not None:
+        report["polar_evidence"] = dict(polar_evidence.as_mapping())
+    return report
 
 
 def radial_convergence_evidence(
     fixture: RotorBenchmarkFixture,
-    polar_family: PolarFamily,
+    polar_family: RotorPolarInput,
     *,
     point_ids: Sequence[str],
     annulus_counts: Sequence[int] = (20, 40, 80, 160),
@@ -666,7 +734,8 @@ def radial_convergence_evidence(
     if not point_ids or any(point_id not in by_id for point_id in point_ids):
         raise RotorBenchmarkError("Convergence point ids must be eligible benchmark points.")
     local = BEMAnnulusSettings() if annulus_settings is None else annulus_settings
-    rotor = fixture.blade(polar_family.airfoil_id) if blade is None else blade
+    geometry_airfoil_id, solver_input = _polar_solver_input(polar_family)
+    rotor = fixture.blade(geometry_airfoil_id) if blade is None else blade
     if not isinstance(rotor, BladeGeometry):
         raise RotorBenchmarkError("blade must be a BladeGeometry instance.")
     if not math.isclose(rotor.diameter_m, fixture.diameter_m, abs_tol=1.0e-12):
@@ -682,7 +751,7 @@ def radial_convergence_evidence(
             result = solve_bem_rotor(
                 rotor,
                 fixture.condition(point),
-                {polar_family.airfoil_id: polar_family},
+                solver_input,
                 bounds="error",
                 settings=BEMRotorSettings(count, "station_span", local),
             )

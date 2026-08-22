@@ -55,7 +55,7 @@ kanıt paketi ve başarısızlığı görünür kılan regresyonu bulunduğunda 
   kayıpları, rotor toplamları ve boyutsuz performans katsayıları eklendi. Fiziksel
   doğruluk iddiası PR-06C benchmark kapısına bağlıdır.
 - **PR-06C — sabit pervane benchmark'ı (üretici-geometri altyapısı tamamlandı;
-  polar/ileri-uçuş kapıları başarısız).** UIUC APC SF 10×4.7 rüzgâr-tüneli verisi üzerinde 60
+  kanıt/dönel-model temeli tamamlandı; polar/ileri-uçuş kapıları başarısız).** UIUC APC SF 10×4.7 rüzgâr-tüneli verisi üzerinde 60
   ham/50 propulsif nokta ve değişmeyen CT/CP politikası korunuyor. İncelenmiş
   `signed_nonreversed` dalı yerel negatif yüklemeyi ters akışa izin vermeden çözüyor;
   toplam/ileri-uçuş kapsamı %46/%20,6'dan %100/%100'e çıktı. Tam zarf artık proxy
@@ -64,7 +64,11 @@ kanıt paketi ve başarısızlığı görünür kılan regresyonu bulunduğunda 
   WMAPE'yi %16,23/%16,98'e indirdi; ancak CT biası −%14,07, ileri-uçuş CT/CP WMAPE
   %25,68/%23,19 ve temsili spanwise polar kanıtı hâlâ kapı dışıdır. Bu nedenle PR-06D
   blokludur. Ayrıntı [geometri/polar remediation](pr06c_geometry_polar_remediation.md)
-  belgesindedir.
+  ve [kritik kapı review](pr06c_critical_gate_review.md) belgelerindedir. Temsili polar
+  statüsü artık koordinat/provider sürümü, tam solver sorgu zarfı ve iki-capture
+  promotion kaydı olmadan üretilemez. Snel-1993 düzeltmesi varsayılan tam no-op ve
+  açık provenance ile eklendi; proxy ablation statik hatayı azaltırken ileri-uçuş
+  hatasını kapatmadığı için fiziksel niteleme iddiası oluşturmadı.
 - **PR-06D — katlanır geometri bağlantısı.** Açılma açısı, etkin yarıçap ve yerel
   kinematik rotor çözücüsüne taşınır; sabit–katlanır farkı fizik tabanlı hale gelir.
 
@@ -124,7 +128,7 @@ arşiv bütünlüğü sürüm kapısıdır.
 | --- | --- | --- |
 | 1 | PR-06A yerel annulus çözücüsü | Tamamlandı: hover, denklem kalıntısı, loss-model ve açık kapsam regresyonları |
 | 2 | PR-06B rotor integrasyonu | Tamamlandı: radyal yakınsama, yük/toplam tutarlılığı ve provenance |
-| 3 | PR-06C referans benchmark | Kapsam + üretici-geometri/spanwise tüketim temeli tamamlandı; ileri-uçuş doğruluğu ve temsili polar kanıtı başarısız |
+| 3 | PR-06C referans benchmark | Kapsam + üretici-geometri/spanwise tüketim + typed kanıt/dönel ablation temeli tamamlandı; gerçek E63→APC12 ailesi ve ileri-uçuş doğruluğu başarısız |
 | 4 | PR-06D katlanır bağlantı | **Bloklu:** PR-06C tüm kapıları geçtikten sonra sabit-limit eşdeğerliği ve açılma duyarlılığı |
 | 5 | PR-07 motor bağlantısı | Tork/enerji dengesi ve ölçüm korelasyonu |
 | 6 | PR-08/09 CFD ve FEA | Bağımsızlık, izlenebilir solver kanıtı, güvenlik kapıları |
