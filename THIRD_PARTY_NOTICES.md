@@ -46,6 +46,23 @@ names, versions, source URLs, configuration, and output provenance are preserved
 the fixture manifests and `docs/polar_real_backend_qualification.md`. Third-party
 solver software remains under its own terms.
 
+## Published CFD context
+
+`tests/fixtures/cfd_reference/apcsf_10x4.7_published_v1.json` contains factual
+numeric values and bibliographic metadata transcribed from attributed primary
+publications. It does not contain publication PDFs, figures, meshes, CAD, or digitized
+curves. The fixture is model-form context only and is excluded from the Project's
+PolyForm license; the publications' terms and applicable law remain controlling.
+
+- ICAS 2020 paper: <https://www.icas.org/icas_archive/ICAS2020/data/papers/ICAS2020_0482_paper.pdf>
+- Bahcesehir University thesis: <https://hdl.handle.net/20.500.14719/1403>
+- FlowVision article: <https://www.pressmk.ru/storage/pdf/RI_4_2024.pdf>
+- Qeios oblique-flow paper: <https://doi.org/10.32388/WG08LV>
+- Aerospace APC 10x7 methodology paper: <https://doi.org/10.3390/aerospace4010010>
+
+Figure-only publications are not digitized into numeric qualification evidence, and
+different-pitch results are explicitly methodology-only.
+
 ## Airfoil coordinates
 
 `configs/airfoils/NACA0012_81.dat` is an analytic NACA 0012 coordinate realization;

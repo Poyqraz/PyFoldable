@@ -110,10 +110,18 @@ Acceptance:
 - all existing fixed-blade tests remain green;
 - CI passes on the PR-06D branch.
 
+### Stage 5 — PR-06D opening sensitivity (implemented, screening-only)
+
+The frozen 50-point propulsive matrix is evaluated at 0/15/30/45/60-degree fold
+states. The exact deployed endpoint remains identical to the fixed solver and all 250
+state/condition combinations are retained in a deterministic report. The evidence is
+hard-coded as `screening_only_until_pr06c_passes`; it does not satisfy Stage 6 physical
+qualification or permit a final design decision.
+
 ## Stop conditions
 
 Scientific non-qualification is not a software failure to hide. Work stops short of
 an accuracy claim when required third-party inputs, provider coverage, independent
 reference results or frozen benchmark gates are absent. The code may still advance to
-the PR-06D *software foundation* only when its fixed-limit equivalence is explicitly
+the PR-06D *software foundation and screening sweep* only when both are explicitly
 labelled non-qualifying and cannot bypass the PR-06C accuracy gate.

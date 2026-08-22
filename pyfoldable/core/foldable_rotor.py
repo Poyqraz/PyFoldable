@@ -253,6 +253,131 @@ class FixedLimitEquivalenceEvidence:
         }
 
 
+@dataclass(frozen=True)
+class FoldableOpeningSweepCase:
+    """One screening-only fold state at one operating condition."""
+
+    state_id: str
+    condition_id: str
+    angle_from_deployed_rad: float
+    projection_factor: float
+    effective_diameter_m: float
+    thrust_n: float
+    torque_nm: float
+    thrust_coefficient: float
+    power_coefficient: float
+    thrust_ratio_to_deployed: float
+    torque_ratio_to_deployed: float
+    fixed_mapping_equal: bool | None
+
+    def __post_init__(self) -> None:
+        if not self.state_id or not self.condition_id:
+            raise ValueError("Opening-sweep state and condition ids are required.")
+        for name in (
+            "angle_from_deployed_rad",
+            "projection_factor",
+            "effective_diameter_m",
+            "thrust_n",
+            "torque_nm",
+            "thrust_coefficient",
+            "power_coefficient",
+            "thrust_ratio_to_deployed",
+            "torque_ratio_to_deployed",
+        ):
+            _finite(name, getattr(self, name))
+        if self.projection_factor <= 0.0 or self.effective_diameter_m <= 0.0:
+            raise ValueError("Opening-sweep projected geometry must remain positive.")
+        if self.fixed_mapping_equal is not None and not isinstance(
+            self.fixed_mapping_equal, bool
+        ):
+            raise TypeError("fixed_mapping_equal must be boolean or None.")
+
+    def as_mapping(self) -> Mapping[str, Any]:
+        return dict(vars(self))
+
+
+@dataclass(frozen=True)
+class FoldableOpeningSweepEvidence:
+    """Auditable opening sensitivity that is never physical qualification."""
+
+    states: tuple[FoldableRotorState, ...]
+    condition_ids: tuple[str, ...]
+    cases: tuple[FoldableOpeningSweepCase, ...]
+    qualification: str = "screening_only_until_pr06c_passes"
+
+    def __post_init__(self) -> None:
+        if not self.states or not self.condition_ids or not self.cases:
+            raise ValueError("Opening-sweep evidence must not be empty.")
+        if not all(isinstance(state, FoldableRotorState) for state in self.states):
+            raise TypeError("states must contain FoldableRotorState values.")
+        if not all(
+            isinstance(case, FoldableOpeningSweepCase) for case in self.cases
+        ):
+            raise TypeError("cases must contain FoldableOpeningSweepCase values.")
+        if self.states[0].angle_from_deployed_rad != 0.0:
+            raise FoldableRotorGeometryError(
+                "Opening-sweep evidence requires the deployed state first."
+            )
+        state_ids = tuple(state.id for state in self.states)
+        if len(set(state_ids)) != len(state_ids):
+            raise ValueError("Opening-sweep state ids must be unique.")
+        magnitudes = tuple(
+            abs(state.angle_from_deployed_rad) for state in self.states
+        )
+        if any(
+            upper <= lower for lower, upper in zip(magnitudes, magnitudes[1:])
+        ):
+            raise ValueError("Opening-sweep fold magnitudes must strictly increase.")
+        if self.qualification != "screening_only_until_pr06c_passes":
+            raise ValueError("Opening sensitivity cannot be physically qualified.")
+        if len(set(self.condition_ids)) != len(self.condition_ids):
+            raise ValueError("Opening-sweep condition ids must be unique.")
+        expected = {
+            (state.id, condition_id)
+            for state in self.states
+            for condition_id in self.condition_ids
+        }
+        actual = {(case.state_id, case.condition_id) for case in self.cases}
+        if actual != expected or len(self.cases) != len(expected):
+            raise ValueError("Opening-sweep cases must form a complete state grid.")
+
+    @property
+    def state_count(self) -> int:
+        return len(self.states)
+
+    @property
+    def condition_count(self) -> int:
+        return len(self.condition_ids)
+
+    @property
+    def case_count(self) -> int:
+        return len(self.cases)
+
+    @property
+    def deployed_endpoint_exact(self) -> bool:
+        deployed_id = self.states[0].id
+        return all(
+            case.fixed_mapping_equal is True
+            for case in self.cases
+            if case.state_id == deployed_id
+        )
+
+    def as_mapping(self) -> Mapping[str, Any]:
+        return {
+            "schema_version": 1,
+            "kind": "pr06d-opening-sensitivity",
+            "qualification": self.qualification,
+            "physical_qualification": False,
+            "deployed_endpoint_exact": self.deployed_endpoint_exact,
+            "state_count": self.state_count,
+            "condition_count": self.condition_count,
+            "case_count": self.case_count,
+            "states": [dict(state.as_mapping()) for state in self.states],
+            "condition_ids": list(self.condition_ids),
+            "cases": [dict(case.as_mapping()) for case in self.cases],
+        }
+
+
 def _blade_mapping(blade: BladeGeometry) -> Mapping[str, Any]:
     return {
         "diameter_m": blade.diameter_m,
@@ -527,3 +652,104 @@ def assess_fixed_limit_equivalence(
             )
         )
     return FixedLimitEquivalenceEvidence(state, tuple(cases))
+
+
+def assess_foldable_opening_sensitivity(
+    blade: BladeGeometry,
+    states: Sequence[FoldableRotorState],
+    conditions: Sequence[OperatingCondition],
+    polar_families: Mapping[str, PolarFamily] | SpanwisePolarSchedule,
+    *,
+    bounds: PolarBoundsPolicy = "error",
+    settings: BEMRotorSettings | None = None,
+) -> FoldableOpeningSweepEvidence:
+    """Evaluate a deployed-to-folded sweep without promoting physical accuracy."""
+    state_tuple = tuple(states)
+    condition_tuple = tuple(conditions)
+    if not state_tuple or not all(
+        isinstance(state, FoldableRotorState) for state in state_tuple
+    ):
+        raise TypeError("states must contain at least one FoldableRotorState.")
+    if state_tuple[0].angle_from_deployed_rad != 0.0:
+        raise FoldableRotorGeometryError(
+            "Opening sensitivity requires the exact deployed state first."
+        )
+    state_ids = tuple(state.id for state in state_tuple)
+    if len(set(state_ids)) != len(state_ids):
+        raise ValueError("Opening-sweep state ids must be unique.")
+    hinge_radii = {state.hinge_radius_m for state in state_tuple}
+    deployed_angles = {state.deployed_angle_rad for state in state_tuple}
+    if len(hinge_radii) != 1 or len(deployed_angles) != 1:
+        raise FoldableRotorGeometryError(
+            "Opening-sweep states must share hinge and deployed references."
+        )
+    magnitudes = tuple(abs(state.angle_from_deployed_rad) for state in state_tuple)
+    if any(upper <= lower for lower, upper in zip(magnitudes, magnitudes[1:])):
+        raise ValueError("Fold magnitudes must strictly increase after deployed.")
+    if not condition_tuple or not all(
+        isinstance(condition, OperatingCondition) for condition in condition_tuple
+    ):
+        raise TypeError(
+            "conditions must contain at least one OperatingCondition."
+        )
+    condition_ids = tuple(condition.id for condition in condition_tuple)
+    if len(set(condition_ids)) != len(condition_ids):
+        raise ValueError("Opening-sweep condition ids must be unique.")
+
+    fixed_by_condition = {
+        condition.id: solve_bem_rotor(
+            blade,
+            condition,
+            polar_families,
+            bounds=bounds,
+            settings=settings,
+        )
+        for condition in condition_tuple
+    }
+    folded_by_state: dict[tuple[str, str], FoldableBEMRotorResult] = {}
+    for state in state_tuple:
+        for condition in condition_tuple:
+            folded_by_state[(state.id, condition.id)] = solve_foldable_bem_rotor(
+                blade,
+                state,
+                condition,
+                polar_families,
+                bounds=bounds,
+                settings=settings,
+            )
+
+    cases: list[FoldableOpeningSweepCase] = []
+    deployed_id = state_tuple[0].id
+    for state in state_tuple:
+        for condition in condition_tuple:
+            folded = folded_by_state[(state.id, condition.id)]
+            result = folded.rotor_result
+            deployed = folded_by_state[(deployed_id, condition.id)].rotor_result
+            if deployed.thrust_n == 0.0 or deployed.torque_nm == 0.0:
+                raise FoldableRotorGeometryError(
+                    "Opening sensitivity requires nonzero deployed thrust and torque."
+                )
+            cases.append(
+                FoldableOpeningSweepCase(
+                    state_id=state.id,
+                    condition_id=condition.id,
+                    angle_from_deployed_rad=state.angle_from_deployed_rad,
+                    projection_factor=folded.geometry.projection_factor,
+                    effective_diameter_m=folded.geometry.effective_blade.diameter_m,
+                    thrust_n=result.thrust_n,
+                    torque_nm=result.torque_nm,
+                    thrust_coefficient=result.thrust_coefficient,
+                    power_coefficient=result.power_coefficient,
+                    thrust_ratio_to_deployed=result.thrust_n / deployed.thrust_n,
+                    torque_ratio_to_deployed=result.torque_nm / deployed.torque_nm,
+                    fixed_mapping_equal=(
+                        result.as_mapping()
+                        == fixed_by_condition[condition.id].as_mapping()
+                        if state.id == deployed_id
+                        else None
+                    ),
+                )
+            )
+    return FoldableOpeningSweepEvidence(
+        state_tuple, condition_ids, tuple(cases)
+    )
