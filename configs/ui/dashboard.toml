@@ -1,0 +1,57 @@
+schema_version = 1
+design_config = "configs/designs/TIP_HINGED_250_CANONICAL.toml"
+qualification_warning = "Sonuçlar nihai itki, verim, gerilme veya ömür garantisi değildir. Nitelikli olmayan çıktılar yalnız mimari ve karşılaştırmalı tarama amacıyla kullanılmalıdır."
+
+[[gates]]
+id = "PR-06C"
+title = "Rotor fiziksel yeterliliği"
+state = "blocked"
+summary = "Temsili spanwise polar, ileri uçuş doğruluğu ve bağımsız model-form review kapıları geçmedi."
+evidence_path = "reports/pr06c_physical_gate.json"
+decision_key = "decision"
+expected_decision = "pr06c_blocked"
+
+[[gates]]
+id = "PR-06D"
+title = "Katlanma duyarlılığı"
+state = "screening_only"
+summary = "250 vakalık yazılım taraması tamamlandı; fiziksel niteleme PR-06C'ye bağlı."
+evidence_path = "reports/pr06d_opening_sensitivity.json"
+decision_key = "decision"
+expected_decision = "pr06d_opening_sensitivity_software_complete_screening_only"
+
+[[gates]]
+id = "PR-07"
+title = "Motor–pervane korelasyonu"
+state = "pending"
+summary = "Sayısal kapı geçti; ölçülmüş motor–pervane çalışma noktası bekleniyor."
+evidence_path = "reports/pr07_fully_coupled_evidence.json"
+decision_key = "decision"
+expected_decision = "pr07_numerical_gate_passed_physical_correlation_pending"
+
+[[gates]]
+id = "PR-08"
+title = "CFD korelasyonu"
+state = "pending"
+summary = "Yayımlanmış aynı-pervane bağlamı mevcut; proje ANSYS ağı ve sonuç paketi bekleniyor."
+evidence_path = "reports/pr06c_published_cfd_review.json"
+decision_key = "decision"
+expected_decision = "literature_context_integrated_pr06c_still_blocked"
+
+[[gates]]
+id = "PR-09"
+title = "Yapısal doğrulama"
+state = "pending"
+summary = "FEA sözleşmesi hazır; gerçek CAD, malzeme kartı ve ANSYS Mechanical paketi bekleniyor."
+evidence_path = "reports/pr09_fea_contract_evidence.json"
+decision_key = "decision"
+expected_decision = "pr09_software_contract_complete_physical_evidence_pending"
+
+[[gates]]
+id = "PR-10"
+title = "Deneysel doğrulama"
+state = "pending"
+summary = "Deney veri sözleşmesi ve kamu referansı hazır; kalibre edilmiş ham ölçümler bekleniyor."
+evidence_path = "reports/pr10_experiment_contract_evidence.json"
+decision_key = "decision"
+expected_decision = "pr10_software_contract_complete_physical_measurements_pending"

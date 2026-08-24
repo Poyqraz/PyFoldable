@@ -85,10 +85,22 @@ tamamlanmıştır; açılma sonuçları screening-only kalır. Denklem/kapsam in
 ```bash
 git clone https://github.com/Poyqraz/PyFoldable.git
 cd PyFoldable
-pip install -e ".[dev,plot]"
+pip install -e ".[dev,plot,ui]"
 ```
 
-Gereksinimler: Python ≥ 3.10, NumPy, SciPy. Grafik örnekleri için `matplotlib` (`plot` extra).
+Gereksinimler: Python ≥ 3.10, NumPy, SciPy. Grafik örnekleri için `matplotlib`
+(`plot` extra), mühendislik çalışma alanı için Streamlit (`ui` extra).
+
+### Mühendislik çalışma alanı
+
+```bash
+streamlit run apps/pyfoldable_dashboard.py
+```
+
+İlk sürüm, kanonik tasarım ve sürümlü raporlarla bağlı bir proje/kanıt dashboard'udur.
+Henüz analiz çalıştırmayan sayfalar bunu açıkça belirtir; katlanma sonuçları PR-06C
+fiziksel kapısı geçene kadar `Tarama amaçlı` kalır. Mimari ve geliştirme sırası:
+`docs/ui_engineering_workspace.md`.
 
 ## Hızlı çalıştırma
 
