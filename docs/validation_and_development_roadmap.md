@@ -37,11 +37,14 @@ Bu hat bilimsel aşamaların sırasını veya geçiş eşiklerini değiştirmez.
   dashboard manifesti ve manifest–kanıt uyuşmazlığında fail-closed davranış.
 - **UI-02 — ilk artım aktif:** kanonik 250 mm tasarım, 140 mm katlanmış zarf,
   7100 rpm kontrol noktası ve PR-06C–PR-10 kapıları gerçek JSON kanıtlarından gösterilir.
-- **UI-03 — salt okunur temel aktif:** kanonik geometri, kanat istasyonları ve çalışma
-  koşulları gösterilir; birim kontrollü düzenleme/round-trip henüz açık değildir.
+- **UI-03A — 2.5D geometri önizlemesi aktif:** çap, göbek, kanat sayısı, NACA kesiti,
+  chord–twist dağılımı ve menteşe açısı etkileşimli yüzeye bağlıdır. Çıktı açıkça
+  `geometry_preview_not_cad_or_physical_result` olarak sınıflandırılır; config'e yazmaz.
+- **UI-03B — sıradaki artım:** önizleme girdilerinin birim kontrollü taslak config
+  round-trip'i; kanonik tasarım kullanıcı onayı ve doğrulama olmadan değiştirilemez.
 - **UI-04 — sonuç gezgini temeli aktif:** 250 vakalık PR-06D açılma taraması yalnız
   `screening_only` olarak gösterilir; CLI-eşdeğer yeni analiz çalıştırma sıradadır.
-- **UI-05–07 — sıradaki artımlar:** CFD/FEA/deney içe aktarma, rapor merkezi,
+- **UI-05–07 — sonraki artımlar:** CFD/FEA/deney içe aktarma, rapor merkezi,
   uçtan uca/görsel regresyon ve paketleme.
 
 Arayüzde `qualified`, `screening_only`, `pending`, `failed` ve `blocked` durumları

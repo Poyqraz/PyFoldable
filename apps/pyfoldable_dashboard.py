@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import math
 import sys
 from pathlib import Path
 
+import plotly.graph_objects as go
 import streamlit as st
 
 
@@ -14,6 +16,11 @@ if str(REPO_ROOT) not in sys.path:
 
 from pyfoldable.application.dashboard import EvidenceState, load_dashboard_snapshot
 from pyfoldable.application.opening_sensitivity import load_opening_sensitivity
+from pyfoldable.visualization.propeller_25d import (
+    PreviewBladeStation,
+    PropellerPreviewSpec,
+    build_propeller_preview_mesh,
+)
 
 
 PAGES = (
@@ -91,12 +98,182 @@ def _render_planned_page(page: str) -> None:
 def _render_design_geometry() -> None:
     snapshot = load_dashboard_snapshot(REPO_ROOT)
     st.title("Tasarım Geometrisi")
+    st.warning(
+        "Etkileşimli model bir geometri önizlemesidir; CAD katısı, CFD/FEA ağı veya "
+        "doğrulanmış performans sonucu değildir. Değişiklikler kanonik config dosyasına "
+        "kaydedilmez.",
+        icon="⚠️",
+    )
     st.markdown(f"### {snapshot.design_id}")
     st.caption(snapshot.design_description)
     diameter, blades, hinge = st.columns(3)
     diameter.metric("Açık çap", f"{snapshot.open_diameter_m * 1000:.0f} mm")
     blades.metric("Kanat sayısı", str(snapshot.blade_count))
     hinge.metric("Menteşe yarıçapı", f"{snapshot.hinge_radius_m * 1000:.0f} mm")
+
+    st.subheader("Etkileşimli 2.5D önizleme")
+    dimension_columns = st.columns(4)
+    diameter_mm = dimension_columns[0].number_input(
+        "Açık çap [mm]",
+        min_value=20.0,
+        max_value=1000.0,
+        value=float(snapshot.open_diameter_m * 1000.0),
+        step=5.0,
+    )
+    hub_radius_mm = dimension_columns[1].number_input(
+        "Göbek yarıçapı [mm]",
+        min_value=1.0,
+        max_value=250.0,
+        value=18.0,
+        step=1.0,
+    )
+    hinge_radius_mm = dimension_columns[2].number_input(
+        "Menteşe yarıçapı [mm]",
+        min_value=2.0,
+        max_value=500.0,
+        value=float(snapshot.hinge_radius_m * 1000.0),
+        step=2.0,
+    )
+    blade_count = dimension_columns[3].number_input(
+        "Kanat sayısı",
+        min_value=1,
+        max_value=8,
+        value=int(snapshot.blade_count),
+        step=1,
+    )
+
+    model_columns = st.columns(4)
+    airfoil_id = model_columns[0].selectbox(
+        "Kesit modeli",
+        ("NACA2412", "NACA0012", "NACA4412"),
+        index=0,
+    )
+    chord_scale = model_columns[1].slider(
+        "Chord ölçeği",
+        min_value=0.50,
+        max_value=1.50,
+        value=1.00,
+        step=0.05,
+    )
+    twist_scale = model_columns[2].slider(
+        "Twist ölçeği",
+        min_value=0.00,
+        max_value=1.50,
+        value=1.00,
+        step=0.05,
+    )
+    fold_angle_deg = model_columns[3].slider(
+        "Katlanma açısı [deg]",
+        min_value=-180,
+        max_value=0,
+        value=0,
+        step=5,
+    )
+
+    try:
+        preview_spec = PropellerPreviewSpec(
+            diameter_m=diameter_mm / 1000.0,
+            hub_radius_m=hub_radius_mm / 1000.0,
+            blade_count=int(blade_count),
+            hinge_radius_m=hinge_radius_mm / 1000.0,
+            fold_angle_deg=float(fold_angle_deg),
+            airfoil_id=airfoil_id,
+            chord_scale=float(chord_scale),
+            twist_scale=float(twist_scale),
+        )
+        diameter_scale = preview_spec.diameter_m / snapshot.open_diameter_m
+        preview_mesh = build_propeller_preview_mesh(
+            preview_spec,
+            tuple(
+                PreviewBladeStation(
+                    r_over_R=station.r_over_R,
+                    chord_m=station.chord_m * diameter_scale,
+                    twist_deg=station.twist_deg,
+                )
+                for station in snapshot.blade_stations
+            ),
+        )
+    except (TypeError, ValueError) as exc:
+        st.error(f"Önizleme girdisi geçersiz: {exc}")
+    else:
+        x_coords, y_coords, z_coords = zip(*preview_mesh.vertices)
+        i_faces, j_faces, k_faces = zip(*preview_mesh.faces)
+        figure = go.Figure(
+            data=[
+                go.Mesh3d(
+                    x=x_coords,
+                    y=y_coords,
+                    z=z_coords,
+                    i=i_faces,
+                    j=j_faces,
+                    k=k_faces,
+                    name="Kanat yüzeyi",
+                    color="#16A3B6",
+                    opacity=0.96,
+                    flatshading=False,
+                    lighting={
+                        "ambient": 0.45,
+                        "diffuse": 0.75,
+                        "specular": 0.35,
+                        "roughness": 0.55,
+                    },
+                    hovertemplate="x=%{x:.4f} m<br>y=%{y:.4f} m<br>z=%{z:.4f} m<extra></extra>",
+                )
+            ]
+        )
+        hub_angles = [2.0 * math.pi * index / 32 for index in range(33)]
+        hub_half_height = max(0.003, preview_spec.hub_radius_m * 0.18)
+        figure.add_trace(
+            go.Surface(
+                x=[
+                    [preview_spec.hub_radius_m * math.cos(angle) for angle in hub_angles],
+                    [preview_spec.hub_radius_m * math.cos(angle) for angle in hub_angles],
+                ],
+                y=[
+                    [preview_spec.hub_radius_m * math.sin(angle) for angle in hub_angles],
+                    [preview_spec.hub_radius_m * math.sin(angle) for angle in hub_angles],
+                ],
+                z=[
+                    [-hub_half_height for _ in hub_angles],
+                    [hub_half_height for _ in hub_angles],
+                ],
+                name="Göbek",
+                colorscale=[[0.0, "#263746"], [1.0, "#526575"]],
+                showscale=False,
+                hoverinfo="skip",
+            )
+        )
+        view_span = preview_spec.diameter_m * 0.58
+        figure.update_layout(
+            height=620,
+            margin={"l": 0, "r": 0, "t": 42, "b": 0},
+            title={
+                "text": f"{airfoil_id} · {int(blade_count)} kanat · θ = {fold_angle_deg}°",
+                "x": 0.02,
+            },
+            paper_bgcolor="rgba(0,0,0,0)",
+            scene={
+                "aspectmode": "data",
+                "xaxis": {"title": "x [m]", "range": [-view_span, view_span]},
+                "yaxis": {"title": "y [m]", "range": [-view_span, view_span]},
+                "zaxis": {"title": "z [m]"},
+                "camera": {"eye": {"x": 1.15, "y": 1.15, "z": 1.45}},
+            },
+            showlegend=False,
+        )
+        st.plotly_chart(figure, width="stretch", config={"displaylogo": False})
+        preview_metrics = st.columns(3)
+        preview_metrics[0].metric(
+            "Efektif çap",
+            f"{2.0 * preview_mesh.effective_radius_m * 1000:.1f} mm",
+        )
+        preview_metrics[1].metric("Yüzey üçgeni", f"{len(preview_mesh.faces):,}")
+        preview_metrics[2].metric("Önizleme modeli", airfoil_id)
+        st.caption(
+            "Rotor düzlemi x–y, eksenel yön z'dir. Menteşe dışı yüzey negatif açıyla "
+            "rijit döndürülür; kesit kalınlığı NACA analitik tanımından gelir."
+        )
+
     st.subheader("Kanat istasyonları")
     st.dataframe(
         [
@@ -112,7 +289,8 @@ def _render_design_geometry() -> None:
         width="stretch",
     )
     st.info(
-        "Bu ekran kanonik girdiyi salt okunur gösterir; henüz config dosyasını değiştirmez."
+        "İstasyon tablosu kanonik girdiyi salt okunur gösterir; önizleme kontrolleri "
+        "yalnız tarayıcı oturumu içindir."
     )
 
 

@@ -21,3 +21,20 @@ __all__ = [
     "read_variant_parameters_csv",
     "state_for",
 ]
+from .propeller_25d import (
+    PREVIEW_QUALIFICATION,
+    PreviewBladeStation,
+    PropellerPreviewMesh,
+    PropellerPreviewSpec,
+    build_propeller_preview_mesh,
+    naca4_section_loop,
+)
+
+__all__ = [
+    "PREVIEW_QUALIFICATION",
+    "PreviewBladeStation",
+    "PropellerPreviewMesh",
+    "PropellerPreviewSpec",
+    "build_propeller_preview_mesh",
+    "naca4_section_loop",
+]

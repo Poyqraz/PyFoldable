@@ -65,6 +65,31 @@ def test_design_page_reads_the_canonical_geometry():
         "Kanat sayısı",
         "Menteşe yarıçapı",
     }
+    assert app.get("plotly_chart")
+    assert {item.label for item in app.number_input} >= {
+        "Açık çap [mm]",
+        "Göbek yarıçapı [mm]",
+        "Menteşe yarıçapı [mm]",
+    }
+    assert {item.label for item in app.selectbox} >= {"Kesit modeli"}
+    assert {item.label for item in app.slider} >= {"Katlanma açısı [deg]"}
+    assert app.warning
+    assert "geometri önizlemesi" in app.warning[0].value.lower()
+
+
+def test_design_preview_controls_regenerate_the_geometry_safely():
+    app = AppTest.from_file(str(APP_PATH)).run(timeout=20)
+    app.sidebar.radio[0].set_value("Tasarım Geometrisi").run(timeout=20)
+
+    diameter = next(item for item in app.number_input if item.label == "Açık çap [mm]")
+    diameter.set_value(220.0)
+    fold = next(item for item in app.slider if item.label == "Katlanma açısı [deg]")
+    fold.set_value(-60)
+    app.run(timeout=20)
+
+    assert not app.exception
+    assert app.get("plotly_chart")
+    assert any(metric.label == "Efektif çap" for metric in app.metric)
 
 
 @pytest.mark.parametrize("page", PAGES)
