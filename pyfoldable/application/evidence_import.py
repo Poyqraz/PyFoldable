@@ -456,7 +456,11 @@ def inspect_evidence_upload(
             parse_float=finite_float,
             object_pairs_hook=strict_object,
         )
-    except (UnicodeDecodeError, json.JSONDecodeError, ValueError, RecursionError) as exc:
+    except RecursionError as exc:
+        raise EvidenceImportError(
+            "Evidence upload is not strict JSON: nesting exceeds the decoder limit."
+        ) from exc
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
         raise EvidenceImportError(f"Evidence upload is not strict JSON: {exc}") from exc
     root = _mapping(document, "Evidence root")
     try:
