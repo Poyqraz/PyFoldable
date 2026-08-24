@@ -65,8 +65,15 @@ girdilere bağlıdır:
 - `reports/pr10_experiment_contract_evidence.json`
 
 Mesh üreticisi Streamlit'ten bağımsızdır ve `pyfoldable.visualization.propeller_25d`
-altında test edilir. Rotor düzlemi x–y, eksenel yön z'dir; negatif katlanma açısı
-yalnız menteşe dışındaki yüzeyi rijit döndürür. Bir sonraki UI artımı UI-03B'dir:
+altında test edilir. Rotor düzlemi x–y, eksenel yön z'dir. Kök ve tip tarafında ayrı
+menteşe kesitleri oluşturulur; aradaki açık seam sayesinde negatif katlanma açısı
+yalnız dış yüzeyi deforme etmeden rijit döndürür. Göbek ve menteşe, tanımlı station
+zarfını aşarsa önizleme kapalı biçimde hata verir.
+
+Ekrandaki `Radyal zarf çapı`, nominal uç merkez hattının menteşe projeksiyonunu sabit
+kök yarıçapının altına düşürmeden gösterir. `Mesh zarf çapı` ise chord dahil çizilen
+vertex planformunun ölçümüdür. Bu değerler birbirinin veya CFD/BEM performans çapının
+yerine kullanılmaz. Bir sonraki UI artımı UI-03B'dir:
 önizlenen girdilerin birim kontrollü taslak konfigürasyona round-trip edilmesi. Henüz
 etkinleştirilmeyen sayfalar güvenli placeholder'dır: analiz çalıştırmaz ve örnek
 mühendislik sonucu üretmez.

@@ -81,7 +81,7 @@ def _render_overview() -> None:
             for gate in snapshot.gates
         ],
         hide_index=True,
-        width="stretch",
+        use_container_width=True,
     )
 
 
@@ -261,17 +261,27 @@ def _render_design_geometry() -> None:
             },
             showlegend=False,
         )
-        st.plotly_chart(figure, width="stretch", config={"displaylogo": False})
-        preview_metrics = st.columns(3)
+        st.plotly_chart(
+            figure,
+            use_container_width=True,
+            config={"displaylogo": False},
+        )
+        preview_metrics = st.columns(4)
         preview_metrics[0].metric(
-            "Efektif çap",
+            "Radyal zarf çapı",
             f"{2.0 * preview_mesh.effective_radius_m * 1000:.1f} mm",
         )
-        preview_metrics[1].metric("Yüzey üçgeni", f"{len(preview_mesh.faces):,}")
-        preview_metrics[2].metric("Önizleme modeli", airfoil_id)
+        preview_metrics[1].metric(
+            "Mesh zarf çapı",
+            f"{2.0 * preview_mesh.mesh_envelope_radius_m * 1000:.1f} mm",
+        )
+        preview_metrics[2].metric("Yüzey üçgeni", f"{len(preview_mesh.faces):,}")
+        preview_metrics[3].metric("Önizleme modeli", airfoil_id)
         st.caption(
             "Rotor düzlemi x–y, eksenel yön z'dir. Menteşe dışı yüzey negatif açıyla "
-            "rijit döndürülür; kesit kalınlığı NACA analitik tanımından gelir."
+            "ayrı bir seam üzerinden rijit döndürülür. Radyal zarf merkez-hat "
+            "projeksiyonudur; mesh zarfı chord dahil çizilen planformu ölçer. İkisi de "
+            "CFD/BEM performans sonucu değildir."
         )
 
     st.subheader("Kanat istasyonları")
@@ -286,7 +296,7 @@ def _render_design_geometry() -> None:
             for station in snapshot.blade_stations
         ],
         hide_index=True,
-        width="stretch",
+        use_container_width=True,
     )
     st.info(
         "İstasyon tablosu kanonik girdiyi salt okunur gösterir; önizleme kontrolleri "
@@ -310,7 +320,7 @@ def _render_operating_conditions() -> None:
             for condition in snapshot.operating_conditions
         ],
         hide_index=True,
-        width="stretch",
+        use_container_width=True,
     )
     st.info("Gösterilen değerler kanonik TOML dosyasından SI birimlerinde okunur.")
 
@@ -344,7 +354,7 @@ def _render_performance_results() -> None:
         x="Açı [deg]",
         y=["Statik T/T₀", "Statik Q/Q₀", "İleri T/T₀", "İleri Q/Q₀"],
     )
-    st.dataframe(rows, hide_index=True, width="stretch")
+    st.dataframe(rows, hide_index=True, use_container_width=True)
     st.caption(f"Rapor SHA-256 · {snapshot.report_sha256}")
 
 

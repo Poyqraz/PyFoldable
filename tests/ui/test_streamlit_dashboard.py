@@ -89,7 +89,10 @@ def test_design_preview_controls_regenerate_the_geometry_safely():
 
     assert not app.exception
     assert app.get("plotly_chart")
-    assert any(metric.label == "Efektif çap" for metric in app.metric)
+    assert {metric.label for metric in app.metric} >= {
+        "Radyal zarf çapı",
+        "Mesh zarf çapı",
+    }
 
 
 @pytest.mark.parametrize("page", PAGES)
@@ -99,3 +102,10 @@ def test_every_navigation_target_has_a_safe_render_path(page):
 
     assert not app.exception
     assert app.title
+
+
+def test_dashboard_uses_the_declared_streamlit_140_width_api():
+    source = APP_PATH.read_text(encoding="utf-8")
+
+    assert 'width="stretch"' not in source
+    assert "use_container_width=True" in source

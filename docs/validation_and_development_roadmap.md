@@ -40,6 +40,8 @@ Bu hat bilimsel aşamaların sırasını veya geçiş eşiklerini değiştirmez.
 - **UI-03A — 2.5D geometri önizlemesi aktif:** çap, göbek, kanat sayısı, NACA kesiti,
   chord–twist dağılımı ve menteşe açısı etkileşimli yüzeye bağlıdır. Çıktı açıkça
   `geometry_preview_not_cad_or_physical_result` olarak sınıflandırılır; config'e yazmaz.
+  Kontrol review'i sonrasında tip yüzeyi çift menteşe kesitli rijit seam ile
+  sertleştirilmiş, radyal merkez-hat ve gerçek mesh zarfı ayrı metriklere bölünmüştür.
 - **UI-03B — sıradaki artım:** önizleme girdilerinin birim kontrollü taslak config
   round-trip'i; kanonik tasarım kullanıcı onayı ve doğrulama olmadan değiştirilemez.
 - **UI-04 — sonuç gezgini temeli aktif:** 250 vakalık PR-06D açılma taraması yalnız
