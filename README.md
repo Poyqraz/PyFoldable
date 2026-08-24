@@ -50,6 +50,10 @@ Polar provider platformundan provider-backed `PolarFamily` entegrasyonuna geçi�
 `docs/development_roadmap.md`.
 PR-05 sonrası güncel hedef, doğrulama açıkları ve PR-06–PR-12 yürütme kapıları:
 `docs/validation_and_development_roadmap.md`.
+
+PR-07 tam bağlı motor–rotor sayısal kapısı ve yeniden üretilebilir kanıtı için
+`examples/run_pr07_fully_coupled_evidence.py` çalıştırılabilir. Bu çıktı yazılım
+niteliğindedir; ölçülmüş motor–pervane korelasyonu olmadan fiziksel doğrulama sayılmaz.
 Sürümlü polar grid/provider/runtime ayarları ve güvenlik kuralları:
 `docs/polar_configuration.md`.
 

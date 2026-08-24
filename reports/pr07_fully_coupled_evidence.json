@@ -1,0 +1,429 @@
+{
+  "schema_version": 1,
+  "evidence_id": "pr07-fully-coupled-numerical-gate-v1",
+  "numerical_gate": "passed",
+  "physical_gate": "pending_measured_correlation",
+  "maximum_multistart_spread_rpm": 0.0,
+  "multistart_cases": [
+    {
+      "throttle": 0.4,
+      "initial_guesses_rpm": [
+        300.0,
+        2000.0,
+        4000.0
+      ],
+      "converged_roots_rpm": [
+        4487.791243754581,
+        4487.791243754581,
+        4487.791243754581
+      ],
+      "spread_rpm": 0.0
+    },
+    {
+      "throttle": 0.55,
+      "initial_guesses_rpm": [
+        300.0,
+        2000.0,
+        4000.0
+      ],
+      "converged_roots_rpm": [
+        6174.772188592208,
+        6174.772188592208,
+        6174.772188592208
+      ],
+      "spread_rpm": 0.0
+    },
+    {
+      "throttle": 0.7,
+      "initial_guesses_rpm": [
+        300.0,
+        2000.0,
+        4000.0
+      ],
+      "converged_roots_rpm": [
+        7829.199841495685,
+        7829.199841495685,
+        7829.199841495685
+      ],
+      "spread_rpm": 0.0
+    },
+    {
+      "throttle": 0.85,
+      "initial_guesses_rpm": [
+        300.0,
+        2000.0,
+        4000.0
+      ],
+      "converged_roots_rpm": [
+        9452.88900930308,
+        9452.88900930308,
+        9452.88900930308
+      ],
+      "spread_rpm": 0.0
+    },
+    {
+      "throttle": 1.0,
+      "initial_guesses_rpm": [
+        300.0,
+        2000.0,
+        4000.0
+      ],
+      "converged_roots_rpm": [
+        11047.491892187778,
+        11047.491892187778,
+        11047.491892187778
+      ],
+      "spread_rpm": 0.0
+    }
+  ],
+  "cases": [
+    {
+      "schema_version": 1,
+      "rpm": 4487.791243754581,
+      "throttle": 0.4,
+      "converged": true,
+      "feasible": true,
+      "infeasible_reason": null,
+      "motor": {
+        "kv_rpm_per_v": 1000.0,
+        "resistance_ohm": 0.05,
+        "no_load_current_a": 1.0,
+        "current_max_a": 30.0,
+        "torque_constant_kv_ratio": 1.0,
+        "magnetic_lag_tau": 0.0,
+        "no_load_current_linear": 0.0,
+        "no_load_current_quadratic": 0.0,
+        "resistance_quadratic": 0.0,
+        "no_load_voltage_v": 10.0,
+        "iron_loss_exponent": 0.0
+      },
+      "battery": {
+        "voltage_v": 12.0,
+        "discharge_efficiency": 0.98
+      },
+      "system": {
+        "resistance_ohm": 0.01
+      },
+      "motor_state": {
+        "rpm": 4487.791243754581,
+        "applied_voltage_v": 4.800000000000001,
+        "back_emf_v": 4.487791243754581,
+        "current_a": 5.2034792707570015,
+        "torque_nm": 0.04014027024751754,
+        "shaft_power_w": 18.864337464607164,
+        "electrical_input_power_w": 24.976700499633612,
+        "winding_loss_w": 1.3538098260598908,
+        "line_loss_w": 0.27076196521197815,
+        "voltage_residual_v": 0.0
+      },
+      "aero": {
+        "rpm": 4487.791243754581,
+        "thrust_n": 4.028054049504058,
+        "torque_nm": 0.04014027024752029,
+        "shaft_power_w": 18.864337464608454,
+        "source_id": "pr07-analytic-quadratic-load-v1",
+        "qualification": "software_fixture_not_physical_evidence"
+      },
+      "settings": {
+        "rpm_min": 100.0,
+        "rpm_max": null,
+        "scan_points": 161,
+        "rpm_tolerance": 1e-06,
+        "torque_absolute_tolerance_nm": 1e-08,
+        "torque_relative_tolerance": 1e-07,
+        "energy_relative_tolerance": 1e-07,
+        "max_iterations": 100,
+        "root_scan": "global_linear_bracket_v1"
+      },
+      "torque_residual_nm": -2.7478019859472624e-15,
+      "torque_tolerance_nm": 1e-08,
+      "voltage_residual_v": 0.0,
+      "energy_residual_w": -1.2896350654045818e-12,
+      "energy_tolerance_w": 4.699604000741331e-06,
+      "initial_guess_rpm": null,
+      "qualification": "software_only_pending_measured_correlation",
+      "physical_correlation_state": "pending"
+    },
+    {
+      "schema_version": 1,
+      "rpm": 6174.772188592208,
+      "throttle": 0.55,
+      "converged": true,
+      "feasible": true,
+      "infeasible_reason": null,
+      "motor": {
+        "kv_rpm_per_v": 1000.0,
+        "resistance_ohm": 0.05,
+        "no_load_current_a": 1.0,
+        "current_max_a": 30.0,
+        "torque_constant_kv_ratio": 1.0,
+        "magnetic_lag_tau": 0.0,
+        "no_load_current_linear": 0.0,
+        "no_load_current_quadratic": 0.0,
+        "resistance_quadratic": 0.0,
+        "no_load_voltage_v": 10.0,
+        "iron_loss_exponent": 0.0
+      },
+      "battery": {
+        "voltage_v": 12.0,
+        "discharge_efficiency": 0.98
+      },
+      "system": {
+        "resistance_ohm": 0.01
+      },
+      "motor_state": {
+        "rpm": 6174.772188592208,
+        "applied_voltage_v": 6.6000000000000005,
+        "back_emf_v": 6.174772188592208,
+        "current_a": 7.087130190129868,
+        "torque_nm": 0.058127811540184635,
+        "shaft_power_w": 37.586642206353915,
+        "electrical_input_power_w": 46.775059254857126,
+        "winding_loss_w": 2.511370716592511,
+        "line_loss_w": 0.5022741433185022,
+        "voltage_residual_v": 0.0
+      },
+      "aero": {
+        "rpm": 6174.772188592208,
+        "thrust_n": 7.6255623162023625,
+        "torque_nm": 0.05812781158101181,
+        "shaft_power_w": 37.586642232753604,
+        "source_id": "pr07-analytic-quadratic-load-v1",
+        "qualification": "software_fixture_not_physical_evidence"
+      },
+      "settings": {
+        "rpm_min": 100.0,
+        "rpm_max": null,
+        "scan_points": 161,
+        "rpm_tolerance": 1e-06,
+        "torque_absolute_tolerance_nm": 1e-08,
+        "torque_relative_tolerance": 1e-07,
+        "energy_relative_tolerance": 1e-07,
+        "max_iterations": 100,
+        "root_scan": "global_linear_bracket_v1"
+      },
+      "torque_residual_nm": -4.082717497411181e-11,
+      "torque_tolerance_nm": 1e-08,
+      "voltage_residual_v": 0.0,
+      "energy_residual_w": -2.639968954554206e-08,
+      "energy_tolerance_w": 6.466206315090617e-06,
+      "initial_guess_rpm": null,
+      "qualification": "software_only_pending_measured_correlation",
+      "physical_correlation_state": "pending"
+    },
+    {
+      "schema_version": 1,
+      "rpm": 7829.199841495685,
+      "throttle": 0.7,
+      "converged": true,
+      "feasible": true,
+      "infeasible_reason": null,
+      "motor": {
+        "kv_rpm_per_v": 1000.0,
+        "resistance_ohm": 0.05,
+        "no_load_current_a": 1.0,
+        "current_max_a": 30.0,
+        "torque_constant_kv_ratio": 1.0,
+        "magnetic_lag_tau": 0.0,
+        "no_load_current_linear": 0.0,
+        "no_load_current_quadratic": 0.0,
+        "resistance_quadratic": 0.0,
+        "no_load_voltage_v": 10.0,
+        "iron_loss_exponent": 0.0
+      },
+      "battery": {
+        "voltage_v": 12.0,
+        "discharge_efficiency": 0.98
+      },
+      "system": {
+        "resistance_ohm": 0.01
+      },
+      "motor_state": {
+        "rpm": 7829.199841495685,
+        "applied_voltage_v": 8.399999999999999,
+        "back_emf_v": 7.829199841495686,
+        "current_a": 9.513335975071882,
+        "torque_nm": 0.08129637015808505,
+        "shaft_power_w": 66.6526086666323,
+        "electrical_input_power_w": 79.91202219060379,
+        "winding_loss_w": 4.525178068729844,
+        "line_loss_w": 0.9050356137459689,
+        "voltage_residual_v": 0.0
+      },
+      "aero": {
+        "rpm": 7829.199841495685,
+        "thrust_n": 12.259274031615211,
+        "torque_nm": 0.08129637015807607,
+        "shaft_power_w": 66.65260866662494,
+        "source_id": "pr07-analytic-quadratic-load-v1",
+        "qualification": "software_fixture_not_physical_evidence"
+      },
+      "settings": {
+        "rpm_min": 100.0,
+        "rpm_max": null,
+        "scan_points": 161,
+        "rpm_tolerance": 1e-06,
+        "torque_absolute_tolerance_nm": 1e-08,
+        "torque_relative_tolerance": 1e-07,
+        "energy_relative_tolerance": 1e-07,
+        "max_iterations": 100,
+        "root_scan": "global_linear_bracket_v1"
+      },
+      "torque_residual_nm": 8.978928711655954e-15,
+      "torque_tolerance_nm": 1e-08,
+      "voltage_residual_v": 0.0,
+      "energy_residual_w": 7.361222742474638e-12,
+      "energy_tolerance_w": 8.198718901843073e-06,
+      "initial_guess_rpm": null,
+      "qualification": "software_only_pending_measured_correlation",
+      "physical_correlation_state": "pending"
+    },
+    {
+      "schema_version": 1,
+      "rpm": 9452.88900930308,
+      "throttle": 0.85,
+      "converged": true,
+      "feasible": true,
+      "infeasible_reason": null,
+      "motor": {
+        "kv_rpm_per_v": 1000.0,
+        "resistance_ohm": 0.05,
+        "no_load_current_a": 1.0,
+        "current_max_a": 30.0,
+        "torque_constant_kv_ratio": 1.0,
+        "magnetic_lag_tau": 0.0,
+        "no_load_current_linear": 0.0,
+        "no_load_current_quadratic": 0.0,
+        "resistance_quadratic": 0.0,
+        "no_load_voltage_v": 10.0,
+        "iron_loss_exponent": 0.0
+      },
+      "battery": {
+        "voltage_v": 12.0,
+        "discharge_efficiency": 0.98
+      },
+      "system": {
+        "resistance_ohm": 0.01
+      },
+      "motor_state": {
+        "rpm": 9452.88900930308,
+        "applied_voltage_v": 10.2,
+        "back_emf_v": 9.45288900930308,
+        "current_a": 12.451849844948654,
+        "torque_nm": 0.10935711062218402,
+        "shaft_power_w": 108.25306553550432,
+        "electrical_input_power_w": 127.00886841847627,
+        "winding_loss_w": 7.752428228057392,
+        "line_loss_w": 1.5504856456114784,
+        "voltage_residual_v": 0.0
+      },
+      "aero": {
+        "rpm": 9452.88900930308,
+        "thrust_n": 17.871422124440592,
+        "torque_nm": 0.10935711062220298,
+        "shaft_power_w": 108.25306553552309,
+        "source_id": "pr07-analytic-quadratic-load-v1",
+        "qualification": "software_fixture_not_physical_evidence"
+      },
+      "settings": {
+        "rpm_min": 100.0,
+        "rpm_max": null,
+        "scan_points": 161,
+        "rpm_tolerance": 1e-06,
+        "torque_absolute_tolerance_nm": 1e-08,
+        "torque_relative_tolerance": 1e-07,
+        "energy_relative_tolerance": 1e-07,
+        "max_iterations": 100,
+        "root_scan": "global_linear_bracket_v1"
+      },
+      "torque_residual_nm": -1.8957058145474548e-14,
+      "torque_tolerance_nm": 1.0935711062220297e-08,
+      "voltage_residual_v": 0.0,
+      "energy_residual_w": -1.8772539078781847e-11,
+      "energy_tolerance_w": 1.0825306553552309e-05,
+      "initial_guess_rpm": null,
+      "qualification": "software_only_pending_measured_correlation",
+      "physical_correlation_state": "pending"
+    },
+    {
+      "schema_version": 1,
+      "rpm": 11047.491892187778,
+      "throttle": 1.0,
+      "converged": true,
+      "feasible": true,
+      "infeasible_reason": null,
+      "motor": {
+        "kv_rpm_per_v": 1000.0,
+        "resistance_ohm": 0.05,
+        "no_load_current_a": 1.0,
+        "current_max_a": 30.0,
+        "torque_constant_kv_ratio": 1.0,
+        "magnetic_lag_tau": 0.0,
+        "no_load_current_linear": 0.0,
+        "no_load_current_quadratic": 0.0,
+        "resistance_quadratic": 0.0,
+        "no_load_voltage_v": 10.0,
+        "iron_loss_exponent": 0.0
+      },
+      "battery": {
+        "voltage_v": 12.0,
+        "discharge_efficiency": 0.98
+      },
+      "system": {
+        "resistance_ohm": 0.01
+      },
+      "motor_state": {
+        "rpm": 11047.491892187778,
+        "applied_voltage_v": 12.0,
+        "back_emf_v": 11.047491892187779,
+        "current_a": 15.875135130203686,
+        "torque_nm": 0.14204707710790926,
+        "shaft_power_w": 164.33293474612282,
+        "electrical_input_power_w": 190.50162156244423,
+        "winding_loss_w": 12.60099577011136,
+        "line_loss_w": 2.520199154022272,
+        "voltage_residual_v": 0.0
+      },
+      "aero": {
+        "rpm": 11047.491892187778,
+        "thrust_n": 24.409415421590936,
+        "torque_nm": 0.1420470771079547,
+        "shaft_power_w": 164.33293474617537,
+        "source_id": "pr07-analytic-quadratic-load-v1",
+        "qualification": "software_fixture_not_physical_evidence"
+      },
+      "settings": {
+        "rpm_min": 100.0,
+        "rpm_max": null,
+        "scan_points": 161,
+        "rpm_tolerance": 1e-06,
+        "torque_absolute_tolerance_nm": 1e-08,
+        "torque_relative_tolerance": 1e-07,
+        "energy_relative_tolerance": 1e-07,
+        "max_iterations": 100,
+        "root_scan": "global_linear_bracket_v1"
+      },
+      "torque_residual_nm": -4.543587728278453e-14,
+      "torque_tolerance_nm": 1.420470771079547e-08,
+      "voltage_residual_v": 0.0,
+      "energy_residual_w": -5.255174073681701e-11,
+      "energy_tolerance_w": 1.643329347461754e-05,
+      "initial_guess_rpm": null,
+      "qualification": "software_only_pending_measured_correlation",
+      "physical_correlation_state": "pending"
+    }
+  ],
+  "case_count": 5,
+  "throttles": [
+    0.4,
+    0.55,
+    0.7,
+    0.85,
+    1.0
+  ],
+  "maximum_absolute_torque_residual_nm": 4.082717497411181e-11,
+  "maximum_absolute_voltage_residual_v": 0.0,
+  "maximum_absolute_energy_residual_w": 2.639968954554206e-08,
+  "decision": "pr07_numerical_gate_passed_physical_correlation_pending",
+  "scope": "The analytic load qualifies software equilibrium, uniqueness and residual handling only. A measured motor-propeller correlation data set is required before physical qualification."
+}
