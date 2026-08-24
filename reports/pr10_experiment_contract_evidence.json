@@ -270,6 +270,131 @@
       }
     ]
   },
+  "public_baseline_context": {
+    "evidence_class": "published_external_baseline",
+    "qualification_scope": "model_validation_context_only",
+    "physical_qualification": false,
+    "fixture_id": "uiuc-apcsf-10x4.7-volume1-v3-screening-v1",
+    "fixture_sha256": "c6f04a4d32ea9c4421db38ec67a2164be0b81b13c64b0a81718792dfd047531b",
+    "target_geometry": "APC Slow Flyer 10x4.7",
+    "point_count": 60,
+    "eligible_point_count": 50,
+    "regime_counts": {
+      "static": 16,
+      "forward": 44
+    },
+    "quantities": [
+      "CT",
+      "CP",
+      "J",
+      "rpm"
+    ],
+    "sources": [
+      {
+        "id": "uiuc-geometry",
+        "kind": "digitized_geometry",
+        "url": "https://m-selig.ae.illinois.edu/props/volume-1/data/apcsf_10x4.7_geom.txt",
+        "citation": "J.B. Brandt, R.W. Deters, G.K. Ananda, O.D. Dantsker, and M.S. Selig, UIUC Propeller Database, Volume 1 version 3"
+      },
+      {
+        "id": "uiuc-static-kt0835",
+        "kind": "wind_tunnel_static_measurement",
+        "url": "https://m-selig.ae.illinois.edu/props/volume-1/data/apcsf_10x4.7_static_kt0835.txt",
+        "citation": "UIUC Propeller Database, APC Slow Flyer 10x4.7 static run kt0835"
+      },
+      {
+        "id": "uiuc-forward-rd0838-4997",
+        "kind": "wind_tunnel_forward_measurement",
+        "url": "https://m-selig.ae.illinois.edu/props/volume-1/data/apcsf_10x4.7_rd0838_4997.txt",
+        "citation": "UIUC Propeller Database, APC Slow Flyer 10x4.7 run rd0838 at 4997 rpm"
+      },
+      {
+        "id": "uiuc-forward-rd0840-6020",
+        "kind": "wind_tunnel_forward_measurement",
+        "url": "https://m-selig.ae.illinois.edu/props/volume-1/data/apcsf_10x4.7_rd0840_6020.txt",
+        "citation": "UIUC Propeller Database, APC Slow Flyer 10x4.7 run rd0840 at 6020 rpm"
+      },
+      {
+        "id": "uiuc-forward-rd0841-6512",
+        "kind": "wind_tunnel_forward_measurement",
+        "url": "https://m-selig.ae.illinois.edu/props/volume-1/data/apcsf_10x4.7_rd0841_6512.txt",
+        "citation": "UIUC Propeller Database, APC Slow Flyer 10x4.7 run rd0841 at 6512 rpm"
+      }
+    ],
+    "archive_identity": {
+      "url": "https://m-selig.ae.illinois.edu/props/download/UIUC-propDB.zip",
+      "published_md5": "a41e484f1fd0fb6ff80b76e27410808b"
+    },
+    "published_campaign_uncertainty_percent": {
+      "source": "https://m-selig.ae.illinois.edu/props/volume-1/Brandt_2005_UIUC-MS-Thesis.pdf",
+      "efficiency": 0.595,
+      "power": 0.24,
+      "rpm": 0.1,
+      "thrust": 0.504,
+      "torque": 0.218,
+      "freestream_velocity": 0.207,
+      "scope": "campaign-level apparatus estimate, not per-point error bars"
+    },
+    "source_access_policy": "url_and_digest_only_no_raw_redistribution",
+    "limitations": [
+      "no_run_specific_atmosphere",
+      "no_raw_sensor_stream",
+      "no_calibration_certificates",
+      "no_project_foldable_measurements",
+      "do_not_convert_coefficients_to_si_loads_using_assumed_atmosphere"
+    ]
+  },
+  "measurement_method_foundation": [
+    {
+      "id": "morgado-pascoa-2015-apc-10x4.7sf",
+      "evidence_class": "independent_same_prop_dynamic_reference",
+      "qualification_scope": "method_and_cross_laboratory_context_only",
+      "url": "https://www.naun.org/main/NAUN/mechanics/2015/a372003-136.pdf",
+      "extracted_precedent": {
+        "rpm": [
+          4000,
+          5000
+        ],
+        "sample_rate_hz": 8,
+        "samples_per_point": 400,
+        "window_seconds": 50,
+        "sample_convergence_observed_above": 200,
+        "in_situ_check_loads": [
+          "thrust",
+          "torque",
+          "combined"
+        ]
+      },
+      "limitations": [
+        "not_project_specific_measurement",
+        "reported_other_propeller_uncertainty_not_transferred"
+      ]
+    },
+    {
+      "id": "nist-tn-1297",
+      "evidence_class": "measurement_uncertainty_guidance",
+      "qualification_scope": "type_a_type_b_combination_and_reporting",
+      "url": "https://doi.org/10.6028/NIST.TN.1297"
+    },
+    {
+      "id": "astm-e74-e2428-static-boundary",
+      "evidence_class": "static_calibration_standard",
+      "qualification_scope": "force_and_torque_traceability_only",
+      "urls": [
+        "https://store.astm.org/e0074-18r26.html",
+        "https://store.astm.org/e2428-22.html"
+      ],
+      "limitation": "static calibration does not establish dynamic adequacy"
+    },
+    {
+      "id": "propdbtools",
+      "evidence_class": "open_source_parser",
+      "qualification_scope": "uiuc_format_ingestion_only",
+      "url": "https://github.com/ramcdona/PropDBTools",
+      "license": "BSD-2-Clause",
+      "limitation": "parser license does not relicense UIUC data"
+    }
+  ],
   "project_readiness": {
     "state": "blocked_waiting_for_calibrated_raw_measurements",
     "missing_inputs": [

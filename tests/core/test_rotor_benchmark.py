@@ -92,6 +92,16 @@ def test_fixture_requires_eligible_points_in_both_declared_regimes():
         )
 
 
+@pytest.mark.parametrize("field", ("id", "kind", "url", "citation"))
+def test_fixture_sources_require_complete_provenance(field):
+    fixture = load_rotor_benchmark_fixture(FIXTURE)
+    source = dict(fixture.sources[0])
+    source[field] = ""
+
+    with pytest.raises(RotorBenchmarkError, match="source provenance"):
+        replace(fixture, sources=(source, *fixture.sources[1:]))
+
+
 def test_selected_pr06c_variant_reproduces_frozen_failure_evidence():
     fixture, convergence, actual = _selected_variant()
     stored = json.loads(REPORT.read_text(encoding="utf-8"))
