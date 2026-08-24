@@ -1,0 +1,159 @@
+{
+  "manifest": {
+    "schema_version": 1,
+    "id": "pr09-fea-contract-software-fixture-v1",
+    "cad": {
+      "design_id": "TIP_HINGED_250_SYNTHETIC",
+      "revision": "fixture-a",
+      "filename": "synthetic.step",
+      "file_format": "STEP AP242",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "length_unit": "m",
+      "coordinate_frame": "shaft_z_right_handed"
+    },
+    "materials": [
+      {
+        "id": "SYNTHETIC_ORTHOTROPIC_FIXTURE",
+        "model": "orthotropic",
+        "source": "first_party_software_fixture",
+        "property_names": [
+          "density_kg_m3",
+          "elastic_modulus_x_pa",
+          "elastic_modulus_y_pa",
+          "elastic_modulus_z_pa",
+          "poisson_xy",
+          "shear_modulus_xy_pa",
+          "allowable_x_pa",
+          "allowable_y_pa"
+        ],
+        "qualification": "software_fixture_not_material_evidence"
+      }
+    ],
+    "load_cases": [
+      {
+        "id": "steady_max_rpm",
+        "analysis_type": "static_structural",
+        "load_source_id": "declared_load_envelope",
+        "required_metric_units": {
+          "maximum_von_mises_stress": "Pa",
+          "maximum_total_deformation": "m",
+          "minimum_safety_factor": "1"
+        }
+      },
+      {
+        "id": "opening_stop_peak",
+        "analysis_type": "transient_structural_contact",
+        "load_source_id": "declared_opening_transient",
+        "required_metric_units": {
+          "maximum_contact_pressure": "Pa",
+          "hinge_pin_shear_stress": "Pa",
+          "minimum_safety_factor": "1"
+        }
+      },
+      {
+        "id": "imbalance_max_rpm",
+        "analysis_type": "static_structural",
+        "load_source_id": "declared_imbalance_envelope",
+        "required_metric_units": {
+          "maximum_von_mises_stress": "Pa",
+          "maximum_total_deformation": "m",
+          "bearing_reaction_force": "N"
+        }
+      },
+      {
+        "id": "modal_operating_margin",
+        "analysis_type": "modal",
+        "load_source_id": "declared_speed_envelope",
+        "required_metric_units": {
+          "first_natural_frequency": "Hz",
+          "minimum_frequency_separation_percent": "%"
+        }
+      },
+      {
+        "id": "fatigue_duty_cycle",
+        "analysis_type": "fatigue",
+        "load_source_id": "declared_duty_cycle",
+        "required_metric_units": {
+          "fatigue_life": "cycle",
+          "fatigue_damage": "1"
+        }
+      }
+    ],
+    "policy": {
+      "maximum_mesh_change_percent": 5.0,
+      "maximum_force_balance_error_percent": 1.0,
+      "metric_limits": {
+        "minimum_safety_factor": {
+          "minimum": 1.5,
+          "maximum": null
+        },
+        "minimum_frequency_separation_percent": {
+          "minimum": 15.0,
+          "maximum": null
+        },
+        "fatigue_life": {
+          "minimum": 1000000.0,
+          "maximum": null
+        },
+        "fatigue_damage": {
+          "minimum": null,
+          "maximum": 1.0
+        }
+      }
+    }
+  },
+  "software_fixture_decision": {
+    "schema_version": 1,
+    "manifest_id": "pr09-fea-contract-software-fixture-v1",
+    "state": "software_pass_physical_evidence_pending",
+    "software_gate_passed": true,
+    "physical_qualification": false,
+    "missing_case_ids": [],
+    "cases": [
+      {
+        "case_id": "steady_max_rpm",
+        "passed": true,
+        "failures": [],
+        "mesh_change_percent": 2.0
+      },
+      {
+        "case_id": "opening_stop_peak",
+        "passed": true,
+        "failures": [],
+        "mesh_change_percent": 2.0
+      },
+      {
+        "case_id": "imbalance_max_rpm",
+        "passed": true,
+        "failures": [],
+        "mesh_change_percent": 2.0
+      },
+      {
+        "case_id": "modal_operating_margin",
+        "passed": true,
+        "failures": [],
+        "mesh_change_percent": 2.000000000000008
+      },
+      {
+        "case_id": "fatigue_duty_cycle",
+        "passed": true,
+        "failures": [],
+        "mesh_change_percent": 2.0
+      }
+    ]
+  },
+  "project_readiness": {
+    "state": "blocked_waiting_for_real_structural_inputs",
+    "missing_inputs": [
+      "revision_controlled_solidworks_or_step_file_and_sha256",
+      "pa_cf_directional_coupon_material_card",
+      "pin_lock_stop_material_cards",
+      "approved_structural_acceptance_limits",
+      "declared_max_rpm_opening_stop_imbalance_and_duty_cycle_loads",
+      "ansys_mechanical_result_bundle"
+    ],
+    "physical_qualification": false
+  },
+  "decision": "pr09_software_contract_complete_physical_evidence_pending",
+  "scope": "All numerical values in this report are first-party software fixtures. They must not be used as structural design predictions or limits."
+}
