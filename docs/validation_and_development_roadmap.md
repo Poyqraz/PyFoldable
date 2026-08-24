@@ -158,7 +158,10 @@ uygulandı. Sentetik fixture yalnız şema ve matematiği doğrular. Fiziksel ka
 kalibrasyon kayıtları ve ham tekrar ölçümleri gelene kadar
 `blocked_waiting_for_calibrated_raw_measurements` durumundadır. Ayrıntılar
 [PR-10 yürütme planı](pr10_experiment_contract_execution_plan.md) ve
-[kanıt raporundadır](../reports/pr10_experiment_contract_evidence.md).
+[kanıt raporundadır](../reports/pr10_experiment_contract_evidence.md). UIUC APC Slow
+Flyer 10x4.7 için 60 noktalı yayımlanmış harici referans ve bağımsız aynı-pervane
+Morgado/Pascoa yöntem karşılaştırması bağlandı. Bunlar model/doğrulama bağlamıdır;
+proje katlanır prototipinin kalibrasyonlu ham ölçümü sayılmaz.
 
 ### PR-11 — robust çok amaçlı optimizasyon
 
@@ -182,7 +185,7 @@ arşiv bütünlüğü sürüm kapısıdır.
 | 4 | PR-06D katlanır bağlantı | **Yazılım taraması tamamlandı:** sabit-limit ve 250-vaka açılma duyarlılığı kanıtı mevcut; fiziksel nitelikli açılma duyarlılığı PR-06C'ye bağlı |
 | 5 | PR-07 motor bağlantısı | **Sayısal kapı tamamlandı:** tork/gerilim/enerji dengesi, benzersiz kök ve çoklu başlangıç; fiziksel kapı ölçüm korelasyonunu bekliyor |
 | 6 | PR-08/09 CFD ve FEA | PR-08 CFD gerçek ANSYS çıktısını bekliyor; PR-09 yazılım/hazırlık sözleşmesi tamamlandı, gerçek yapısal kanıt bekleniyor |
-| 7 | PR-10 deney | Yazılım/hazırlık sözleşmesi tamamlandı; kalibrasyonlu gerçek sabit/katlanır ham ölçümler bekleniyor |
+| 7 | PR-10 deney | Yazılım/hazırlık ve kamuya açık aynı-pervane referans temeli tamamlandı; kalibrasyonlu gerçek sabit/katlanır ham ölçümler bekleniyor |
 | 8 | PR-11/12 optimizasyon ve sürüm | Robust Pareto kararı ve temiz yeniden üretim |
 
 ## İşbirliği sınırları

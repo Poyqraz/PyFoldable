@@ -155,8 +155,17 @@ class RotorBenchmarkFixture:
             raise RotorBenchmarkError(
                 "Qualification evidence must contain eligible static and forward points."
             )
-        source_ids = {str(source.get("id", "")) for source in self.sources}
-        if "" in source_ids or any(point.source_id not in source_ids for point in self.points):
+        required_source_fields = ("id", "kind", "url", "citation")
+        if not self.sources or any(
+            not isinstance(source.get(field), str) or not source[field].strip()
+            for source in self.sources
+            for field in required_source_fields
+        ):
+            raise RotorBenchmarkError(
+                "Every source provenance record requires id, kind, url, and citation."
+            )
+        source_ids = {str(source["id"]) for source in self.sources}
+        if any(point.source_id not in source_ids for point in self.points):
             raise RotorBenchmarkError("Every benchmark point must name a declared source.")
 
     @property

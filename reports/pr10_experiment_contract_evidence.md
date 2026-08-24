@@ -5,6 +5,14 @@
 - Fixture runs: 2
 - Real-project readiness: **blocked_waiting_for_calibrated_raw_measurements**
 
+## Published external baseline
+
+- Fixture: `uiuc-apcsf-10x4.7-volume1-v3-screening-v1`
+- Points: 60 total / 50 propulsive
+- Quantities: CT, CP, J, rpm (no assumed conversion to T/Q)
+- Qualification scope: **model validation context only**
+- Physical qualification: **false**
+
 ## Missing real inputs
 
 - `test_stand_sensor_certificates_and_sha256`

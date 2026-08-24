@@ -14,12 +14,20 @@ from pyfoldable.core import (
     ExperimentSample,
     TestStandManifest,
     assess_experiment_bundle,
+    load_rotor_benchmark_fixture,
 )
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_JSON = PROJECT_ROOT / "reports" / "pr10_experiment_contract_evidence.json"
 DEFAULT_MARKDOWN = PROJECT_ROOT / "reports" / "pr10_experiment_contract_evidence.md"
+PUBLIC_BASELINE = (
+    PROJECT_ROOT
+    / "tests"
+    / "fixtures"
+    / "rotor_benchmark"
+    / "uiuc_apcsf_10x4.7_v1.json"
+)
 UNITS = {
     "thrust": "N", "torque": "N*m", "rpm": "rpm", "voltage": "V",
     "current": "A", "temperature": "K", "pressure": "Pa",
@@ -72,9 +80,95 @@ def build_report() -> Mapping[str, Any]:
         _run("foldable", "foldable-fixture-1", 0.5),
     )
     decision = assess_experiment_bundle(manifest, runs)
+    baseline = load_rotor_benchmark_fixture(PUBLIC_BASELINE)
     return {
         "manifest": dict(manifest.as_mapping()),
         "software_fixture_decision": dict(decision.as_mapping()),
+        "public_baseline_context": {
+            "evidence_class": "published_external_baseline",
+            "qualification_scope": "model_validation_context_only",
+            "physical_qualification": False,
+            "fixture_id": baseline.id,
+            "fixture_sha256": baseline.source_sha256,
+            "target_geometry": "APC Slow Flyer 10x4.7",
+            "point_count": len(baseline.points),
+            "eligible_point_count": len(baseline.eligible_points),
+            "regime_counts": {
+                "static": sum(point.regime == "static" for point in baseline.points),
+                "forward": sum(point.regime == "forward" for point in baseline.points),
+            },
+            "quantities": ["CT", "CP", "J", "rpm"],
+            "sources": [dict(source) for source in baseline.sources],
+            "archive_identity": {
+                "url": "https://m-selig.ae.illinois.edu/props/download/UIUC-propDB.zip",
+                "published_md5": "a41e484f1fd0fb6ff80b76e27410808b",
+            },
+            "published_campaign_uncertainty_percent": {
+                "source": (
+                    "https://m-selig.ae.illinois.edu/props/volume-1/"
+                    "Brandt_2005_UIUC-MS-Thesis.pdf"
+                ),
+                "efficiency": 0.595,
+                "power": 0.240,
+                "rpm": 0.100,
+                "thrust": 0.504,
+                "torque": 0.218,
+                "freestream_velocity": 0.207,
+                "scope": "campaign-level apparatus estimate, not per-point error bars",
+            },
+            "source_access_policy": "url_and_digest_only_no_raw_redistribution",
+            "limitations": [
+                "no_run_specific_atmosphere",
+                "no_raw_sensor_stream",
+                "no_calibration_certificates",
+                "no_project_foldable_measurements",
+                "do_not_convert_coefficients_to_si_loads_using_assumed_atmosphere",
+            ],
+        },
+        "measurement_method_foundation": [
+            {
+                "id": "morgado-pascoa-2015-apc-10x4.7sf",
+                "evidence_class": "independent_same_prop_dynamic_reference",
+                "qualification_scope": "method_and_cross_laboratory_context_only",
+                "url": "https://www.naun.org/main/NAUN/mechanics/2015/a372003-136.pdf",
+                "extracted_precedent": {
+                    "rpm": [4000, 5000],
+                    "sample_rate_hz": 8,
+                    "samples_per_point": 400,
+                    "window_seconds": 50,
+                    "sample_convergence_observed_above": 200,
+                    "in_situ_check_loads": ["thrust", "torque", "combined"],
+                },
+                "limitations": [
+                    "not_project_specific_measurement",
+                    "reported_other_propeller_uncertainty_not_transferred",
+                ],
+            },
+            {
+                "id": "nist-tn-1297",
+                "evidence_class": "measurement_uncertainty_guidance",
+                "qualification_scope": "type_a_type_b_combination_and_reporting",
+                "url": "https://doi.org/10.6028/NIST.TN.1297",
+            },
+            {
+                "id": "astm-e74-e2428-static-boundary",
+                "evidence_class": "static_calibration_standard",
+                "qualification_scope": "force_and_torque_traceability_only",
+                "urls": [
+                    "https://store.astm.org/e0074-18r26.html",
+                    "https://store.astm.org/e2428-22.html",
+                ],
+                "limitation": "static calibration does not establish dynamic adequacy",
+            },
+            {
+                "id": "propdbtools",
+                "evidence_class": "open_source_parser",
+                "qualification_scope": "uiuc_format_ingestion_only",
+                "url": "https://github.com/ramcdona/PropDBTools",
+                "license": "BSD-2-Clause",
+                "limitation": "parser license does not relicense UIUC data",
+            },
+        ],
         "project_readiness": {
             "state": "blocked_waiting_for_calibrated_raw_measurements",
             "missing_inputs": [
@@ -97,12 +191,19 @@ def build_report() -> Mapping[str, Any]:
 
 def _markdown(report: Mapping[str, Any]) -> str:
     decision = report["software_fixture_decision"]
+    baseline = report["public_baseline_context"]
     lines = [
         "# PR-10 experiment contract evidence", "",
         f"- Software fixture gate: **{decision['state']}**",
         "- Physical qualification: **pending**",
         f"- Fixture runs: {len(decision['runs'])}",
         "- Real-project readiness: **blocked_waiting_for_calibrated_raw_measurements**",
+        "", "## Published external baseline", "",
+        f"- Fixture: `{baseline['fixture_id']}`",
+        f"- Points: {baseline['point_count']} total / {baseline['eligible_point_count']} propulsive",
+        "- Quantities: CT, CP, J, rpm (no assumed conversion to T/Q)",
+        "- Qualification scope: **model validation context only**",
+        "- Physical qualification: **false**",
         "", "## Missing real inputs", "",
     ]
     lines.extend(
