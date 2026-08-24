@@ -27,6 +27,11 @@ from pyfoldable.application.design_draft import (
     DraftUnitSelection,
     build_design_draft,
 )
+from pyfoldable.application.evidence_import import (
+    EvidenceImportError,
+    MAX_EVIDENCE_UPLOAD_BYTES,
+    inspect_evidence_upload,
+)
 from pyfoldable.application.opening_sensitivity import load_opening_sensitivity
 from pyfoldable.application.ui_render import build_markdown_table
 from pyfoldable.visualization.propeller_25d import (
@@ -59,6 +64,11 @@ STATE_ICONS = {
 
 ANALYSIS_RESULT_KEY = "ui04_analysis_result"
 ANALYSIS_REQUEST_KEY = "ui04_analysis_request"
+EVIDENCE_KIND_BY_LABEL = {
+    "Yayımlanmış CFD referans fixture'ı": "cfd_reference",
+    "PR-09 FEA sözleşme raporu": "fea_contract_report",
+    "PR-10 deney sözleşme raporu": "experiment_contract_report",
+}
 
 
 def _render_markdown_table(rows: list[dict[str, object]]) -> None:
@@ -611,6 +621,54 @@ def _render_performance_results() -> None:
     st.caption(f"Rapor SHA-256 · {snapshot.report_sha256}")
 
 
+def _render_evidence_import() -> None:
+    st.title("CFD / FEA / Deney")
+    st.warning(
+        "Yüklenen dosya yalnız bu tarayıcı oturumunda sözleşme denetiminden geçer. "
+        "Repo'ya yazılmaz, solver çalıştırmaz ve fiziksel yeterlilik oluşturmaz.",
+        icon="🔎",
+    )
+    label = st.selectbox("Kanıt sözleşmesi", tuple(EVIDENCE_KIND_BY_LABEL))
+    uploaded = st.file_uploader(
+        "JSON kanıt dosyası",
+        type=("json",),
+        accept_multiple_files=False,
+        help="En fazla 5 MiB; dosya türü seçilen sözleşmeyle eşleşmelidir.",
+    )
+    st.caption(
+        "Desteklenen ilk UI-05 dilimi: yayımlanmış CFD referans fixture'ı ile "
+        "sürümlü PR-09/PR-10 sözleşme raporlarının salt-okunur denetimi."
+    )
+    if uploaded is None:
+        st.info("Denetim için bir JSON dosyası seçin.")
+        return
+    if uploaded.size > MAX_EVIDENCE_UPLOAD_BYTES:
+        st.error("Kanıt kapalı biçimde reddedildi: dosya 5 MiB sınırını aşıyor.")
+        return
+    try:
+        artifact = inspect_evidence_upload(
+            uploaded.getvalue(),
+            uploaded.name,
+            EVIDENCE_KIND_BY_LABEL[label],
+        )
+    except EvidenceImportError as exc:
+        st.error(f"Kanıt kapalı biçimde reddedildi: {exc}")
+        return
+
+    st.success("Dosya seçilen sürümlü sözleşmeyle uyumlu.")
+    identity, size, schema = st.columns(3)
+    identity.metric("Kanıt kimliği", artifact.identity)
+    size.metric("Dosya boyutu", f"{artifact.size_bytes / 1024.0:.1f} KiB")
+    schema.metric("Şema", str(artifact.schema_version))
+    st.markdown(f"`Sınıflandırma · {artifact.classification}`")
+    st.markdown(f"`Qualification · {artifact.qualification}`")
+    st.markdown("`Physical qualification · false`")
+    st.markdown(f"`Kaynak SHA-256 · {artifact.source_sha256}`")
+    _render_markdown_table(
+        [{"Alan": field, "Değer": value} for field, value in artifact.summary]
+    )
+
+
 def main() -> None:
     st.set_page_config(
         page_title="PyFoldable Engineering Workspace",
@@ -635,6 +693,8 @@ def main() -> None:
         _render_analysis_run()
     elif page == "Performans Sonuçları":
         _render_performance_results()
+    elif page == "CFD / FEA / Deney":
+        _render_evidence_import()
     else:
         _render_planned_page(page)
 
