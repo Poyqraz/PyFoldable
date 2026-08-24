@@ -89,6 +89,8 @@ class PropellerPreviewSpec:
             or self.section_point_count < 9
         ):
             raise ValueError("section_point_count must be an integer of at least 9.")
+        if not isinstance(self.airfoil_id, str):
+            raise TypeError("airfoil_id must be a string.")
         if _NACA4_PATTERN.fullmatch(self.airfoil_id.strip()) is None:
             raise ValueError("airfoil_id must identify an analytic NACA 4-digit section.")
 
@@ -102,8 +104,12 @@ class PropellerPreviewMesh:
     blade_count: int
     station_count: int
     section_point_count: int
+    hinge_root_station_index: int
+    hinge_tip_station_index: int
+    hinge_radius_m: float
     maximum_radius_m: float
     effective_radius_m: float
+    mesh_envelope_radius_m: float
     qualification: str = PREVIEW_QUALIFICATION
 
 
@@ -113,6 +119,8 @@ def naca4_section_loop(
     point_count: int = 25,
 ) -> tuple[tuple[float, float], ...]:
     """Return a cosine-spaced, closed-boundary NACA 4-digit section loop."""
+    if not isinstance(airfoil_id, str):
+        raise TypeError("airfoil_id must be a string.")
     match = _NACA4_PATTERN.fullmatch(airfoil_id.strip())
     if match is None:
         raise ValueError("airfoil_id must identify an analytic NACA 4-digit section.")
@@ -177,33 +185,48 @@ def naca4_section_loop(
     return tuple(reversed(upper)) + tuple(lower[1:-1])
 
 
-def _interpolate_hinge_station(
+def _split_hinge_station(
     stations: tuple[PreviewBladeStation, ...],
     *,
     hinge_r_over_r: float,
-) -> tuple[PreviewBladeStation, ...]:
+) -> tuple[tuple[PreviewBladeStation, ...], int, int]:
+    """Return root/tip hinge copies so the outboard surface remains rigid."""
     tolerance = 1e-12
-    if any(abs(station.r_over_R - hinge_r_over_r) <= tolerance for station in stations):
-        return stations
-    if not stations[0].r_over_R < hinge_r_over_r < stations[-1].r_over_R:
-        return stations
-    output: list[PreviewBladeStation] = []
-    for left, right in zip(stations, stations[1:]):
-        output.append(left)
-        if left.r_over_R < hinge_r_over_r < right.r_over_R:
-            fraction = (hinge_r_over_r - left.r_over_R) / (
-                right.r_over_R - left.r_over_R
-            )
-            output.append(
-                PreviewBladeStation(
+    hinge_station = next(
+        (
+            station
+            for station in stations
+            if abs(station.r_over_R - hinge_r_over_r) <= tolerance
+        ),
+        None,
+    )
+    if hinge_station is None:
+        for left, right in zip(stations, stations[1:]):
+            if left.r_over_R < hinge_r_over_r < right.r_over_R:
+                fraction = (hinge_r_over_r - left.r_over_R) / (
+                    right.r_over_R - left.r_over_R
+                )
+                hinge_station = PreviewBladeStation(
                     r_over_R=hinge_r_over_r,
-                    chord_m=left.chord_m + fraction * (right.chord_m - left.chord_m),
+                    chord_m=left.chord_m
+                    + fraction * (right.chord_m - left.chord_m),
                     twist_deg=left.twist_deg
                     + fraction * (right.twist_deg - left.twist_deg),
                 )
-            )
-    output.append(stations[-1])
-    return tuple(output)
+                break
+    if hinge_station is None:  # guarded by the station-span check in the builder
+        raise ValueError("Hinge radius does not intersect the blade-station span.")
+
+    inboard = [
+        station for station in stations if station.r_over_R < hinge_r_over_r - tolerance
+    ]
+    outboard = [
+        station for station in stations if station.r_over_R > hinge_r_over_r + tolerance
+    ]
+    root_index = len(inboard)
+    tip_index = root_index + 1
+    output = inboard + [hinge_station, hinge_station] + outboard
+    return tuple(output), root_index, tip_index
 
 
 def _validate_stations(
@@ -231,8 +254,17 @@ def build_propeller_preview_mesh(
         raise TypeError("spec must be a PropellerPreviewSpec.")
     source_stations = _validate_stations(stations)
     radius = spec.diameter_m / 2.0
+    first_station_radius = source_stations[0].r_over_R * radius
+    last_station_radius = source_stations[-1].r_over_R * radius
+    if not (
+        spec.hub_radius_m <= first_station_radius
+        and first_station_radius < spec.hinge_radius_m < last_station_radius
+    ):
+        raise ValueError(
+            "Hub and hinge radii must remain inside the defined blade-station span."
+        )
     hinge_r_over_r = spec.hinge_radius_m / radius
-    mesh_stations = _interpolate_hinge_station(
+    mesh_stations, hinge_root_index, hinge_tip_index = _split_hinge_station(
         source_stations,
         hinge_r_over_r=hinge_r_over_r,
     )
@@ -244,7 +276,7 @@ def build_propeller_preview_mesh(
     fold_angle = math.radians(spec.fold_angle_deg)
 
     base_vertices: list[tuple[float, float, float]] = []
-    for station in mesh_stations:
+    for station_index, station in enumerate(mesh_stations):
         radial = station.r_over_R * radius
         chord = station.chord_m * spec.chord_scale
         twist = math.radians(station.twist_deg * spec.twist_scale)
@@ -254,7 +286,7 @@ def build_propeller_preview_mesh(
             local_y = chord_axis * math.cos(twist) - thickness_axis * math.sin(twist)
             local_z = chord_axis * math.sin(twist) + thickness_axis * math.cos(twist)
             local_x = radial
-            if radial > spec.hinge_radius_m + 1e-12:
+            if station_index >= hinge_tip_index:
                 delta_x = radial - spec.hinge_radius_m
                 local_x = (
                     spec.hinge_radius_m
@@ -268,6 +300,8 @@ def build_propeller_preview_mesh(
 
     base_faces: list[tuple[int, int, int]] = []
     for station_index in range(len(mesh_stations) - 1):
+        if station_index == hinge_root_index:
+            continue
         current = station_index * perimeter_count
         following = (station_index + 1) * perimeter_count
         for section_index in range(perimeter_count):
@@ -299,15 +333,23 @@ def build_propeller_preview_mesh(
         )
         assert len(vertices) == (blade_index + 1) * vertices_per_blade
 
-    effective_radius = spec.hinge_radius_m + (
-        mesh_stations[-1].r_over_R * radius - spec.hinge_radius_m
+    projected_tip_radius = spec.hinge_radius_m + (
+        radius - spec.hinge_radius_m
     ) * math.cos(abs(fold_angle))
+    radial_envelope_radius = max(spec.hinge_radius_m, projected_tip_radius)
+    mesh_envelope_radius = max(
+        math.hypot(x_coord, y_coord) for x_coord, y_coord, _ in vertices
+    )
     return PropellerPreviewMesh(
         vertices=tuple(vertices),
         faces=tuple(faces),
         blade_count=spec.blade_count,
         station_count=len(mesh_stations),
         section_point_count=spec.section_point_count,
-        maximum_radius_m=mesh_stations[-1].r_over_R * radius,
-        effective_radius_m=max(spec.hub_radius_m, effective_radius),
+        hinge_root_station_index=hinge_root_index,
+        hinge_tip_station_index=hinge_tip_index,
+        hinge_radius_m=spec.hinge_radius_m,
+        maximum_radius_m=radius,
+        effective_radius_m=radial_envelope_radius,
+        mesh_envelope_radius_m=mesh_envelope_radius,
     )
