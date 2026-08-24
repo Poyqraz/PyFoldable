@@ -100,7 +100,10 @@ streamlit run apps/pyfoldable_dashboard.py
 Çalışma alanı kanonik tasarım ve sürümlü raporlarla bağlı bir proje/kanıt dashboard'udur.
 Tasarım Geometrisi ekranı, NACA kesit ve chord–twist istasyonlarından etkileşimli 2.5D
 pervane önizlemesi üretir; bu görsel CAD/CFD/FEA veya performans sonucu değildir ve
-config'e yazılmaz. Henüz analiz çalıştırmayan sayfalar bunu açıkça belirtir; katlanma
+config'e yazılmaz. Geometri ve ilk çalışma koşulu girdileri, seçilen çıktı birimleriyle
+kaynak SHA-256 kimlikli ve `unqualified_design_draft` sınıflı ayrı bir TOML taslağına
+indirilebilir; taslak katı config yükleyicisiyle round-trip edilir ve kanonik dosyanın
+üzerine yazılmaz. Henüz analiz çalıştırmayan sayfalar bunu açıkça belirtir; katlanma
 sonuçları PR-06C fiziksel kapısı geçene kadar `Tarama amaçlı` kalır. Mimari ve
 geliştirme sırası: `docs/ui_engineering_workspace.md`.
 

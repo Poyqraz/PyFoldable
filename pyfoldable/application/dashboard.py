@@ -66,6 +66,7 @@ class OperatingConditionView:
     rpm: float
     forward_speed_m_s: float
     air_density_kg_m3: float
+    dynamic_viscosity_pa_s: float
     temperature_k: float
     pressure_pa: float
 
@@ -78,9 +79,12 @@ class DashboardSnapshot:
     stowed_envelope_m: float
     checkpoint_rpm: float
     blade_count: int
+    hub_radius_m: float
     hinge_radius_m: float
     blade_stations: tuple[BladeStationView, ...]
     operating_conditions: tuple[OperatingConditionView, ...]
+    design_path: Path
+    design_sha256: str
     manifest_sha256: str
     qualification_warning: str
     gates: tuple[EvidenceGate, ...]
@@ -220,6 +224,7 @@ def load_dashboard_snapshot(
         stowed_envelope_m=stowed_envelope_m,
         checkpoint_rpm=checkpoint_rpm,
         blade_count=design.blade.blade_count,
+        hub_radius_m=design.blade.hub_radius_m,
         hinge_radius_m=design.hinge.radius_m,
         blade_stations=tuple(
             BladeStationView(
@@ -236,11 +241,14 @@ def load_dashboard_snapshot(
                 rpm=condition.angular_speed_rad_s * 60.0 / (2.0 * math.pi),
                 forward_speed_m_s=condition.forward_speed_m_s,
                 air_density_kg_m3=condition.air_density_kg_m3,
+                dynamic_viscosity_pa_s=condition.dynamic_viscosity_pa_s,
                 temperature_k=condition.temperature_k,
                 pressure_pa=condition.pressure_pa,
             )
             for condition in design.operating_conditions
         ),
+        design_path=design_path,
+        design_sha256=hashlib.sha256(design_path.read_bytes()).hexdigest(),
         manifest_sha256=hashlib.sha256(manifest.read_bytes()).hexdigest(),
         qualification_warning=warning,
         gates=tuple(gates),
