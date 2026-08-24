@@ -91,6 +91,22 @@ pip install -e ".[dev,plot,ui]"
 Gereksinimler: Python ≥ 3.10, NumPy, SciPy. Grafik örnekleri için `matplotlib`
 (`plot` extra), mühendislik çalışma alanı için Streamlit ve Plotly (`ui` extra).
 
+Windows/Anaconda kurulumlarında global `base` ortamı yerine temiz bir sanal ortam
+kullanın. Böylece NumPy ile eski derlenmiş PyArrow/Pandas paketlerinin ABI sürümleri
+birbirine karışmaz:
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -e ".[dev,plot,ui]"
+.\.venv\Scripts\python.exe -m pip check
+.\.venv\Scripts\python.exe -m streamlit run apps/pyfoldable_dashboard.py
+```
+
+Komutlarda `pip` ve `streamlit` doğrudan çağrılmak yerine aynı sanal ortamın Python
+yorumlayıcısı kullanılır. Dashboard'un salt-okunur tabloları ve tarama grafikleri
+PyArrow/Pandas/Altair çalışma zamanı köprüsüne bağlı değildir.
+
 ### Mühendislik çalışma alanı
 
 ```bash
