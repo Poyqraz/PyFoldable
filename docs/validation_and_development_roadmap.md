@@ -20,7 +20,7 @@ sonunda; rotor fiziği doğrulamasının başında** bulunuyor.
 | Motor–pervane etkileşimi | PR-07 kapalı çevrim sayısal çekirdeği ve BEM callback sınırı mevcut | Ölçülmüş motor–pervane korelasyonu |
 | Katlanır mekanizma | PR-06D fold-state sınırı, etkin yarıçap projeksiyonu ve sabit-limit kanıtı mevcut | Fiziksel nitelikli açılma duyarlılığı ve yük–performans geri beslemesi |
 | CFD korelasyonu | Seviye-1 hazırlık/çıktı sözleşmeleri | Ağ bağımsızlığı ve BEM–CFD korelasyonu |
-| Yapısal doğrulama | Malzeme ve menteşe veri modelleri | FEA, yorulma, kilit/menteşe yükleri ve balans |
+| Yapısal doğrulama | PR-09 CAD/malzeme/yük-vaka ve FEA sonuç sözleşmesi mevcut | Gerçek CAD, malzeme kartları ve ANSYS Mechanical kanıtı |
 | Deneysel doğrulama | Henüz birincil doğrulama verisi yok | Kalibre edilmiş itki standı, belirsizlik bütçesi, korelasyon |
 | Optimizasyon | Parametrik tarama ve karar tabloları | Doğrulanmış modellerle robust çok amaçlı optimizasyon |
 
@@ -133,6 +133,16 @@ ile pal, kök, pim, kilit ve stop temasları; maksimum devir/açılma geçişi v
 yüklerinde incelenir. Statik emniyet, deplasman, temas basıncı, yorulma ve doğal
 frekans kapıları ayrı raporlanır.
 
+**Yazılım/hazırlık kapısı tamamlandı.** CAD revizyonu ve SHA-256 kimliği,
+izotropik/ortotropik malzeme kapsamı, beş zorunlu yük vakası, üç seviyeli mesh
+yakınsaması, kuvvet dengesi, birim kontrollü sonuç metrikleri ve proje tarafından
+tanımlanacak kabul limitleri fail-closed sözleşmeye bağlandı. Birinci-taraf sentetik
+fixture yalnız doğrulayıcının davranışını kanıtlar. Gerçek proje durumu; revizyonlu
+CAD, PA-CF/pim/kilit/stop malzeme kartları, onaylı limitler ve ANSYS sonuçları gelene
+kadar `blocked_waiting_for_real_structural_inputs` olarak kalır. Ayrıntılar
+[PR-09 yürütme planı](pr09_fea_contract_execution_plan.md) ve
+[kanıt raporundadır](../reports/pr09_fea_contract_evidence.md).
+
 ### PR-10 — deneysel doğrulama
 
 İtki/tork/devir/elektrik gücü veri şeması, sensör kalibrasyonu, sıfır kayması,
@@ -161,7 +171,7 @@ arşiv bütünlüğü sürüm kapısıdır.
 | 3 | PR-06C referans benchmark | Nihai kapı kodu ve yeniden üretilebilir karar tamamlandı; donmuş fixture/politika geçiyor, gerçek E63→APC12 sağlayıcı zinciri, ileri-uçuş doğruluğu ve bağımsız model-form review başarısız |
 | 4 | PR-06D katlanır bağlantı | **Yazılım taraması tamamlandı:** sabit-limit ve 250-vaka açılma duyarlılığı kanıtı mevcut; fiziksel nitelikli açılma duyarlılığı PR-06C'ye bağlı |
 | 5 | PR-07 motor bağlantısı | **Sayısal kapı tamamlandı:** tork/gerilim/enerji dengesi, benzersiz kök ve çoklu başlangıç; fiziksel kapı ölçüm korelasyonunu bekliyor |
-| 6 | PR-08/09 CFD ve FEA | Bağımsızlık, izlenebilir solver kanıtı, güvenlik kapıları |
+| 6 | PR-08/09 CFD ve FEA | PR-08 CFD gerçek ANSYS çıktısını bekliyor; PR-09 yazılım/hazırlık sözleşmesi tamamlandı, gerçek yapısal kanıt bekleniyor |
 | 7 | PR-10 deney | Kalibrasyonlu veri ve belirsizlik içinde korelasyon |
 | 8 | PR-11/12 optimizasyon ve sürüm | Robust Pareto kararı ve temiz yeniden üretim |
 
