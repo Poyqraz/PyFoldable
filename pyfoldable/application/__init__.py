@@ -19,6 +19,18 @@ from .opening_sensitivity import (
     OpeningSensitivitySnapshot,
     load_opening_sensitivity,
 )
+from .analysis_run import (
+    ANALYSIS_SERVICE_ID,
+    ANALYSIS_SERVICE_VERSION,
+    PR06D_ANALYSIS_ID,
+    AnalysisRecipe,
+    AnalysisRunArtifact,
+    AnalysisRunError,
+    build_pr06d_opening_sensitivity_report,
+    get_analysis_recipe,
+    render_pr06d_opening_sensitivity_markdown,
+    run_analysis,
+)
 
 __all__ = [
     "DashboardConfigError",
@@ -34,4 +46,14 @@ __all__ = [
     "OpeningSensitivityRow",
     "OpeningSensitivitySnapshot",
     "load_opening_sensitivity",
+    "ANALYSIS_SERVICE_ID",
+    "ANALYSIS_SERVICE_VERSION",
+    "PR06D_ANALYSIS_ID",
+    "AnalysisRecipe",
+    "AnalysisRunArtifact",
+    "AnalysisRunError",
+    "build_pr06d_opening_sensitivity_report",
+    "get_analysis_recipe",
+    "render_pr06d_opening_sensitivity_markdown",
+    "run_analysis",
 ]

@@ -15,6 +15,13 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from pyfoldable.application.dashboard import EvidenceState, load_dashboard_snapshot
+from pyfoldable.application.analysis_run import (
+    PR06D_ANALYSIS_ID,
+    AnalysisRunArtifact,
+    AnalysisRunError,
+    get_analysis_recipe,
+    run_analysis,
+)
 from pyfoldable.application.design_draft import (
     DesignDraftInputs,
     DraftUnitSelection,
@@ -48,6 +55,9 @@ STATE_ICONS = {
     EvidenceState.FAILED: "✖",
     EvidenceState.BLOCKED: "⛔",
 }
+
+ANALYSIS_RESULT_KEY = "ui04_analysis_result"
+ANALYSIS_REQUEST_KEY = "ui04_analysis_request"
 
 
 def _render_overview() -> None:
@@ -443,6 +453,117 @@ def _render_operating_conditions() -> None:
     st.info("Gösterilen değerler kanonik TOML dosyasından SI birimlerinde okunur.")
 
 
+def _opening_result_rows(rows) -> list[dict[str, float]]:
+    return [
+        {
+            "Açı [deg]": row.angle_from_deployed_deg,
+            "D_eff [mm]": row.effective_diameter_m * 1000.0,
+            "Statik T/T₀": row.static_thrust_ratio_median,
+            "Statik Q/Q₀": row.static_torque_ratio_median,
+            "İleri T/T₀": row.forward_thrust_ratio_median,
+            "İleri Q/Q₀": row.forward_torque_ratio_median,
+        }
+        for row in rows
+    ]
+
+
+def _render_session_analysis_result(artifact: AnalysisRunArtifact) -> None:
+    st.subheader("Bu oturumda üretilen sonuç")
+    st.success("Yeni koşum sürümlü arşiv raporuyla birebir eşleşti.")
+    st.markdown(f"`Artifact class · {artifact.artifact_class}`")
+    st.markdown(f"`Qualification · {artifact.qualification}`")
+    st.markdown("`Physical qualification · false`")
+
+    cases, conditions, states, duration = st.columns(4)
+    cases.metric("Yeni koşum vakası", str(artifact.case_count))
+    conditions.metric("Çalışma noktası", str(artifact.condition_count))
+    states.metric("Açılma durumu", str(artifact.state_count))
+    duration.metric("Koşum süresi", f"{artifact.duration_seconds:.1f} s")
+
+    rows = _opening_result_rows(artifact.rows)
+    st.line_chart(
+        rows,
+        x="Açı [deg]",
+        y=["Statik T/T₀", "Statik Q/Q₀", "İleri T/T₀", "İleri Q/Q₀"],
+    )
+    st.dataframe(rows, hide_index=True, use_container_width=True)
+    st.markdown(f"`İstek SHA-256 · {artifact.request_sha256}`")
+    st.markdown(f"`Hesap politikası SHA-256 · {artifact.policy_sha256}`")
+    st.markdown(f"`Fixture SHA-256 · {artifact.fixture_sha256}`")
+    st.markdown(f"`Oturum raporu SHA-256 · {artifact.report_sha256}`")
+    st.markdown(f"`Arşiv raporu SHA-256 · {artifact.archived_report_sha256}`")
+    st.markdown(f"`Oturum manifesti SHA-256 · {artifact.manifest_sha256}`")
+    st.download_button(
+        "Oturum manifestini JSON indir",
+        data=artifact.manifest_json,
+        file_name=artifact.filename,
+        mime="application/json",
+    )
+
+
+def _render_analysis_run() -> None:
+    st.title("Analiz Çalıştırma")
+    try:
+        recipe = get_analysis_recipe(REPO_ROOT, PR06D_ANALYSIS_ID)
+    except (AnalysisRunError, OSError) as exc:
+        st.error(f"Analiz tarifi kapalı biçimde yüklenemedi: {exc}")
+        return
+    request_identity = (
+        f"{recipe.id}:{recipe.fixture_sha256}:{recipe.archived_report_sha256}:"
+        f"{recipe.policy_sha256}"
+    )
+    stored_identity = st.session_state.get(ANALYSIS_REQUEST_KEY)
+    if stored_identity is not None and stored_identity != request_identity:
+        st.session_state.pop(ANALYSIS_RESULT_KEY, None)
+        st.session_state.pop(ANALYSIS_REQUEST_KEY, None)
+
+    st.warning(
+        "Bu recipe, aktif 250 mm taslak tasarımı çözmez. Sürümdeki 254 mm UIUC APC 10×4.7 "
+        "fixture'ını analitik proxy ile yeniden hesaplar; sonuç yalnız tarama amaçlıdır "
+        "ve fiziksel yeterlilik oluşturmaz.",
+        icon="🔎",
+    )
+    st.selectbox("İzinli analiz tarifi", (recipe.title,), disabled=True)
+    st.caption(
+        "Açık kullanıcı eylemi dışında çalışmaz; dış solver/subprocess çağırmaz ve "
+        "repo, kanonik config veya reports/ altına yazmaz."
+    )
+    st.markdown(
+        f"`Fixture · {recipe.fixture_path.relative_to(REPO_ROOT)} · "
+        f"{recipe.fixture_sha256}`"
+    )
+    st.markdown(
+        f"`Arşiv · {recipe.archived_report_path.relative_to(REPO_ROOT)} · "
+        f"{recipe.archived_report_sha256}`"
+    )
+    st.info(
+        f"Sabit kaynak politikası: {recipe.expected_case_count} vaka · "
+        f"{recipe.expected_condition_count} koşul · {recipe.expected_state_count} durum · "
+        f"{recipe.annulus_count} annulus · açılar {recipe.angles_deg}° · "
+        f"menteşe oranı {recipe.hinge_radius_ratio:.2f} · "
+        f"{recipe.loading_branch}. Politika SHA-256: {recipe.policy_sha256}. "
+        "Tipik çalışma süresi yaklaşık 20–30 saniyedir."
+    )
+
+    if st.button("Tarama analizini çalıştır", type="primary"):
+        st.session_state.pop(ANALYSIS_RESULT_KEY, None)
+        with st.spinner("İzinli PR-06D taraması çalıştırılıyor…"):
+            try:
+                artifact = run_analysis(REPO_ROOT, PR06D_ANALYSIS_ID)
+            except AnalysisRunError as exc:
+                st.session_state.pop(ANALYSIS_REQUEST_KEY, None)
+                st.error(f"Analiz kapalı biçimde durduruldu: {exc}")
+            else:
+                st.session_state[ANALYSIS_RESULT_KEY] = artifact
+                st.session_state[ANALYSIS_REQUEST_KEY] = request_identity
+
+    artifact = st.session_state.get(ANALYSIS_RESULT_KEY)
+    if isinstance(artifact, AnalysisRunArtifact):
+        _render_session_analysis_result(artifact)
+    else:
+        st.caption("Henüz bu oturumda analiz çalıştırılmadı.")
+
+
 def _render_performance_results() -> None:
     snapshot = load_opening_sensitivity(REPO_ROOT)
     st.title("Performans Sonuçları")
@@ -456,17 +577,7 @@ def _render_performance_results() -> None:
     conditions.metric("Çalışma noktası", str(snapshot.condition_count))
     states.metric("Açılma durumu", str(snapshot.state_count))
 
-    rows = [
-        {
-            "Açı [deg]": row.angle_from_deployed_deg,
-            "D_eff [mm]": row.effective_diameter_m * 1000.0,
-            "Statik T/T₀": row.static_thrust_ratio_median,
-            "Statik Q/Q₀": row.static_torque_ratio_median,
-            "İleri T/T₀": row.forward_thrust_ratio_median,
-            "İleri Q/Q₀": row.forward_torque_ratio_median,
-        }
-        for row in snapshot.rows
-    ]
+    rows = _opening_result_rows(snapshot.rows)
     st.line_chart(
         rows,
         x="Açı [deg]",
@@ -496,6 +607,8 @@ def main() -> None:
         _render_design_geometry()
     elif page == "Çalışma Koşulları":
         _render_operating_conditions()
+    elif page == "Analiz Çalıştırma":
+        _render_analysis_run()
     elif page == "Performans Sonuçları":
         _render_performance_results()
     else:

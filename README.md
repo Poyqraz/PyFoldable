@@ -103,7 +103,12 @@ pervane önizlemesi üretir; bu görsel CAD/CFD/FEA veya performans sonucu deği
 config'e yazılmaz. Geometri ve ilk çalışma koşulu girdileri, seçilen çıktı birimleriyle
 kaynak SHA-256 kimlikli ve `unqualified_design_draft` sınıflı ayrı bir TOML taslağına
 indirilebilir; taslak katı config yükleyicisiyle round-trip edilir ve kanonik dosyanın
-üzerine yazılmaz. Henüz analiz çalıştırmayan sayfalar bunu açıkça belirtir; katlanma
+üzerine yazılmaz. Analiz Çalıştırma ekranı, izin-listeli PR-06D taramasını CLI ile
+aynı application servisinden ve aynı sürümlü 254 mm fixture üzerinden çalıştırır.
+Sonuç yalnız oturumda tutulur, arşiv JSON'uyla byte/SHA düzeyinde karşılaştırılır;
+indirilen ayrı oturum manifesti recipe/politika/fixture/arşiv provenance'ını taşır ve
+`physical_qualification=false` sınırını değiştirmez. Henüz analiz çalıştırmayan
+sayfalar bunu açıkça belirtir; katlanma
 sonuçları PR-06C fiziksel kapısı geçene kadar `Tarama amaçlı` kalır. Mimari ve
 geliştirme sırası: `docs/ui_engineering_workspace.md`.
 
