@@ -111,6 +111,21 @@ from .models import (
     SimulationResult,
     ValidationRecord,
 )
+from .motor_bem_coupling import (
+    COUPLED_OPERATING_POINT_SCHEMA_VERSION,
+    AeroLoadSample,
+    AmbiguousEquilibriumError,
+    CoupledEquilibriumError,
+    CoupledEquilibriumEvidence,
+    CoupledMultistartCase,
+    CoupledOperatingPoint,
+    CoupledSolverSettings,
+    InvalidAeroLoadError,
+    MotorState,
+    NoEquilibriumError,
+    make_bem_aero_load_callback,
+    solve_coupled_operating_point,
+)
 from .polar import (
     PolarBoundsPolicy,
     PolarFamily,
@@ -253,6 +268,9 @@ from .units import (
 )
 
 __all__ = [
+    "COUPLED_OPERATING_POINT_SCHEMA_VERSION",
+    "AeroLoadSample",
+    "AmbiguousEquilibriumError",
     "AirfoilDefinition",
     "AirfoilCoordinateIdentity",
     "AirfoilFileFormat",
@@ -294,12 +312,20 @@ __all__ = [
     "CFDReferenceFixture",
     "CFDReferencePoint",
     "CFDReferenceSource",
+    "CoupledEquilibriumError",
+    "CoupledEquilibriumEvidence",
+    "CoupledMultistartCase",
+    "CoupledOperatingPoint",
+    "CoupledSolverSettings",
     "DesignConfigError",
     "FilesystemPolarCache",
     "HingeGeometry",
+    "InvalidAeroLoadError",
     "ManufacturingModel",
     "MaterialModel",
     "MotorModel",
+    "MotorState",
+    "NoEquilibriumError",
     "NormalizedQuantity",
     "OperatingCondition",
     "POLAR_ACCEPTANCE_SCHEMA_VERSION",
@@ -431,6 +457,7 @@ __all__ = [
     "load_polar_csv",
     "load_polar_golden_fixture",
     "load_rotor_benchmark_fixture",
+    "make_bem_aero_load_callback",
     "normalize_quantity",
     "parse_airfoil_coordinates",
     "parse_apc_pe0",
@@ -446,6 +473,7 @@ __all__ = [
     "solve_bem_annulus",
     "solve_bem_rotor",
     "solve_foldable_bem_rotor",
+    "solve_coupled_operating_point",
     "qualify_real_polar_backends",
     "write_polar_real_qualification_bundle",
 ]

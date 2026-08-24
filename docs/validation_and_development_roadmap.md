@@ -17,7 +17,7 @@ sonunda; rotor fiziği doğrulamasının başında** bulunuyor.
 | Polar sağlayıcı altyapısı | Gerçek XFOIL/NeuralFoil regresyonlarıyla nitelikli | Yeni airfoil ve çalışma zarfı büyüdükçe yeniden niteleme |
 | 2B kesit aerodinamiği | Reynolds/Mach enterpolasyonu ve izlenebilir kesit yükleri mevcut | 3B dönel akış ve stall düzeltmeleri |
 | Rotor aerodinamiği | QPROP-tabanlı indüksiyon/swirl, uç/kök kaybı, radyal integrasyon ve üretici-geometri taraması mevcut | Temsili Reynolds-duyarlı spanwise polarlara dayalı rotor seviyesi doğrulama |
-| Motor–pervane etkileşimi | Referans-yük son işlemesi | Tork–devir denge noktasını birlikte çözen kapalı çevrim |
+| Motor–pervane etkileşimi | PR-07 kapalı çevrim sayısal çekirdeği ve BEM callback sınırı mevcut | Ölçülmüş motor–pervane korelasyonu |
 | Katlanır mekanizma | PR-06D fold-state sınırı, etkin yarıçap projeksiyonu ve sabit-limit kanıtı mevcut | Fiziksel nitelikli açılma duyarlılığı ve yük–performans geri beslemesi |
 | CFD korelasyonu | Seviye-1 hazırlık/çıktı sözleşmeleri | Ağ bağımsızlığı ve BEM–CFD korelasyonu |
 | Yapısal doğrulama | Malzeme ve menteşe veri modelleri | FEA, yorulma, kilit/menteşe yükleri ve balans |
@@ -109,6 +109,16 @@ Motor tork eğrisi, gerilim/akım sınırları ve pervane torku ortak bir devir 
 çözülür. Kabul kapısı; enerji/tork kalıntısı, çoklu başlangıçtan aynı çözüm ve ölçülmüş
 en az bir motor–pervane eşleşmesiyle korelasyondur.
 
+**Yazılım/nümerik kapı tamamlandı.** Global RPM taraması benzersiz ortak kökü bulur;
+birden fazla kökü, köksüz aralığı, geçersiz aerodinamik yükü ve elektriksel sınır
+ihlallerini kapalı biçimde raporlar. Sabit veya katlanır BEM çözücüsü her aday RPM'de
+yeni çalışma koşuluyla çağrılır. Beş donmuş analitik yük vakasında tork, gerilim ve
+şaft-enerji kalıntıları ile üç ayrı başlangıç kontrolü geçmiştir. Bu kanıt yalnız
+yazılım davranışını niteler; fiziksel kapı ölçülmüş motor–pervane korelasyonu gelene
+kadar `pending_measured_correlation` durumundadır. Ayrıntılar
+[PR-07 yürütme planı](pr07_fully_coupled_execution_plan.md) ve
+[kanıt raporundadır](../reports/pr07_fully_coupled_evidence.md).
+
 ### PR-08 — CFD korelasyonu
 
 Önce doğrulama vakaları ve otomatik geometri/çalışma koşulu aktarımı, sonra ağ ve
@@ -150,7 +160,7 @@ arşiv bütünlüğü sürüm kapısıdır.
 | 2 | PR-06B rotor integrasyonu | Tamamlandı: radyal yakınsama, yük/toplam tutarlılığı ve provenance |
 | 3 | PR-06C referans benchmark | Nihai kapı kodu ve yeniden üretilebilir karar tamamlandı; donmuş fixture/politika geçiyor, gerçek E63→APC12 sağlayıcı zinciri, ileri-uçuş doğruluğu ve bağımsız model-form review başarısız |
 | 4 | PR-06D katlanır bağlantı | **Yazılım taraması tamamlandı:** sabit-limit ve 250-vaka açılma duyarlılığı kanıtı mevcut; fiziksel nitelikli açılma duyarlılığı PR-06C'ye bağlı |
-| 5 | PR-07 motor bağlantısı | Tork/enerji dengesi ve ölçüm korelasyonu |
+| 5 | PR-07 motor bağlantısı | **Sayısal kapı tamamlandı:** tork/gerilim/enerji dengesi, benzersiz kök ve çoklu başlangıç; fiziksel kapı ölçüm korelasyonunu bekliyor |
 | 6 | PR-08/09 CFD ve FEA | Bağımsızlık, izlenebilir solver kanıtı, güvenlik kapıları |
 | 7 | PR-10 deney | Kalibrasyonlu veri ve belirsizlik içinde korelasyon |
 | 8 | PR-11/12 optimizasyon ve sürüm | Robust Pareto kararı ve temiz yeniden üretim |
