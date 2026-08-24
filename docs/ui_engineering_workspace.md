@@ -38,7 +38,8 @@ Durumlar yalnız renkle verilmez; Türkçe metin ve ikon birlikte kullanılır.
 | UI-00 | Bilgi mimarisi, durum sözlüğü, görsel prototip | Nitelik sınırları görünür |
 | UI-01 | Uygulama servis/görünüm modeli | Manifest–kanıt uyuşmazlığı fail-closed |
 | UI-02 | Genel Bakış ve kanıt dashboard'u | Kanonik tasarım ve PR-06C–10 gerçek raporlarından okunur |
-| UI-03 | Tasarım ve çalışma koşulu editörü | Birim kontrollü config round-trip |
+| UI-03A | Etkileşimli geometri önizlemesi | SI-bound mesh, menteşe dönüşümü ve fail-closed girdi kontrolü |
+| UI-03B | Tasarım ve çalışma koşulu editörü | Birim kontrollü config round-trip |
 | UI-04 | Analiz çalıştırma ve sonuç gezgini | CLI ile sayısal eşdeğerlik |
 | UI-05 | CFD/FEA/deney veri alımı | Mevcut sözleşmelerle şema, birim ve SHA doğrulaması |
 | UI-06 | Kanıt/rapor merkezi | Tekrar üretilebilir dışa aktarma |
@@ -46,9 +47,14 @@ Durumlar yalnız renkle verilmez; Türkçe metin ve ikon birlikte kullanılır.
 
 ## Güncel artım
 
-UI-00/01 temeli ve UI-02'nin Genel Bakış ekranı aktiftir. Kanonik geometri ve çalışma
-koşulları salt okunur incelenebilir; 250 vakalık açılma duyarlılığı da yalnız
-`screening_only` etiketiyle görüntülenir. Ekranlar şu girdilere bağlıdır:
+UI-00/01 temeli, UI-02 Genel Bakış ve UI-03A geometri önizlemesi aktiftir. Kanonik
+geometri; NACA 4-haneli kesit, chord–twist istasyonları, kanat sayısı ve menteşe
+yarıçapından etkileşimli bir 2.5D yüzeye dönüştürülür. Açık çap, göbek, menteşe,
+kesit, chord/twist ölçeği ve katlanma açısı oturum içinde değiştirilebilir. Önizleme
+değişiklikleri config dosyasına yazılmaz; CAD katısı, CFD/FEA ağı veya fiziksel sonuç
+olarak sınıflandırılmaz. Çalışma koşulları salt okunur incelenebilir; 250 vakalık
+açılma duyarlılığı da yalnız `screening_only` etiketiyle görüntülenir. Ekranlar şu
+girdilere bağlıdır:
 
 - `configs/designs/TIP_HINGED_250_CANONICAL.toml`
 - `reports/pr06c_physical_gate.json`
@@ -58,7 +64,11 @@ koşulları salt okunur incelenebilir; 250 vakalık açılma duyarlılığı da 
 - `reports/pr09_fea_contract_evidence.json`
 - `reports/pr10_experiment_contract_evidence.json`
 
-Henüz etkinleştirilmeyen sayfalar güvenli placeholder'dır: analiz çalıştırmaz ve örnek
+Mesh üreticisi Streamlit'ten bağımsızdır ve `pyfoldable.visualization.propeller_25d`
+altında test edilir. Rotor düzlemi x–y, eksenel yön z'dir; negatif katlanma açısı
+yalnız menteşe dışındaki yüzeyi rijit döndürür. Bir sonraki UI artımı UI-03B'dir:
+önizlenen girdilerin birim kontrollü taslak konfigürasyona round-trip edilmesi. Henüz
+etkinleştirilmeyen sayfalar güvenli placeholder'dır: analiz çalıştırmaz ve örnek
 mühendislik sonucu üretmez.
 
 ## Çalıştırma ve test
@@ -66,7 +76,8 @@ mühendislik sonucu üretmez.
 ```bash
 pip install -e ".[dev,plot,ui]"
 streamlit run apps/pyfoldable_dashboard.py
-pytest tests/application/test_dashboard.py tests/ui/test_streamlit_dashboard.py -q
+pytest tests/application/test_dashboard.py tests/visualization/test_propeller_25d.py \
+  tests/ui/test_streamlit_dashboard.py -q
 ```
 
 Lovable projesi yalnız UX prototipi olarak tutulur. Gerçek proje durumu ve sayısal
