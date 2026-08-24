@@ -118,6 +118,19 @@ state/condition combinations are retained in a deterministic report. The evidenc
 hard-coded as `screening_only_until_pr06c_passes`; it does not satisfy Stage 6 physical
 qualification or permit a final design decision.
 
+### Stage 5A — jointed-tip literature safeguards (implemented, methodology-only)
+
+Acar's 2025 extended-BEM paper was reverse-engineered into a 31-point signed
+performance audit. The transferable tip-flow kinematics and negative-thrust/negative-
+power regimes are implemented as screening contracts. Propulsive efficiency now
+fails closed for drag, energy-extraction, static and out-of-bounds cases. The paper's
+missing RPM/geometry/convergence inputs and internal equation/narrative conflicts are
+preserved in the [review](pr06d_acar_2025_reverse_engineering.md) and
+[machine-readable report](../reports/pr06d_acar_2025_jointed_tip_review.md).
+
+This stage does not modify the existing fold projection or physical gate: the paper's
+separately rotating tip propeller is not equivalent to the project's folding blade.
+
 ## Stop conditions
 
 Scientific non-qualification is not a software failure to hide. Work stops short of

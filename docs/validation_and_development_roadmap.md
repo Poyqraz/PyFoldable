@@ -85,6 +85,13 @@ kanıt paketi ve başarısızlığı görünür kılan regresyonu bulunduğunda 
   içinde `screening_only_until_pr06c_passes` olarak kilitlidir; tasarım kararı veya
   fiziksel niteleme değildir.
 
+  Acar'ın 2025 mafsallı uç-pervane BEM çalışması da yöntem kanıtı olarak tersine
+  mühendislikle incelendi. Otuz bir sayısal nokta işaret güvenli rejim denetimine,
+  birleşik tip-akış bağıntısına ve verim fail-closed kurallarına dönüştürüldü. Ayrı
+  bir uç rotoru ile katlanan ana-pal devamı aynı fiziksel topoloji olmadığı için
+  makale sonuçları PR-06D doğrulama hedefi yapılmadı. Ayrıntılar
+  [Acar 2025 review belgesindedir](pr06d_acar_2025_reverse_engineering.md).
+
 Yayımlanmış APC 10x4.7 CFD taraması da makine-okunur bir kapsam sözleşmesine bağlandı.
 ICAS Fluent SST k-omega sonuçları, aynı UIUC statik CP noktalarında yeniden hesaplanan
 en çok %1,27 hata gösterirken mevcut analitik-proxy BEM yolu yaklaşık %10,22 ve %19,86

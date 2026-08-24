@@ -70,6 +70,14 @@ from .rotational_augmentation import (
     RotationalAugmentationModel,
     RotationalAugmentationResult,
 )
+from .signed_propulsor import (
+    PropulsorMode,
+    SignedPropulsorAssessment,
+    SignedPropulsorError,
+    TipMountedInflow,
+    assess_signed_propulsor_state,
+    tip_mounted_effective_inflow,
+)
 
 from .config import DesignConfigError, load_design_config
 from .cfd_reference import (
@@ -464,10 +472,14 @@ __all__ = [
     "RotorBenchmarkPrediction",
     "RotorPolarEvidence",
     "RotorPolarEvidencePolicy",
+    "PropulsorMode",
     "RotationalAugmentationDomainError",
     "RotationalAugmentationKind",
     "RotationalAugmentationModel",
     "RotationalAugmentationResult",
+    "SignedPropulsorAssessment",
+    "SignedPropulsorError",
+    "TipMountedInflow",
     "QuantityInput",
     "ProviderCapabilities",
     "ProviderIdentity",
@@ -485,6 +497,7 @@ __all__ = [
     "compare_polar_results",
     "analyze_generated_polar_sections",
     "assess_rotor_polar_evidence",
+    "assess_signed_propulsor_state",
     "assess_pr06c_physical_gate",
     "canonical_json_sha256",
     "generate_polar",
@@ -522,6 +535,7 @@ __all__ = [
     "solve_bem_rotor",
     "solve_foldable_bem_rotor",
     "solve_coupled_operating_point",
+    "tip_mounted_effective_inflow",
     "qualify_real_polar_backends",
     "write_polar_real_qualification_bundle",
 ]
