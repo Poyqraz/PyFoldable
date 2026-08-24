@@ -3,8 +3,9 @@
 ## Cursor Cloud specific instructions
 
 PyFoldable is a pure-Python scientific library (numpy/scipy, optional matplotlib)
-for tip-hinged foldable propeller analysis. There is no server, database, or GUI —
-work happens through `pytest` and the standalone scripts in `examples/`.
+for tip-hinged foldable propeller analysis. It also includes a Streamlit engineering
+workspace under `apps/`; numerical workflows remain available through `pytest` and
+the standalone scripts in `examples/`.
 
 ### Environment
 - Use the virtualenv at `venv/` created by the update script. Run tools via
@@ -14,11 +15,12 @@ work happens through `pytest` and the standalone scripts in `examples/`.
   package `python3.12-venv` is needed to create the venv; the update script installs it.
 
 ### Lint / test / build / run
-- Tests: `./venv/bin/pytest tests/ -q` (**635 passed**, 9 skipped locally after the
-  PR-06D opening-sensitivity increment; CI remains the merge authority).
+- Tests: `./venv/bin/pytest tests/ -q` (**752 passed**, 9 skipped locally after the
+  UI-04 analysis-runner increment; CI remains the merge authority).
 - No linter is configured in this repo (no ruff/flake8/black config or deps). For a
   baseline syntax check use `./venv/bin/python -m compileall pyfoldable pythrust examples tests`.
-- Build/run = executing the `examples/*.py` scripts; see README "Hızlı çalıştırma".
+- Build/run = executing the `examples/*.py` scripts or
+  `./venv/bin/streamlit run apps/pyfoldable_dashboard.py`; see README.
 
 ### Non-obvious gotchas
 - Several example scripts are a **pipeline** and must be run in order because each one

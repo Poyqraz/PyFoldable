@@ -46,11 +46,17 @@ Bu hat bilimsel aşamaların sırasını veya geçiş eşiklerini değiştirmez.
   `*_DRAFT.toml` çıktısına dönüştürülür. Taslak kaynak tasarım SHA-256 kimliğini ve
   `unqualified_design_draft` sınıfını taşır, kanonik dosyaya yazmaz ve indirmeden önce
   mevcut katı yükleyiciyle round-trip edilir.
-- **UI-04 — sıradaki artım; sonuç gezgini temeli aktif:** 250 vakalık PR-06D açılma
-  taraması yalnız `screening_only` olarak gösterilir. Sonraki uygulama adımı, seçilmiş
-  sürümlü girdiyi mevcut CLI ile aynı servis sınırından çalıştırmak; yeni hesap sonucu,
-  geçmiş kanıt ve fiziksel yeterlilik durumunu birbirine karıştırmadan göstermektir.
-- **UI-05–07 — sonraki artımlar:** CFD/FEA/deney içe aktarma, rapor merkezi,
+- **UI-04 — aktif:** izin-listeli PR-06D recipe'si, sabitlenmiş 254 mm UIUC fixture'ını
+  CLI ve Streamlit'in paylaştığı aynı application servisiyle oturum içinde yeniden
+  çalıştırır. Analiz açık buton eylemi dışında başlamaz, repo/rapor yazmaz ve yeni
+  sonuç `session_screening_computation`, `screening_only_until_pr06c_passes`,
+  `physical_qualification=false` olarak arşiv kanıtından ayrı gösterilir. Semantik,
+  deterministik JSON ve SHA eşdeğerliği arşivle uyuşmazsa koşum fail-closed durur.
+  İndirilen oturum manifesti hesap politikası ve istek SHA'larını, fixture/arşiv
+  provenance'ını ve ham oturum sonucunu ayrı sınıflandırmayla birlikte taşır.
+- **UI-05 — sıradaki artım:** CFD/FEA/deney dosyalarını mevcut sözleşmelerle içe alma;
+  şema, birim, solver/numune kimliği ve SHA uyuşmazlığında fail-closed davranış.
+- **UI-06–07 — sonraki artımlar:** rapor merkezi,
   uçtan uca/görsel regresyon ve paketleme.
 
 Arayüzde `qualified`, `screening_only`, `pending`, `failed` ve `blocked` durumları

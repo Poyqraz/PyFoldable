@@ -54,6 +54,48 @@ def test_performance_page_is_explicitly_screening_only():
     }
 
 
+def test_analysis_page_is_idle_until_an_explicit_run():
+    app = AppTest.from_file(str(APP_PATH)).run(timeout=20)
+    app.sidebar.radio[0].set_value("Analiz Çalıştırma").run(timeout=20)
+
+    assert not app.exception
+    assert app.title[0].value == "Analiz Çalıştırma"
+    assert any(button.label == "Tarama analizini çalıştır" for button in app.button)
+    assert app.warning
+    assert "254 mm" in app.warning[0].value
+    assert "250 mm taslak" in app.warning[0].value
+    assert not app.success
+
+
+def test_analysis_page_runs_once_and_keeps_the_screening_result_in_session():
+    app = AppTest.from_file(str(APP_PATH)).run(timeout=20)
+    app.sidebar.radio[0].set_value("Analiz Çalıştırma").run(timeout=20)
+
+    next(button for button in app.button if button.label == "Tarama analizini çalıştır").click()
+    app.run(timeout=60)
+
+    assert not app.exception
+    assert app.success
+    assert "arşiv raporuyla birebir eşleşti" in app.success[0].value
+    assert {metric.label for metric in app.metric} >= {
+        "Yeni koşum vakası",
+        "Çalışma noktası",
+        "Açılma durumu",
+    }
+    rendered = "\n".join(item.value for item in app.markdown)
+    assert "session_screening_computation" in rendered
+    assert "screening_only_until_pr06c_passes" in rendered
+    assert "Physical qualification · false" in rendered
+    assert any(
+        button.label == "Oturum manifestini JSON indir"
+        for button in app.get("download_button")
+    )
+
+    app.run(timeout=20)
+    assert not app.exception
+    assert app.success
+
+
 def test_design_page_reads_the_canonical_geometry():
     app = AppTest.from_file(str(APP_PATH)).run(timeout=20)
     app.sidebar.radio[0].set_value("Tasarım Geometrisi").run(timeout=20)
