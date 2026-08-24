@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "kind": "pr06d-acar-2025-jointed-tip-methodology-review",
+  "evidence_class": "methodology_only_tip_jointed_system",
+  "physical_qualification": false,
+  "source": {
+    "title": "Aerodynamic Performance Analysis of a Main Propeller with Jointed Tip-Mounted Blades Using Extended Blade Element Momentum Theory",
+    "author": "Osman Acar",
+    "year": 2025,
+    "journal": "International Journal of Advanced Natural Sciences and Engineering Researches 9(8), 147-159",
+    "article_url": "https://as-proceeding.com/index.php/ijanser/article/view/2790",
+    "pdf_url": "https://as-proceeding.com/index.php/ijanser/article/download/2790/2657/5390",
+    "pdf_sha256": "030d485df45a22a1c67c3e004597218a8a5d87163c135e92ec3d4327ec6ad134",
+    "accessed_at": "2026-08-24",
+    "rights_scope": "Tabulated factual values and derived audit metadata; source publication is not redistributed."
+  },
+  "fixture": {
+    "id": "acar-2025-jointed-tip-bemt-table1-v1",
+    "path": "tests/fixtures/literature/acar_2025_jointed_tip_bemt_v1.json",
+    "sha256": "66cce66c24b1602fe07e99eb32247a0aed4d3ce18428e4f9a6024d3d6fd4359f"
+  },
+  "reported_model": {
+    "main_diameter_m": 0.25,
+    "tip_radius_m": 0.05,
+    "main_blade_count": 2,
+    "airfoil": "NACA 2412",
+    "lift_curve_slope_per_rad": 6.283185307179586,
+    "zero_lift_drag_coefficient": 0.01,
+    "assumed_aspect_ratio": 8.0,
+    "tip_loss_model": "Prandtl",
+    "tip_inflow_equation": "sqrt(V_inf^2 + (omega_main * R_main)^2)",
+    "forward_speed_step_m_s": 1.0
+  },
+  "point_count": 31,
+  "speed_range_m_s": [
+    0.0,
+    30.0
+  ],
+  "table_audit": {
+    "maximum_thrust_closure_error_n": 0.0007999999999999119,
+    "maximum_power_closure_error_w": 0.006999999999990791,
+    "maximum_reported_efficiency_formula_error": 0.005557148442619564,
+    "reported_efficiency_rejected_count": 83,
+    "rejected_efficiency_examples": [
+      {
+        "component": "main",
+        "speed_m_s": 7.0,
+        "mode": "powered_drag",
+        "reported_eta": -8.203,
+        "safe_propulsive_efficiency": null
+      },
+      {
+        "component": "main",
+        "speed_m_s": 8.0,
+        "mode": "powered_drag",
+        "reported_eta": -0.2869,
+        "safe_propulsive_efficiency": null
+      },
+      {
+        "component": "main",
+        "speed_m_s": 9.0,
+        "mode": "powered_drag",
+        "reported_eta": -2.5605,
+        "safe_propulsive_efficiency": null
+      },
+      {
+        "component": "main",
+        "speed_m_s": 10.0,
+        "mode": "powered_drag",
+        "reported_eta": -0.66088,
+        "safe_propulsive_efficiency": null
+      },
+      {
+        "component": "main",
+        "speed_m_s": 11.0,
+        "mode": "energy_extracting_drag",
+        "reported_eta": 5.2859,
+        "safe_propulsive_efficiency": null
+      },
+      {
+        "component": "main",
+        "speed_m_s": 12.0,
+        "mode": "powered_drag",
+        "reported_eta": -1.7624,
+        "safe_propulsive_efficiency": null
+      },
+      {
+        "component": "main",
+        "speed_m_s": 13.0,
+        "mode": "powered_drag",
+        "reported_eta": -20.314,
+        "safe_propulsive_efficiency": null
+      },
+      {
+        "component": "main",
+        "speed_m_s": 14.0,
+        "mode": "energy_extracting_drag",
+        "reported_eta": 0.99368,
+        "safe_propulsive_efficiency": null
+      }
+    ]
+  },
+  "mode_counts": {
+    "main": {
+      "energy_extracting_drag": 16,
+      "powered_drag": 8,
+      "propulsive": 7
+    },
+    "tip": {
+      "energy_extracting_drag": 21,
+      "powered_drag": 10
+    },
+    "combined": {
+      "energy_extracting_drag": 17,
+      "powered_drag": 12,
+      "propulsive": 2
+    }
+  },
+  "first_mode_speed_m_s": {
+    "main": {
+      "energy_extracting_drag": 11.0,
+      "powered_drag": 7.0,
+      "propulsive": 0.0
+    },
+    "tip": {
+      "energy_extracting_drag": 7.0,
+      "powered_drag": 0.0
+    },
+    "combined": {
+      "energy_extracting_drag": 11.0,
+      "powered_drag": 2.0,
+      "propulsive": 0.0
+    }
+  },
+  "internal_consistency_findings": [
+    "main_thrust_narrative_conflicts_with_table",
+    "angular_speed_power_equation_has_extra_2pi",
+    "claimed_predictive_accuracy_has_no_experimental_or_cfd_validation",
+    "discussion_uses_a_second_nonidentical_tip_inflow_equation"
+  ],
+  "reproduction_blockers": [
+    "main_rotor_speed_not_reported",
+    "tip_rotor_speed_or_torque_equilibrium_not_reported",
+    "main_chord_distribution_not_tabulated",
+    "main_twist_distribution_not_tabulated",
+    "tip_chord_and_twist_distributions_not_tabulated",
+    "hub_radii_not_reported",
+    "air_density_not_reported",
+    "element_count_not_reported",
+    "iteration_tolerance_and_max_iterations_not_reported",
+    "stall_and_reynolds_dependence_not_modeled"
+  ],
+  "transfer_to_pyfoldable": {
+    "implemented": [
+      "sign_safe_propulsor_mode_classification",
+      "fail_closed_propulsive_efficiency",
+      "typed_tip_mounted_effective_inflow_screening_relation",
+      "machine_readable_table_closure_and_consistency_audit"
+    ],
+    "design_hypotheses_only": [
+      "active_pitch_or_stow_to_avoid_powered_drag",
+      "energy_recovery_requires_explicit_generator_and_net_drag_accounting",
+      "tip_mass_requires_flutter_fatigue_and_vibration_assessment"
+    ],
+    "not_transferred": [
+      "paper_performance_values_as_validation_targets",
+      "generic_naca2412_linear_polar_as_project_airfoil_evidence",
+      "reported_efficiency_outside_propulsive_mode"
+    ]
+  },
+  "gate_effect": {
+    "pr06c_physical_gate_changed": false,
+    "pr06d_physical_qualification_changed": false,
+    "reason": "computational methodology with incomplete reproducibility inputs"
+  }
+}
