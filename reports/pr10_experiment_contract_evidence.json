@@ -1,0 +1,287 @@
+{
+  "manifest": {
+    "schema_version": 1,
+    "id": "pr10-synthetic-test-stand-v1",
+    "calibrations": [
+      {
+        "sensor_id": "fixture-thrust",
+        "quantity": "thrust",
+        "unit": "N",
+        "certificate_id": "fixture-cert-thrust",
+        "certificate_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "valid_from": "2026-01-01",
+        "valid_until": "2027-01-01",
+        "standard_uncertainty": 0.01,
+        "qualification": "software_fixture_not_calibration_evidence"
+      },
+      {
+        "sensor_id": "fixture-torque",
+        "quantity": "torque",
+        "unit": "N*m",
+        "certificate_id": "fixture-cert-torque",
+        "certificate_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "valid_from": "2026-01-01",
+        "valid_until": "2027-01-01",
+        "standard_uncertainty": 0.01,
+        "qualification": "software_fixture_not_calibration_evidence"
+      },
+      {
+        "sensor_id": "fixture-rpm",
+        "quantity": "rpm",
+        "unit": "rpm",
+        "certificate_id": "fixture-cert-rpm",
+        "certificate_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "valid_from": "2026-01-01",
+        "valid_until": "2027-01-01",
+        "standard_uncertainty": 0.1,
+        "qualification": "software_fixture_not_calibration_evidence"
+      },
+      {
+        "sensor_id": "fixture-voltage",
+        "quantity": "voltage",
+        "unit": "V",
+        "certificate_id": "fixture-cert-voltage",
+        "certificate_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "valid_from": "2026-01-01",
+        "valid_until": "2027-01-01",
+        "standard_uncertainty": 0.1,
+        "qualification": "software_fixture_not_calibration_evidence"
+      },
+      {
+        "sensor_id": "fixture-current",
+        "quantity": "current",
+        "unit": "A",
+        "certificate_id": "fixture-cert-current",
+        "certificate_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "valid_from": "2026-01-01",
+        "valid_until": "2027-01-01",
+        "standard_uncertainty": 0.1,
+        "qualification": "software_fixture_not_calibration_evidence"
+      },
+      {
+        "sensor_id": "fixture-temperature",
+        "quantity": "temperature",
+        "unit": "K",
+        "certificate_id": "fixture-cert-temperature",
+        "certificate_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "valid_from": "2026-01-01",
+        "valid_until": "2027-01-01",
+        "standard_uncertainty": 0.1,
+        "qualification": "software_fixture_not_calibration_evidence"
+      },
+      {
+        "sensor_id": "fixture-pressure",
+        "quantity": "pressure",
+        "unit": "Pa",
+        "certificate_id": "fixture-cert-pressure",
+        "certificate_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "valid_from": "2026-01-01",
+        "valid_until": "2027-01-01",
+        "standard_uncertainty": 0.1,
+        "qualification": "software_fixture_not_calibration_evidence"
+      }
+    ],
+    "policy": {
+      "minimum_repeats": 3,
+      "maximum_zero_drift": {
+        "thrust": 0.05,
+        "torque": 0.01
+      },
+      "coverage_factor": 2.0
+    }
+  },
+  "software_fixture_decision": {
+    "schema_version": 1,
+    "stand_id": "pr10-synthetic-test-stand-v1",
+    "state": "software_pass_physical_measurements_pending",
+    "software_gate_passed": true,
+    "physical_qualification": false,
+    "missing_roles": [],
+    "runs": [
+      {
+        "run_id": "fixed-fixture-1",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "run_id": "foldable-fixture-1",
+        "passed": true,
+        "failures": []
+      }
+    ],
+    "summaries": [
+      {
+        "run_id": "fixed-fixture-1",
+        "role": "fixed_reference",
+        "repeat_count": 3,
+        "metrics": {
+          "thrust": {
+            "mean": 8.1,
+            "standard_uncertainty_type_a": 0.05773502691896237,
+            "standard_uncertainty_calibration": 0.01,
+            "standard_uncertainty_zero_drift": 0.011547005383792516,
+            "combined_standard_uncertainty": 0.05972157622389619,
+            "expanded_uncertainty": 0.11944315244779238,
+            "unit": "N"
+          },
+          "torque": {
+            "mean": 0.121,
+            "standard_uncertainty_type_a": 0.0005773502691896263,
+            "standard_uncertainty_calibration": 0.01,
+            "standard_uncertainty_zero_drift": 0.0011547005383792516,
+            "combined_standard_uncertainty": 0.010082988974836116,
+            "expanded_uncertainty": 0.02016597794967223,
+            "unit": "N*m"
+          },
+          "rpm": {
+            "mean": 7005.0,
+            "standard_uncertainty_type_a": 2.886751345948129,
+            "standard_uncertainty_calibration": 0.1,
+            "standard_uncertainty_zero_drift": 0.0,
+            "combined_standard_uncertainty": 2.8884828774519913,
+            "expanded_uncertainty": 5.776965754903983,
+            "unit": "rpm"
+          },
+          "voltage": {
+            "mean": 11.1,
+            "standard_uncertainty_type_a": 0.0,
+            "standard_uncertainty_calibration": 0.1,
+            "standard_uncertainty_zero_drift": 0.0,
+            "combined_standard_uncertainty": 0.1,
+            "expanded_uncertainty": 0.2,
+            "unit": "V"
+          },
+          "current": {
+            "mean": 12.1,
+            "standard_uncertainty_type_a": 0.05773502691896237,
+            "standard_uncertainty_calibration": 0.1,
+            "standard_uncertainty_zero_drift": 0.0,
+            "combined_standard_uncertainty": 0.11547005383792507,
+            "expanded_uncertainty": 0.23094010767585013,
+            "unit": "A"
+          },
+          "temperature": {
+            "mean": 295.0,
+            "standard_uncertainty_type_a": 0.0,
+            "standard_uncertainty_calibration": 0.1,
+            "standard_uncertainty_zero_drift": 0.0,
+            "combined_standard_uncertainty": 0.1,
+            "expanded_uncertainty": 0.2,
+            "unit": "K"
+          },
+          "pressure": {
+            "mean": 101000.0,
+            "standard_uncertainty_type_a": 0.0,
+            "standard_uncertainty_calibration": 0.1,
+            "standard_uncertainty_zero_drift": 0.0,
+            "combined_standard_uncertainty": 0.1,
+            "expanded_uncertainty": 0.2,
+            "unit": "Pa"
+          },
+          "electrical_power": {
+            "mean": 134.31,
+            "standard_uncertainty_type_a": 0.6408587988004824,
+            "standard_uncertainty_calibration": 1.6420109622045769,
+            "standard_uncertainty_zero_drift": 0.0,
+            "combined_standard_uncertainty": 1.7626400653565089,
+            "expanded_uncertainty": 3.5252801307130177,
+            "unit": "W"
+          }
+        }
+      },
+      {
+        "run_id": "foldable-fixture-1",
+        "role": "foldable",
+        "repeat_count": 3,
+        "metrics": {
+          "thrust": {
+            "mean": 8.6,
+            "standard_uncertainty_type_a": 0.05773502691896237,
+            "standard_uncertainty_calibration": 0.01,
+            "standard_uncertainty_zero_drift": 0.011547005383792516,
+            "combined_standard_uncertainty": 0.05972157622389619,
+            "expanded_uncertainty": 0.11944315244779238,
+            "unit": "N"
+          },
+          "torque": {
+            "mean": 0.121,
+            "standard_uncertainty_type_a": 0.0005773502691896263,
+            "standard_uncertainty_calibration": 0.01,
+            "standard_uncertainty_zero_drift": 0.0011547005383792516,
+            "combined_standard_uncertainty": 0.010082988974836116,
+            "expanded_uncertainty": 0.02016597794967223,
+            "unit": "N*m"
+          },
+          "rpm": {
+            "mean": 7005.0,
+            "standard_uncertainty_type_a": 2.886751345948129,
+            "standard_uncertainty_calibration": 0.1,
+            "standard_uncertainty_zero_drift": 0.0,
+            "combined_standard_uncertainty": 2.8884828774519913,
+            "expanded_uncertainty": 5.776965754903983,
+            "unit": "rpm"
+          },
+          "voltage": {
+            "mean": 11.1,
+            "standard_uncertainty_type_a": 0.0,
+            "standard_uncertainty_calibration": 0.1,
+            "standard_uncertainty_zero_drift": 0.0,
+            "combined_standard_uncertainty": 0.1,
+            "expanded_uncertainty": 0.2,
+            "unit": "V"
+          },
+          "current": {
+            "mean": 12.1,
+            "standard_uncertainty_type_a": 0.05773502691896237,
+            "standard_uncertainty_calibration": 0.1,
+            "standard_uncertainty_zero_drift": 0.0,
+            "combined_standard_uncertainty": 0.11547005383792507,
+            "expanded_uncertainty": 0.23094010767585013,
+            "unit": "A"
+          },
+          "temperature": {
+            "mean": 295.0,
+            "standard_uncertainty_type_a": 0.0,
+            "standard_uncertainty_calibration": 0.1,
+            "standard_uncertainty_zero_drift": 0.0,
+            "combined_standard_uncertainty": 0.1,
+            "expanded_uncertainty": 0.2,
+            "unit": "K"
+          },
+          "pressure": {
+            "mean": 101000.0,
+            "standard_uncertainty_type_a": 0.0,
+            "standard_uncertainty_calibration": 0.1,
+            "standard_uncertainty_zero_drift": 0.0,
+            "combined_standard_uncertainty": 0.1,
+            "expanded_uncertainty": 0.2,
+            "unit": "Pa"
+          },
+          "electrical_power": {
+            "mean": 134.31,
+            "standard_uncertainty_type_a": 0.6408587988004824,
+            "standard_uncertainty_calibration": 1.6420109622045769,
+            "standard_uncertainty_zero_drift": 0.0,
+            "combined_standard_uncertainty": 1.7626400653565089,
+            "expanded_uncertainty": 3.5252801307130177,
+            "unit": "W"
+          }
+        }
+      }
+    ]
+  },
+  "project_readiness": {
+    "state": "blocked_waiting_for_calibrated_raw_measurements",
+    "missing_inputs": [
+      "test_stand_sensor_certificates_and_sha256",
+      "pre_and_post_run_zero_records",
+      "fixed_reference_raw_repeated_measurements",
+      "foldable_prototype_raw_repeated_measurements",
+      "environmental_measurements",
+      "approved_experiment_acceptance_limits"
+    ],
+    "physical_qualification": false
+  },
+  "decision": "pr10_software_contract_complete_physical_measurements_pending",
+  "scope": "All samples and certificates are first-party software fixtures. They test data quality and uncertainty math, not propeller performance."
+}

@@ -21,7 +21,7 @@ sonunda; rotor fiziği doğrulamasının başında** bulunuyor.
 | Katlanır mekanizma | PR-06D fold-state sınırı, etkin yarıçap projeksiyonu ve sabit-limit kanıtı mevcut | Fiziksel nitelikli açılma duyarlılığı ve yük–performans geri beslemesi |
 | CFD korelasyonu | Seviye-1 hazırlık/çıktı sözleşmeleri | Ağ bağımsızlığı ve BEM–CFD korelasyonu |
 | Yapısal doğrulama | PR-09 CAD/malzeme/yük-vaka ve FEA sonuç sözleşmesi mevcut | Gerçek CAD, malzeme kartları ve ANSYS Mechanical kanıtı |
-| Deneysel doğrulama | Henüz birincil doğrulama verisi yok | Kalibre edilmiş itki standı, belirsizlik bütçesi, korelasyon |
+| Deneysel doğrulama | PR-10 kalibrasyon/ham veri/tekrar/belirsizlik sözleşmesi mevcut | Kalibre edilmiş standdan gerçek sabit ve katlanır ölçümleri |
 | Optimizasyon | Parametrik tarama ve karar tabloları | Doğrulanmış modellerle robust çok amaçlı optimizasyon |
 
 Bu nedenle mevcut sonuçlar mimari ve karşılaştırmalı geliştirme için değerlidir;
@@ -150,6 +150,16 @@ tekrarlı ölçüm ve belirsizlik yayılımı sürümlenir. En az bir sabit refe
 katlanır prototip aynı düzenekte ölçülür; BEM ve CFD farkları belirsizlik bantlarıyla
 raporlanır.
 
+**Yazılım/hazırlık kapısı tamamlandı.** Yedi zorunlu sensör kanalı; sertifika
+kimliği, SHA-256, geçerlilik aralığı ve standart belirsizlikle bağlandı. Sabit referans
+ve katlanır prototip rolleri, en az üç tekrar, ham veri kimliği, deney öncesi/sonrası
+sıfır kayması ve Type-A + kalibrasyon + drift belirsizlik yayılımı fail-closed olarak
+uygulandı. Sentetik fixture yalnız şema ve matematiği doğrular. Fiziksel kapı gerçek
+kalibrasyon kayıtları ve ham tekrar ölçümleri gelene kadar
+`blocked_waiting_for_calibrated_raw_measurements` durumundadır. Ayrıntılar
+[PR-10 yürütme planı](pr10_experiment_contract_execution_plan.md) ve
+[kanıt raporundadır](../reports/pr10_experiment_contract_evidence.md).
+
 ### PR-11 — robust çok amaçlı optimizasyon
 
 Yalnız doğrulanmış çalışma zarfında; itki/verim, katlanmış hacim, gerilme, ömür,
@@ -172,7 +182,7 @@ arşiv bütünlüğü sürüm kapısıdır.
 | 4 | PR-06D katlanır bağlantı | **Yazılım taraması tamamlandı:** sabit-limit ve 250-vaka açılma duyarlılığı kanıtı mevcut; fiziksel nitelikli açılma duyarlılığı PR-06C'ye bağlı |
 | 5 | PR-07 motor bağlantısı | **Sayısal kapı tamamlandı:** tork/gerilim/enerji dengesi, benzersiz kök ve çoklu başlangıç; fiziksel kapı ölçüm korelasyonunu bekliyor |
 | 6 | PR-08/09 CFD ve FEA | PR-08 CFD gerçek ANSYS çıktısını bekliyor; PR-09 yazılım/hazırlık sözleşmesi tamamlandı, gerçek yapısal kanıt bekleniyor |
-| 7 | PR-10 deney | Kalibrasyonlu veri ve belirsizlik içinde korelasyon |
+| 7 | PR-10 deney | Yazılım/hazırlık sözleşmesi tamamlandı; kalibrasyonlu gerçek sabit/katlanır ham ölçümler bekleniyor |
 | 8 | PR-11/12 optimizasyon ve sürüm | Robust Pareto kararı ve temiz yeniden üretim |
 
 ## İşbirliği sınırları
