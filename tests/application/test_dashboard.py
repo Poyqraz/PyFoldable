@@ -22,13 +22,17 @@ def test_default_dashboard_is_bound_to_canonical_design_and_evidence():
     assert math.isclose(snapshot.stowed_envelope_m, 0.14)
     assert math.isclose(snapshot.checkpoint_rpm, 7100.0)
     assert len(snapshot.manifest_sha256) == 64
+    assert snapshot.design_path == REPO_ROOT / "configs/designs/TIP_HINGED_250_CANONICAL.toml"
+    assert len(snapshot.design_sha256) == 64
     assert snapshot.qualification_warning
     assert snapshot.blade_count == 2
+    assert math.isclose(snapshot.hub_radius_m, 0.018)
     assert math.isclose(snapshot.hinge_radius_m, 0.1)
     assert len(snapshot.blade_stations) == 5
     assert snapshot.blade_stations[0].airfoil_id == "NACA2412"
     assert snapshot.operating_conditions[0].id == "hover_7100_rpm"
     assert math.isclose(snapshot.operating_conditions[0].rpm, 7100.0)
+    assert math.isclose(snapshot.operating_conditions[0].dynamic_viscosity_pa_s, 1.81e-5)
 
     gates = {gate.id: gate for gate in snapshot.gates}
     assert set(gates) == {"PR-06C", "PR-06D", "PR-07", "PR-08", "PR-09", "PR-10"}

@@ -42,10 +42,14 @@ Bu hat bilimsel aşamaların sırasını veya geçiş eşiklerini değiştirmez.
   `geometry_preview_not_cad_or_physical_result` olarak sınıflandırılır; config'e yazmaz.
   Kontrol review'i sonrasında tip yüzeyi çift menteşe kesitli rijit seam ile
   sertleştirilmiş, radyal merkez-hat ve gerçek mesh zarfı ayrı metriklere bölünmüştür.
-- **UI-03B — sıradaki artım:** önizleme girdilerinin birim kontrollü taslak config
-  round-trip'i; kanonik tasarım kullanıcı onayı ve doğrulama olmadan değiştirilemez.
-- **UI-04 — sonuç gezgini temeli aktif:** 250 vakalık PR-06D açılma taraması yalnız
-  `screening_only` olarak gösterilir; CLI-eşdeğer yeni analiz çalıştırma sıradadır.
+- **UI-03B — aktif:** geometri ve ilk çalışma koşulu girdileri açık birimlerle ayrı
+  `*_DRAFT.toml` çıktısına dönüştürülür. Taslak kaynak tasarım SHA-256 kimliğini ve
+  `unqualified_design_draft` sınıfını taşır, kanonik dosyaya yazmaz ve indirmeden önce
+  mevcut katı yükleyiciyle round-trip edilir.
+- **UI-04 — sıradaki artım; sonuç gezgini temeli aktif:** 250 vakalık PR-06D açılma
+  taraması yalnız `screening_only` olarak gösterilir. Sonraki uygulama adımı, seçilmiş
+  sürümlü girdiyi mevcut CLI ile aynı servis sınırından çalıştırmak; yeni hesap sonucu,
+  geçmiş kanıt ve fiziksel yeterlilik durumunu birbirine karıştırmadan göstermektir.
 - **UI-05–07 — sonraki artımlar:** CFD/FEA/deney içe aktarma, rapor merkezi,
   uçtan uca/görsel regresyon ve paketleme.
 

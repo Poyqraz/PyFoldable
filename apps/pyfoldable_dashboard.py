@@ -15,6 +15,11 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from pyfoldable.application.dashboard import EvidenceState, load_dashboard_snapshot
+from pyfoldable.application.design_draft import (
+    DesignDraftInputs,
+    DraftUnitSelection,
+    build_design_draft,
+)
 from pyfoldable.application.opening_sensitivity import load_opening_sensitivity
 from pyfoldable.visualization.propeller_25d import (
     PreviewBladeStation,
@@ -124,7 +129,7 @@ def _render_design_geometry() -> None:
         "Göbek yarıçapı [mm]",
         min_value=1.0,
         max_value=250.0,
-        value=18.0,
+        value=float(snapshot.hub_radius_m * 1000.0),
         step=1.0,
     )
     hinge_radius_mm = dimension_columns[2].number_input(
@@ -170,6 +175,75 @@ def _render_design_geometry() -> None:
         step=5,
     )
 
+    st.subheader("Taslak çalışma koşulu")
+    st.caption(
+        "Bu alan yalnız indirilebilir taslağın ilk çalışma koşulunu düzenler; analiz "
+        "çalıştırmaz ve kanonik config'e yazmaz."
+    )
+    condition = snapshot.operating_conditions[0]
+    condition_columns = st.columns(3)
+    rpm = condition_columns[0].number_input(
+        "RPM",
+        min_value=0.0,
+        max_value=100000.0,
+        value=float(condition.rpm),
+        step=100.0,
+    )
+    forward_speed_m_s = condition_columns[1].number_input(
+        "V∞ [m/s]",
+        min_value=-200.0,
+        max_value=200.0,
+        value=float(condition.forward_speed_m_s),
+        step=1.0,
+    )
+    air_density_kg_m3 = condition_columns[2].number_input(
+        "ρ [kg/m³]",
+        min_value=0.01,
+        max_value=5.0,
+        value=float(condition.air_density_kg_m3),
+        step=0.01,
+        format="%.4f",
+    )
+    atmosphere_columns = st.columns(3)
+    dynamic_viscosity_pa_s = atmosphere_columns[0].number_input(
+        "μ [Pa·s]",
+        min_value=1.0e-7,
+        max_value=1.0e-3,
+        value=float(condition.dynamic_viscosity_pa_s),
+        step=1.0e-7,
+        format="%.7g",
+    )
+    temperature_k = atmosphere_columns[1].number_input(
+        "T [K]",
+        min_value=1.0,
+        max_value=1000.0,
+        value=float(condition.temperature_k),
+        step=1.0,
+    )
+    pressure_pa = atmosphere_columns[2].number_input(
+        "p [Pa]",
+        min_value=1.0,
+        max_value=2_000_000.0,
+        value=float(condition.pressure_pa),
+        step=100.0,
+    )
+
+    with st.expander("Taslak çıktı birimleri"):
+        unit_columns = st.columns(3)
+        length_unit = unit_columns[0].selectbox("Uzunluk", ("mm", "m", "cm", "in"))
+        angle_unit = unit_columns[1].selectbox("Açı", ("deg", "rad"))
+        angular_speed_unit = unit_columns[2].selectbox(
+            "Açısal hız",
+            ("rpm", "rad/s"),
+        )
+        second_unit_columns = st.columns(3)
+        speed_unit = second_unit_columns[0].selectbox("İleri hız", ("m/s", "km/h"))
+        temperature_unit = second_unit_columns[1].selectbox("Sıcaklık", ("K", "degC"))
+        pressure_unit = second_unit_columns[2].selectbox(
+            "Basınç",
+            ("Pa", "kPa", "MPa"),
+        )
+
     try:
         preview_spec = PropellerPreviewSpec(
             diameter_m=diameter_mm / 1000.0,
@@ -191,6 +265,33 @@ def _render_design_geometry() -> None:
                     twist_deg=station.twist_deg,
                 )
                 for station in snapshot.blade_stations
+            ),
+        )
+        draft = build_design_draft(
+            snapshot.design_path,
+            DesignDraftInputs(
+                diameter=f"{diameter_mm} mm",
+                hub_radius=f"{hub_radius_mm} mm",
+                hinge_radius=f"{hinge_radius_mm} mm",
+                blade_count=int(blade_count),
+                airfoil_id=airfoil_id,
+                chord_scale=float(chord_scale),
+                twist_scale=float(twist_scale),
+                preview_fold_angle=f"{fold_angle_deg} deg",
+                angular_speed=f"{rpm} rpm",
+                forward_speed=f"{forward_speed_m_s} m/s",
+                air_density=f"{air_density_kg_m3} kg/m^3",
+                dynamic_viscosity=f"{dynamic_viscosity_pa_s} Pa*s",
+                temperature=f"{temperature_k} K",
+                pressure=f"{pressure_pa} Pa",
+            ),
+            units=DraftUnitSelection(
+                length=length_unit,
+                angle=angle_unit,
+                angular_speed=angular_speed_unit,
+                speed=speed_unit,
+                temperature=temperature_unit,
+                pressure=pressure_unit,
             ),
         )
     except (TypeError, ValueError) as exc:
@@ -284,6 +385,22 @@ def _render_design_geometry() -> None:
             "CFD/BEM performans sonucu değildir."
         )
 
+        st.subheader("Doğrulanmış taslak config")
+        st.caption("Niteliksiz tasarım taslağı")
+        st.success("Config yükleyicisi round-trip doğrulamasını geçti.")
+        st.markdown(f"`Kanonik kaynak SHA-256 · {draft.source_sha256}`")
+        st.markdown(f"`Taslak SHA-256 · {draft.draft_sha256}`")
+        st.download_button(
+            "Taslak TOML indir",
+            data=draft.toml,
+            file_name=draft.filename,
+            mime="application/toml",
+        )
+        st.info(
+            "İndirilen dosya `unqualified_design_draft` olarak işaretlidir. Kanonik "
+            "dosyaya dönüş ancak ayrı review ve doğrulama adımıyla yapılabilir."
+        )
+
     st.subheader("Kanat istasyonları")
     st.dataframe(
         [
@@ -314,6 +431,7 @@ def _render_operating_conditions() -> None:
                 "RPM": round(condition.rpm, 3),
                 "V∞ [m/s]": condition.forward_speed_m_s,
                 "ρ [kg/m³]": condition.air_density_kg_m3,
+                "μ [Pa·s]": condition.dynamic_viscosity_pa_s,
                 "T [K]": condition.temperature_k,
                 "p [Pa]": condition.pressure_pa,
             }

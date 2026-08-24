@@ -39,7 +39,7 @@ Durumlar yalnız renkle verilmez; Türkçe metin ve ikon birlikte kullanılır.
 | UI-01 | Uygulama servis/görünüm modeli | Manifest–kanıt uyuşmazlığı fail-closed |
 | UI-02 | Genel Bakış ve kanıt dashboard'u | Kanonik tasarım ve PR-06C–10 gerçek raporlarından okunur |
 | UI-03A | Etkileşimli geometri önizlemesi | SI-bound mesh, menteşe dönüşümü ve fail-closed girdi kontrolü |
-| UI-03B | Tasarım ve çalışma koşulu editörü | Birim kontrollü config round-trip |
+| UI-03B | Tasarım ve çalışma koşulu editörü | Birim kontrollü config round-trip ve kanonik dosyanın değişmezliği |
 | UI-04 | Analiz çalıştırma ve sonuç gezgini | CLI ile sayısal eşdeğerlik |
 | UI-05 | CFD/FEA/deney veri alımı | Mevcut sözleşmelerle şema, birim ve SHA doğrulaması |
 | UI-06 | Kanıt/rapor merkezi | Tekrar üretilebilir dışa aktarma |
@@ -47,12 +47,20 @@ Durumlar yalnız renkle verilmez; Türkçe metin ve ikon birlikte kullanılır.
 
 ## Güncel artım
 
-UI-00/01 temeli, UI-02 Genel Bakış ve UI-03A geometri önizlemesi aktiftir. Kanonik
+UI-00/01 temeli, UI-02 Genel Bakış, UI-03A geometri önizlemesi ve UI-03B doğrulanmış
+taslak config hattı aktiftir. Kanonik
 geometri; NACA 4-haneli kesit, chord–twist istasyonları, kanat sayısı ve menteşe
 yarıçapından etkileşimli bir 2.5D yüzeye dönüştürülür. Açık çap, göbek, menteşe,
 kesit, chord/twist ölçeği ve katlanma açısı oturum içinde değiştirilebilir. Önizleme
 değişiklikleri config dosyasına yazılmaz; CAD katısı, CFD/FEA ağı veya fiziksel sonuç
-olarak sınıflandırılmaz. Çalışma koşulları salt okunur incelenebilir; 250 vakalık
+olarak sınıflandırılmaz. İlk çalışma koşulunun RPM, ileri hız ve atmosfer girdileri
+taslak için düzenlenebilir. Uzunluk, açı, açısal hız, ileri hız, sıcaklık ve basınç
+çıktı birimleri açıkça seçilir. İndirilen `*_DRAFT.toml` dosyası
+`unqualified_design_draft` sınıfını, kanonik kaynak kimliğini ve SHA-256 değerini
+taşır; kanonik dosyanın yanına veya üzerine yazılmaz. Her taslak indirmeye sunulmadan
+önce mevcut katı config yükleyicisiyle geçici alanda tekrar okunur. Aynı SI değerleri
+farklı desteklenen çıktı birimlerinde korunur. Çalışma koşulları ayrıca salt okunur
+incelenebilir; 250 vakalık
 açılma duyarlılığı da yalnız `screening_only` etiketiyle görüntülenir. Ekranlar şu
 girdilere bağlıdır:
 
@@ -73,17 +81,18 @@ zarfını aşarsa önizleme kapalı biçimde hata verir.
 Ekrandaki `Radyal zarf çapı`, nominal uç merkez hattının menteşe projeksiyonunu sabit
 kök yarıçapının altına düşürmeden gösterir. `Mesh zarf çapı` ise chord dahil çizilen
 vertex planformunun ölçümüdür. Bu değerler birbirinin veya CFD/BEM performans çapının
-yerine kullanılmaz. Bir sonraki UI artımı UI-03B'dir:
-önizlenen girdilerin birim kontrollü taslak konfigürasyona round-trip edilmesi. Henüz
-etkinleştirilmeyen sayfalar güvenli placeholder'dır: analiz çalıştırmaz ve örnek
-mühendislik sonucu üretmez.
+yerine kullanılmaz. Bir sonraki UI artımı UI-04'tür: mevcut CLI yollarıyla aynı girdiyi
+ve aynı sonucu kullanan, yeni sonucu kanıt durumundan ayıran analiz çalıştırma/sonuç
+gezgini. Henüz etkinleştirilmeyen sayfalar güvenli placeholder'dır: analiz çalıştırmaz
+ve örnek mühendislik sonucu üretmez.
 
 ## Çalıştırma ve test
 
 ```bash
 pip install -e ".[dev,plot,ui]"
 streamlit run apps/pyfoldable_dashboard.py
-pytest tests/application/test_dashboard.py tests/visualization/test_propeller_25d.py \
+pytest tests/application/test_dashboard.py tests/application/test_design_draft.py \
+  tests/visualization/test_propeller_25d.py \
   tests/ui/test_streamlit_dashboard.py -q
 ```
 

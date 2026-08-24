@@ -7,6 +7,12 @@ from .dashboard import (
     EvidenceState,
     load_dashboard_snapshot,
 )
+from .design_draft import (
+    DesignDraftArtifact,
+    DesignDraftInputs,
+    DraftUnitSelection,
+    build_design_draft,
+)
 from .opening_sensitivity import (
     OpeningSensitivityError,
     OpeningSensitivityRow,
@@ -20,6 +26,10 @@ __all__ = [
     "EvidenceGate",
     "EvidenceState",
     "load_dashboard_snapshot",
+    "DesignDraftArtifact",
+    "DesignDraftInputs",
+    "DraftUnitSelection",
+    "build_design_draft",
     "OpeningSensitivityError",
     "OpeningSensitivityRow",
     "OpeningSensitivitySnapshot",

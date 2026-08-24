@@ -73,6 +73,9 @@ def test_design_page_reads_the_canonical_geometry():
     }
     assert {item.label for item in app.selectbox} >= {"Kesit modeli"}
     assert {item.label for item in app.slider} >= {"Katlanma açısı [deg]"}
+    assert app.get("download_button")
+    assert any(item.label == "Taslak TOML indir" for item in app.get("download_button"))
+    assert any(item.value == "Niteliksiz tasarım taslağı" for item in app.caption)
     assert app.warning
     assert "geometri önizlemesi" in app.warning[0].value.lower()
 
@@ -93,6 +96,23 @@ def test_design_preview_controls_regenerate_the_geometry_safely():
         "Radyal zarf çapı",
         "Mesh zarf çapı",
     }
+
+
+def test_design_draft_tracks_preview_and_operating_condition_controls():
+    app = AppTest.from_file(str(APP_PATH)).run(timeout=20)
+    app.sidebar.radio[0].set_value("Tasarım Geometrisi").run(timeout=20)
+
+    next(item for item in app.number_input if item.label == "Açık çap [mm]").set_value(220.0)
+    next(item for item in app.number_input if item.label == "RPM").set_value(6800.0)
+    next(item for item in app.number_input if item.label == "V∞ [m/s]").set_value(4.0)
+    app.run(timeout=20)
+
+    assert not app.exception
+    rendered = "\n".join(item.value for item in app.markdown)
+    assert "Kanonik kaynak SHA-256" in rendered
+    assert "Taslak SHA-256" in rendered
+    assert app.success
+    assert "round-trip" in app.success[0].value
 
 
 @pytest.mark.parametrize("page", PAGES)
