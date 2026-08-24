@@ -99,6 +99,57 @@ def test_analysis_page_runs_once_and_keeps_the_screening_result_in_session():
     assert app.success
 
 
+def test_evidence_import_page_is_session_only_and_idle_before_upload():
+    app = AppTest.from_file(str(APP_PATH)).run(timeout=20)
+    app.sidebar.radio[0].set_value("CFD / FEA / Deney").run(timeout=20)
+
+    assert not app.exception
+    assert app.title[0].value == "CFD / FEA / Deney"
+    assert app.warning
+    assert "fiziksel yeterlilik oluşturmaz" in app.warning[0].value
+    assert any(item.label == "Kanıt sözleşmesi" for item in app.selectbox)
+    assert app.get("file_uploader")
+    assert not app.success
+
+
+def test_evidence_import_page_renders_a_canonical_upload():
+    fixture = REPO_ROOT / "tests/fixtures/cfd_reference/apcsf_10x4.7_published_v1.json"
+    app = AppTest.from_file(str(APP_PATH)).run(timeout=20)
+    app.sidebar.radio[0].set_value("CFD / FEA / Deney").run(timeout=20)
+    app.file_uploader[0].set_value(
+        (fixture.name, fixture.read_bytes(), "application/json")
+    ).run(timeout=20)
+
+    assert not app.exception
+    assert app.success
+    assert "sürümlü sözleşmeyle uyumlu" in app.success[0].value
+    assert {metric.label for metric in app.metric} >= {
+        "Kanıt kimliği",
+        "Dosya boyutu",
+        "Şema",
+    }
+    rendered = "\n".join(item.value for item in app.markdown)
+    assert "Physical qualification · false" in rendered
+    assert "Kaynak SHA-256" in rendered
+
+
+def test_evidence_import_page_renders_fail_closed_rejection():
+    fixture = REPO_ROOT / "tests/fixtures/cfd_reference/apcsf_10x4.7_published_v1.json"
+    altered = fixture.read_bytes().replace(
+        b"apcsf-10x4.7-published-cfd-v1", b"attacker-controlled-cfd-fixture"
+    )
+    app = AppTest.from_file(str(APP_PATH)).run(timeout=20)
+    app.sidebar.radio[0].set_value("CFD / FEA / Deney").run(timeout=20)
+    app.file_uploader[0].set_value(
+        ("altered.json", altered, "application/json")
+    ).run(timeout=20)
+
+    assert not app.exception
+    assert app.error
+    assert "kapalı biçimde reddedildi" in app.error[0].value
+    assert not app.success
+
+
 def test_design_page_reads_the_canonical_geometry():
     app = AppTest.from_file(str(APP_PATH)).run(timeout=20)
     app.sidebar.radio[0].set_value("Tasarım Geometrisi").run(timeout=20)
@@ -190,6 +241,15 @@ def test_streamlit_theme_uses_a_supported_font_name():
 
     assert 'font = "sans serif"' in config
     assert 'font = "sans-serif"' not in config
+
+
+def test_evidence_upload_is_bounded_before_materializing_content():
+    source = APP_PATH.read_text(encoding="utf-8")
+    config = (REPO_ROOT / ".streamlit/config.toml").read_text(encoding="utf-8")
+
+    assert "uploaded.size" in source
+    assert source.index("uploaded.size") < source.index("uploaded.getvalue()")
+    assert "maxUploadSize = 5" in config
 
 
 def test_dashboard_smoke_does_not_import_arrow_pandas_or_altair():

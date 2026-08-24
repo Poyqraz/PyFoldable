@@ -13,6 +13,11 @@ from .design_draft import (
     DraftUnitSelection,
     build_design_draft,
 )
+from .evidence_import import (
+    EvidenceImportArtifact,
+    EvidenceImportError,
+    inspect_evidence_upload,
+)
 from .opening_sensitivity import (
     OpeningSensitivityError,
     OpeningSensitivityRow,
@@ -42,6 +47,9 @@ __all__ = [
     "DesignDraftInputs",
     "DraftUnitSelection",
     "build_design_draft",
+    "EvidenceImportArtifact",
+    "EvidenceImportError",
+    "inspect_evidence_upload",
     "OpeningSensitivityError",
     "OpeningSensitivityRow",
     "OpeningSensitivitySnapshot",

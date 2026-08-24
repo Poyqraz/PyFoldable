@@ -54,8 +54,13 @@ Bu hat bilimsel aşamaların sırasını veya geçiş eşiklerini değiştirmez.
   deterministik JSON ve SHA eşdeğerliği arşivle uyuşmazsa koşum fail-closed durur.
   İndirilen oturum manifesti hesap politikası ve istek SHA'larını, fixture/arşiv
   provenance'ını ve ham oturum sonucunu ayrı sınıflandırmayla birlikte taşır.
-- **UI-05 — sıradaki artım:** CFD/FEA/deney dosyalarını mevcut sözleşmelerle içe alma;
-  şema, birim, solver/numune kimliği ve SHA uyuşmazlığında fail-closed davranış.
+- **UI-05A — tamamlandı:** yayımlanmış CFD referans fixture'ları ile sürümlü
+  PR-09 FEA ve PR-10 deney sözleşme raporları oturum içinde yüklenir; tür, şema,
+  kimlik, birim, qualification ve SHA denetimleri uyuşmazlıkta fail-closed durur.
+  Dosya repo'ya yazılmaz ve hiçbir yükleme fiziksel yeterlilik üretmez.
+- **UI-05B — sıradaki kontrollü dilim:** gerçek ANSYS sonuç vakaları ve kalibre
+  edilmiş ham deney run/sample bundle'ları typed sözleşmelere ayrıştırılıp mevcut
+  değerlendirme çekirdeklerine bağlanacaktır.
 - **UI-06–07 — sonraki artımlar:** rapor merkezi,
   uçtan uca/görsel regresyon ve paketleme.
 

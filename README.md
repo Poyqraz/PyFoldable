@@ -123,7 +123,10 @@ indirilebilir; taslak katı config yükleyicisiyle round-trip edilir ve kanonik 
 aynı application servisinden ve aynı sürümlü 254 mm fixture üzerinden çalıştırır.
 Sonuç yalnız oturumda tutulur, arşiv JSON'uyla byte/SHA düzeyinde karşılaştırılır;
 indirilen ayrı oturum manifesti recipe/politika/fixture/arşiv provenance'ını taşır ve
-`physical_qualification=false` sınırını değiştirmez. Henüz analiz çalıştırmayan
+`physical_qualification=false` sınırını değiştirmez. CFD/FEA/Deney ekranı,
+desteklenen referans ve sürümlü sözleşme raporlarını yalnız
+oturumda fail-closed denetler; yüklenen dosyayı kaydetmez veya nitelikli kanıta
+dönüştürmez. Henüz analiz çalıştırmayan
 sayfalar bunu açıkça belirtir; katlanma
 sonuçları PR-06C fiziksel kapısı geçene kadar `Tarama amaçlı` kalır. Mimari ve
 geliştirme sırası: `docs/ui_engineering_workspace.md`.

@@ -41,7 +41,7 @@ Durumlar yalnız renkle verilmez; Türkçe metin ve ikon birlikte kullanılır.
 | UI-03A | Etkileşimli geometri önizlemesi | SI-bound mesh, menteşe dönüşümü ve fail-closed girdi kontrolü |
 | UI-03B | Tasarım ve çalışma koşulu editörü | Birim kontrollü config round-trip ve kanonik dosyanın değişmezliği |
 | UI-04 | Analiz çalıştırma ve sonuç gezgini | Ortak servis, sürümlü fixture ve arşivle byte/SHA eşdeğerliği |
-| UI-05 | CFD/FEA/deney veri alımı | Mevcut sözleşmelerle şema, birim ve SHA doğrulaması |
+| UI-05 | CFD/FEA/deney veri alımı | İlk dilim: referans/sözleşme raporu şema, birim ve SHA denetimi |
 | UI-06 | Kanıt/rapor merkezi | Tekrar üretilebilir dışa aktarma |
 | UI-07 | E2E, görsel regresyon ve paketleme | Temiz ortam smoke testi ve erişilebilirlik |
 
@@ -99,10 +99,13 @@ zarfını aşarsa önizleme kapalı biçimde hata verir.
 Ekrandaki `Radyal zarf çapı`, nominal uç merkez hattının menteşe projeksiyonunu sabit
 kök yarıçapının altına düşürmeden gösterir. `Mesh zarf çapı` ise chord dahil çizilen
 vertex planformunun ölçümüdür. Bu değerler birbirinin veya CFD/BEM performans çapının
-yerine kullanılmaz. Bir sonraki UI artımı UI-05'tir: CFD/FEA/deney dosyalarını mevcut
-şema, birim, kimlik ve SHA sözleşmeleriyle fail-closed içe alma. Henüz
-etkinleştirilmeyen sayfalar güvenli placeholder'dır: analiz çalıştırmaz ve örnek
-mühendislik sonucu üretmez.
+yerine kullanılmaz. UI-05'in ilk dilimi; yayımlanmış CFD referans fixture'ı ve sürümlü
+PR-09/PR-10 sözleşme raporlarını en çok 5 MiB olacak biçimde yalnız oturum belleğinde
+denetler. Tür, şema, CAD/test-stand kimliği, birim, qualification veya SHA sınırı
+bozulursa dosya reddedilir; repo'ya yazılmaz ve fiziksel yeterlilik üretmez. Sıradaki
+kontrollü dilim gerçek ANSYS sonuç vakaları ile kalibre ham deney run/sample
+bundle'larını typed çekirdeklere bağlamaktır. Henüz etkinleştirilmeyen sayfalar güvenli
+placeholder'dır: analiz çalıştırmaz ve örnek mühendislik sonucu üretmez.
 
 ## Çalıştırma ve test
 
