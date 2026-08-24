@@ -27,6 +27,27 @@ sonunda; rotor fiziği doğrulamasının başında** bulunuyor.
 Bu nedenle mevcut sonuçlar mimari ve karşılaştırmalı geliştirme için değerlidir;
 henüz nihai itki, verim, gerilme veya ömür garantisi olarak kullanılmamalıdır.
 
+## Paralel UI hattı — PyFoldable Engineering Workspace
+
+Fiziksel PR-06C/07/08/09/10 kapıları dış mühendislik ve deney girdilerini beklerken,
+kanıt zincirini görünür ve kullanılabilir hale getiren ayrı bir UI hattı başlatıldı.
+Bu hat bilimsel aşamaların sırasını veya geçiş eşiklerini değiştirmez.
+
+- **UI-00/01 — aktif temel:** Streamlit kabuğu, uygulama görünüm modeli, sürümlü
+  dashboard manifesti ve manifest–kanıt uyuşmazlığında fail-closed davranış.
+- **UI-02 — ilk artım aktif:** kanonik 250 mm tasarım, 140 mm katlanmış zarf,
+  7100 rpm kontrol noktası ve PR-06C–PR-10 kapıları gerçek JSON kanıtlarından gösterilir.
+- **UI-03 — salt okunur temel aktif:** kanonik geometri, kanat istasyonları ve çalışma
+  koşulları gösterilir; birim kontrollü düzenleme/round-trip henüz açık değildir.
+- **UI-04 — sonuç gezgini temeli aktif:** 250 vakalık PR-06D açılma taraması yalnız
+  `screening_only` olarak gösterilir; CLI-eşdeğer yeni analiz çalıştırma sıradadır.
+- **UI-05–07 — sıradaki artımlar:** CFD/FEA/deney içe aktarma, rapor merkezi,
+  uçtan uca/görsel regresyon ve paketleme.
+
+Arayüzde `qualified`, `screening_only`, `pending`, `failed` ve `blocked` durumları
+ayrıdır. PR-06C geçmeden katlanmış durum `screening_only` dışında sunulamaz. Ayrıntılı
+sözleşme ve teslim sırası [UI çalışma alanı belgesindedir](ui_engineering_workspace.md).
+
 ## Hedef ve başarı ölçütü
 
 Nihai hedef; aynı sürüm altında aşağıdakileri yeniden üretebilen bir karar destek
