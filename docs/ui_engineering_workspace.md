@@ -77,6 +77,11 @@ provenance'ını, eşleşme kararını ve ham sonucu taşır. `session_screening
 kanıt farklı başlıklarda gösterilir. Ekranlar şu
 girdilere bağlıdır:
 
+Salt-okunur küçük tablolar Markdown, açılma taraması grafikleri doğrudan Plotly
+`graph_objects` ile çizilir. Böylece karışık Anaconda ortamlarında eski PyArrow'ın
+NumPy 2 ABI'siyle çakışması dashboard render yolunu düşürmez; önerilen kurulum yine
+izole sanal ortam ve aynı yorumlayıcı üzerinden `python -m pip` kullanımıdır.
+
 - `configs/designs/TIP_HINGED_250_CANONICAL.toml`
 - `reports/pr06c_physical_gate.json`
 - `reports/pr06d_opening_sensitivity.json`

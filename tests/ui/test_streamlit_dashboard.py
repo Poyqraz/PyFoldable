@@ -1,3 +1,6 @@
+import subprocess
+import sys
+import textwrap
 from pathlib import Path
 
 import pytest
@@ -171,3 +174,53 @@ def test_dashboard_uses_the_declared_streamlit_140_width_api():
 
     assert 'width="stretch"' not in source
     assert "use_container_width=True" in source
+
+
+def test_dashboard_avoids_arrow_dependent_convenience_renderers():
+    source = APP_PATH.read_text(encoding="utf-8")
+
+    assert "st.dataframe(" not in source
+    assert "st.line_chart(" not in source
+    assert "def _render_markdown_table(" in source
+    assert "def _render_opening_chart(" in source
+
+
+def test_streamlit_theme_uses_a_supported_font_name():
+    config = (REPO_ROOT / ".streamlit/config.toml").read_text(encoding="utf-8")
+
+    assert 'font = "sans serif"' in config
+    assert 'font = "sans-serif"' not in config
+
+
+def test_dashboard_smoke_does_not_import_arrow_pandas_or_altair():
+    script = textwrap.dedent(
+        """
+        import importlib.abc
+        import sys
+        class BlockDataframeStack(importlib.abc.MetaPathFinder):
+            def find_spec(self, fullname, path=None, target=None):
+                if fullname.split('.')[0] in {'pyarrow', 'pandas', 'altair'}:
+                    raise ImportError(f'blocked dependency: {fullname}')
+                return None
+
+        sys.meta_path.insert(0, BlockDataframeStack())
+        from streamlit.testing.v1 import AppTest
+
+        app = AppTest.from_file('apps/pyfoldable_dashboard.py').run(timeout=20)
+        assert not app.exception, app.exception
+        app.sidebar.radio[0].set_value('Performans Sonuçları').run(timeout=20)
+        assert not app.exception, app.exception
+        print('arrow-independent-smoke-ok')
+        """
+    )
+
+    completed = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+    assert "arrow-independent-smoke-ok" in completed.stdout

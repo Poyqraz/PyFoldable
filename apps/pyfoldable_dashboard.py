@@ -28,6 +28,7 @@ from pyfoldable.application.design_draft import (
     build_design_draft,
 )
 from pyfoldable.application.opening_sensitivity import load_opening_sensitivity
+from pyfoldable.application.ui_render import build_markdown_table
 from pyfoldable.visualization.propeller_25d import (
     PreviewBladeStation,
     PropellerPreviewSpec,
@@ -60,6 +61,15 @@ ANALYSIS_RESULT_KEY = "ui04_analysis_result"
 ANALYSIS_REQUEST_KEY = "ui04_analysis_request"
 
 
+def _render_markdown_table(rows: list[dict[str, object]]) -> None:
+    """Render small read-only tables without Streamlit's Arrow bridge."""
+    table = build_markdown_table(rows)
+    if not table:
+        st.caption("Gösterilecek kayıt yok.")
+        return
+    st.markdown(table)
+
+
 def _render_overview() -> None:
     snapshot = load_dashboard_snapshot(REPO_ROOT)
 
@@ -85,7 +95,7 @@ def _render_overview() -> None:
                 st.caption(f"SHA-256: {gate.evidence_sha256}")
 
     st.subheader("Kanıt envanteri")
-    st.dataframe(
+    _render_markdown_table(
         [
             {
                 "Kapı": gate.id,
@@ -94,9 +104,7 @@ def _render_overview() -> None:
                 "Kanıt dosyası": str(gate.evidence_path.relative_to(REPO_ROOT)),
             }
             for gate in snapshot.gates
-        ],
-        hide_index=True,
-        use_container_width=True,
+        ]
     )
 
 
@@ -412,7 +420,7 @@ def _render_design_geometry() -> None:
         )
 
     st.subheader("Kanat istasyonları")
-    st.dataframe(
+    _render_markdown_table(
         [
             {
                 "r/R": station.r_over_R,
@@ -421,9 +429,7 @@ def _render_design_geometry() -> None:
                 "Airfoil": station.airfoil_id,
             }
             for station in snapshot.blade_stations
-        ],
-        hide_index=True,
-        use_container_width=True,
+        ]
     )
     st.info(
         "İstasyon tablosu kanonik girdiyi salt okunur gösterir; önizleme kontrolleri "
@@ -434,7 +440,7 @@ def _render_design_geometry() -> None:
 def _render_operating_conditions() -> None:
     snapshot = load_dashboard_snapshot(REPO_ROOT)
     st.title("Çalışma Koşulları")
-    st.dataframe(
+    _render_markdown_table(
         [
             {
                 "Kimlik": condition.id,
@@ -446,9 +452,7 @@ def _render_operating_conditions() -> None:
                 "p [Pa]": condition.pressure_pa,
             }
             for condition in snapshot.operating_conditions
-        ],
-        hide_index=True,
-        use_container_width=True,
+        ]
     )
     st.info("Gösterilen değerler kanonik TOML dosyasından SI birimlerinde okunur.")
 
@@ -467,6 +471,34 @@ def _opening_result_rows(rows) -> list[dict[str, float]]:
     ]
 
 
+def _render_opening_chart(rows: list[dict[str, float]]) -> None:
+    """Render screening ratios through Plotly without Arrow/Pandas conversion."""
+    if not rows:
+        st.caption("Grafik için tarama sonucu yok.")
+        return
+    figure = go.Figure()
+    for column in ("Statik T/T₀", "Statik Q/Q₀", "İleri T/T₀", "İleri Q/Q₀"):
+        figure.add_trace(
+            go.Scatter(
+                x=[row["Açı [deg]"] for row in rows],
+                y=[row[column] for row in rows],
+                mode="lines+markers",
+                name=column,
+            )
+        )
+    figure.update_layout(
+        xaxis_title="Açı [deg]",
+        yaxis_title="Boyutsuz oran",
+        legend_title="Tarama metriği",
+        margin=dict(l=20, r=20, t=30, b=20),
+    )
+    st.plotly_chart(
+        figure,
+        use_container_width=True,
+        config={"displayModeBar": False},
+    )
+
+
 def _render_session_analysis_result(artifact: AnalysisRunArtifact) -> None:
     st.subheader("Bu oturumda üretilen sonuç")
     st.success("Yeni koşum sürümlü arşiv raporuyla birebir eşleşti.")
@@ -481,12 +513,8 @@ def _render_session_analysis_result(artifact: AnalysisRunArtifact) -> None:
     duration.metric("Koşum süresi", f"{artifact.duration_seconds:.1f} s")
 
     rows = _opening_result_rows(artifact.rows)
-    st.line_chart(
-        rows,
-        x="Açı [deg]",
-        y=["Statik T/T₀", "Statik Q/Q₀", "İleri T/T₀", "İleri Q/Q₀"],
-    )
-    st.dataframe(rows, hide_index=True, use_container_width=True)
+    _render_opening_chart(rows)
+    _render_markdown_table(rows)
     st.markdown(f"`İstek SHA-256 · {artifact.request_sha256}`")
     st.markdown(f"`Hesap politikası SHA-256 · {artifact.policy_sha256}`")
     st.markdown(f"`Fixture SHA-256 · {artifact.fixture_sha256}`")
@@ -578,12 +606,8 @@ def _render_performance_results() -> None:
     states.metric("Açılma durumu", str(snapshot.state_count))
 
     rows = _opening_result_rows(snapshot.rows)
-    st.line_chart(
-        rows,
-        x="Açı [deg]",
-        y=["Statik T/T₀", "Statik Q/Q₀", "İleri T/T₀", "İleri Q/Q₀"],
-    )
-    st.dataframe(rows, hide_index=True, use_container_width=True)
+    _render_opening_chart(rows)
+    _render_markdown_table(rows)
     st.caption(f"Rapor SHA-256 · {snapshot.report_sha256}")
 
 
