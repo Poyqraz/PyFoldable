@@ -109,6 +109,7 @@ class PropellerPreviewMesh:
     hinge_radius_m: float
     maximum_radius_m: float
     effective_radius_m: float
+    centerline_envelope_radius_m: float
     mesh_envelope_radius_m: float
     qualification: str = PREVIEW_QUALIFICATION
 
@@ -337,6 +338,11 @@ def build_propeller_preview_mesh(
         radius - spec.hinge_radius_m
     ) * math.cos(abs(fold_angle))
     radial_envelope_radius = max(spec.hinge_radius_m, projected_tip_radius)
+    tip_centerline_radius = math.hypot(
+        spec.hinge_radius_m + (radius - spec.hinge_radius_m) * math.cos(fold_angle),
+        (radius - spec.hinge_radius_m) * math.sin(fold_angle),
+    )
+    centerline_envelope_radius = max(spec.hinge_radius_m, tip_centerline_radius)
     mesh_envelope_radius = max(
         math.hypot(x_coord, y_coord) for x_coord, y_coord, _ in vertices
     )
@@ -351,5 +357,6 @@ def build_propeller_preview_mesh(
         hinge_radius_m=spec.hinge_radius_m,
         maximum_radius_m=radius,
         effective_radius_m=radial_envelope_radius,
+        centerline_envelope_radius_m=centerline_envelope_radius,
         mesh_envelope_radius_m=mesh_envelope_radius,
     )

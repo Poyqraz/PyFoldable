@@ -30,7 +30,7 @@ def test_dashboard_renders_bound_project_status_without_exceptions():
     assert app.title[0].value == "PyFoldable Engineering Workspace"
     assert {metric.label for metric in app.metric} >= {
         "Açık çap",
-        "Katlanmış zarf",
+        "Katlanmış zarf hedefi",
         "Kontrol noktası",
     }
     rendered = "\n".join(item.value for item in app.markdown)
@@ -40,6 +40,8 @@ def test_dashboard_renders_bound_project_status_without_exceptions():
     assert "Tarama amaçlı" in rendered
     assert "Manifest SHA-256" in rendered
     assert app.warning
+    assert app.error
+    assert "elde edilmiş sonuç değildir" in app.error[0].value
 
 
 def test_performance_page_is_explicitly_screening_only():
@@ -110,6 +112,42 @@ def test_evidence_import_page_is_session_only_and_idle_before_upload():
     assert any(item.label == "Kanıt sözleşmesi" for item in app.selectbox)
     assert app.get("file_uploader")
     assert not app.success
+
+
+def test_folding_mechanism_page_exposes_geometry_conflicts_and_screening_physics():
+    app = AppTest.from_file(str(APP_PATH)).run(timeout=20)
+    app.sidebar.radio[0].set_value("Katlanma Davranışı").run(timeout=20)
+
+    assert not app.exception
+    assert app.title[0].value == "Katlanma Davranışı"
+    assert app.get("plotly_chart")
+    assert {metric.label for metric in app.metric} >= {
+        "Mevcut merkez-hat zarfı",
+        "Çarpışmasız minimum zarf",
+        "Zarf hedefi",
+        "Göbek merkez-hat açıklığı",
+    }
+    assert app.error
+    assert "140 mm" in app.error[0].value
+    rendered = "\n".join(item.value for item in app.markdown)
+    assert "kinematic_screening_only" in rendered
+    assert "Physical qualification · false" in rendered
+    assert "TIP_HINGED_250_V02" in rendered
+    warnings = "\n".join(item.value for item in app.warning)
+    assert "aerodinamik menteşe yükü yoktur" in warnings
+
+
+def test_folding_mechanism_does_not_reuse_fixture_for_changed_dimensions():
+    app = AppTest.from_file(str(APP_PATH)).run(timeout=20)
+    app.sidebar.radio[0].set_value("Katlanma Davranışı").run(timeout=20)
+    next(
+        item for item in app.number_input if item.label == "Mekanizma açık çapı [mm]"
+    ).set_value(260.0)
+    app.run(timeout=20)
+
+    assert not app.exception
+    assert len(app.get("plotly_chart")) == 1
+    assert any("moment eğrisi gösterilmedi" in item.value for item in app.info)
 
 
 def test_evidence_import_page_renders_a_canonical_upload():
@@ -189,7 +227,8 @@ def test_design_preview_controls_regenerate_the_geometry_safely():
     assert not app.exception
     assert app.get("plotly_chart")
     assert {metric.label for metric in app.metric} >= {
-        "Radyal zarf çapı",
+        "Düzlemsel radyal projeksiyon çapı",
+        "Merkez-hat zarf çapı",
         "Mesh zarf çapı",
     }
 

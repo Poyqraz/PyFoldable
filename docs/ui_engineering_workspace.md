@@ -40,6 +40,7 @@ Durumlar yalnız renkle verilmez; Türkçe metin ve ikon birlikte kullanılır.
 | UI-02 | Genel Bakış ve kanıt dashboard'u | Kanonik tasarım ve PR-06C–10 gerçek raporlarından okunur |
 | UI-03A | Etkileşimli geometri önizlemesi | SI-bound mesh, menteşe dönüşümü ve fail-closed girdi kontrolü |
 | UI-03B | Tasarım ve çalışma koşulu editörü | Birim kontrollü config round-trip ve kanonik dosyanın değişmezliği |
+| UI-03C | Katlanma mekanizması review'u | Kinematik ölçü audit'i, hedef uyumu ve V02 screening moment ayrıştırması |
 | UI-04 | Analiz çalıştırma ve sonuç gezgini | Ortak servis, sürümlü fixture ve arşivle byte/SHA eşdeğerliği |
 | UI-05 | CFD/FEA/deney veri alımı | İlk dilim: referans/sözleşme raporu şema, birim ve SHA denetimi |
 | UI-06 | Kanıt/rapor merkezi | Tekrar üretilebilir dışa aktarma |
@@ -96,10 +97,25 @@ menteşe kesitleri oluşturulur; aradaki açık seam sayesinde negatif katlanma 
 yalnız dış yüzeyi deforme etmeden rijit döndürür. Göbek ve menteşe, tanımlı station
 zarfını aşarsa önizleme kapalı biçimde hata verir.
 
-Ekrandaki `Radyal zarf çapı`, nominal uç merkez hattının menteşe projeksiyonunu sabit
-kök yarıçapının altına düşürmeden gösterir. `Mesh zarf çapı` ise chord dahil çizilen
-vertex planformunun ölçümüdür. Bu değerler birbirinin veya CFD/BEM performans çapının
-yerine kullanılmaz. UI-05'in ilk dilimi; yayımlanmış CFD referans fixture'ı ve sürümlü
+Ekrandaki `Düzlemsel radyal projeksiyon çapı`, nominal uç merkez hattının menteşe
+doğrultusundaki izdüşümünü sabit kök yarıçapının altına düşürmeden gösterir; PR-06D
+performans hesabı değildir. `Merkez-hat zarf çapı`
+ucun rotor eksenine gerçek Öklid uzaklığıdır; `Mesh zarf çapı` ise chord dahil çizilen
+vertex planformunun ölçümüdür. Nominal açık çap ayrıca ölçü kılavuzu olarak çizilir.
+Bu değerler birbirinin veya CFD/BEM performans çapının yerine kullanılmaz.
+
+`Katlanma Davranışı` sayfası rijit uç-segmenti menteşe etrafında düzlemsel döndürür,
+uç yolunu, seçili açı ve tam katlanma yolu göbek merkez-hat açıklıklarını gösterir.
+Bu sayfanın girdileri Tasarım Geometrisi widget'larından bağımsızdır; yalnız varsayılanlar
+aynı kanonik snapshot'tan gelir. Boyut tarama audit'i mevcut
+kanonik veride iki blokaj üretir: yüzey station'ları göbekten başlamaz ve nominal uca
+ulaşmaz; 100 mm sabit kök/menteşe yarıçapı nedeniyle teorik minimum merkez-hat zarfı
+200 mm olup 140 mm gereksinimini karşılamaz. 140 mm yalnız hedef olarak korunur.
+Moment grafiği SHA-256 ile sabitlenmiş `TIP_HINGED_250_V02` yazılım fixture'ından gelir;
+öngörülmüş açılardaki statik ayrıştırmada θ̇ ve tip aerodinamik yükü sıfırdır. Hareket/
+açılma tahmini, ANSYS gerilmesi/teması/ömrü veya fiziksel yeterlilik üretmez.
+
+UI-05'in ilk dilimi; yayımlanmış CFD referans fixture'ı ve sürümlü
 PR-09/PR-10 sözleşme raporlarını en çok 5 MiB olacak biçimde yalnız oturum belleğinde
 denetler. Tür, şema, CAD/test-stand kimliği, birim, qualification veya SHA sınırı
 bozulursa dosya reddedilir; repo'ya yazılmaz ve fiziksel yeterlilik üretmez. Sıradaki
