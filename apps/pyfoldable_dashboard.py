@@ -32,6 +32,12 @@ from pyfoldable.application.evidence_import import (
     MAX_EVIDENCE_UPLOAD_BYTES,
     inspect_evidence_upload,
 )
+from pyfoldable.application.folding_mechanism import (
+    MechanismGeometryAudit,
+    MechanismGeometryInputs,
+    build_mechanism_geometry_audit,
+    build_mechanism_physics_fixture,
+)
 from pyfoldable.application.opening_sensitivity import load_opening_sensitivity
 from pyfoldable.application.ui_render import build_markdown_table
 from pyfoldable.visualization.propeller_25d import (
@@ -80,8 +86,75 @@ def _render_markdown_table(rows: list[dict[str, object]]) -> None:
     st.markdown(table)
 
 
+def _circle_xy(radius_m: float, *, point_count: int = 97) -> tuple[list[float], list[float]]:
+    angles = [2.0 * math.pi * index / (point_count - 1) for index in range(point_count)]
+    return (
+        [radius_m * math.cos(angle) for angle in angles],
+        [radius_m * math.sin(angle) for angle in angles],
+    )
+
+
+def _render_geometry_compatibility(audit: MechanismGeometryAudit) -> None:
+    if not audit.minimum_requirement_reachable:
+        st.error(
+            f"{audit.stowed_requirement_m * 1000:.0f} mm katlanmış zarf hedefi bu "
+            f"topolojiyle göbeğe temas etmeden erişilemiyor. Çarpışmasız katlanma yolu "
+            f"en az {audit.collision_free_minimum_envelope_diameter_m * 1000:.1f} mm "
+            "merkez-hat zarfı gerektiriyor."
+        )
+    elif not audit.current_envelope_requirement_met:
+        st.warning(
+            f"Hedef katlanma yolu üzerinde erişilebilir, ancak seçili "
+            f"{audit.fold_angle_deg:.0f}° açıda merkez-hat zarfı hedefi "
+            f"{-audit.current_requirement_margin_m * 1000:.1f} mm aşıyor."
+        )
+    if audit.full_stow_path_hub_clearance_m < 0.0:
+        st.error(
+            "Tam 0°→−180° katlanma yolu göbek zarfıyla kesişiyor; en kötü "
+            f"merkez-hat girişimi {-audit.full_stow_path_hub_clearance_m * 1000:.1f} mm."
+        )
+    if not audit.station_span_complete:
+        if audit.root_surface_gap_m >= 0.0:
+            root_finding = (
+                f"göbek–ilk istasyon boşluğu {audit.root_surface_gap_m * 1000:.1f} mm"
+            )
+        else:
+            root_finding = (
+                "ilk istasyon göbek yarıçapının "
+                f"{-audit.root_surface_gap_m * 1000:.1f} mm içine giriyor"
+            )
+        hinge_finding = (
+            " Menteşe tanımlı station aralığının dışında."
+            if not audit.hinge_station_covered
+            else ""
+        )
+        st.warning(
+            "Girilen nominal ölçüler ile çizilen kanat yüzeyi tam örtüşmüyor: "
+            f"{root_finding}, "
+            f"son istasyon–nominal uç boşluğu {audit.tip_surface_gap_m * 1000:.1f} mm. "
+            f"Mesh yalnız tanımlı station aralığını temsil eder.{hinge_finding}"
+        )
+    if audit.hub_centerline_clearance_m < 0.0:
+        st.error("Seçili açıda katlanan uç segment merkez hattı göbek zarfıyla kesişiyor.")
+    if audit.screening_checks_passed:
+        st.success(
+            "Tanımlı merkez-hat ve station tarama kontrolleri geçti; bu sonuç CAD "
+            "temas/kalınlık uyumluluğu veya fiziksel yeterlilik değildir."
+        )
+
+
 def _render_overview() -> None:
     snapshot = load_dashboard_snapshot(REPO_ROOT)
+    geometry_audit = build_mechanism_geometry_audit(
+        MechanismGeometryInputs(
+            diameter_m=snapshot.open_diameter_m,
+            hub_radius_m=snapshot.hub_radius_m,
+            hinge_radius_m=snapshot.hinge_radius_m,
+            fold_angle_deg=-180.0,
+            stowed_requirement_m=snapshot.stowed_envelope_m,
+        ),
+        tuple(station.r_over_R for station in snapshot.blade_stations),
+    )
 
     st.title("PyFoldable Engineering Workspace")
     st.caption(f"Aktif tasarım · {snapshot.design_id}")
@@ -90,8 +163,22 @@ def _render_overview() -> None:
 
     diameter, envelope, checkpoint = st.columns(3)
     diameter.metric("Açık çap", f"{snapshot.open_diameter_m * 1000:.0f} mm")
-    envelope.metric("Katlanmış zarf", f"≈ {snapshot.stowed_envelope_m * 1000:.0f} mm")
+    envelope.metric(
+        "Katlanmış zarf hedefi",
+        f"{snapshot.stowed_envelope_m * 1000:.0f} mm",
+        delta=(
+            "çarpışmasız minimum "
+            f"{geometry_audit.collision_free_minimum_envelope_diameter_m * 1000:.0f} mm"
+        ),
+        delta_color="inverse",
+    )
     checkpoint.metric("Kontrol noktası", f"{snapshot.checkpoint_rpm:.0f} rpm")
+    if not geometry_audit.minimum_requirement_reachable:
+        st.error(
+            "Katlanmış zarf değeri bir gereksinimdir, elde edilmiş sonuç değildir: "
+            "mevcut düzlemsel uç-mafsal geometrisinin çarpışmasız minimum merkez-hat "
+            f"zarfı {geometry_audit.collision_free_minimum_envelope_diameter_m * 1000:.0f} mm'dir."
+        )
 
     st.subheader("Doğrulama kapıları")
     for left_index in range(0, len(snapshot.gates), 2):
@@ -295,6 +382,16 @@ def _render_design_geometry() -> None:
                 for station in snapshot.blade_stations
             ),
         )
+        geometry_audit = build_mechanism_geometry_audit(
+            MechanismGeometryInputs(
+                diameter_m=preview_spec.diameter_m,
+                hub_radius_m=preview_spec.hub_radius_m,
+                hinge_radius_m=preview_spec.hinge_radius_m,
+                fold_angle_deg=preview_spec.fold_angle_deg,
+                stowed_requirement_m=snapshot.stowed_envelope_m,
+            ),
+            tuple(station.r_over_R for station in snapshot.blade_stations),
+        )
         draft = build_design_draft(
             snapshot.design_path,
             DesignDraftInputs(
@@ -372,6 +469,22 @@ def _render_design_geometry() -> None:
                 hoverinfo="skip",
             )
         )
+        for guide_radius, guide_name, guide_color in (
+            (preview_spec.diameter_m / 2.0, "Nominal açık çap", "#64748B"),
+            (preview_spec.hinge_radius_m, "Menteşe yarıçapı", "#F59E0B"),
+        ):
+            guide_x, guide_y = _circle_xy(guide_radius)
+            figure.add_trace(
+                go.Scatter3d(
+                    x=guide_x,
+                    y=guide_y,
+                    z=[0.0 for _ in guide_x],
+                    mode="lines",
+                    name=guide_name,
+                    line={"color": guide_color, "dash": "dot", "width": 3},
+                    hoverinfo="skip",
+                )
+            )
         view_span = preview_spec.diameter_m * 0.58
         figure.update_layout(
             height=620,
@@ -388,7 +501,7 @@ def _render_design_geometry() -> None:
                 "zaxis": {"title": "z [m]"},
                 "camera": {"eye": {"x": 1.15, "y": 1.15, "z": 1.45}},
             },
-            showlegend=False,
+            showlegend=True,
         )
         st.plotly_chart(
             figure,
@@ -397,21 +510,30 @@ def _render_design_geometry() -> None:
         )
         preview_metrics = st.columns(4)
         preview_metrics[0].metric(
-            "Radyal zarf çapı",
+            "Düzlemsel radyal projeksiyon çapı",
             f"{2.0 * preview_mesh.effective_radius_m * 1000:.1f} mm",
         )
         preview_metrics[1].metric(
+            "Merkez-hat zarf çapı",
+            f"{2.0 * preview_mesh.centerline_envelope_radius_m * 1000:.1f} mm",
+        )
+        preview_metrics[2].metric(
             "Mesh zarf çapı",
             f"{2.0 * preview_mesh.mesh_envelope_radius_m * 1000:.1f} mm",
         )
-        preview_metrics[2].metric("Yüzey üçgeni", f"{len(preview_mesh.faces):,}")
-        preview_metrics[3].metric("Önizleme modeli", airfoil_id)
+        preview_metrics[3].metric("Nominal açık çap", f"{preview_spec.diameter_m * 1000:.1f} mm")
+        st.caption(
+            f"Önizleme modeli {airfoil_id} · {len(preview_mesh.faces):,} yüzey üçgeni · "
+            f"qualification={preview_mesh.qualification}"
+        )
         st.caption(
             "Rotor düzlemi x–y, eksenel yön z'dir. Menteşe dışı yüzey negatif açıyla "
-            "ayrı bir seam üzerinden rijit döndürülür. Radyal zarf merkez-hat "
-            "projeksiyonudur; mesh zarfı chord dahil çizilen planformu ölçer. İkisi de "
-            "CFD/BEM performans sonucu değildir."
+            "ayrı bir seam üzerinden rijit döndürülür. Düzlemsel radyal projeksiyon "
+            "yalnız bu görselleştirmenin izdüşümüdür ve PR-06D performans hesabı "
+            "değildir; merkez-hat zarfı eksene gerçek uzaklığı, mesh zarfı "
+            "ise chord dahil çizilen yüzeyi ölçer. Hiçbiri CFD/BEM sonucu değildir."
         )
+        _render_geometry_compatibility(geometry_audit)
 
         st.subheader("Doğrulanmış taslak config")
         st.caption("Niteliksiz tasarım taslağı")
@@ -465,6 +587,280 @@ def _render_operating_conditions() -> None:
         ]
     )
     st.info("Gösterilen değerler kanonik TOML dosyasından SI birimlerinde okunur.")
+
+
+def _render_folding_mechanism() -> None:
+    snapshot = load_dashboard_snapshot(REPO_ROOT)
+    st.title("Katlanma Davranışı")
+    st.warning(
+        "Bu ekran rijit uç-segment düzlemsel kinematiğini ve sürümlü V02 yazılım "
+        "fixture'ının moment ayrıştırmasını gösterir. CAD temas modeli, ANSYS gerilmesi, "
+        "yorulma ömrü veya fiziksel yeterlilik değildir.",
+        icon="🔎",
+    )
+
+    st.subheader("Geometri ve mekanizma girdileri")
+    st.caption(
+        "Bu sayfa bağımsız bir mekanizma senaryosudur; Tasarım Geometrisi sayfasındaki "
+        "widget durumunu devralmaz. Varsayılanlar aynı kanonik snapshot'tan gelir."
+    )
+    dimension_columns = st.columns(5)
+    diameter_mm = dimension_columns[0].number_input(
+        "Mekanizma açık çapı [mm]",
+        min_value=50.0,
+        max_value=1000.0,
+        value=float(snapshot.open_diameter_m * 1000.0),
+        step=1.0,
+    )
+    hub_radius_mm = dimension_columns[1].number_input(
+        "Mekanizma göbek yarıçapı [mm]",
+        min_value=1.0,
+        max_value=200.0,
+        value=float(snapshot.hub_radius_m * 1000.0),
+        step=1.0,
+    )
+    hinge_radius_mm = dimension_columns[2].number_input(
+        "Mekanizma menteşe yarıçapı [mm]",
+        min_value=2.0,
+        max_value=400.0,
+        value=float(snapshot.hinge_radius_m * 1000.0),
+        step=1.0,
+    )
+    stowed_target_mm = dimension_columns[3].number_input(
+        "Katlanmış zarf hedefi [mm]",
+        min_value=1.0,
+        max_value=1000.0,
+        value=float(snapshot.stowed_envelope_m * 1000.0),
+        step=1.0,
+    )
+    fold_angle_deg = dimension_columns[4].slider(
+        "Mekanizma açısı [deg]",
+        min_value=-180,
+        max_value=0,
+        value=-180,
+        step=5,
+    )
+    rpm = st.slider(
+        "V02 moment fixture RPM",
+        min_value=0,
+        max_value=12000,
+        value=int(round(snapshot.checkpoint_rpm)),
+        step=100,
+    )
+
+    try:
+        audit = build_mechanism_geometry_audit(
+            MechanismGeometryInputs(
+                diameter_m=diameter_mm / 1000.0,
+                hub_radius_m=hub_radius_mm / 1000.0,
+                hinge_radius_m=hinge_radius_mm / 1000.0,
+                fold_angle_deg=float(fold_angle_deg),
+                stowed_requirement_m=stowed_target_mm / 1000.0,
+            ),
+            tuple(station.r_over_R for station in snapshot.blade_stations),
+        )
+        fixture = build_mechanism_physics_fixture(
+            REPO_ROOT / "configs/foldable/TIP_HINGED_250_V02.json",
+            rpm=float(rpm),
+            theta_deg=float(fold_angle_deg),
+        )
+    except (OSError, TypeError, ValueError) as exc:
+        st.error(f"Mekanizma girdisi kapalı biçimde reddedildi: {exc}")
+        return
+
+    geometry_figure = go.Figure()
+    for radius_m, name, color, dash in (
+        (audit.diameter_m / 2.0, "Nominal açık çap", "#64748B", "dot"),
+        (audit.stowed_requirement_m / 2.0, "Katlanmış zarf hedefi", "#EF4444", "dash"),
+        (
+            audit.centerline_envelope_diameter_m / 2.0,
+            "Mevcut merkez-hat zarfı",
+            "#22D3EE",
+            "solid",
+        ),
+    ):
+        x_circle, y_circle = _circle_xy(radius_m)
+        geometry_figure.add_trace(
+            go.Scatter(
+                x=x_circle,
+                y=y_circle,
+                mode="lines",
+                name=name,
+                line={"color": color, "dash": dash, "width": 2},
+                hoverinfo="skip",
+            )
+        )
+
+    for blade_index in range(snapshot.blade_count):
+        azimuth = 2.0 * math.pi * blade_index / snapshot.blade_count
+        cosine = math.cos(azimuth)
+        sine = math.sin(azimuth)
+
+        def rotate(x_coord: float, y_coord: float) -> tuple[float, float]:
+            return (
+                x_coord * cosine - y_coord * sine,
+                x_coord * sine + y_coord * cosine,
+            )
+
+        hub_point = rotate(audit.hub_radius_m, 0.0)
+        hinge_point = rotate(audit.hinge_radius_m, 0.0)
+        tip_point = rotate(audit.tip_center_x_m, audit.tip_center_y_m)
+        geometry_figure.add_trace(
+            go.Scatter(
+                x=[hub_point[0], hinge_point[0]],
+                y=[hub_point[1], hinge_point[1]],
+                mode="lines+markers",
+                name="Sabit kök" if blade_index == 0 else None,
+                showlegend=blade_index == 0,
+                line={"color": "#CBD5E1", "width": 9},
+                marker={"size": 7},
+            )
+        )
+        geometry_figure.add_trace(
+            go.Scatter(
+                x=[hinge_point[0], tip_point[0]],
+                y=[hinge_point[1], tip_point[1]],
+                mode="lines+markers",
+                name="Katlanan uç" if blade_index == 0 else None,
+                showlegend=blade_index == 0,
+                line={"color": "#16A3B6", "width": 9},
+                marker={"size": 8},
+            )
+        )
+        path_angles = [
+            math.radians(float(fold_angle_deg) * index / 36.0) for index in range(37)
+        ]
+        local_path = [
+            (
+                audit.hinge_radius_m + audit.tip_segment_length_m * math.cos(angle),
+                audit.tip_segment_length_m * math.sin(angle),
+            )
+            for angle in path_angles
+        ]
+        rotated_path = [rotate(*point) for point in local_path]
+        geometry_figure.add_trace(
+            go.Scatter(
+                x=[point[0] for point in rotated_path],
+                y=[point[1] for point in rotated_path],
+                mode="lines",
+                name="Uç yolu" if blade_index == 0 else None,
+                showlegend=blade_index == 0,
+                line={"color": "#F59E0B", "dash": "dot", "width": 1},
+                hoverinfo="skip",
+            )
+        )
+
+    hub_x, hub_y = _circle_xy(audit.hub_radius_m)
+    geometry_figure.add_trace(
+        go.Scatter(
+            x=hub_x,
+            y=hub_y,
+            mode="lines",
+            name="Göbek",
+            fill="toself",
+            fillcolor="rgba(71,85,105,0.45)",
+            line={"color": "#94A3B8"},
+        )
+    )
+    view_radius = max(audit.diameter_m, audit.centerline_envelope_diameter_m) * 0.56
+    geometry_figure.update_layout(
+        height=570,
+        margin={"l": 10, "r": 10, "t": 45, "b": 10},
+        title="Düzlemsel rijit uç-segment kinematiği",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis={"title": "x [m]", "range": [-view_radius, view_radius]},
+        yaxis={
+            "title": "y [m]",
+            "range": [-view_radius, view_radius],
+            "scaleanchor": "x",
+            "scaleratio": 1,
+        },
+        legend={"orientation": "h"},
+    )
+    st.plotly_chart(geometry_figure, use_container_width=True, config={"displaylogo": False})
+
+    metrics = st.columns(4)
+    metrics[0].metric(
+        "Mevcut merkez-hat zarfı",
+        f"{audit.centerline_envelope_diameter_m * 1000:.1f} mm",
+    )
+    metrics[1].metric(
+        "Çarpışmasız minimum zarf",
+        f"{audit.collision_free_minimum_envelope_diameter_m * 1000:.1f} mm",
+    )
+    metrics[2].metric("Zarf hedefi", f"{audit.stowed_requirement_m * 1000:.1f} mm")
+    metrics[3].metric(
+        "Göbek merkez-hat açıklığı",
+        f"{audit.hub_centerline_clearance_m * 1000:.1f} mm",
+    )
+    st.markdown(f"`Sınıflandırma · {audit.classification}`")
+    st.markdown("`Physical qualification · false`")
+    st.caption(
+        f"Saf kinematik teorik minimum {audit.minimum_centerline_envelope_diameter_m * 1000:.1f} mm; "
+        f"tam katlanma yolu göbek açıklığı {audit.full_stow_path_hub_clearance_m * 1000:.1f} mm."
+    )
+    _render_geometry_compatibility(audit)
+
+    st.subheader("V02 yazılım fixture moment ayrıştırması")
+    st.warning(
+        "Bu bölüm sürümlü TIP_HINGED_250_V02 sentetik parametreleriyle öngörülmüş "
+        "açılarda statik moment ayrıştırmasıdır; hareket veya açılma tahmini değildir. "
+        "θ̇=0 olduğundan sönüm, tip thrust=0 olduğundan aerodinamik menteşe yükü "
+        "yoktur; sonuç fiziksel tasarım yükü değildir."
+    )
+    fixture_matches = (
+        math.isclose(audit.diameter_m, fixture.diameter_m, abs_tol=1e-12)
+        and math.isclose(audit.hinge_radius_m, fixture.hinge_radius_m, abs_tol=1e-12)
+        and snapshot.blade_count == fixture.blade_count
+    )
+    st.markdown(f"`Fixture · {fixture.fixture_id}`")
+    st.markdown(f"`Fixture SHA-256 · {fixture.source_sha256}`")
+    st.markdown(f"`Sınıflandırma · {fixture.classification}`")
+    if not fixture_matches:
+        st.info(
+            "Girilen çap/menteşe ölçüleri V02 fixture geometrisinden ayrıldığı için "
+            "moment eğrisi gösterilmedi. Yeni fizik parametreleri varsayılmadı."
+        )
+        return
+
+    moment_figure = go.Figure()
+    for field, label, color in (
+        ("centrifugal_moment_nm", "Merkezkaç", "#22D3EE"),
+        ("stiffness_moment_nm", "Yay direnci", "#F59E0B"),
+        ("friction_moment_nm", "Sürtünme", "#A78BFA"),
+        ("net_moment_nm", "Net", "#34D399"),
+    ):
+        moment_figure.add_trace(
+            go.Scatter(
+                x=[point.theta_deg for point in fixture.curve],
+                y=[getattr(point, field) for point in fixture.curve],
+                mode="lines",
+                name=label,
+                line={"color": color},
+            )
+        )
+    moment_figure.update_layout(
+        height=430,
+        margin={"l": 10, "r": 10, "t": 30, "b": 10},
+        xaxis_title="Menteşe açısı [deg]",
+        yaxis_title="Moment [N·m]",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        legend={"orientation": "h"},
+    )
+    st.plotly_chart(moment_figure, use_container_width=True, config={"displaylogo": False})
+    selected_metrics = st.columns(4)
+    selected_metrics[0].metric(
+        "Merkezkaç momenti", f"{fixture.selected.centrifugal_moment_nm:.6f} N·m"
+    )
+    selected_metrics[1].metric(
+        "Yay momenti", f"{fixture.selected.stiffness_moment_nm:.6f} N·m"
+    )
+    selected_metrics[2].metric(
+        "Sürtünme momenti", f"{fixture.selected.friction_moment_nm:.6f} N·m"
+    )
+    selected_metrics[3].metric("Net fixture momenti", f"{fixture.selected.net_moment_nm:.6f} N·m")
 
 
 def _opening_result_rows(rows) -> list[dict[str, float]]:
@@ -693,6 +1089,8 @@ def main() -> None:
         _render_analysis_run()
     elif page == "Performans Sonuçları":
         _render_performance_results()
+    elif page == "Katlanma Davranışı":
+        _render_folding_mechanism()
     elif page == "CFD / FEA / Deney":
         _render_evidence_import()
     else:

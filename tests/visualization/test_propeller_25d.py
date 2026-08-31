@@ -134,6 +134,18 @@ def test_radial_and_mesh_envelopes_are_distinct_and_never_ignore_the_fixed_root(
     )
 
 
+def test_centerline_envelope_uses_axis_distance_while_effective_radius_is_projection():
+    folded = build_propeller_preview_mesh(
+        _spec(blade_count=1, fold_angle_deg=-90.0), STATIONS
+    )
+
+    assert folded.effective_radius_m == pytest.approx(0.100)
+    assert folded.centerline_envelope_radius_m == pytest.approx(
+        math.hypot(0.100, 0.025)
+    )
+    assert folded.centerline_envelope_radius_m > folded.effective_radius_m
+
+
 @pytest.mark.parametrize(
     ("overrides", "message"),
     [

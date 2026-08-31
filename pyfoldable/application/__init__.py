@@ -18,6 +18,14 @@ from .evidence_import import (
     EvidenceImportError,
     inspect_evidence_upload,
 )
+from .folding_mechanism import (
+    MechanismGeometryAudit,
+    MechanismGeometryInputs,
+    MechanismPhysicsFixture,
+    MechanismPhysicsPoint,
+    build_mechanism_geometry_audit,
+    build_mechanism_physics_fixture,
+)
 from .opening_sensitivity import (
     OpeningSensitivityError,
     OpeningSensitivityRow,
@@ -50,6 +58,12 @@ __all__ = [
     "EvidenceImportArtifact",
     "EvidenceImportError",
     "inspect_evidence_upload",
+    "MechanismGeometryAudit",
+    "MechanismGeometryInputs",
+    "MechanismPhysicsFixture",
+    "MechanismPhysicsPoint",
+    "build_mechanism_geometry_audit",
+    "build_mechanism_physics_fixture",
     "OpeningSensitivityError",
     "OpeningSensitivityRow",
     "OpeningSensitivitySnapshot",

@@ -126,7 +126,11 @@ indirilen ayrı oturum manifesti recipe/politika/fixture/arşiv provenance'ını
 `physical_qualification=false` sınırını değiştirmez. CFD/FEA/Deney ekranı,
 desteklenen referans ve sürümlü sözleşme raporlarını yalnız
 oturumda fail-closed denetler; yüklenen dosyayı kaydetmez veya nitelikli kanıta
-dönüştürmez. Henüz analiz çalıştırmayan
+dönüştürmez. Katlanma Davranışı ekranı girilen ölçülerin düzlemsel uç-mafsal
+kinematiğiyle uyumunu denetler; 140 mm zarf gereksiniminin mevcut 100 mm sabit
+menteşe yarıçapıyla erişilemediğini ve kanonik yüzey station aralığındaki göbek/uç
+boşluklarını açıkça raporlar. V02 moment grafiği yalnız sentetik, aerodinamik yük
+içermeyen bir yazılım fixture'ıdır. Henüz analiz çalıştırmayan
 sayfalar bunu açıkça belirtir; katlanma
 sonuçları PR-06C fiziksel kapısı geçene kadar `Tarama amaçlı` kalır. Mimari ve
 geliştirme sırası: `docs/ui_engineering_workspace.md`.

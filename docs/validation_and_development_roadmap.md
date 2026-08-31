@@ -35,8 +35,10 @@ Bu hat bilimsel aşamaların sırasını veya geçiş eşiklerini değiştirmez.
 
 - **UI-00/01 — aktif temel:** Streamlit kabuğu, uygulama görünüm modeli, sürümlü
   dashboard manifesti ve manifest–kanıt uyuşmazlığında fail-closed davranış.
-- **UI-02 — ilk artım aktif:** kanonik 250 mm tasarım, 140 mm katlanmış zarf,
-  7100 rpm kontrol noktası ve PR-06C–PR-10 kapıları gerçek JSON kanıtlarından gösterilir.
+- **UI-02 — ilk artım aktif:** kanonik 250 mm tasarım, beyan edilmiş 140 mm
+  katlanmış zarf gereksinimi, 7100 rpm kontrol noktası ve PR-06C–PR-10 kapıları gerçek
+  JSON kanıtlarından gösterilir. 140 mm değer elde edilmiş sonuç gibi sunulmaz;
+  UI-03C geometrik uyumluluk kapısına bağlıdır.
 - **UI-03A — 2.5D geometri önizlemesi aktif:** çap, göbek, kanat sayısı, NACA kesiti,
   chord–twist dağılımı ve menteşe açısı etkileşimli yüzeye bağlıdır. Çıktı açıkça
   `geometry_preview_not_cad_or_physical_result` olarak sınıflandırılır; config'e yazmaz.
@@ -46,6 +48,19 @@ Bu hat bilimsel aşamaların sırasını veya geçiş eşiklerini değiştirmez.
   `*_DRAFT.toml` çıktısına dönüştürülür. Taslak kaynak tasarım SHA-256 kimliğini ve
   `unqualified_design_draft` sınıfını taşır, kanonik dosyaya yazmaz ve indirmeden önce
   mevcut katı yükleyiciyle round-trip edilir.
+- **UI-03C — tamamlandı:** girilen açık çap, göbek,
+  menteşe, katlanma açısı ve zarf hedefi düzlemsel rijit uç-segment kinematiğiyle
+  denetlenir. Görselleştirmeye ait düzlemsel radyal projeksiyon, eksene gerçek merkez-hat
+  uzaklığı ve chord dahil mesh zarfı ayrı gösterilir; ilki PR-06D performans sonucu
+  olarak etiketlenmez. Seçili açı ile tam katlanma yolu göbek teması ayrı kapılardır.
+  Kanonik station'ların 0.20R–0.98R ile sınırlı
+  olması göbekte 7 mm ve uçta 2,5 mm tanımsız yüzey bırakır. 100 mm sabit menteşe
+  yarıçapı da en az 200 mm merkez-hat zarfı oluşturduğu için 140 mm hedef mevcut
+  topolojiyle uyumsuzdur; arayüz bunu fail-closed hata olarak gösterir. V02 moment
+  ayrıştırması yalnız SHA-256 ile sabitlenmiş sentetik yazılım fixture'ı, öngörülmüş
+  açılarda ve aerodinamik menteşe yükü olmadan, `physical_qualification=false`
+  sınırında sunulur. CAD katı temas/kalınlık modeli ile gerçek dinamik açılma ve ANSYS
+  yükleri veri/geometry sözleşmeleri gelene kadar açık takip konularıdır.
 - **UI-04 — aktif:** izin-listeli PR-06D recipe'si, sabitlenmiş 254 mm UIUC fixture'ını
   CLI ve Streamlit'in paylaştığı aynı application servisiyle oturum içinde yeniden
   çalıştırır. Analiz açık buton eylemi dışında başlamaz, repo/rapor yazmaz ve yeni
