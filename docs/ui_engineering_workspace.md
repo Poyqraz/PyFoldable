@@ -19,6 +19,16 @@ JSON kanıtıyla uyuşmazsa dashboard açılmaz. `qualified` durumu yalnız kan�
 `passed=true` bulunduğunda kabul edilir. Kanıt yolları repo dışına çıkamaz ve her dosya
 SHA-256 kimliğiyle gösterilir.
 
+## PY-01 aktif tasarım hazırlığı
+
+Tasarım Geometrisi ekranı, indirilen taslakla aynı geometri/ilk çalışma koşulundan
+nominal istasyon Re/Mach/hücum açısı tablosu ve SHA bağlı JSON üretir. İndüksiyon
+içermez, katlanmış pozun analizi değildir ve tam BEM polar kapsamını doğrulamaz.
+Widget değişiminde BEM çağrılmaz. Python'daki ayrı `run_design_analysis` servisi
+yalnız açıkça sağlanan polarlarda tam açık taslağı mevcut çözücüye bağlar; UI polar
+yükleme ve çalıştırma butonu PY-03'tür. Eski 254 mm benchmark değişmez.
+Ayrıntılar: [Python-first plan](python_research_execution_plan.md).
+
 ## Durum sözlüğü
 
 | Durum | Kullanım |
