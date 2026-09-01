@@ -100,6 +100,29 @@ kanıt paketi ve başarısızlığı görünür kılan regresyonu bulunduğunda 
 
 ## Sonraki aşamalar
 
+### Python öncelikli geliştirme — 2026-09-01 kapsam kararı
+
+Kullanıcı kararıyla MATLAB'da planlanan sayısal işler, mümkün olan yerde mevcut
+Python çekirdeği üzerinde geliştirilecektir. Baskı yönü/üretim DoE bu yazılım
+hattının önceliği veya engeli değildir; mevcut malzeme doğrulama kapıları korunur.
+SciSpace + Consensus araştırması, kaynak erişim sınırları ve kabul ölçütleri
+[Python araştırma/yürütme planındadır](python_research_execution_plan.md).
+
+1. **PY-01 — bu artım:** tam taslak TOML'den nominal yerel Reynolds/Mach/hücum
+   açısı hazırlığı ve açıkça verilen polarlarla mevcut BEM çözücüsünü çağıran ayrı
+   Python servisi. UI hazırlığı gösterir; BEM butonu henüz eklenmez. İndüksiyonsuz
+   hazırlık tam solver sorgu zarfı değildir. 254 mm sabit benchmark değişmez.
+2. **PY-02/03 — sıradaki:** beş proje profilinin kaynaklı koordinat desteği,
+   preview–polar–solver kimlik birliği ve doğrulanmış polar bundle'ıyla aktif
+   taslak analizi. Eksik polar yerine otomatik proxy veya clamp yoktur.
+3. **PY-04 / PR-11A:** deterministik tarama ve optimizasyon altyapısı; sentetik
+   doğruluk testleri, sınırlı hesap bütçesi, açık başarısızlık kaydı. Fiziksel
+   optimum tasarım önerisi değildir.
+4. **PY-05/06:** mekanizma geçiş dinamiği, kalibrasyon/belirsizlik ve eşleştirilmiş
+   referans raporları; mevcut sözleşmeleri genişletir. PR #3 ayrı tutulur.
+
+Bu sıra, veri bekleyen fiziksel PR-06C–PR-10 kapılarının açıldığını göstermez.
+
 ### PR-06 — rotor aerodinamiği
 
 - **PR-06A — yerel indüklenmiş-akış çekirdeği (tamamlandı ve review edildi).** Hover'da tekillik
@@ -227,6 +250,10 @@ Morgado/Pascoa yöntem karşılaştırması bağlandı. Bunlar model/doğrulama 
 proje katlanır prototipinin kalibrasyonlu ham ölçümü sayılmaz.
 
 ### PR-11 — robust çok amaçlı optimizasyon
+
+**PR-11A yazılım altyapısı** gerçek veriden önce sentetik/analitik testlerle
+ilerleyebilir; Python-first planda PY-04'e bağlıdır. **PR-11B fiziksel tasarım
+kararı** ise aşağıdaki doğrulama koşullarına bağlı kalır.
 
 Yalnız doğrulanmış çalışma zarfında; itki/verim, katlanmış hacim, gerilme, ömür,
 motor sınırları ve üretim toleransları birlikte optimize edilir. Pareto adayları CFD,

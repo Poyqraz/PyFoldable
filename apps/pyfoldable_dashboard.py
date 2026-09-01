@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 import sys
 from pathlib import Path
@@ -23,10 +24,12 @@ from pyfoldable.application.analysis_run import (
     run_analysis,
 )
 from pyfoldable.application.design_draft import (
+    DesignDraftArtifact,
     DesignDraftInputs,
     DraftUnitSelection,
     build_design_draft,
 )
+from pyfoldable.application.design_analysis import DesignAnalysisError, prepare_design_analysis
 from pyfoldable.application.evidence_import import (
     EvidenceImportError,
     MAX_EVIDENCE_UPLOAD_BYTES,
@@ -91,6 +94,53 @@ def _circle_xy(radius_m: float, *, point_count: int = 97) -> tuple[list[float], 
     return (
         [radius_m * math.cos(angle) for angle in angles],
         [radius_m * math.sin(angle) for angle in angles],
+    )
+
+
+def _render_design_preparation(draft: DesignDraftArtifact) -> None:
+    st.subheader("Aktif tasarım · Python analiz hazırlığı")
+    st.caption(
+        "İndirilen taslakla aynı geometri ve ilk çalışma koşulu kullanılır. "
+        "Bu hazırlık BEM çalıştırmaz; indüksiyon/swirl içermez ve polarların "
+        "tüm solver sorgularını kapsadığını doğrulamaz."
+    )
+    try:
+        artifact = prepare_design_analysis(draft)
+    except DesignAnalysisError as exc:
+        st.warning(f"Analiz hazırlığı yapılamadı: {exc}")
+        return
+    document = json.loads(artifact.report_json)
+    preparation = document["preparation"]
+    st.caption(
+        f"Aktif açık çap · {preparation['diameter_m'] * 1000:.1f} mm · "
+        "active_design_analysis_preparation · physical_qualification=false"
+    )
+    if abs(preparation["preview_fold_angle_rad"]) > 1e-12:
+        st.warning(
+            "Aşağıdaki değerler açık kanat içindir; seçili katlanmış pozun "
+            "aerodinamik sonucu değildir. Aktif tasarım BEM servisi bu dilimde "
+            "yalnız tam açık pozu kabul eder."
+        )
+    _render_markdown_table([
+        {
+            "r/R": row["r_over_R"],
+            "Aktif chord [mm]": row["chord_m"] * 1000,
+            "Profil": row["airfoil_id"],
+            "Nominal Re": row["reynolds"],
+            "Nominal Mach": row["mach"],
+            "Nominal α [deg]": math.degrees(row["alpha_rad"]),
+        }
+        for row in preparation["stations"]
+    ])
+    st.caption(f"Hazırlık istek SHA-256 · {artifact.request_sha256}")
+    st.download_button(
+        "Analiz hazırlığını JSON indir", data=artifact.report_json,
+        file_name=artifact.filename, mime="application/json",
+    )
+    st.info(
+        "Python BEM servisi açıkça sağlanan polar ailelerini kullanır; eksik veri "
+        "yerine proxy üretmez. Arayüzdeki 254 mm referans benchmark'ı ayrıdır. "
+        "Doğrulanmış polar yükleme ve aktif tasarım BEM butonu sonraki dilimdedir."
     )
 
 
@@ -550,6 +600,7 @@ def _render_design_geometry() -> None:
             "İndirilen dosya `unqualified_design_draft` olarak işaretlidir. Kanonik "
             "dosyaya dönüş ancak ayrı review ve doğrulama adımıyla yapılabilir."
         )
+        _render_design_preparation(draft)
 
     st.subheader("Kanat istasyonları")
     _render_markdown_table(

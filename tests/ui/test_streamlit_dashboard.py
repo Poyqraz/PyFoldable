@@ -72,6 +72,38 @@ def test_analysis_page_is_idle_until_an_explicit_run():
     assert not app.success
 
 
+def test_geometry_preparation_tracks_active_inputs_without_running_bem(monkeypatch):
+    import pyfoldable.application.design_analysis as design_analysis
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("BEM must not run on a geometry widget change")
+
+    monkeypatch.setattr(design_analysis, "solve_bem_rotor", forbidden)
+    app = AppTest.from_file(str(APP_PATH)).run(timeout=20)
+    app.sidebar.radio[0].set_value("Tasarım Geometrisi").run(timeout=20)
+    assert not app.exception
+    assert any(item.label == "Analiz hazırlığını JSON indir" for item in app.get("download_button"))
+    captions = "\n".join(item.value for item in app.caption)
+    assert "active_design_analysis_preparation" in captions
+    before = next(item.value for item in app.caption if "Hazırlık istek SHA-256" in item.value)
+    next(item for item in app.number_input if item.label == "Açık çap [mm]").set_value(300.0)
+    app.run(timeout=20)
+    assert not app.exception
+    after = next(item.value for item in app.caption if "Hazırlık istek SHA-256" in item.value)
+    assert before != after
+    assert any("300.0 mm" in item.value for item in app.caption)
+
+
+def test_geometry_preparation_rejects_stopped_rotor_without_stale_download():
+    app = AppTest.from_file(str(APP_PATH)).run(timeout=20)
+    app.sidebar.radio[0].set_value("Tasarım Geometrisi").run(timeout=20)
+    next(item for item in app.number_input if item.label == "RPM").set_value(0.0)
+    app.run(timeout=20)
+    assert not app.exception
+    assert any("Analiz hazırlığı yapılamadı" in item.value for item in app.warning)
+    assert not any(item.label == "Analiz hazırlığını JSON indir" for item in app.get("download_button"))
+
+
 def test_analysis_page_runs_once_and_keeps_the_screening_result_in_session():
     app = AppTest.from_file(str(APP_PATH)).run(timeout=20)
     app.sidebar.radio[0].set_value("Analiz Çalıştırma").run(timeout=20)
