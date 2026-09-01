@@ -104,6 +104,44 @@ def test_geometry_preparation_rejects_stopped_rotor_without_stale_download():
     assert not any(item.label == "Analiz hazırlığını JSON indir" for item in app.get("download_button"))
 
 
+@pytest.mark.parametrize("profile", ["NACA0012", "NACA2412", "NACA23012", "NACA4415", "NACA63-412"])
+def test_geometry_uses_project_coordinates_for_every_profile(profile, monkeypatch):
+    import pyfoldable.visualization.propeller_25d as preview
+    from pyfoldable.core.profile_catalog import PROJECT_AIRFOIL_IDS, load_project_airfoil
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Project coordinates must not be replaced with analytic NACA4")
+
+    monkeypatch.setattr(preview, "naca4_section_loop", forbidden)
+    app = AppTest.from_file(str(APP_PATH)).run(timeout=20)
+    app.sidebar.radio[0].set_value("Tasarım Geometrisi").run(timeout=20)
+    selector = next(item for item in app.selectbox if item.label == "Kesit modeli")
+    assert tuple(selector.options) == PROJECT_AIRFOIL_IDS
+    selector.set_value(profile).run(timeout=20)
+    assert not app.exception
+    assert not any("Önizleme girdisi geçersiz" in item.value for item in app.error)
+    assert any("140 mm" in item.value for item in app.error)  # Existing geometry gate stays closed.
+    assert any(load_project_airfoil(profile).metadata["airfoil_coordinate_sha256"] in item.value for item in app.caption)
+    assert any(item.label == "Analiz hazırlığını JSON indir" for item in app.get("download_button"))
+
+
+def test_geometry_catalog_failure_has_no_stale_downloads(monkeypatch):
+    import pyfoldable.core.profile_catalog as catalog
+
+    app = AppTest.from_file(str(APP_PATH)).run(timeout=20)
+    app.sidebar.radio[0].set_value("Tasarım Geometrisi").run(timeout=20)
+    assert app.get("download_button")
+
+    def broken(*args, **kwargs):
+        raise ValueError("Project catalog source SHA-256 mismatch")
+
+    monkeypatch.setattr(catalog, "load_project_airfoil", broken)
+    app.run(timeout=20)
+    assert not app.exception
+    assert any("SHA-256 mismatch" in item.value for item in app.error)
+    assert not app.get("download_button")
+
+
 def test_analysis_page_runs_once_and_keeps_the_screening_result_in_session():
     app = AppTest.from_file(str(APP_PATH)).run(timeout=20)
     app.sidebar.radio[0].set_value("Analiz Çalıştırma").run(timeout=20)

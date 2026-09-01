@@ -45,9 +45,9 @@ No aerodynamic dataset was fabricated from paper abstracts.
 
 | Slice | Scope | Acceptance |
 | --- | --- | --- |
-| PY-01 — this change | Active-draft preparation + explicit-polar BEM Python service | Exact TOML identity; nominal station Re/Mach/alpha; strict bounds; full output/provenance; UI preparation only |
-| PY-02 — next | Five-profile coordinate/polar identity | NACA0012/2412/23012/4415/63-412; reuse coordinate parser/provider/cache; no 4-series substitution for 5/6-series; preview–solver identity tests |
-| PY-03 | Validated polar bundle UI + active-draft BEM run | Explicit action; bounded work; input-change invalidation; no benchmark/proxy substitution or metadata-based qualification |
+| PY-01 — completed, PR #49 | Active-draft preparation + explicit-polar BEM Python service | Exact TOML identity; nominal station Re/Mach/alpha; strict bounds; full output/provenance; UI preparation only |
+| PY-02 — implemented | Five-profile coordinate/polar identity | NACA0012/2412/23012/4415/63-412; offline source/hash-pinned coordinates; exact draft/preview/provider identity; mismatched polar rejection |
+| PY-03 — next | Validated polar bundle UI + active-draft BEM run | Explicit action; bounded work; input-change invalidation; no benchmark/proxy substitution or metadata-based qualification |
 | PY-04 / PR-11A | Deterministic sweeps and optimizer infrastructure | Reuse PY-01 callback; one algorithm first; bounds, seeds, budgets, failure accounting, analytic tests; unknown constraints cannot pass |
 | PY-05 | Mechanism transient infrastructure | Coordinates/signs, mass/CG/inertia/friction, RPM history and acceleration/deceleration, stop events; synthetic limiting cases; PR #3 separate |
 | PY-06 | Calibration, uncertainty, comparison reports | Extend PR-07/09/10; distinguish shaft/hinge moments and electrical/shaft power; matched-diameter/conditions thrust ratio; target fitting is not validation |
@@ -57,6 +57,13 @@ deployment qualification still require real evidence. Keep 250/140 mm geometry
 requirements, 7100 RPM and 0.85 thrust-ratio target. The 254 mm UIUC benchmark is
 not the project's reference denominator. Print orientation is not an optimizer
 variable or a blocking prerequisite in this plan.
+
+PY-02 extends merged main `656b756` without repeating PY-01. Sources, exact
+sampling decisions, compatibility and TDD acceptance are recorded in
+[PY-02 coordinate identity](py02_profile_coordinate_identity.md). The geometry
+selector now supplies real coordinate realizations for all five profiles; the
+service checks those identities against every polar table. No real ANSYS or
+experiment data is assumed, and the 140 mm mechanism gate remains unchanged.
 
 ## PY-01 API and scientific boundary
 

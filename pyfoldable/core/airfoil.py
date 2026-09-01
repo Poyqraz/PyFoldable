@@ -14,6 +14,7 @@ import io
 import math
 import re
 from bisect import bisect_right
+from dataclasses import replace
 from pathlib import Path
 from typing import Literal, Sequence
 
@@ -25,6 +26,54 @@ AirfoilFileFormat = Literal["auto", "selig", "lednicer", "csv"]
 
 class AirfoilGeometryError(ValueError):
     """Raised when an airfoil file or its geometry is invalid."""
+
+
+def airfoil_coordinate_sha256(airfoil: AirfoilDefinition) -> str:
+    """Hash exact coordinate content using the existing polar-provider format.
+
+    This is distinct from source_sha256 (file bytes) and does not prove that a
+    coordinate set represents a manufactured blade or a validated polar.
+    """
+    if not isinstance(airfoil, AirfoilDefinition) or not airfoil.coordinates:
+        raise AirfoilGeometryError("Coordinate identity requires an airfoil geometry.")
+    payload = "\n".join(f"{x:.17g},{y:.17g}" for x, y in airfoil.coordinates)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def validate_airfoil_definition(airfoil: AirfoilDefinition) -> AirfoilDefinition:
+    """Validate already canonical coordinates without resampling/renormalizing.
+
+    Frozen models may still contain mutable metadata; return a fresh metadata
+    snapshot. A claimed coordinate hash is checked rather than trusted.
+    """
+    if not isinstance(airfoil, AirfoilDefinition):
+        raise AirfoilGeometryError("Expected an AirfoilDefinition.")
+    if not 5 <= len(airfoil.coordinates) <= 2000:
+        raise AirfoilGeometryError("Airfoil coordinates require 5 to 2000 points.")
+    for point in airfoil.coordinates:
+        if len(point) != 2 or any(
+            isinstance(value, bool) or not isinstance(value, (int, float))
+            or not math.isfinite(value) for value in point
+        ):
+            raise AirfoilGeometryError("Coordinates must be finite numeric pairs.")
+    points = tuple((float(x), float(y)) for x, y in airfoil.coordinates)
+    if min(x for x, _ in points) != 0.0 or max(x for x, _ in points) != 1.0:
+        raise AirfoilGeometryError("Coordinates must already use normalized unit chord.")
+    if tuple(_canonical_order(points)) != points:
+        raise AirfoilGeometryError("Coordinates must use canonical upper-TE/LE/lower-TE order.")
+    if abs(points[_leading_edge_index(points)][1]) > 1e-12:
+        raise AirfoilGeometryError("Canonical leading-edge ordinate must be zero.")
+    _reject_repeated_points(points)
+    _reject_self_intersections(points)
+    metrics = _geometry_metrics(points)
+    result = replace(airfoil, coordinates=points)
+    digest = airfoil_coordinate_sha256(result)
+    if "airfoil_coordinate_sha256" in airfoil.metadata and airfoil.metadata["airfoil_coordinate_sha256"] != digest:
+        raise AirfoilGeometryError("Airfoil coordinate SHA-256 does not match the geometry.")
+    return replace(result, metadata={
+        **airfoil.metadata, **metrics, "point_count": len(points),
+        "airfoil_coordinate_sha256": digest,
+    })
 
 
 _NUMBER = re.compile(r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?")

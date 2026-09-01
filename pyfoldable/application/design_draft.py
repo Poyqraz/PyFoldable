@@ -10,12 +10,14 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 import tempfile
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Mapping
 
 from pyfoldable.core.config import load_design_config
+from pyfoldable.core.airfoil import validate_airfoil_definition
 from pyfoldable.core.models import (
     AirfoilDefinition,
     BladeGeometry,
@@ -112,7 +114,10 @@ def _validate_scalar(name: str, value: object) -> float:
     return number
 
 
-def _build_model(source: PropellerDesign, inputs: DesignDraftInputs) -> PropellerDesign:
+def _build_model(
+    source: PropellerDesign, inputs: DesignDraftInputs,
+    airfoil_definition: AirfoilDefinition | None = None,
+) -> PropellerDesign:
     if isinstance(inputs.blade_count, bool) or not isinstance(inputs.blade_count, int):
         raise ValueError("blade_count must be an integer.")
     if inputs.blade_count < 1:
@@ -181,7 +186,13 @@ def _build_model(source: PropellerDesign, inputs: DesignDraftInputs) -> Propelle
     )
 
     airfoils = list(source.airfoils)
-    if airfoil_id not in {airfoil.id for airfoil in airfoils}:
+    if airfoil_definition is not None:
+        definition = validate_airfoil_definition(airfoil_definition)
+        if definition.id != airfoil_id:
+            raise ValueError("Selected airfoil_id and explicit airfoil definition must match.")
+        airfoils = [airfoil for airfoil in airfoils if airfoil.id != airfoil_id]
+        airfoils.append(definition)
+    elif airfoil_id not in {airfoil.id for airfoil in airfoils}:
         is_naca_4_digit = (
             airfoil_id.startswith("NACA")
             and len(airfoil_id) == 8
@@ -303,6 +314,8 @@ def _quantity(value_si: float, dimension: str, units: DraftUnitSelection) -> str
 
 def _metadata_lines(metadata: Mapping[str, Any]) -> list[str]:
     lines: list[str] = []
+    if any(not isinstance(key, str) for key in metadata):
+        raise ValueError("Draft metadata keys must be strings.")
     for key in sorted(metadata):
         value = metadata[key]
         if isinstance(value, bool):
@@ -317,7 +330,8 @@ def _metadata_lines(metadata: Mapping[str, Any]) -> list[str]:
             raise ValueError(
                 f"Draft metadata {key!r} must be a TOML scalar, got {type(value).__name__}."
             )
-        lines.append(f"{key} = {rendered}")
+        literal_key = key if re.fullmatch(r"[A-Za-z0-9_-]+", key) else _quoted(key)
+        lines.append(f"{literal_key} = {rendered}")
     return lines
 
 
@@ -354,7 +368,13 @@ def _serialize(design: PropellerDesign, units: DraftUnitSelection) -> str:
                 f"source = {_quoted(airfoil.source)}",
             ]
         )
-        if airfoil.metadata:
+        if airfoil.coordinates:
+            validated = validate_airfoil_definition(airfoil)
+            lines.append("coordinates = [" + ", ".join(
+                f"[{_number(x)}, {_number(y)}]" for x, y in validated.coordinates
+            ) + "]")
+            lines.extend(["[airfoils.metadata]", *_metadata_lines(validated.metadata)])
+        elif airfoil.metadata:
             raise ValueError("Draft serialization does not support nested airfoil metadata.")
     for condition in design.operating_conditions:
         lines.extend(
@@ -499,13 +519,14 @@ def build_design_draft(
     inputs: DesignDraftInputs,
     *,
     units: DraftUnitSelection | None = None,
+    airfoil_definition: AirfoilDefinition | None = None,
 ) -> DesignDraftArtifact:
     """Build and round-trip a draft without writing beside or over its source."""
     path = Path(source_path).resolve()
     source_bytes = path.read_bytes()
     source_sha256 = hashlib.sha256(source_bytes).hexdigest()
     source = load_design_config(path)
-    draft = _build_model(source, inputs)
+    draft = _build_model(source, inputs, airfoil_definition)
     draft_metadata = dict(draft.metadata)
     draft_metadata["source_design_sha256"] = source_sha256
     draft = replace(draft, metadata=draft_metadata)

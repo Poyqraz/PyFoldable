@@ -24,12 +24,13 @@ from pyfoldable.core import BEMRotorSettings, PolarFamily, PolarTable, load_desi
 from pyfoldable.core.bem_rotor import BEM_ROTOR_SCHEMA_VERSION, BEMRotorElementError
 from pyfoldable.core.models import PropellerDesign
 from pyfoldable.core.units import normalize_quantity
+from pyfoldable.core.airfoil import airfoil_coordinate_sha256
 
 from .design_draft import DesignDraftArtifact
 
 
 SERVICE_ID = "pyfoldable.application.design_analysis"
-SERVICE_VERSION = 1
+SERVICE_VERSION = 2
 MAX_DRAFT_BYTES = 1_000_000
 
 
@@ -119,6 +120,7 @@ def _implementation_identity() -> dict[str, Any]:
         "pyfoldable.core.models", "pyfoldable.core.polar",
         "pyfoldable.core.polar_spanwise", "pyfoldable.core.rotational_augmentation",
         "pyfoldable.core.units",
+        "pyfoldable.core.airfoil", "pyfoldable.core.profile_catalog",
     )
     try:
         hashes = {
@@ -139,6 +141,7 @@ def _implementation_identity() -> dict[str, Any]:
 def _preparation(design: PropellerDesign, angle: float) -> dict[str, Any]:
     condition = design.operating_conditions[0]
     blade = design.blade
+    airfoils = {foil.id: foil for foil in design.airfoils}
     # Same dry-air constants as the existing BEM kernel; no atmospheric model is
     # fitted. rho, mu and temperature are explicit independent caller inputs.
     sound_speed = math.sqrt(1.4 * 287.05 * condition.temperature_k)
@@ -154,6 +157,10 @@ def _preparation(design: PropellerDesign, angle: float) -> dict[str, Any]:
             "chord_m": station.chord_m,
             "twist_rad": station.twist_rad,
             "airfoil_id": station.airfoil_id,
+            "airfoil_coordinate_sha256": (
+                airfoil_coordinate_sha256(airfoils[station.airfoil_id])
+                if airfoils[station.airfoil_id].coordinates else None
+            ),
             "relative_speed_m_s": speed,
             "reynolds": condition.air_density_kg_m3 * speed * station.chord_m / condition.dynamic_viscosity_pa_s,
             "mach": speed / sound_speed,
@@ -161,6 +168,10 @@ def _preparation(design: PropellerDesign, angle: float) -> dict[str, Any]:
         })
     return {
         "scope": "open_declared_stations_no_induction",
+        "airfoil_coordinate_sha256": (
+            stations[0]["airfoil_coordinate_sha256"]
+            if len({station.airfoil_id for station in blade.stations}) == 1 else None
+        ),
         "solver_envelope_complete": False,
         "preview_fold_angle_rad": angle,
         "diameter_m": blade.diameter_m,
@@ -238,6 +249,16 @@ def run_design_analysis(
         ]
     # Detach nested mutable metadata before either hashing or solving.
     polar_content = json.loads(_json(polar_content))
+    for airfoil_id, tables in polar_content.items():
+        definition = next(foil for foil in design.airfoils if foil.id == airfoil_id)
+        if definition.coordinates:
+            expected = airfoil_coordinate_sha256(definition)
+            if any(
+                not isinstance(table["metadata"], Mapping)
+                or table["metadata"].get("airfoil_coordinate_sha256") != expected
+                for table in tables
+            ):
+                raise DesignAnalysisError("Every polar table must match the draft airfoil coordinate SHA-256.")
     snapshots = {
         airfoil_id: PolarFamily(tuple(PolarTable(**table) for table in tables))
         for airfoil_id, tables in polar_content.items()

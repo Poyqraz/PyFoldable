@@ -24,6 +24,7 @@ from .models import (
     ValidationRecord,
 )
 from .units import QuantityInput, normalize_quantity
+from .airfoil import validate_airfoil_definition
 
 
 class DesignConfigError(ValueError):
@@ -100,6 +101,29 @@ def _read_document(path: Path) -> Mapping[str, Any]:
     return raw
 
 
+def _airfoil(row: Mapping[str, Any], index: int) -> AirfoilDefinition:
+    metadata = dict(_mapping(row, "metadata", required=False))
+    coordinates = row.get("coordinates", ())
+    if "coordinates" in row:
+        if not isinstance(coordinates, list) or not coordinates or not all(
+            isinstance(point, list) and len(point) == 2 for point in coordinates
+        ):
+            raise DesignConfigError("Inline airfoil coordinates must be nonempty numeric pairs.")
+        if "airfoil_coordinate_sha256" not in metadata:
+            raise DesignConfigError("Inline airfoil coordinates require a coordinate SHA-256.")
+    elif "airfoil_coordinate_sha256" in metadata:
+        raise DesignConfigError("Airfoil coordinate SHA-256 requires inline coordinates.")
+    try:
+        definition = AirfoilDefinition(
+            id=str(_required(row, "id", f"airfoils[{index}]")),
+            source=str(row.get("source", "unspecified")),
+            coordinates=tuple(tuple(point) for point in coordinates), metadata=metadata,
+        )
+        return validate_airfoil_definition(definition) if coordinates else definition
+    except (TypeError, ValueError) as exc:
+        raise DesignConfigError(f"Invalid airfoil geometry: {exc}") from exc
+
+
 def load_design_config(path: str | Path) -> PropellerDesign:
     """Load a version-1 canonical design and normalize every quantity to SI."""
     config_path = Path(path)
@@ -114,11 +138,7 @@ def load_design_config(path: str | Path) -> PropellerDesign:
     station_rows = _tables(blade_raw, "stations")
 
     airfoils = tuple(
-        AirfoilDefinition(
-            id=str(_required(row, "id", f"airfoils[{index}]")),
-            source=str(row.get("source", "unspecified")),
-            metadata=dict(_mapping(row, "metadata", required=False)),
-        )
+        _airfoil(row, index)
         for index, row in enumerate(_tables(raw, "airfoils"))
     )
     stations = tuple(

@@ -29,6 +29,15 @@ yalnız açıkça sağlanan polarlarda tam açık taslağı mevcut çözücüye 
 yükleme ve çalıştırma butonu PY-03'tür. Eski 254 mm benchmark değişmez.
 Ayrıntılar: [Python-first plan](python_research_execution_plan.md).
 
+## PY-02 profil kimliği
+
+Kesit seçimi NACA0012/2412/23012/4415/63-412 kataloğuna bağlıdır. Kaynak ve
+koordinat SHA-256 ekranda gösterilir; aynı koordinatlar taslak config, önizleme ve
+polar kimliğinde korunur. NACA 5/6-serisi başka bir 4-haneli kesitle değiştirilmez.
+Katalog hatası indirmeleri kaldırır; profil değişikliği BEM çalıştırmaz. Referans
+koordinatlar üretim CAD'i veya fiziksel doğrulama değildir. Ayrıntılar:
+[PY-02 kaynaklar ve sözleşmeler](py02_profile_coordinate_identity.md).
+
 ## Durum sözlüğü
 
 | Durum | Kullanım |
@@ -60,7 +69,7 @@ Durumlar yalnız renkle verilmez; Türkçe metin ve ikon birlikte kullanılır.
 
 UI-00/01 temeli, UI-02 Genel Bakış, UI-03A geometri önizlemesi, UI-03B doğrulanmış
 taslak config hattı ve UI-04 izin-listeli analiz koşumu aktiftir. Kanonik
-geometri; NACA 4-haneli kesit, chord–twist istasyonları, kanat sayısı ve menteşe
+geometri; seçili profil koordinatları, chord–twist istasyonları, kanat sayısı ve menteşe
 yarıçapından etkileşimli bir 2.5D yüzeye dönüştürülür. Açık çap, göbek, menteşe,
 kesit, chord/twist ölçeği ve katlanma açısı oturum içinde değiştirilebilir. Önizleme
 değişiklikleri config dosyasına yazılmaz; CAD katısı, CFD/FEA ağı veya fiziksel sonuç

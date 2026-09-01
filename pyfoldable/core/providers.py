@@ -10,6 +10,7 @@ from types import MappingProxyType
 from typing import Any, Literal, Mapping, Protocol, runtime_checkable
 
 from .models import AirfoilDefinition, PolarTable
+from .airfoil import airfoil_coordinate_sha256
 
 
 PolarPointStatus = Literal[
@@ -348,9 +349,6 @@ class PolarGenerationResult:
                 "At least two usable points are required to build a polar table."
             )
         confidence = tuple(point.confidence for point in usable)
-        coordinate_document = "\n".join(
-            f"{x:.17g},{y:.17g}" for x, y in self.request.airfoil.coordinates
-        ).encode("utf-8")
         return PolarTable(
             airfoil_id=self.request.airfoil.id,
             reynolds=self.request.reynolds,
@@ -366,9 +364,7 @@ class PolarGenerationResult:
                 "provider": self.provider.as_mapping(),
                 "evidence_class": "provider_generated_polar",
                 "airfoil_source": self.request.airfoil.source,
-                "airfoil_coordinate_sha256": hashlib.sha256(
-                    coordinate_document
-                ).hexdigest(),
+                "airfoil_coordinate_sha256": airfoil_coordinate_sha256(self.request.airfoil),
                 "cache_key": self.cache_key,
                 "complete": self.complete,
                 "requested_point_count": len(self.points),
