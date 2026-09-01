@@ -11,6 +11,9 @@ import re
 from dataclasses import dataclass
 from typing import Sequence
 
+from pyfoldable.core.models import AirfoilDefinition
+from pyfoldable.core.airfoil import airfoil_coordinate_sha256, validate_airfoil_definition
+
 
 PREVIEW_QUALIFICATION = "geometry_preview_not_cad_or_physical_result"
 _NACA4_PATTERN = re.compile(r"^NACA\s*([0-9]{4})$", re.IGNORECASE)
@@ -56,6 +59,7 @@ class PropellerPreviewSpec:
     chord_scale: float = 1.0
     twist_scale: float = 1.0
     section_point_count: int = 25
+    airfoil_definition: AirfoilDefinition | None = None
 
     def __post_init__(self) -> None:
         diameter = _finite("diameter_m", self.diameter_m)
@@ -91,7 +95,12 @@ class PropellerPreviewSpec:
             raise ValueError("section_point_count must be an integer of at least 9.")
         if not isinstance(self.airfoil_id, str):
             raise TypeError("airfoil_id must be a string.")
-        if _NACA4_PATTERN.fullmatch(self.airfoil_id.strip()) is None:
+        if self.airfoil_definition is not None:
+            definition = validate_airfoil_definition(self.airfoil_definition)
+            if definition.id != self.airfoil_id:
+                raise ValueError("Preview airfoil_id and coordinate definition must match.")
+            object.__setattr__(self, "airfoil_definition", definition)
+        elif _NACA4_PATTERN.fullmatch(self.airfoil_id.strip()) is None:
             raise ValueError("airfoil_id must identify an analytic NACA 4-digit section.")
 
 
@@ -112,6 +121,9 @@ class PropellerPreviewMesh:
     centerline_envelope_radius_m: float
     mesh_envelope_radius_m: float
     qualification: str = PREVIEW_QUALIFICATION
+    section_vertex_count: int | None = None
+    airfoil_id: str | None = None
+    airfoil_coordinate_sha256: str | None = None
 
 
 def naca4_section_loop(
@@ -269,10 +281,17 @@ def build_propeller_preview_mesh(
         source_stations,
         hinge_r_over_r=hinge_r_over_r,
     )
-    section = naca4_section_loop(
-        spec.airfoil_id,
-        point_count=spec.section_point_count,
-    )
+    coordinate_hash = None
+    if spec.airfoil_definition is None:
+        section = naca4_section_loop(spec.airfoil_id, point_count=spec.section_point_count)
+    else:
+        definition = validate_airfoil_definition(spec.airfoil_definition)
+        coordinate_hash = airfoil_coordinate_sha256(definition)
+        section = definition.coordinates
+        # A repeated closed TE is removed only in the mesh loop to avoid a
+        # zero-length edge. Open TE endpoints and their gap are preserved.
+        if math.dist(section[0], section[-1]) <= 1e-12:
+            section = section[:-1]
     perimeter_count = len(section)
     fold_angle = math.radians(spec.fold_angle_deg)
 
@@ -359,4 +378,7 @@ def build_propeller_preview_mesh(
         effective_radius_m=radial_envelope_radius,
         centerline_envelope_radius_m=centerline_envelope_radius,
         mesh_envelope_radius_m=mesh_envelope_radius,
+        section_vertex_count=perimeter_count,
+        airfoil_id=spec.airfoil_id,
+        airfoil_coordinate_sha256=coordinate_hash,
     )

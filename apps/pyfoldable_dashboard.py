@@ -43,6 +43,7 @@ from pyfoldable.application.folding_mechanism import (
 )
 from pyfoldable.application.opening_sensitivity import load_opening_sensitivity
 from pyfoldable.application.ui_render import build_markdown_table
+from pyfoldable.core.profile_catalog import PROJECT_AIRFOIL_IDS, load_project_airfoil
 from pyfoldable.visualization.propeller_25d import (
     PreviewBladeStation,
     PropellerPreviewSpec,
@@ -315,8 +316,8 @@ def _render_design_geometry() -> None:
     model_columns = st.columns(4)
     airfoil_id = model_columns[0].selectbox(
         "Kesit modeli",
-        ("NACA2412", "NACA0012", "NACA4412"),
-        index=0,
+        PROJECT_AIRFOIL_IDS,
+        index=PROJECT_AIRFOIL_IDS.index("NACA2412"),
     )
     chord_scale = model_columns[1].slider(
         "Chord ölçeği",
@@ -410,6 +411,7 @@ def _render_design_geometry() -> None:
         )
 
     try:
+        selected_airfoil = load_project_airfoil(airfoil_id)
         preview_spec = PropellerPreviewSpec(
             diameter_m=diameter_mm / 1000.0,
             hub_radius_m=hub_radius_mm / 1000.0,
@@ -417,6 +419,7 @@ def _render_design_geometry() -> None:
             hinge_radius_m=hinge_radius_mm / 1000.0,
             fold_angle_deg=float(fold_angle_deg),
             airfoil_id=airfoil_id,
+            airfoil_definition=selected_airfoil,
             chord_scale=float(chord_scale),
             twist_scale=float(twist_scale),
         )
@@ -460,6 +463,7 @@ def _render_design_geometry() -> None:
                 temperature=f"{temperature_k} K",
                 pressure=f"{pressure_pa} Pa",
             ),
+            airfoil_definition=selected_airfoil,
             units=DraftUnitSelection(
                 length=length_unit,
                 angle=angle_unit,
@@ -575,6 +579,16 @@ def _render_design_geometry() -> None:
         st.caption(
             f"Önizleme modeli {airfoil_id} · {len(preview_mesh.faces):,} yüzey üçgeni · "
             f"qualification={preview_mesh.qualification}"
+        )
+        st.caption(
+            f"Profil koordinat SHA-256: {preview_mesh.airfoil_coordinate_sha256} · "
+            f"Kaynak: {selected_airfoil.source} · "
+            f"Kesit çevresi: {preview_mesh.section_vertex_count} nokta"
+        )
+        st.caption(
+            "Önizleme, taslak ve polar kimliği aynı örneklenmiş referans koordinatlarına "
+            "bağlıdır. Katalog üretim CAD'i veya ölçülmüş kanat değildir; nokta "
+            "çözünürlüğü ve profil adı aerodinamik doğruluk ya da fiziksel yeterlilik sağlamaz."
         )
         st.caption(
             "Rotor düzlemi x–y, eksenel yön z'dir. Menteşe dışı yüzey negatif açıyla "

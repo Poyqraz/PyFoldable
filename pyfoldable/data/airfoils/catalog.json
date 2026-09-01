@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "profiles": [
+    {
+      "id": "NACA0012",
+      "filename": "NACA0012.dat",
+      "source": "first-party:configs/airfoils/NACA0012_81.dat",
+      "source_table": "Existing analytic 81-point closed-TE realization; byte-identical copy",
+      "source_sha256": "d38fe158fae271d9b8b80aafd94356fba9bbf2adedbf872a642eda4c714f88a6",
+      "airfoil_coordinate_sha256": "ab62d56cc86a591da4f83c1980ea5b07743c4e47bdb0eb63a8e166e190a96d42"
+    },
+    {
+      "id": "NACA2412",
+      "filename": "NACA2412.dat",
+      "source": "https://www.pdas.com/sections45.html",
+      "source_table": "NACA Section 2412, first/common-x table, 26 rows; percent chord divided by 100",
+      "source_sha256": "598edb7d31e3dc039e993a1cdd6ad3412796e9c762ed5a1bbb41e1e928c8e5ef",
+      "airfoil_coordinate_sha256": "3f84aba0f9234ed6e9fe4eedebe88ae8701a19ae181d70e21a02b0704916999a"
+    },
+    {
+      "id": "NACA23012",
+      "filename": "NACA23012.dat",
+      "source": "https://www.pdas.com/sections45.html",
+      "source_table": "NACA Section 23012, first/common-x table, 26 rows; percent chord divided by 100",
+      "source_sha256": "ee1360611f922b88a7bc7a3263f3931468d2c7f0fac974231d470a217b670f26",
+      "airfoil_coordinate_sha256": "e89b3a24cee51eaffecbe80ea1fd8022e6531f185c0bb0496362c941b644281e"
+    },
+    {
+      "id": "NACA4415",
+      "filename": "NACA4415.dat",
+      "source": "https://www.pdas.com/sections45.html",
+      "source_table": "NACA Section 4415, first/common-x table, 26 rows; percent chord divided by 100",
+      "source_sha256": "2108c3a650454f89e6d9193110e166da58151db587b619e7c179758d96ee6823",
+      "airfoil_coordinate_sha256": "44fb14376fc3b15e6d2a501fefb8388dce4bb3dfbc2a2cfd7af4c7f08ce0ea5a"
+    },
+    {
+      "id": "NACA63-412",
+      "filename": "NACA63-412.dat",
+      "source": "https://www.pdas.com/sections6.html",
+      "source_table": "NACA Section 63-412, first/common-x table, 26 rows; percent chord divided by 100",
+      "source_sha256": "89446c03b3725d25482c7e5cf56ec95b8c47873a5e5e7094a148d26aa3b1c03c",
+      "airfoil_coordinate_sha256": "f001973703830e0db98893169ebcdaf848deb3b3d175e7781cebb44a254327c2"
+    }
+  ]
+}

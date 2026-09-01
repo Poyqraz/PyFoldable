@@ -70,6 +70,22 @@ different-pitch results are explicitly methodology-only.
 future imported coordinate file remains subject to its own source terms even when the
 PyFoldable parser normalizes it.
 
+`pyfoldable/data/airfoils/NACA0012.dat` is a byte-identical copy of that first-party
+analytic realization. The bundled NACA2412, NACA23012, NACA4415 and NACA63-412 DAT
+files contain factual numeric coordinate subsets transcribed from Ralph Carmichael's
+PDAS recomputed NACA section tables (first/common-x table, percent chord converted
+to unit chord). Their source links and content identities are in `catalog.json`.
+
+- Ralph Carmichael, Public Domain Aeronautical Software, Appendix III tables:
+  <https://www.pdas.com/avd.html>, <https://www.pdas.com/sections45.html>,
+  <https://www.pdas.com/sections6.html>.
+- These third-party numeric transcriptions are excluded from the Project's
+  PolyForm license; source terms and applicable law remain controlling. The
+  public-domain status described for PDAS programs is not asserted as a blanket
+  license for all website content. No PDAS program or webpage is vendored.
+- These coordinates are reference geometry, not manufactured-blade measurements,
+  experimental data, polars or physical qualification evidence.
+
 ## Dependencies
 
 NumPy, SciPy, tomli, matplotlib, pytest, NeuralFoil, and other install-time tools are

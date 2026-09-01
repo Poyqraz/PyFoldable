@@ -108,13 +108,15 @@ hattının önceliği veya engeli değildir; mevcut malzeme doğrulama kapılar�
 SciSpace + Consensus araştırması, kaynak erişim sınırları ve kabul ölçütleri
 [Python araştırma/yürütme planındadır](python_research_execution_plan.md).
 
-1. **PY-01 — bu artım:** tam taslak TOML'den nominal yerel Reynolds/Mach/hücum
+1. **PY-01 — tamamlandı (PR #49):** tam taslak TOML'den nominal yerel Reynolds/Mach/hücum
    açısı hazırlığı ve açıkça verilen polarlarla mevcut BEM çözücüsünü çağıran ayrı
    Python servisi. UI hazırlığı gösterir; BEM butonu henüz eklenmez. İndüksiyonsuz
    hazırlık tam solver sorgu zarfı değildir. 254 mm sabit benchmark değişmez.
-2. **PY-02/03 — sıradaki:** beş proje profilinin kaynaklı koordinat desteği,
-   preview–polar–solver kimlik birliği ve doğrulanmış polar bundle'ıyla aktif
-   taslak analizi. Eksik polar yerine otomatik proxy veya clamp yoktur.
+2. **PY-02 — uygulandı:** beş proje profilinin kaynak/hash kayıtlı çevrimdışı
+   koordinatları, taslak round-trip, aynı koordinatlarla önizleme ve her polar
+   tablosunda koordinat kimliği kontrolü. [Kaynaklar ve kabul](py02_profile_coordinate_identity.md).
+   **PY-03 — sıradaki:** doğrulanmış polar bundle'ıyla aktif taslak UI analizi.
+   Eksik polar yerine otomatik proxy veya clamp yoktur.
 3. **PY-04 / PR-11A:** deterministik tarama ve optimizasyon altyapısı; sentetik
    doğruluk testleri, sınırlı hesap bütçesi, açık başarısızlık kaydı. Fiziksel
    optimum tasarım önerisi değildir.

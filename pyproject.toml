@@ -26,3 +26,6 @@ ui = ["streamlit>=1.40,<2", "plotly>=5.24,<7"]
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["pyfoldable*", "pythrust*"]
+
+[tool.setuptools.package-data]
+pyfoldable = ["data/airfoils/*.dat", "data/airfoils/catalog.json"]
