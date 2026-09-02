@@ -115,9 +115,11 @@ SciSpace + Consensus araştırması, kaynak erişim sınırları ve kabul ölç�
 2. **PY-02 — uygulandı:** beş proje profilinin kaynak/hash kayıtlı çevrimdışı
    koordinatları, taslak round-trip, aynı koordinatlarla önizleme ve her polar
    tablosunda koordinat kimliği kontrolü. [Kaynaklar ve kabul](py02_profile_coordinate_identity.md).
-   **PY-03 — sıradaki:** doğrulanmış polar bundle'ıyla aktif taslak UI analizi.
+   **PY-03 — uygulandı:** doğrulanmış polar bundle'ıyla aktif taslak UI analizi;
+   açık buton, sınırlı hesap ve girdi değişiminde eski sonucu kaldırma aktiftir.
+   [Veri sözleşmesi ve plan](py03_active_design_polar_ui.md).
    Eksik polar yerine otomatik proxy veya clamp yoktur.
-3. **PY-04 / PR-11A:** deterministik tarama ve optimizasyon altyapısı; sentetik
+3. **PY-04 / PR-11A — sıradaki:** deterministik tarama ve optimizasyon altyapısı; sentetik
    doğruluk testleri, sınırlı hesap bütçesi, açık başarısızlık kaydı. Fiziksel
    optimum tasarım önerisi değildir.
 4. **PY-05/06:** mekanizma geçiş dinamiği, kalibrasyon/belirsizlik ve eşleştirilmiş

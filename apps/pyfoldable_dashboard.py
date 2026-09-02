@@ -29,7 +29,8 @@ from pyfoldable.application.design_draft import (
     DraftUnitSelection,
     build_design_draft,
 )
-from pyfoldable.application.design_analysis import DesignAnalysisError, prepare_design_analysis
+from pyfoldable.application.design_analysis import DesignAnalysisArtifact, DesignAnalysisError, prepare_design_analysis
+from pyfoldable.application.polar_upload import MAX_POLAR_UPLOAD_BYTES, prepare_polar_run, run_polar_run
 from pyfoldable.application.evidence_import import (
     EvidenceImportError,
     MAX_EVIDENCE_UPLOAD_BYTES,
@@ -74,6 +75,8 @@ STATE_ICONS = {
 
 ANALYSIS_RESULT_KEY = "ui04_analysis_result"
 ANALYSIS_REQUEST_KEY = "ui04_analysis_request"
+POLAR_RESULT_KEY = "py03_polar_result"
+POLAR_REQUEST_KEY = "py03_polar_request"
 EVIDENCE_KIND_BY_LABEL = {
     "Yayımlanmış CFD referans fixture'ı": "cfd_reference",
     "PR-09 FEA sözleşme raporu": "fea_contract_report",
@@ -98,6 +101,92 @@ def _circle_xy(radius_m: float, *, point_count: int = 97) -> tuple[list[float], 
     )
 
 
+def _clear_polar_result() -> None:
+    st.session_state.pop(POLAR_RESULT_KEY, None)
+    st.session_state.pop(POLAR_REQUEST_KEY, None)
+
+
+def _render_active_polar_run(draft: DesignDraftArtifact) -> None:
+    st.subheader("Aktif tasarım · Polar yükleme ve BEM")
+    st.warning(
+        "Bu hesap yalnız tam açık taslağın tarama analizidir. Yüklenen polarlar "
+        "doğrulanmış deney/ANSYS kanıtı sayılmaz; physical_qualification=false. "
+        "140 mm katlanma uyumsuzluğu ve yapısal doğrulama kapıları değişmez."
+    )
+    uploaded = st.file_uploader(
+        "Polar JSON dosyası", type=("json",), key="py03_polar_upload",
+        help="active_design_polar_bundle v1; en fazla 2 MiB, 64 tablo, tablo başına 721 nokta. "
+             "Her tabloda seçili profilin koordinat SHA-256 kimliği gereklidir.",
+    )
+    annuli = st.number_input("Aktif BEM annulus sayısı", min_value=4, max_value=80, value=40, step=4)
+    st.caption(
+        "Polar şeması: docs/py03_active_design_polar_ui.md. alpha_rad radyan; "
+        "Reynolds, Mach ve Cl/Cd/Cm boyutsuzdur. Dosya/polar sınırı dışında "
+        "clamp, extrapolasyon veya otomatik provider/proxy yoktur."
+    )
+    if uploaded is None:
+        _clear_polar_result()
+        st.info("Aktif taslağı çalıştırmak için koordinat kimliği eşleşen polar JSON yükleyin.")
+        return
+    if uploaded.size > MAX_POLAR_UPLOAD_BYTES:
+        _clear_polar_result()
+        st.error("Polar reddedildi: dosya 2 MiB sınırını aşıyor.")
+        return
+    try:
+        request = prepare_polar_run(draft, uploaded.getvalue(), annulus_count=annuli)
+    except (DesignAnalysisError, OSError) as exc:
+        _clear_polar_result()
+        st.error(f"Polar/aktif taslak reddedildi: {exc}")
+        return
+    if st.session_state.get(POLAR_REQUEST_KEY) != request.request_sha256:
+        _clear_polar_result()
+    summary = json.loads(request.summary_json)
+    st.caption(
+        f"Polar sözleşmesi doğrulandı · {summary['airfoil_id']} · "
+        f"{summary['table_count']} tablo / {summary['point_count']} nokta · "
+        f"Yüklenen dosya SHA-256: {summary['source_sha256']}"
+    )
+    _render_markdown_table([
+        {"Re": row["reynolds"], "Mach": row["mach"],
+         "α alt [deg]": math.degrees(row["alpha_min_rad"]),
+         "α üst [deg]": math.degrees(row["alpha_max_rad"])}
+        for row in summary["tables"]
+    ])
+    with st.expander("Beyan edilen polar kaynakları"):
+        st.text("\n".join(dict.fromkeys(row["source"] for row in summary["tables"])))
+    st.caption(
+        "Tablo aralıkları tam BEM sorgu kapsamını kanıtlamaz. Çözücü kapsam dışına "
+        "çıkarsa toplam veya kısmi performans sonucu yayımlanmaz."
+    )
+    if st.button("Aktif taslağı BEM ile çalıştır", type="primary"):
+        _clear_polar_result()
+        with st.spinner("Aktif taslak, yüklenen polarlarla çözülüyor…"):
+            try:
+                result = run_polar_run(request)
+            except (DesignAnalysisError, OSError) as exc:
+                st.error(f"Aktif BEM kapalı biçimde durduruldu: {exc}")
+            else:
+                st.session_state[POLAR_RESULT_KEY] = result
+                st.session_state[POLAR_REQUEST_KEY] = request.request_sha256
+    result = st.session_state.get(POLAR_RESULT_KEY)
+    if not isinstance(result, DesignAnalysisArtifact):
+        return
+    doc = json.loads(result.report_json)
+    rotor = doc["rotor"]
+    st.subheader("Aktif taslağın tarama sonucu")
+    thrust, torque, power = st.columns(3)
+    thrust.metric("Aktif itki [N]", f"{rotor['thrust_n']:.6g}")
+    torque.metric("Aktif şaft torku [N·m]", f"{rotor['torque_nm']:.6g}")
+    power.metric("Aktif şaft gücü [W]", f"{rotor['shaft_power_w']:.6g}")
+    st.caption(
+        f"{doc['artifact_class']} · {doc['qualification']} · physical_qualification=false · "
+        f"station_span: {rotor['inner_radius_m']:.5g}–{rotor['outer_radius_m']:.5g} m"
+    )
+    st.caption(f"Aktif BEM rapor SHA-256: {result.report_sha256}")
+    st.download_button("Aktif BEM sonucunu JSON indir", data=result.report_json,
+        file_name=result.filename, mime="application/json")
+
+
 def _render_design_preparation(draft: DesignDraftArtifact) -> None:
     st.subheader("Aktif tasarım · Python analiz hazırlığı")
     st.caption(
@@ -108,6 +197,7 @@ def _render_design_preparation(draft: DesignDraftArtifact) -> None:
     try:
         artifact = prepare_design_analysis(draft)
     except DesignAnalysisError as exc:
+        _clear_polar_result()
         st.warning(f"Analiz hazırlığı yapılamadı: {exc}")
         return
     document = json.loads(artifact.report_json)
@@ -141,8 +231,9 @@ def _render_design_preparation(draft: DesignDraftArtifact) -> None:
     st.info(
         "Python BEM servisi açıkça sağlanan polar ailelerini kullanır; eksik veri "
         "yerine proxy üretmez. Arayüzdeki 254 mm referans benchmark'ı ayrıdır. "
-        "Doğrulanmış polar yükleme ve aktif tasarım BEM butonu sonraki dilimdedir."
+        "Aşağıdaki polar yükleme ve çalıştırma alanı bu aktif taslağı kullanır."
     )
+    _render_active_polar_run(draft)
 
 
 def _render_geometry_compatibility(audit: MechanismGeometryAudit) -> None:
@@ -474,6 +565,7 @@ def _render_design_geometry() -> None:
             ),
         )
     except (TypeError, ValueError) as exc:
+        _clear_polar_result()
         st.error(f"Önizleme girdisi geçersiz: {exc}")
     else:
         x_coords, y_coords, z_coords = zip(*preview_mesh.vertices)

@@ -92,6 +92,17 @@ def _load(draft: DesignDraftArtifact) -> tuple[PropellerDesign, float]:
     return design, angle
 
 
+def _load_open(draft: DesignDraftArtifact) -> tuple[PropellerDesign, float]:
+    """Shared application boundary for preparation-to-run and actual BEM runs."""
+    design, angle = _load(draft)
+    hinge = design.hinge
+    if hinge is None or any(abs(value) > 1e-12 for value in (
+        angle, hinge.deployed_angle_rad, hinge.axial_offset_m, hinge.tangential_offset_m,
+    )):
+        raise DesignAnalysisError("This service supports only a fully open, zero-offset blade.")
+    return design, angle
+
+
 def _request(draft: DesignDraftArtifact, design: PropellerDesign) -> dict[str, Any]:
     return {
         "service_id": SERVICE_ID,
@@ -225,12 +236,7 @@ def run_design_analysis(
     unqualified input even when its metadata claims otherwise. There is no
     automatic proxy, clamp, nominal-envelope promotion or partial total.
     """
-    design, angle = _load(draft)
-    hinge = design.hinge
-    if hinge is None or any(abs(value) > 1e-12 for value in (
-        angle, hinge.deployed_angle_rad, hinge.axial_offset_m, hinge.tangential_offset_m,
-    )):
-        raise DesignAnalysisError("This service supports only a fully open, zero-offset blade.")
+    design, angle = _load_open(draft)
     controls = BEMRotorSettings() if settings is None else settings
     if not isinstance(controls, BEMRotorSettings) or controls.radial_domain != "station_span":
         raise DesignAnalysisError("Active-design analysis requires station_span settings.")

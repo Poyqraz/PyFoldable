@@ -25,8 +25,10 @@ Tasarım Geometrisi ekranı, indirilen taslakla aynı geometri/ilk çalışma ko
 nominal istasyon Re/Mach/hücum açısı tablosu ve SHA bağlı JSON üretir. İndüksiyon
 içermez, katlanmış pozun analizi değildir ve tam BEM polar kapsamını doğrulamaz.
 Widget değişiminde BEM çağrılmaz. Python'daki ayrı `run_design_analysis` servisi
-yalnız açıkça sağlanan polarlarda tam açık taslağı mevcut çözücüye bağlar; UI polar
-yükleme ve çalıştırma butonu PY-03'tür. Eski 254 mm benchmark değişmez.
+yalnız açıkça sağlanan polarlarda tam açık taslağı mevcut çözücüye bağlar.
+PY-03 ile aynı ekranda strict JSON polar yükleme ve açık çalıştırma butonu aktiftir;
+girdi/ayar değişimi veya hata eski sonucu ve indirmesini kaldırır. Eski 254 mm
+benchmark değişmez. [PY-03 sözleşmesi](py03_active_design_polar_ui.md).
 Ayrıntılar: [Python-first plan](python_research_execution_plan.md).
 
 ## PY-02 profil kimliği
