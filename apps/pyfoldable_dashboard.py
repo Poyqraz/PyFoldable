@@ -30,7 +30,9 @@ from pyfoldable.application.design_draft import (
     build_design_draft,
 )
 from pyfoldable.application.design_analysis import DesignAnalysisArtifact, DesignAnalysisError, prepare_design_analysis
-from pyfoldable.application.polar_upload import MAX_POLAR_UPLOAD_BYTES, prepare_polar_run, run_polar_run
+from pyfoldable.application.polar_upload import MAX_POLAR_UPLOAD_BYTES, PolarRunRequest, prepare_polar_run, run_polar_run
+from pyfoldable.application.active_design_search import prepare_active_search, run_active_search
+from pyfoldable.application.design_search import SearchError
 from pyfoldable.application.evidence_import import (
     EvidenceImportError,
     MAX_EVIDENCE_UPLOAD_BYTES,
@@ -101,9 +103,70 @@ def _circle_xy(radius_m: float, *, point_count: int = 97) -> tuple[list[float], 
     )
 
 
-def _clear_polar_result() -> None:
+def _clear_search_result() -> None:
+    st.session_state.pop("py04_search_result", None)
+    st.session_state.pop("py04_search_request", None)
+
+
+def _clear_polar_result(*, clear_search: bool = True) -> None:
     st.session_state.pop(POLAR_RESULT_KEY, None)
     st.session_state.pop(POLAR_REQUEST_KEY, None)
+    if clear_search:
+        _clear_search_result()
+
+
+def _render_active_search(base: PolarRunRequest) -> None:
+    st.subheader("Aktif tasarım · Sınırlı chord/twist taraması")
+    st.caption(
+        "Her aday güncel taslağın chord/twist değerlerini çarpar; çap, RPM ve profil sabittir. "
+        "İlk yöntem sonlu ızgara taramasıdır; sürekli/global optimum veya fiziksel tasarım önermez."
+    )
+    options = (.8, .9, 1., 1.1, 1.2)
+    chord = st.multiselect("Tarama chord çarpanları", options, default=(.9, 1., 1.1))
+    twist = st.multiselect("Tarama twist çarpanları", options, default=(.9, 1., 1.1))
+    minimum = st.number_input("Tarama minimum itki [N]", min_value=0., max_value=10000., value=0., step=.1)
+    st.caption(
+        "İtki alt sınırı kullanıcıya ait tarama ölçütüdür, 85% proje hedefinin yerine geçmez. "
+        "En fazla 25 aday, aday başına 40 ve toplam 400 annulus; hedef şaft gücünü azaltmaktır."
+    )
+    try:
+        request = prepare_active_search(base, chord_scales=tuple(chord), twist_scales=tuple(twist), minimum_thrust_n=minimum)
+    except (SearchError, DesignAnalysisError, OSError) as exc:
+        _clear_search_result()
+        st.warning("Tasarım taraması hazırlanamadı.")
+        st.text(str(exc))
+        return
+    if st.session_state.get("py04_search_request") != request.request_sha256:
+        _clear_search_result()
+    if st.button("Aktif taslak ızgarasını tara"):
+        _clear_search_result()
+        with st.spinner("Sınırlı tasarım ızgarası taranıyor…"):
+            try:
+                result = run_active_search(request)
+            except (SearchError, DesignAnalysisError, OSError) as exc:
+                st.error("Tasarım taraması durduruldu.")
+                st.text(str(exc))
+            else:
+                st.session_state["py04_search_result"] = result
+                st.session_state["py04_search_request"] = request.request_sha256
+    result = st.session_state.get("py04_search_result")
+    if not isinstance(result, DesignAnalysisArtifact):
+        return
+    document = json.loads(result.report_json)
+    st.warning(
+        "Fiziksel/yapısal kısıtlar doğrulanmadığı için uygun aday önerilmiyor. "
+        "Aşağıdaki sayılar yalnız aday karşılaştırmasıdır; physical_qualification=false."
+    )
+    st.caption(f"Tarama rapor SHA-256: {result.report_sha256}")
+    _render_markdown_table([
+        {"Chord ×": row["parameters"]["chord_scale"], "Twist ×": row["parameters"]["twist_scale"],
+         "Durum": row["status"], "İtki [N]": row["details"].get("rotor", {}).get("thrust_n"),
+         "Şaft gücü [W]": row["objective"]} for row in document["candidates"]
+    ])
+    with st.expander("Tarama kısıtları ve hata kaydı"):
+        st.text("\n".join(f"{row['index']}: {row['constraints']} {row['error'] or ''}" for row in document["candidates"]))
+    st.download_button("Tasarım taramasını JSON indir", data=result.report_json,
+        file_name=result.filename, mime="application/json")
 
 
 def _render_active_polar_run(draft: DesignDraftArtifact) -> None:
@@ -139,7 +202,7 @@ def _render_active_polar_run(draft: DesignDraftArtifact) -> None:
         st.error(f"Polar/aktif taslak reddedildi: {exc}")
         return
     if st.session_state.get(POLAR_REQUEST_KEY) != request.request_sha256:
-        _clear_polar_result()
+        _clear_polar_result(clear_search=False)
     summary = json.loads(request.summary_json)
     st.caption(
         f"Polar sözleşmesi doğrulandı · {summary['airfoil_id']} · "
@@ -159,7 +222,7 @@ def _render_active_polar_run(draft: DesignDraftArtifact) -> None:
         "çıkarsa toplam veya kısmi performans sonucu yayımlanmaz."
     )
     if st.button("Aktif taslağı BEM ile çalıştır", type="primary"):
-        _clear_polar_result()
+        _clear_polar_result(clear_search=False)
         with st.spinner("Aktif taslak, yüklenen polarlarla çözülüyor…"):
             try:
                 result = run_polar_run(request)
@@ -168,6 +231,7 @@ def _render_active_polar_run(draft: DesignDraftArtifact) -> None:
             else:
                 st.session_state[POLAR_RESULT_KEY] = result
                 st.session_state[POLAR_REQUEST_KEY] = request.request_sha256
+    _render_active_search(request)
     result = st.session_state.get(POLAR_RESULT_KEY)
     if not isinstance(result, DesignAnalysisArtifact):
         return

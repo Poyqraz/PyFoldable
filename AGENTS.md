@@ -15,8 +15,8 @@ the standalone scripts in `examples/`.
   package `python3.12-venv` is needed to create the venv; the update script installs it.
 
 ### Lint / test / build / run
-- Tests: `./venv/bin/pytest tests/ -q` (**990 passed**, 9 skipped locally after the
-  PY-03 active-design polar UI slice; CI remains the merge authority).
+- Tests: `./venv/bin/pytest tests/ -q` (**1063 passed**, 9 skipped locally after the
+  PY-04A deterministic active-design search slice; CI remains the merge authority).
 - No linter is configured in this repo (no ruff/flake8/black config or deps). For a
   baseline syntax check use `./venv/bin/python -m compileall pyfoldable pythrust examples tests`.
 - Build/run = executing the `examples/*.py` scripts or

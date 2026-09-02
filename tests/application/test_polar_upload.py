@@ -217,3 +217,20 @@ def test_narrow_polars_do_not_trigger_clamp_or_partial_result():
     request = prepare_polar_run(draft(), payload(doc), annulus_count=4)
     with pytest.raises(DesignAnalysisError, match="without partial"):
         run_polar_run(request)
+
+
+def test_nonfinite_derived_sound_speed_rejected_before_solving(monkeypatch):
+    import pyfoldable.application.design_analysis as analysis
+    monkeypatch.setattr(analysis, "solve_bem_rotor", lambda *a, **k: pytest.fail("invalid solve"))
+    with pytest.raises(DesignAnalysisError, match="sound speed"):
+        prepare_polar_run(draft(temperature="1e308 K"), payload(), annulus_count=4)
+
+
+def test_underflowing_rotor_normalization_is_a_controlled_failure():
+    factor = 1e-70
+    tiny = draft(diameter=f"{.25 * factor} m", hub_radius=f"{.018 * factor} m",
+        hinge_radius=f"{.1 * factor} m", angular_speed=f"{7100 / factor} rpm",
+        dynamic_viscosity=f"{1.81e-5 * factor} Pa*s")
+    request = prepare_polar_run(tiny, payload(), annulus_count=4)
+    with pytest.raises(DesignAnalysisError, match="without partial totals"):
+        run_polar_run(request)

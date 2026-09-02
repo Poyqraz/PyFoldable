@@ -31,6 +31,17 @@ girdi/ayar değişimi veya hata eski sonucu ve indirmesini kaldırır. Eski 254 
 benchmark değişmez. [PY-03 sözleşmesi](py03_active_design_polar_ui.md).
 Ayrıntılar: [Python-first plan](python_research_execution_plan.md).
 
+## PY-04A aktif taslak taraması
+
+Doğrulanmış polar yüklemesinin altında ayrı açık butonla chord/twist çarpanları
+taranır. Her aday aynı başlangıç taslağından mevcut BEM ile hesaplanır; en çok 25
+aday ve toplam 400 annulus bütçesi vardır. Tekil analiz ve tarama sonuçları ayrı
+tutulur; widget değişimleri solver çalıştırmaz ve eski tarama indirmesini kaldırır.
+Aday tablosu, kısıt/hata kayıtları ve JSON indirilebilir. Bilinmeyen fiziksel/yapısal
+kısıtlar nedeniyle uygun tasarım önerilmez. Minimum itki kullanıcının tarama
+eşiğidir, proje için %85 tutunma doğrulaması değildir.
+[Kapsam, limitler ve doğrulama](py04_deterministic_design_search.md).
+
 ## PY-02 profil kimliği
 
 Kesit seçimi NACA0012/2412/23012/4415/63-412 kataloğuna bağlıdır. Kaynak ve
