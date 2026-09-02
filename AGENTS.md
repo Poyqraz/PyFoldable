@@ -15,12 +15,22 @@ the standalone scripts in `examples/`.
   package `python3.12-venv` is needed to create the venv; the update script installs it.
 
 ### Lint / test / build / run
-- Tests: `./venv/bin/pytest tests/ -q` (**904 passed**, 9 skipped locally after the
-  PY-02 profile coordinate identity slice; CI remains the merge authority).
+- Tests: `./venv/bin/pytest tests/ -q` (**990 passed**, 9 skipped locally after the
+  PY-03 active-design polar UI slice; CI remains the merge authority).
 - No linter is configured in this repo (no ruff/flake8/black config or deps). For a
   baseline syntax check use `./venv/bin/python -m compileall pyfoldable pythrust examples tests`.
 - Build/run = executing the `examples/*.py` scripts or
   `./venv/bin/streamlit run apps/pyfoldable_dashboard.py`; see README.
+
+### Required development and review workflow
+
+- Plan a bounded slice, then use TDD (observe failing tests before implementation).
+- Run a separate automated reviewer, independent of the implementation agent.
+  Address its substantive findings and rerun affected tests before shipping.
+- Check GitHub reviews last, together with successful CI for the exact PR head.
+  Merge only after these gates pass, then verify the merged tree against the
+  tested tree. A GitHub bot review does not replace independent review.
+- Preserve unrelated working-tree edits; PR #3 is a separate workstream.
 
 ### Non-obvious gotchas
 - Several example scripts are a **pipeline** and must be run in order because each one

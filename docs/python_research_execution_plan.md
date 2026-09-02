@@ -46,9 +46,9 @@ No aerodynamic dataset was fabricated from paper abstracts.
 | Slice | Scope | Acceptance |
 | --- | --- | --- |
 | PY-01 — completed, PR #49 | Active-draft preparation + explicit-polar BEM Python service | Exact TOML identity; nominal station Re/Mach/alpha; strict bounds; full output/provenance; UI preparation only |
-| PY-02 — implemented | Five-profile coordinate/polar identity | NACA0012/2412/23012/4415/63-412; offline source/hash-pinned coordinates; exact draft/preview/provider identity; mismatched polar rejection |
-| PY-03 — next | Validated polar bundle UI + active-draft BEM run | Explicit action; bounded work; input-change invalidation; no benchmark/proxy substitution or metadata-based qualification |
-| PY-04 / PR-11A | Deterministic sweeps and optimizer infrastructure | Reuse PY-01 callback; one algorithm first; bounds, seeds, budgets, failure accounting, analytic tests; unknown constraints cannot pass |
+| PY-02 — completed, PR #50 | Five-profile coordinate/polar identity | NACA0012/2412/23012/4415/63-412; offline source/hash-pinned coordinates; exact draft/preview/provider identity; mismatched polar rejection |
+| PY-03 — implemented | Validated polar bundle UI + active-draft BEM run | Strict JSON/coordinate identity; explicit geometry-page run; bounded work; input-change invalidation; no benchmark/proxy substitution or metadata-based qualification |
+| PY-04 / PR-11A — next | Deterministic sweeps and optimizer infrastructure | Reuse PY-01 callback; one algorithm first; bounds, seeds, budgets, failure accounting, analytic tests; unknown constraints cannot pass |
 | PY-05 | Mechanism transient infrastructure | Coordinates/signs, mass/CG/inertia/friction, RPM history and acceleration/deceleration, stop events; synthetic limiting cases; PR #3 separate |
 | PY-06 | Calibration, uncertainty, comparison reports | Extend PR-07/09/10; distinguish shaft/hinge moments and electrical/shaft power; matched-diameter/conditions thrust ratio; target fitting is not validation |
 
@@ -106,7 +106,8 @@ Caller polars stay `caller_supplied_unqualified`; all results retain
 The UI recomputes preparation from the current geometry-page draft. It performs
 no BEM solve on widget changes. Unsupported conditions remove preparation and its
 download, without preventing geometry preview or schema-valid draft export.
-Validated polar upload and a new active-design run button belong to PY-03.
+PY-03 now supplies polar upload and an explicit run button below preparation;
+the benchmark page stays separate. See [PY-03 contract and test plan](py03_active_design_polar_ui.md).
 
 ## TDD and review
 
