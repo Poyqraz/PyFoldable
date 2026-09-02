@@ -119,10 +119,12 @@ SciSpace + Consensus araştırması, kaynak erişim sınırları ve kabul ölç�
    açık buton, sınırlı hesap ve girdi değişiminde eski sonucu kaldırma aktiftir.
    [Veri sözleşmesi ve plan](py03_active_design_polar_ui.md).
    Eksik polar yerine otomatik proxy veya clamp yoktur.
-3. **PY-04 / PR-11A — sıradaki:** deterministik tarama ve optimizasyon altyapısı; sentetik
-   doğruluk testleri, sınırlı hesap bütçesi, açık başarısızlık kaydı. Fiziksel
-   optimum tasarım önerisi değildir.
-4. **PY-05/06:** mekanizma geçiş dinamiği, kalibrasyon/belirsizlik ve eşleştirilmiş
+3. **PY-04A / PR-11A — ilk dilim uygulandı:** sonlu deterministik ızgara, aktif taslak
+   chord/twist BEM taraması ve açık UI butonu; analitik testler, aday/annulus bütçesi,
+   başarısızlık kaydı ve girdi kimliği. Bilinmeyen kısıtlar aday seçtirmez; fiziksel
+   optimum veya tamamlanmış robust optimizasyon değildir.
+   [Sözleşmeler ve geriye dönük review](py04_deterministic_design_search.md).
+4. **PY-05 — sıradaki; ardından PY-06:** mekanizma geçiş dinamiği, kalibrasyon/belirsizlik ve eşleştirilmiş
    referans raporları; mevcut sözleşmeleri genişletir. PR #3 ayrı tutulur.
 
 Bu sıra, veri bekleyen fiziksel PR-06C–PR-10 kapılarının açıldığını göstermez.
@@ -255,8 +257,9 @@ proje katlanır prototipinin kalibrasyonlu ham ölçümü sayılmaz.
 
 ### PR-11 — robust çok amaçlı optimizasyon
 
-**PR-11A yazılım altyapısı** gerçek veriden önce sentetik/analitik testlerle
-ilerleyebilir; Python-first planda PY-04'e bağlıdır. **PR-11B fiziksel tasarım
+**PR-11A yazılım altyapısının ilk dilimi (PY-04A)** sınırlı deterministik tarama,
+aktif taslak BEM adaptörü ve UI ile uygulandı. Daha geniş/adaptif/Pareto arama
+yöntemleri henüz uygulanmadı. **PR-11B fiziksel tasarım
 kararı** ise aşağıdaki doğrulama koşullarına bağlı kalır.
 
 Yalnız doğrulanmış çalışma zarfında; itki/verim, katlanmış hacim, gerilme, ömür,

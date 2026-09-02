@@ -85,6 +85,8 @@ def _load(draft: DesignDraftArtifact) -> tuple[PropellerDesign, float]:
     if not design.operating_conditions:
         raise DesignAnalysisError("The draft has no operating condition.")
     condition = design.operating_conditions[0]
+    if not math.isfinite(1.4 * 287.05 * condition.temperature_k):
+        raise DesignAnalysisError("Derived sound speed must be finite.")
     if condition.angular_speed_rad_s <= 0:
         raise DesignAnalysisError("Analysis requires positive RPM.")
     if condition.forward_speed_m_s < 0:
@@ -281,7 +283,7 @@ def run_design_analysis(
             design.blade, design.operating_conditions[0], snapshots,
             settings=controls, bounds="error",
         )
-    except (ValueError, BEMRotorElementError) as exc:
+    except (ValueError, ArithmeticError, BEMRotorElementError) as exc:
         raise DesignAnalysisError(f"Active-design BEM failed without partial totals: {exc}") from exc
     return _artifact(
         request, kind="active_design_bem_screening",

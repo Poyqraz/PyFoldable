@@ -47,9 +47,9 @@ No aerodynamic dataset was fabricated from paper abstracts.
 | --- | --- | --- |
 | PY-01 — completed, PR #49 | Active-draft preparation + explicit-polar BEM Python service | Exact TOML identity; nominal station Re/Mach/alpha; strict bounds; full output/provenance; UI preparation only |
 | PY-02 — completed, PR #50 | Five-profile coordinate/polar identity | NACA0012/2412/23012/4415/63-412; offline source/hash-pinned coordinates; exact draft/preview/provider identity; mismatched polar rejection |
-| PY-03 — implemented | Validated polar bundle UI + active-draft BEM run | Strict JSON/coordinate identity; explicit geometry-page run; bounded work; input-change invalidation; no benchmark/proxy substitution or metadata-based qualification |
-| PY-04 / PR-11A — next | Deterministic sweeps and optimizer infrastructure | Reuse PY-01 callback; one algorithm first; bounds, seeds, budgets, failure accounting, analytic tests; unknown constraints cannot pass |
-| PY-05 | Mechanism transient infrastructure | Coordinates/signs, mass/CG/inertia/friction, RPM history and acceleration/deceleration, stop events; synthetic limiting cases; PR #3 separate |
+| PY-03 — completed, PR #51 | Validated polar bundle UI + active-draft BEM run | Strict JSON/coordinate identity; explicit geometry-page run; bounded work; input-change invalidation; no benchmark/proxy substitution or metadata-based qualification |
+| PY-04A / PR-11A — implemented first slice | Deterministic finite-grid engine + active chord/twist BEM UI | Canonical grid, strict budgets, failure ledger, analytic tests, explicit run; unknown constraints cannot select a candidate |
+| PY-05 — next | Mechanism transient infrastructure | Coordinates/signs, mass/CG/inertia/friction, RPM history and acceleration/deceleration, stop events; synthetic limiting cases; PR #3 separate |
 | PY-06 | Calibration, uncertainty, comparison reports | Extend PR-07/09/10; distinguish shaft/hinge moments and electrical/shaft power; matched-diameter/conditions thrust ratio; target fitting is not validation |
 
 PR-11B physically supported Pareto recommendations, structural safety and passive
@@ -57,6 +57,11 @@ deployment qualification still require real evidence. Keep 250/140 mm geometry
 requirements, 7100 RPM and 0.85 thrust-ratio target. The 254 mm UIUC benchmark is
 not the project's reference denominator. Print orientation is not an optimizer
 variable or a blocking prerequisite in this plan.
+
+PY-04A extends merged `100636d`; [search contracts and retrospective review](py04_deterministic_design_search.md)
+record the bounded first algorithm, active-draft adapter and UI. It is not a claim
+that robust/Pareto optimization is complete. Broader search methods are deferred;
+the next ordered software slice is PY-05, with no claim of passive deployment.
 
 PY-02 extends merged main `656b756` without repeating PY-01. Sources, exact
 sampling decisions, compatibility and TDD acceptance are recorded in
