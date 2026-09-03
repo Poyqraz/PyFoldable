@@ -124,8 +124,15 @@ SciSpace + Consensus araştırması, kaynak erişim sınırları ve kabul ölç�
    başarısızlık kaydı ve girdi kimliği. Bilinmeyen kısıtlar aday seçtirmez; fiziksel
    optimum veya tamamlanmış robust optimizasyon değildir.
    [Sözleşmeler ve geriye dönük review](py04_deterministic_design_search.md).
-4. **PY-05 — sıradaki; ardından PY-06:** mekanizma geçiş dinamiği, kalibrasyon/belirsizlik ve eşleştirilmiş
-   referans raporları; mevcut sözleşmeleri genişletir. PR #3 ayrı tutulur.
+4. **PY-05A — uygulandı:** açık SI girdili tek rijit-cisim düzlemsel menteşe,
+   parçalı doğrusal RPM/menteşe torku, RPM düğümlerinde RK45 yeniden başlatma ve ilk
+   durdurucu temasında temas öncesi hızla terminal olay. Kaynak/uygulama hash'li JSON
+   servisi ve ayrı çalıştırma butonlu mekanizma çalışma alanı eklendi; tüm çıktılar
+   `physical_qualification=false`. Yang literatür değerleri yalnız türetilmiş modal
+   örnektir, prototip ölçümü değildir. [PY-05A sınırı](py05_mechanism_transient_plan.md).
+   **PY-05B/PY-06 — sıradaki:** doğrulanmış aktif geometri/kütle bağlama, açık kuru
+   sürtünme/temas sözleşmeleri, ardından kalibrasyon/belirsizlik ve eşleştirilmiş
+   referans raporları. BEM/motor tam bağlaşımı bu dilimde yoktur; PR #3 ayrıdır.
 
 Bu sıra, veri bekleyen fiziksel PR-06C–PR-10 kapılarının açıldığını göstermez.
 

@@ -45,6 +45,19 @@ from pyfoldable.application.folding_mechanism import (
     build_mechanism_physics_fixture,
 )
 from pyfoldable.application.opening_sensitivity import load_opening_sensitivity
+from pyfoldable.application.mechanism_transient import (
+    MechanismTransientArtifact,
+    MechanismTransientError,
+    MechanismTransientRequest,
+    prepare_mechanism_transient,
+    run_mechanism_transient,
+)
+from pyfoldable.dynamics.mechanism_transient import (
+    DriveHistory,
+    MechanismParameters,
+    SolverControls,
+    TransientRequest,
+)
 from pyfoldable.application.ui_render import build_markdown_table
 from pyfoldable.core.profile_catalog import PROJECT_AIRFOIL_IDS, load_project_airfoil
 from pyfoldable.visualization.propeller_25d import (
@@ -60,6 +73,7 @@ PAGES = (
     "Çalışma Koşulları",
     "Analiz Çalıştırma",
     "Performans Sonuçları",
+    "Mekanizma Geçişi",
     "Katlanma Davranışı",
     "Motor–Pervane",
     "CFD / FEA / Deney",
@@ -84,6 +98,8 @@ EVIDENCE_KIND_BY_LABEL = {
     "PR-09 FEA sözleşme raporu": "fea_contract_report",
     "PR-10 deney sözleşme raporu": "experiment_contract_report",
 }
+TRANSIENT_RESULT_KEY = "py05_transient_result"
+TRANSIENT_REQUEST_KEY = "py05_transient_request"
 
 
 def _render_markdown_table(rows: list[dict[str, object]]) -> None:
@@ -810,6 +826,80 @@ def _render_operating_conditions() -> None:
     st.info("Gösterilen değerler kanonik TOML dosyasından SI birimlerinde okunur.")
 
 
+def _render_mechanism_transient() -> None:
+    st.subheader("PY-05A · Reçeteli dönüş mekanizma geçişi")
+    st.warning(
+        "Bu bağımsız tek rijit-cisim örneği aktif kanat taslağı veya prototip ölçümü değildir. "
+        "Kuru sürtünme, temas tepkisi/sekme, aerodinamik yük, BEM ve motor bağlaşımı yoktur; "
+        "physical_qualification=false."
+    )
+    columns = st.columns(4)
+    mass = columns[0].number_input("Geçiş kütlesi [kg]", min_value=0.0001, value=0.20, format="%.4f")
+    cg = columns[1].number_input("Geçiş CG mesafesi [m]", min_value=0.0, value=0.05, format="%.4f")
+    inertia = columns[2].number_input("Geçiş menteşe ataleti [kg m²]", min_value=0.000001, value=0.0006, format="%.6f")
+    radius = columns[3].number_input("Geçiş menteşe yarıçapı [m]", min_value=0.0, value=0.10, format="%.4f")
+    columns = st.columns(4)
+    stiffness = columns[0].number_input("Geçiş yay katsayısı [N m/rad]", min_value=0.0, value=0.02, format="%.4f")
+    damping = columns[1].number_input("Geçiş viskoz sönüm [N m s/rad]", min_value=0.0, value=0.001, format="%.4f")
+    initial_deg = columns[2].number_input("Başlangıç açısı [deg]", value=-60.0, min_value=-179.0, max_value=179.0)
+    target_rpm = columns[3].number_input("Hedef RPM", min_value=0.0, value=1200.0, step=100.0)
+    duration = st.number_input("Geçiş süresi [s]", min_value=0.02, max_value=10.0, value=0.5, step=0.05)
+    try:
+        parameters = MechanismParameters(
+            mass, cg, inertia, radius, stiffness, 0.0, damping,
+            math.radians(-179.5), math.radians(179.5),
+        )
+        transient = TransientRequest(
+            parameters, DriveHistory((0.0, duration), (0.0, target_rpm), (0.0, 0.0)),
+            math.radians(initial_deg), 0.0, SolverControls(max_step_s=min(0.002, duration / 20)),
+        )
+        parameter_sources = {name: "user_declared_unqualified" for name in vars(parameters)}
+        request = MechanismTransientRequest(transient, {
+            "classification": "user_declared_mechanism_workbench",
+            "prototype_measurement": False,
+            "input_sources": {
+                "parameters": parameter_sources,
+                "drive": {name: "user_declared_unqualified" for name in vars(transient.drive)},
+                "initial_state": {"initial_angle_rad": "user_declared_unqualified",
+                                  "initial_angular_velocity_rad_s": "user_declared_unqualified"},
+                "controls": {name: "software_numerical_policy" for name in vars(transient.controls)},
+            },
+            "references": [],
+            "limitations": ["Values are explicit user inputs, not active-draft or prototype measurements."],
+        })
+        prepared = prepare_mechanism_transient(request)
+    except (ValueError, MechanismTransientError, OSError) as exc:
+        st.session_state.pop(TRANSIENT_RESULT_KEY, None)
+        st.session_state.pop(TRANSIENT_REQUEST_KEY, None)
+        st.error(f"Geçiş girdisi kapalı biçimde reddedildi: {exc}")
+        return
+    if st.session_state.get(TRANSIENT_REQUEST_KEY) != prepared.request_sha256:
+        st.session_state.pop(TRANSIENT_RESULT_KEY, None)
+        st.session_state.pop(TRANSIENT_REQUEST_KEY, None)
+    if st.button("Mekanizma geçişini çalıştır", type="primary"):
+        try:
+            artifact = run_mechanism_transient(request, expected_request_sha256=prepared.request_sha256)
+        except (MechanismTransientError, OSError) as exc:
+            st.error(f"Geçiş çözümü tamamlanmadı: {exc}")
+        else:
+            st.session_state[TRANSIENT_RESULT_KEY] = artifact
+            st.session_state[TRANSIENT_REQUEST_KEY] = prepared.request_sha256
+    artifact = st.session_state.get(TRANSIENT_RESULT_KEY)
+    if not isinstance(artifact, MechanismTransientArtifact) or artifact.report_json is None:
+        return
+    document = json.loads(artifact.report_json)
+    result = document["result"]
+    st.caption(f"Durum: {result['status']} · örnek: {len(result['time_s'])} · SHA-256: {artifact.report_sha256}")
+    if result["contact"]:
+        st.info(f"İlk {result['contact']['stop']} durdurucu teması: {result['contact']['time_s']:.6g} s; "
+                f"temas öncesi hız {result['contact']['preimpact_angular_velocity_rad_s']:.6g} rad/s")
+    figure = go.Figure(go.Scatter(x=result["time_s"], y=result["angle_rad"], mode="lines", name="θ [rad]"))
+    figure.update_layout(xaxis_title="t [s]", yaxis_title="θ [rad]")
+    st.plotly_chart(figure, use_container_width=True)
+    st.download_button("Geçiş sonucunu JSON indir", data=artifact.report_json,
+                       file_name=artifact.filename, mime="application/json")
+
+
 def _render_folding_mechanism() -> None:
     snapshot = load_dashboard_snapshot(REPO_ROOT)
     st.title("Katlanma Davranışı")
@@ -819,6 +909,7 @@ def _render_folding_mechanism() -> None:
         "yorulma ömrü veya fiziksel yeterlilik değildir.",
         icon="🔎",
     )
+
 
     st.subheader("Geometri ve mekanizma girdileri")
     st.caption(
@@ -1310,6 +1401,9 @@ def main() -> None:
         _render_analysis_run()
     elif page == "Performans Sonuçları":
         _render_performance_results()
+    elif page == "Mekanizma Geçişi":
+        st.title("Mekanizma Geçişi")
+        _render_mechanism_transient()
     elif page == "Katlanma Davranışı":
         _render_folding_mechanism()
     elif page == "CFD / FEA / Deney":
