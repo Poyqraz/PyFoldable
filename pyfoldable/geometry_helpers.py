@@ -5,9 +5,23 @@ from __future__ import annotations
 import math
 from typing import Literal
 
-from .models import FoldableGeometry, FoldablePropellerConfig
+from .models import FoldableGeometry, FoldablePropellerConfig, HingeConfig
 
 StowModel = Literal["legacy_cos", "parallel_fold"]
+
+
+def effective_tip_cg_from_hinge_m(geometry: FoldableGeometry) -> float:
+    """Uç segment ağırlık merkezinin mafsaldan uzaklığı (m)."""
+    if geometry.tip_segment_cg_from_hinge_m > 0.0:
+        return geometry.tip_segment_cg_from_hinge_m
+    return geometry.tip_segment_length_m / 2.0
+
+
+def effective_hinge_radius_m(hinge: HingeConfig, geometry: FoldableGeometry) -> float:
+    """Mafsalın dönüş ekseninden radyal mesafesi (m)."""
+    if hinge.hinge_radius_m > 0.0:
+        return hinge.hinge_radius_m
+    return geometry.hinge_position_m
 
 
 def tip_radial_extension_m(

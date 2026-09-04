@@ -87,6 +87,10 @@ ve depolama kısıtı olarak raporlanır.
 |---|---|
 | `rpm_only` | RPM eşiklerine bağlı doğrusal doygunluk; tüm varyantlarda aynı θ(RPM) |
 | `moment_based` | Geometriye bağlı moment dengesi; varyantlar farklı θ üretebilir |
+| `nonlinear_saturation` | Eşik civarı keskin/eksponansiyel açılma (kapalı-form); bkz. aşağıdaki bölüm |
+
+> Not: `theta_deg_from_rpm` mod dağıtımı **exhaustive**'dir; tanımsız bir
+> `kinematics_mode` `ValueError` fırlatır (sessizce doğrusala düşmez).
 
 ### Moment-based hinge kinematics (V2)
 
@@ -106,6 +110,54 @@ M_resist(theta) = k_hinge * (theta_rad - theta_min_rad) + M_friction
 | `k_hinge` | `hinge.hinge_stiffness_nm_per_rad` |
 | `M_friction` | `hinge.hinge_friction_nm` |
 | `hinge_radius_m` | `hinge.hinge_radius_m` — metadata only in V1 |
+
+### Nonlineer açılma yasası (`nonlinear_saturation`, opt-in)
+
+Eşik civarında doğrusaldan daha keskin (front-loaded) açılmayı modelleyen kapalı-form
+yasa. Merkezkaç açılma momenti ω²'ye bağlı olduğundan gerçek açılma eşik RPM civarında
+hızlıdır; bu mod bunu deterministik bir eğriyle yaklaşıklar (zaman-domeni overshoot yok):
+
+```
+x = (rpm - rpm_threshold) / (rpm_full_open - rpm_threshold)   # [0, 1]
+k = kinematics.curve_sharpness
+f = x                              (k ~ 0  -> doğrusala iner)
+f = (1 - exp(-k*x)) / (1 - exp(-k))   (k != 0)
+theta = theta_min + f * (theta_max - theta_min)
+```
+
+| Parametre | Config alanı | Varsayılan |
+|---|---|---|
+| `k` (keskinlik) | `kinematics.curve_sharpness` | `0.0` (doğrusal) |
+
+### Aero kapanma momenti (`aero_closing`, opt-in)
+
+İleri/ters eksenel akış, uç segmentte açılmayı geri iten bir aerodinamik moment
+üretir → **kısmi açılma ve verim düşüşü** (bkz. US Patent 11667364). Proxy model
+(boyut: `[Pa]·[m²]·[m] = N·m`):
+
+```
+q       = 0.5 * rho * V_axial²                  # eksenel akış dinamik basıncı
+A_ref   = extension * tip_segment_length_m       # kordsuz uç referans alanı
+M_close = close_moment_gain * q * A_ref * r_cg
+```
+
+Denge güncellenir: `M_open(ω²) - M_close = M_resist(theta)`. Varsayılan **kapalı**
+(`close_moment_gain = 0` veya `axial_velocity_m_s = 0`) → mevcut V1/V2 çıktıları birebir
+korunur. Uygulama tek kanonik modülde (`pyfoldable.aero_closing.closing_moment_nm`)
+olup hem `moment_based` kinematiği hem V2 `compute_hinge_moments` tarafından kullanılır.
+
+**Kabul (explicit assumption):** Kuazi-statik yolda (`theta_deg_moment_based`) kapalı-form
+dengeyi korumak için `A_ref` theta'dan bağımsız, tam-açık uzantı (`extension =
+tip_segment_length_m`) referansıyla alınır. Theta'ya bağlı geometri yalnızca V2 dinamik
+yolunda (`theta_dependent=True`) kullanılır.
+
+| Parametre | Config alanı | Varsayılan |
+|---|---|---|
+| `close_moment_gain` | `aero_closing.close_moment_gain` | `0.0` (kapalı) |
+| `V_axial` | `aero_closing.axial_velocity_m_s` | `0.0` (hover) |
+
+Örnek: `configs/foldable/TIP_HINGED_250_V03.json` her iki özelliği de açar;
+`examples/run_tip_nonlinear_closing_demo.py` etkiyi gösterir.
 
 **Model note:** V1 moment model: hinge_radius_m is stored but not used in opening
 moment calculation.
