@@ -19,6 +19,9 @@ the standalone scripts in `examples/`.
   PY-04A deterministic active-design search slice; CI remains the merge authority).
 - No linter is configured in this repo (no ruff/flake8/black config or deps). For a
   baseline syntax check use `./venv/bin/python -m compileall pyfoldable pythrust examples tests`.
+- PY-05 completion and its evidence boundary are documented in
+  `docs/py05_completion.md`. Its unittest-compatible regressions do not replace
+  the complete CI suite or real Streamlit AppTest checks.
 - Build/run = executing the `examples/*.py` scripts or
   `./venv/bin/streamlit run apps/pyfoldable_dashboard.py`; see README.
 
