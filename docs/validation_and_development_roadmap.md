@@ -130,9 +130,13 @@ SciSpace + Consensus araştırması, kaynak erişim sınırları ve kabul ölç�
    servisi ve ayrı çalıştırma butonlu mekanizma çalışma alanı eklendi; tüm çıktılar
    `physical_qualification=false`. Yang literatür değerleri yalnız türetilmiş modal
    örnektir, prototip ölçümü değildir. [PY-05A sınırı](py05_mechanism_transient_plan.md).
-   **PY-05B/PY-06 — sıradaki:** doğrulanmış aktif geometri/kütle bağlama, açık kuru
-   sürtünme/temas sözleşmeleri, ardından kalibrasyon/belirsizlik ve eşleştirilmiş
-   referans raporları. BEM/motor tam bağlaşımı bu dilimde yoktur; PR #3 ayrıdır.
+   **PY-05B — PR #53 içinde uygulandı:** hash ile bağlı aktif taslak,
+   açık kaynaklı tek uç kütle dağılımı, düzenlileştirilmiş sürtünme ve terminal
+   temas sözleşmesi. Adım içi temas kaçırma ve UI sonuç geçersizleştirme hataları
+   TDD ile giderildi. [Tamamlanma sınırı ve doğrulama](py05_completion.md).
+   **PY-06 — sıradaki:** kalibrasyon/belirsizlik ve eşleştirilmiş referans raporları.
+   Statik tutunma, çarpışma tepkisi ve BEM/motor tam bağlaşımı tamamlandı iddiası
+   yoktur; PR #3 ayrıdır. CI fiziksel doğrulama kapılarını açmaz.
 
 Bu sıra, veri bekleyen fiziksel PR-06C–PR-10 kapılarının açıldığını göstermez.
 

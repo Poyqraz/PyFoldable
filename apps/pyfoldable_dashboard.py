@@ -51,7 +51,12 @@ from pyfoldable.application.mechanism_transient import (
     MechanismTransientRequest,
     prepare_mechanism_transient,
     run_mechanism_transient,
+    load_drive_history_json,
+    load_bound_mechanism_json,
+    prepare_bound_mechanism_transient,
+    run_bound_mechanism_transient,
 )
+from pyfoldable.dynamics.mechanism_contracts import DryFriction
 from pyfoldable.dynamics.mechanism_transient import (
     DriveHistory,
     MechanismParameters,
@@ -646,6 +651,8 @@ def _render_design_geometry() -> None:
         )
     except (TypeError, ValueError) as exc:
         _clear_polar_result()
+        st.session_state.pop("py05_bound_result", None)
+        st.session_state.pop("py05_bound_request", None)
         st.error(f"Önizleme girdisi geçersiz: {exc}")
     else:
         x_coords, y_coords, z_coords = zip(*preview_mesh.vertices)
@@ -787,6 +794,7 @@ def _render_design_geometry() -> None:
             "dosyaya dönüş ancak ayrı review ve doğrulama adımıyla yapılabilir."
         )
         _render_design_preparation(draft)
+        _render_bound_mechanism(draft)
 
     st.subheader("Kanat istasyonları")
     _render_markdown_table(
@@ -826,11 +834,94 @@ def _render_operating_conditions() -> None:
     st.info("Gösterilen değerler kanonik TOML dosyasından SI birimlerinde okunur.")
 
 
+def _render_bound_mechanism(draft: DesignDraftArtifact) -> None:
+    st.subheader("PY-05B · Aktif taslağa bağlı tek uç mekanizması")
+    if not st.checkbox("Aktif taslağa bağlı mekanizma analizini aç", value=False):
+        st.session_state.pop("py05_bound_result", None)
+        st.session_state.pop("py05_bound_request", None)
+        return
+    st.warning(
+        "Bu analiz yukarıdaki taslağın geometri/hash kimliğine bağlıdır; kütle, CG ve atalet "
+        "profil geometrisinden tahmin edilmez. Açık kütle örnekleri gereklidir. Tek uç "
+        "modellenir; 140 mm uyumsuzluğu ve physical_qualification=false değişmez."
+    )
+    st.caption(
+        "SI JSON sözleşmesi ve doldurulacak örnek: docs/py05_completion.md. Boş alan analiz "
+        "çalıştırmaz. RPM/tork geçmişi taslağın nominal RPM değerinden bağımsızdır. İlk "
+        "temas terminaldir; kilitlenme, sekme ve statik tutunma modellenmez."
+    )
+    raw = st.text_area(
+        "Aktif mekanizma girdileri [JSON]", value="", height=260, key="py05_bound_json"
+    )
+    if not raw.strip():
+        st.session_state.pop("py05_bound_result", None)
+        st.session_state.pop("py05_bound_request", None)
+        st.info("Kaynağı belirtilmiş kütle dağılımı ve mekanizma girdilerini girin.")
+        return
+    try:
+        binding = load_bound_mechanism_json(draft, raw)
+        prepared = prepare_bound_mechanism_transient(binding)
+    except (ValueError, ArithmeticError, OSError) as exc:
+        st.session_state.pop("py05_bound_result", None)
+        st.session_state.pop("py05_bound_request", None)
+        st.error(f"Aktif mekanizma girdisi reddedildi: {exc}")
+        return
+    if st.session_state.get("py05_bound_request") != prepared.request_sha256:
+        st.session_state.pop("py05_bound_result", None)
+        st.session_state.pop("py05_bound_request", None)
+    parameters = binding.parameters
+    st.caption(
+        f"Tek uç: m={parameters.mass_kg:.6g} kg · CG={parameters.cg_distance_m:.6g} m · "
+        f"J={parameters.hinge_inertia_kg_m2:.6g} kg m² · R={parameters.hinge_radius_m:.6g} m"
+    )
+    st.caption(
+        f"Taslak SHA-256: {draft.draft_sha256} · Bağlama SHA-256: {binding.request_sha256}"
+    )
+    gate = json.loads(binding.context_json)["geometry_gate"]
+    if gate is not None and not gate["minimum_requirement_reachable"]:
+        st.warning("Taslağın katlanmış zarf gereksinimi karşılanmıyor; bu hesap uyumsuzluğu gidermez.")
+    if st.button("Aktif mekanizmayı çalıştır", type="primary"):
+        st.session_state.pop("py05_bound_result", None)
+        st.session_state.pop("py05_bound_request", None)
+        try:
+            artifact = run_bound_mechanism_transient(
+                binding, expected_request_sha256=prepared.request_sha256
+            )
+        except (ValueError, ArithmeticError, OSError) as exc:
+            st.error(f"Aktif mekanizma çözümü tamamlanmadı: {exc}")
+        else:
+            st.session_state["py05_bound_result"] = artifact
+            st.session_state["py05_bound_request"] = prepared.request_sha256
+    artifact = st.session_state.get("py05_bound_result")
+    if not isinstance(artifact, MechanismTransientArtifact) or artifact.report_json is None:
+        return
+    result = json.loads(artifact.report_json)["result"]
+    st.caption(f"Durum: {result['status']} · physical_qualification=false")
+    if result["contact"] is not None:
+        hit = result["contact"]
+        st.info(
+            f"İlk {hit['stop']} temas: {hit['time_s']:.6g} s; temas öncesi hız "
+            f"{hit['preimpact_angular_velocity_rad_s']:.6g} rad/s. Bu kilitlenme başarısı değildir."
+        )
+    figure = go.Figure(
+        go.Scatter(x=result["time_s"], y=result["angle_rad"], mode="lines")
+    )
+    figure.update_layout(xaxis_title="t [s]", yaxis_title="θ [rad]")
+    st.plotly_chart(figure, use_container_width=True)
+    st.download_button(
+        "Aktif mekanizma sonucunu JSON indir",
+        data=artifact.report_json,
+        file_name="active_mechanism_transient_report.json",
+        mime="application/json",
+    )
+
+
 def _render_mechanism_transient() -> None:
     st.subheader("PY-05A · Reçeteli dönüş mekanizma geçişi")
     st.warning(
         "Bu bağımsız tek rijit-cisim örneği aktif kanat taslağı veya prototip ölçümü değildir. "
-        "Kuru sürtünme, temas tepkisi/sekme, aerodinamik yük, BEM ve motor bağlaşımı yoktur; "
+        "İsteğe bağlı düzenlileştirilmiş sürtünme ölçülmüş bir model değildir; statik tutunma, "
+        "temas tepkisi/sekme, aerodinamik yük, BEM ve motor bağlaşımı yoktur; "
         "physical_qualification=false."
     )
     columns = st.columns(4)
@@ -842,33 +933,65 @@ def _render_mechanism_transient() -> None:
     stiffness = columns[0].number_input("Geçiş yay katsayısı [N m/rad]", min_value=0.0, value=0.02, format="%.4f")
     damping = columns[1].number_input("Geçiş viskoz sönüm [N m s/rad]", min_value=0.0, value=0.001, format="%.4f")
     initial_deg = columns[2].number_input("Başlangıç açısı [deg]", value=-60.0, min_value=-179.0, max_value=179.0)
-    target_rpm = columns[3].number_input("Hedef RPM", min_value=0.0, value=1200.0, step=100.0)
+    target_rpm = columns[3].number_input("Hedef RPM", value=1200.0, step=100.0)
     duration = st.number_input("Geçiş süresi [s]", min_value=0.02, max_value=10.0, value=0.5, step=0.05)
+    columns = st.columns(4)
+    lower_deg = columns[0].number_input("Alt durdurucu [deg]", value=-179.5)
+    upper_deg = columns[1].number_input("Üst durdurucu [deg]", value=179.5)
+    rest_deg = columns[2].number_input("Yay serbest açısı [deg]", value=0.0)
+    initial_velocity = columns[3].number_input("Başlangıç açısal hızı [rad/s]", value=0.0)
+    columns = st.columns(3)
+    initial_rpm = columns[0].number_input("Başlangıç RPM", value=0.0)
+    initial_torque = columns[1].number_input("Başlangıç menteşe torku [N m]", value=0.0)
+    final_torque = columns[2].number_input("Son menteşe torku [N m]", value=0.0)
+    st.caption("Açılar +z çevresinde saat yönünün tersine pozitiftir; 0° radyal açık konumdur. "
+               "Varsayılan geçmiş t=0 ile girilen süre arasında doğrusal değişir; şaft torku değildir.")
+    custom_history = st.checkbox("Parçalı zaman geçmişini JSON ile gir", value=False)
+    history_raw = None
+    if custom_history:
+        history_raw = st.text_area("RPM/menteşe torku geçmişi [JSON]", value=json.dumps({
+            "time_s": [0.0, duration], "rpm": [initial_rpm, target_rpm],
+            "applied_hinge_torque_nm": [initial_torque, final_torque]}))
+    use_friction = st.checkbox("Düzenlileştirilmiş Coulomb sürtünmesi", value=False)
+    friction_torque = friction_scale = 0.0
+    friction_source = "explicit_frictionless_model"
+    if use_friction:
+        friction_torque = st.number_input("Coulomb tork büyüklüğü [N m]", min_value=0.0, value=0.001)
+        friction_scale = st.number_input("Sürtünme geçiş hızı [rad/s]", min_value=0.000001, value=0.1)
+        friction_source = st.text_input("Sürtünme kaynağı / açık varsayım", value="Kullanıcı varsayımı; kalibre edilmedi")
+        st.caption("Bu düzgün tanh modeli sıfır hızda tutunma veya kopma torkunu modellemez.")
     try:
+        friction = DryFriction("regularized_coulomb" if use_friction else "none",
+                               friction_torque, friction_scale, friction_source)
         parameters = MechanismParameters(
-            mass, cg, inertia, radius, stiffness, 0.0, damping,
-            math.radians(-179.5), math.radians(179.5),
+            mass, cg, inertia, radius, stiffness, math.radians(rest_deg), damping,
+            math.radians(lower_deg), math.radians(upper_deg), friction,
         )
+        drive = load_drive_history_json(history_raw) if history_raw is not None else DriveHistory(
+            (0.0, duration), (initial_rpm, target_rpm), (initial_torque, final_torque))
         transient = TransientRequest(
-            parameters, DriveHistory((0.0, duration), (0.0, target_rpm), (0.0, 0.0)),
-            math.radians(initial_deg), 0.0, SolverControls(max_step_s=min(0.002, duration / 20)),
+            parameters, drive, math.radians(initial_deg), initial_velocity,
+            SolverControls(max_step_s=min(0.002, duration / 20)),
         )
         parameter_sources = {name: "user_declared_unqualified" for name in vars(parameters)}
+        parameter_sources["dry_friction"] = friction.source
         request = MechanismTransientRequest(transient, {
             "classification": "user_declared_mechanism_workbench",
             "prototype_measurement": False,
             "input_sources": {
                 "parameters": parameter_sources,
-                "drive": {name: "user_declared_unqualified" for name in vars(transient.drive)},
+                "drive": {name: ("user_json_unqualified" if custom_history else
+                          "user_endpoints_linear_interpolation_from_t0_zero") for name in vars(transient.drive)},
                 "initial_state": {"initial_angle_rad": "user_declared_unqualified",
                                   "initial_angular_velocity_rad_s": "user_declared_unqualified"},
                 "controls": {name: "software_numerical_policy" for name in vars(transient.controls)},
+                "contact_policy": {"mode": "explicit_terminal_contact_policy"},
             },
             "references": [],
             "limitations": ["Values are explicit user inputs, not active-draft or prototype measurements."],
         })
         prepared = prepare_mechanism_transient(request)
-    except (ValueError, MechanismTransientError, OSError) as exc:
+    except (ValueError, ArithmeticError, OSError) as exc:
         st.session_state.pop(TRANSIENT_RESULT_KEY, None)
         st.session_state.pop(TRANSIENT_REQUEST_KEY, None)
         st.error(f"Geçiş girdisi kapalı biçimde reddedildi: {exc}")
@@ -877,9 +1000,11 @@ def _render_mechanism_transient() -> None:
         st.session_state.pop(TRANSIENT_RESULT_KEY, None)
         st.session_state.pop(TRANSIENT_REQUEST_KEY, None)
     if st.button("Mekanizma geçişini çalıştır", type="primary"):
+        st.session_state.pop(TRANSIENT_RESULT_KEY, None)
+        st.session_state.pop(TRANSIENT_REQUEST_KEY, None)
         try:
             artifact = run_mechanism_transient(request, expected_request_sha256=prepared.request_sha256)
-        except (MechanismTransientError, OSError) as exc:
+        except (ValueError, ArithmeticError, OSError) as exc:
             st.error(f"Geçiş çözümü tamamlanmadı: {exc}")
         else:
             st.session_state[TRANSIENT_RESULT_KEY] = artifact

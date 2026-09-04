@@ -1,5 +1,8 @@
 # PY-05A — prescribed-rotation mechanism transient
 
+> Historical first-slice plan. The subsequent PY-05A corrections and PY-05B
+> implementation are recorded in [PY-05 completion](py05_completion.md).
+
 ## Decision and evidence boundary — 2026-09-03
 
 PY-05A extends PY-04A without changing PR #3, legacy dynamics, benchmarks or

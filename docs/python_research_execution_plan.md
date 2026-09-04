@@ -49,7 +49,7 @@ No aerodynamic dataset was fabricated from paper abstracts.
 | PY-02 — completed, PR #50 | Five-profile coordinate/polar identity | NACA0012/2412/23012/4415/63-412; offline source/hash-pinned coordinates; exact draft/preview/provider identity; mismatched polar rejection |
 | PY-03 — completed, PR #51 | Validated polar bundle UI + active-draft BEM run | Strict JSON/coordinate identity; explicit geometry-page run; bounded work; input-change invalidation; no benchmark/proxy substitution or metadata-based qualification |
 | PY-04A / PR-11A — implemented first slice | Deterministic finite-grid engine + active chord/twist BEM UI | Canonical grid, strict budgets, failure ledger, analytic tests, explicit run; unknown constraints cannot select a candidate |
-| PY-05A — implemented | Prescribed-rotation mechanism transient | Explicit SI rigid planar hinge, piecewise-linear RPM/torque, knot restarts, first-stop terminal event, source-bound JSON and explicit UI run; no dry friction/contact continuation or active-design coupling |
+| PY-05A/B — implemented in PR #53 | Prescribed-drive mechanism software workflow | Signed histories, within-step first contact, explicit regularized friction, source-bound active-draft mass/geometry binding, JSON and separate explicit-run UI paths; no static friction/impact continuation or BEM/motor feedback |
 | PY-06 | Calibration, uncertainty, comparison reports | Extend PR-07/09/10; distinguish shaft/hinge moments and electrical/shaft power; matched-diameter/conditions thrust ratio; target fitting is not validation |
 
 PR-11B physically supported Pareto recommendations, structural safety and passive
@@ -58,14 +58,16 @@ requirements, 7100 RPM and 0.85 thrust-ratio target. The 254 mm UIUC benchmark i
 not the project's reference denominator. Print orientation is not an optimizer
 variable or a blocking prerequisite in this plan.
 
-PY-05A extends merged `52aada4`; its [equation, evidence and deferred-scope contract](py05_mechanism_transient_plan.md)
-keeps every output unqualified and preserves the active-geometry, BEM, motor,
-dry-friction and contact work for PY-05B and later slices.
+PY-05 extends merged `52aada4`; its [original equation/evidence contract](py05_mechanism_transient_plan.md)
+and [completion/correction record](py05_completion.md) keep every output unqualified.
+PY-05B binds explicit tip mass samples to the exact active draft and supports an
+explicitly uncalibrated smooth friction law. Static holding, impact response,
+BEM/motor coupling and physical deployment qualification remain separate work.
 
 PY-04A extends merged `100636d`; [search contracts and retrospective review](py04_deterministic_design_search.md)
 record the bounded first algorithm, active-draft adapter and UI. It is not a claim
 that robust/Pareto optimization is complete. Broader search methods are deferred;
-the next ordered software slice is PY-05, with no claim of passive deployment.
+after PY-05, the next ordered software slice is PY-06, with no claim of passive deployment.
 
 PY-02 extends merged main `656b756` without repeating PY-01. Sources, exact
 sampling decisions, compatibility and TDD acceptance are recorded in
