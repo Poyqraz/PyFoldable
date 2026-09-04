@@ -91,22 +91,31 @@
     }
   },
   "software_fixture_decision": {
-    "schema_version": 1,
+    "schema_version": 2,
     "stand_id": "pr10-synthetic-test-stand-v1",
     "state": "software_pass_physical_measurements_pending",
     "software_gate_passed": true,
     "physical_qualification": false,
+    "test_stand_manifest_sha256": "6e2adfb7143123743bd4bc691b57bd044adb9409c9e984c10f52208168745e02",
     "missing_roles": [],
     "runs": [
       {
         "run_id": "fixed-fixture-1",
         "passed": true,
-        "failures": []
+        "failures": [],
+        "raw_data_sha256": "57b446642a561101f66d86aa6e89c12264b6d91f9a492cb81ce87880f2468a4d",
+        "design_id": "synthetic-fixed_reference",
+        "experiment_date": "2026-08-24",
+        "summary_sha256": "b6ec8756452e2ce08c2b5649e525949657d7f665bd0404b83142f108f697d192"
       },
       {
         "run_id": "foldable-fixture-1",
         "passed": true,
-        "failures": []
+        "failures": [],
+        "raw_data_sha256": "dd351ebbce97f1836eb1ab6c25207bb1592bde981cc38c7c021b3127d724f90f",
+        "design_id": "synthetic-foldable",
+        "experiment_date": "2026-08-24",
+        "summary_sha256": "0762f9dc2de5e845ffcd7092f0d797b301f4a1ffa24e07a996264bed6e92d54a"
       }
     ],
     "summaries": [

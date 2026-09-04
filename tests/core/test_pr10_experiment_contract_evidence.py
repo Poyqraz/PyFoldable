@@ -25,6 +25,7 @@ def test_pr10_report_is_reproducible_and_fixture_never_becomes_physics():
     assert fixture["software_gate_passed"]
     assert not fixture["physical_qualification"]
     assert len(fixture["runs"]) == 2
+    assert len({run["raw_data_sha256"] for run in fixture["runs"]}) == 2
     assert {summary["role"] for summary in fixture["summaries"]} == {
         "fixed_reference", "foldable"
     }

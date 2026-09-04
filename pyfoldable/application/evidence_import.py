@@ -6,6 +6,7 @@ import hashlib
 import json
 import math
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any, Literal, Mapping
 
@@ -18,6 +19,7 @@ from pyfoldable.core.experiment_contract import (
     CalibrationIdentity,
     ExperimentPolicy,
     TestStandManifest,
+    canonical_test_stand_manifest_sha256,
 )
 from pyfoldable.core.fea_contract import (
     CADRevisionIdentity,
@@ -47,7 +49,7 @@ _CANONICAL_IDENTITIES = {
 _CANONICAL_SHA256 = {
     "cfd_reference": "5d6c7ab93022d576d7aa2fe03391f8d0a874aec6ebe732810624ed9f5cb7f5d7",
     "fea_contract_report": "359e4934370e30394967a2d763a8be546d51a203f864b2175f680bbc4e3a3545",
-    "experiment_contract_report": "f8d18827bfe1c1a905e42307b854fd0918741980f1f69bd36d95ea1ca03fea54",
+    "experiment_contract_report": "99ce040f8ef091ed796991fff29bd3b83d36ff0cc2ec6a4449cae31dd7cd5606",
 }
 _FEA_METRIC_UNITS = {
     "maximum_von_mises_stress": "Pa",
@@ -93,11 +95,15 @@ def _sequence(value: object, field: str) -> list[Any]:
     return value
 
 
-def _schema(document: Mapping[str, Any], field: str = "schema_version") -> int:
+def _schema(
+    document: Mapping[str, Any],
+    field: str = "schema_version",
+    expected: int = 1,
+) -> int:
     value = document.get("schema_version")
-    if value != 1 or isinstance(value, bool):
-        raise EvidenceImportError(f"{field} must be 1.")
-    return 1
+    if value != expected or isinstance(value, bool):
+        raise EvidenceImportError(f"{field} must be {expected}.")
+    return expected
 
 
 def _required(document: Mapping[str, Any], key: str, field: str) -> Any:
@@ -349,9 +355,13 @@ def _inspect_experiment(document: Mapping[str, Any]) -> tuple[str, str, str, tup
     readiness = _mapping(document.get("project_readiness"), "project_readiness")
     _require_physical_false(fixture, "software_fixture_decision")
     _require_physical_false(readiness, "project_readiness")
-    _schema(fixture, "software_fixture_decision.schema_version")
+    _schema(fixture, "software_fixture_decision.schema_version", 2)
     if fixture.get("stand_id") != manifest.id:
         raise EvidenceImportError("Experiment stand identity mismatch.")
+    if fixture.get("test_stand_manifest_sha256") != (
+        canonical_test_stand_manifest_sha256(manifest)
+    ):
+        raise EvidenceImportError("Experiment manifest digest mismatch.")
     if fixture.get("software_gate_passed") is not True or fixture.get("state") != (
         "software_pass_physical_measurements_pending"
     ):
@@ -363,19 +373,59 @@ def _inspect_experiment(document: Mapping[str, Any]) -> tuple[str, str, str, tup
         fixture.get("summaries"), "software_fixture_decision.summaries"
     )
     run_ids: list[str] = []
+    run_summary_sha256: dict[str, str] = {}
     for item in run_documents:
         run = _mapping(item, "software_fixture_decision.runs[]")
-        run_ids.append(run.get("run_id"))
+        run_id = run.get("run_id")
+        if not isinstance(run_id, str) or not run_id or len(run_id) > 4096:
+            raise EvidenceImportError("Experiment run id must be a bounded string.")
+        run_ids.append(run_id)
         if run.get("passed") is not True or _sequence(
             run.get("failures"), "software_fixture_decision.runs[].failures"
         ):
             raise EvidenceImportError("Experiment fixture contains a failed run.")
+        for key in ("raw_data_sha256", "summary_sha256"):
+            digest = run.get(key)
+            if (
+                not isinstance(digest, str)
+                or len(digest) != 64
+                or any(character not in "0123456789abcdef" for character in digest)
+            ):
+                raise EvidenceImportError(f"Experiment run {key} is invalid.")
+        design_id = run.get("design_id")
+        if (
+            not isinstance(design_id, str)
+            or not design_id
+            or len(design_id) > 4096
+        ):
+            raise EvidenceImportError("Experiment run design_id is invalid.")
+        try:
+            date.fromisoformat(run.get("experiment_date"))
+        except (TypeError, ValueError) as exc:
+            raise EvidenceImportError(
+                "Experiment run experiment_date is invalid."
+            ) from exc
+        run_summary_sha256[run_id] = run["summary_sha256"]
     summary_ids: list[str] = []
     roles: list[str] = []
     for item in summary_documents:
         summary_document = _mapping(item, "software_fixture_decision.summaries[]")
-        summary_ids.append(summary_document.get("run_id"))
+        summary_id = summary_document.get("run_id")
+        summary_ids.append(summary_id)
         roles.append(summary_document.get("role"))
+        payload = json.dumps(
+            summary_document,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        ).encode("utf-8")
+        if (
+            not isinstance(summary_id, str)
+            or hashlib.sha256(payload).hexdigest()
+            != run_summary_sha256.get(summary_id)
+        ):
+            raise EvidenceImportError("Experiment summary digest mismatch.")
     if (
         not run_ids
         or len(run_ids) != len(set(run_ids))

@@ -6,11 +6,14 @@ import pytest
 
 from pyfoldable.core.experiment_contract import (
     CalibrationIdentity,
+    EXPERIMENT_CONTRACT_SCHEMA_VERSION,
     ExperimentPolicy,
     ExperimentRun,
     ExperimentSample,
     TestStandManifest,
     assess_experiment_bundle,
+    canonical_experiment_summary_sha256,
+    canonical_test_stand_manifest_sha256,
 )
 
 
@@ -67,13 +70,27 @@ def _run(role: str, run_id: str, offset: float = 0.0, **changes) -> ExperimentRu
 
 
 def test_complete_fixed_and_foldable_bundle_passes_software_gate() -> None:
+    manifest = _manifest()
     decision = assess_experiment_bundle(
-        _manifest(),
+        manifest,
         (_run("fixed_reference", "fixed-1"), _run("foldable", "fold-1", 0.5)),
     )
     assert decision.software_gate_passed
     assert not decision.physical_qualification
     assert decision.state == "software_pass_physical_measurements_pending"
+    assert EXPERIMENT_CONTRACT_SCHEMA_VERSION == 2
+    assert manifest.as_mapping()["schema_version"] == 1
+    assert decision.test_stand_manifest_sha256 == canonical_test_stand_manifest_sha256(manifest)
+    assert decision.as_mapping()["test_stand_manifest_sha256"] == (
+        canonical_test_stand_manifest_sha256(manifest)
+    )
+    assert decision.runs[0].raw_data_sha256 == "d" * 64
+    assert decision.runs[0].design_id == "design-fixed_reference"
+    assert decision.runs[0].experiment_date == "2026-08-24"
+    assert decision.as_mapping()["runs"][0]["raw_data_sha256"] == "d" * 64
+    assert decision.runs[0].summary_sha256 == canonical_experiment_summary_sha256(
+        decision.summaries[0]
+    )
     assert len(decision.summaries) == 2
     thrust = decision.summaries[0].metrics["thrust"]
     assert thrust.expanded_uncertainty > thrust.standard_uncertainty_calibration

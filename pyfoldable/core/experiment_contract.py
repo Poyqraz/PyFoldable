@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 import re
 import statistics
@@ -10,7 +12,8 @@ from datetime import date
 from typing import Any, Literal, Mapping
 
 
-EXPERIMENT_CONTRACT_SCHEMA_VERSION = 1
+EXPERIMENT_CONTRACT_SCHEMA_VERSION = 2
+TEST_STAND_MANIFEST_SCHEMA_VERSION = 1
 ExperimentRole = Literal["fixed_reference", "foldable"]
 REQUIRED_UNITS = {
     "thrust": "N",
@@ -150,11 +153,36 @@ class TestStandManifest:
 
     def as_mapping(self) -> Mapping[str, Any]:
         return {
-            "schema_version": EXPERIMENT_CONTRACT_SCHEMA_VERSION,
+            "schema_version": TEST_STAND_MANIFEST_SCHEMA_VERSION,
             "id": self.id,
             "calibrations": [dict(value.as_mapping()) for value in self.calibrations],
             "policy": dict(self.policy.as_mapping()),
         }
+
+
+def canonical_test_stand_manifest_sha256(manifest: TestStandManifest) -> str:
+    """Return the stable identity of every calibration and policy input."""
+    if not isinstance(manifest, TestStandManifest):
+        raise TypeError("manifest must be TestStandManifest.")
+    payload = json.dumps(
+        manifest.as_mapping(),
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _canonical_mapping_sha256(document: Mapping[str, Any]) -> str:
+    payload = json.dumps(
+        document,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -288,17 +316,56 @@ class ExperimentSummary:
         }
 
 
+def canonical_experiment_summary_sha256(summary: ExperimentSummary) -> str:
+    """Return the stable identity of an assessed run summary."""
+    if not isinstance(summary, ExperimentSummary):
+        raise TypeError("summary must be ExperimentSummary.")
+    return _canonical_mapping_sha256(summary.as_mapping())
+
+
 @dataclass(frozen=True)
 class ExperimentRunDecision:
     run_id: str
     failures: tuple[str, ...]
+    raw_data_sha256: str | None = None
+    design_id: str | None = None
+    experiment_date: str | None = None
+    summary_sha256: str | None = None
+
+    def __post_init__(self) -> None:
+        identities = (
+            self.raw_data_sha256,
+            self.design_id,
+            self.experiment_date,
+            self.summary_sha256,
+        )
+        if all(value is None for value in identities):
+            return
+        if any(value is None for value in identities):
+            raise ValueError("Run evidence identity fields must be supplied together.")
+        if re.fullmatch(r"[0-9a-f]{64}", self.raw_data_sha256 or "") is None:
+            raise ValueError("raw_data_sha256 must be a SHA-256 digest.")
+        if re.fullmatch(r"[0-9a-f]{64}", self.summary_sha256 or "") is None:
+            raise ValueError("summary_sha256 must be a SHA-256 digest.")
+        _nonempty("design_id", self.design_id or "")
+        if len(self.design_id or "") > 4096:
+            raise ValueError("design_id must be a bounded string.")
+        _date("experiment_date", self.experiment_date or "")
 
     @property
     def passed(self) -> bool:
         return not self.failures
 
     def as_mapping(self) -> Mapping[str, Any]:
-        return {"run_id": self.run_id, "passed": self.passed, "failures": list(self.failures)}
+        return {
+            "run_id": self.run_id,
+            "passed": self.passed,
+            "failures": list(self.failures),
+            "raw_data_sha256": self.raw_data_sha256,
+            "design_id": self.design_id,
+            "experiment_date": self.experiment_date,
+            "summary_sha256": self.summary_sha256,
+        }
 
 
 @dataclass(frozen=True)
@@ -307,6 +374,13 @@ class ExperimentBundleDecision:
     runs: tuple[ExperimentRunDecision, ...]
     summaries: tuple[ExperimentSummary, ...]
     missing_roles: tuple[str, ...]
+    test_stand_manifest_sha256: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.test_stand_manifest_sha256 is not None and re.fullmatch(
+            r"[0-9a-f]{64}", self.test_stand_manifest_sha256
+        ) is None:
+            raise ValueError("test_stand_manifest_sha256 must be a SHA-256 digest.")
 
     @property
     def software_gate_passed(self) -> bool:
@@ -331,6 +405,7 @@ class ExperimentBundleDecision:
             "state": self.state,
             "software_gate_passed": self.software_gate_passed,
             "physical_qualification": self.physical_qualification,
+            "test_stand_manifest_sha256": self.test_stand_manifest_sha256,
             "missing_roles": list(self.missing_roles),
             "runs": [dict(value.as_mapping()) for value in self.runs],
             "summaries": [dict(value.as_mapping()) for value in self.summaries],
@@ -421,10 +496,24 @@ def assess_experiment_bundle(
             drift = abs(run.zero_after[quantity] - run.zero_before[quantity])
             if drift > limit:
                 failures.append(f"zero_drift_above_limit:{quantity}")
-        decisions.append(ExperimentRunDecision(run.id, tuple(failures)))
-        summaries.append(_summary(run, manifest))
+        summary = _summary(run, manifest)
+        summaries.append(summary)
+        decisions.append(
+            ExperimentRunDecision(
+                run.id,
+                tuple(failures),
+                run.raw_data_sha256,
+                run.design_id,
+                run.experiment_date,
+                canonical_experiment_summary_sha256(summary),
+            )
+        )
     roles = {run.role for run in runs}
     missing_roles = tuple(sorted({"fixed_reference", "foldable"} - roles))
     return ExperimentBundleDecision(
-        manifest.id, tuple(decisions), tuple(summaries), missing_roles
+        manifest.id,
+        tuple(decisions),
+        tuple(summaries),
+        missing_roles,
+        canonical_test_stand_manifest_sha256(manifest),
     )
