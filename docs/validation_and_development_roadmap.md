@@ -134,10 +134,11 @@ SciSpace + Consensus araştırması, kaynak erişim sınırları ve kabul ölç�
    açık kaynaklı tek uç kütle dağılımı, düzenlileştirilmiş sürtünme ve terminal
    temas sözleşmesi. Adım içi temas kaçırma ve UI sonuç geçersizleştirme hataları
    TDD ile giderildi. [Tamamlanma sınırı ve doğrulama](py05_completion.md).
-   **PY-06A — uygulandı, entegrasyon kapısında:** manifest/ham-veri/özet kimlikli
+   **PY-06A — PR #54 ile birleştirildi:** manifest/ham-veri/özet kimlikli
    eş-koşul sabit–katlanır karşılaştırma ve korelasyonlu belirsizlik yayılımı.
-   **PY-06B — sıradaki:** strict JSON girişli, kaynak ve uygulama hash'li rapor
-   servisi. [PY-06 planı ve kapıları](py06_calibration_uncertainty_plan.md).
+   **PY-06B1 — uygulandı, entegrasyon kapısında:** strict JSON girişli, kaynak ve uygulama hash'li,
+   stale-request korumalı rapor servisi. UI ve fiziksel korelasyon bu küçük dilime
+   dahil değildir. [PY-06 planı ve kapıları](py06_calibration_uncertainty_plan.md).
    Statik tutunma, çarpışma tepkisi ve BEM/motor tam bağlaşımı tamamlandı iddiası
    yoktur; PR #3 ayrıdır. CI fiziksel doğrulama kapılarını açmaz.
 
@@ -302,7 +303,7 @@ arşiv bütünlüğü sürüm kapısıdır.
 | 5 | PR-07 motor bağlantısı | **Sayısal kapı tamamlandı:** tork/gerilim/enerji dengesi, benzersiz kök ve çoklu başlangıç; fiziksel kapı ölçüm korelasyonunu bekliyor |
 | 6 | PR-08/09 CFD ve FEA | PR-08 CFD gerçek ANSYS çıktısını bekliyor; PR-09 yazılım/hazırlık sözleşmesi tamamlandı, gerçek yapısal kanıt bekleniyor |
 | 7 | PR-10 deney | Yazılım/hazırlık ve kamuya açık aynı-pervane referans temeli tamamlandı; kalibrasyonlu gerçek sabit/katlanır ham ölçümler bekleniyor |
-| 8 | PY-06 karşılaştırma | PY-06A çekirdeği uygulandı; PY-06B kaynak/uygulama hash'li rapor servisi sıradaki kapı |
+| 8 | PY-06 karşılaştırma | PY-06A PR #54 ile birleştirildi; PY-06B1 kaynak/uygulama hash'li rapor servisi entegrasyon kapısında |
 | 9 | PR-11/12 optimizasyon ve sürüm | Robust Pareto kararı ve temiz yeniden üretim |
 
 ## İşbirliği sınırları

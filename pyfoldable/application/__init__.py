@@ -32,6 +32,16 @@ from .opening_sensitivity import (
     OpeningSensitivitySnapshot,
     load_opening_sensitivity,
 )
+from .measurement_comparison import (
+    MAX_COMPARISON_JSON_BYTES,
+    MEASUREMENT_COMPARISON_REPORT_SCHEMA_VERSION,
+    MeasurementComparisonReportArtifact,
+    MeasurementComparisonRequest,
+    MeasurementComparisonServiceError,
+    load_measurement_comparison_json,
+    prepare_measurement_comparison_report,
+    run_measurement_comparison_report,
+)
 from .analysis_run import (
     ANALYSIS_SERVICE_ID,
     ANALYSIS_SERVICE_VERSION,
@@ -68,6 +78,14 @@ __all__ = [
     "OpeningSensitivityRow",
     "OpeningSensitivitySnapshot",
     "load_opening_sensitivity",
+    "MAX_COMPARISON_JSON_BYTES",
+    "MEASUREMENT_COMPARISON_REPORT_SCHEMA_VERSION",
+    "MeasurementComparisonReportArtifact",
+    "MeasurementComparisonRequest",
+    "MeasurementComparisonServiceError",
+    "load_measurement_comparison_json",
+    "prepare_measurement_comparison_report",
+    "run_measurement_comparison_report",
     "ANALYSIS_SERVICE_ID",
     "ANALYSIS_SERVICE_VERSION",
     "PR06D_ANALYSIS_ID",
