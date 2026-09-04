@@ -32,6 +32,44 @@ must be reassessed before comparison.
 | PY-06E — PR-09 structural correlation | Compare source-bound ANSYS and test observations at matched geometry/material/load case | Unit/load/hash matching, measurement and mesh uncertainty retained; no safety factor or material value inferred |
 | PY-06F — UI and consolidated report | Read-only comparison tables/intervals and evidence status | Explicit run, stale-state invalidation, downloadable source-bound report; qualified/screening/pending/blocked states remain separate |
 
+### PY-06B1 bounded service slice
+
+PY-06B starts with one application-only service. A single bounded UTF-8 JSON
+document carries the PR-10 manifest v1, PR-10 decision v2, both run contexts,
+the comparison policy and a bounded source statement for every policy field.
+The service converts those values to the immutable core types and delegates all
+matching, covariance, interval and target decisions to
+`build_matched_experiment_comparison`; it must not duplicate that mathematics.
+
+The prepared identity separates the exact input-byte SHA-256 from the canonical
+request SHA-256. The latter also binds the application service, PY-06A core and
+PR-10 contract source-file hashes. Running with an older prepared identity is a
+stale-request error and cannot publish a partial report. The delivered report is
+deterministic JSON with an exact byte hash and explicit false values for physical
+qualification and target fitting.
+
+PY-06B1 excludes UI work, persistence, motor correlation, mechanism parameter
+identification and structural correlation. Those remain PY-06C--F.
+
+#### TDD gates for PY-06B1
+
+- reject oversized, invalid UTF-8, deeply nested, duplicate-key and non-finite
+  JSON before constructing core objects;
+- require exact root, manifest, decision, summary, metric, context, policy and
+  policy-source field sets, with bounded collection sizes and strings;
+- recompute derived PR-10 `passed`, `state` and `software_gate_passed` fields plus
+  manifest and summary digests; syntax/date-window validate and source-bind the
+  declared raw-data digest, design id and experiment date (their absent source
+  artifacts cannot be independently recomputed by this service);
+- require a nonempty source statement for all five match tolerances, all three
+  correlation assumptions and the thrust-ratio target;
+- preserve input, request and implementation identities separately and reject a
+  stale expected request hash;
+- match direct PY-06A numerical output exactly, including controlled blocked
+  comparisons with empty metrics;
+- keep the request collections immutable and every report at `screening_only`,
+  `physical_qualification=false` and `target_fitting_performed=false`.
+
 ## PY-06A first-slice contract
 
 The caller must select exact run ids from an already assessed
