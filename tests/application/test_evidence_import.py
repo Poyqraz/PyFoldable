@@ -166,6 +166,31 @@ def test_evidence_upload_rejects_inconsistent_experiment_fixture_decision(field,
 
 
 @pytest.mark.parametrize(
+    ("path", "value", "message"),
+    [
+        (("test_stand_manifest_sha256",), "0" * 64, "manifest digest"),
+        (("runs", 0, "raw_data_sha256"), "G" * 64, "raw_data_sha256"),
+        (("runs", 0, "summary_sha256"), "0" * 64, "summary digest"),
+        (("runs", 0, "experiment_date"), "not-a-date", "experiment_date"),
+    ],
+)
+def test_evidence_upload_rejects_experiment_provenance_tampering(
+    path, value, message
+):
+    document = json.loads(EXPERIMENT.read_text(encoding="utf-8"))
+    target = document["software_fixture_decision"]
+    for key in path[:-1]:
+        target = target[key]
+    target[path[-1]] = value
+
+    with pytest.raises(EvidenceImportError, match=message):
+        inspect_evidence_upload(
+            json.dumps(document).encode(), EXPERIMENT.name,
+            "experiment_contract_report",
+        )
+
+
+@pytest.mark.parametrize(
     ("path", "kind", "field"),
     [
         (FEA, "fea_contract_report", "maximum_mesh_change_percent"),

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 from typing import Any, Mapping
@@ -66,8 +67,16 @@ def _run(role: str, run_id: str, thrust_offset: float) -> ExperimentRun:
         )
         for repeat in range(3)
     )
+    raw_data_sha256 = hashlib.sha256(
+        json.dumps(
+            [dict(sample.as_mapping()) for sample in samples],
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+    ).hexdigest()
     return ExperimentRun(
-        run_id, role, design_id, "2026-08-24", "d" * 64,
+        run_id, role, design_id, "2026-08-24", raw_data_sha256,
         {"thrust": 0.0, "torque": 0.0},
         {"thrust": 0.02, "torque": 0.002}, samples,
     )

@@ -21,7 +21,7 @@ sonunda; rotor fiziği doğrulamasının başında** bulunuyor.
 | Katlanır mekanizma | PR-06D fold-state sınırı, etkin yarıçap projeksiyonu ve sabit-limit kanıtı mevcut | Fiziksel nitelikli açılma duyarlılığı ve yük–performans geri beslemesi |
 | CFD korelasyonu | Seviye-1 hazırlık/çıktı sözleşmeleri | Ağ bağımsızlığı ve BEM–CFD korelasyonu |
 | Yapısal doğrulama | PR-09 CAD/malzeme/yük-vaka ve FEA sonuç sözleşmesi mevcut | Gerçek CAD, malzeme kartları ve ANSYS Mechanical kanıtı |
-| Deneysel doğrulama | PR-10 kalibrasyon/ham veri/tekrar/belirsizlik sözleşmesi mevcut | Kalibre edilmiş standdan gerçek sabit ve katlanır ölçümleri |
+| Deneysel doğrulama | PR-10 v2 provenance zinciri ve PY-06A eş-koşul karşılaştırma çekirdeği mevcut | Kalibre edilmiş standdan gerçek sabit ve katlanır ölçümleri |
 | Optimizasyon | Parametrik tarama ve karar tabloları | Doğrulanmış modellerle robust çok amaçlı optimizasyon |
 
 Bu nedenle mevcut sonuçlar mimari ve karşılaştırmalı geliştirme için değerlidir;
@@ -134,7 +134,10 @@ SciSpace + Consensus araştırması, kaynak erişim sınırları ve kabul ölç�
    açık kaynaklı tek uç kütle dağılımı, düzenlileştirilmiş sürtünme ve terminal
    temas sözleşmesi. Adım içi temas kaçırma ve UI sonuç geçersizleştirme hataları
    TDD ile giderildi. [Tamamlanma sınırı ve doğrulama](py05_completion.md).
-   **PY-06 — sıradaki:** kalibrasyon/belirsizlik ve eşleştirilmiş referans raporları.
+   **PY-06A — uygulandı, entegrasyon kapısında:** manifest/ham-veri/özet kimlikli
+   eş-koşul sabit–katlanır karşılaştırma ve korelasyonlu belirsizlik yayılımı.
+   **PY-06B — sıradaki:** strict JSON girişli, kaynak ve uygulama hash'li rapor
+   servisi. [PY-06 planı ve kapıları](py06_calibration_uncertainty_plan.md).
    Statik tutunma, çarpışma tepkisi ve BEM/motor tam bağlaşımı tamamlandı iddiası
    yoktur; PR #3 ayrıdır. CI fiziksel doğrulama kapılarını açmaz.
 
@@ -266,6 +269,11 @@ Flyer 10x4.7 için 60 noktalı yayımlanmış harici referans ve bağımsız ayn
 Morgado/Pascoa yöntem karşılaştırması bağlandı. Bunlar model/doğrulama bağlamıdır;
 proje katlanır prototipinin kalibrasyonlu ham ölçümü sayılmaz.
 
+PR-10 karar zarfı PY-06A için v2'ye yükseltilmiş; manifest SHA-256 ile her run'ın
+ham-veri, tasarım, tarih ve özet kimliği kalıcı hale getirilmiştir. Test-stand
+manifest şeması v1 kalır. Eski karar nesneleri Python çağrıları açısından
+oluşturulabilir olsa da kimlik alanları olmadan PY-06A karşılaştırmasına alınmaz.
+
 ### PR-11 — robust çok amaçlı optimizasyon
 
 **PR-11A yazılım altyapısının ilk dilimi (PY-04A)** sınırlı deterministik tarama,
@@ -294,7 +302,8 @@ arşiv bütünlüğü sürüm kapısıdır.
 | 5 | PR-07 motor bağlantısı | **Sayısal kapı tamamlandı:** tork/gerilim/enerji dengesi, benzersiz kök ve çoklu başlangıç; fiziksel kapı ölçüm korelasyonunu bekliyor |
 | 6 | PR-08/09 CFD ve FEA | PR-08 CFD gerçek ANSYS çıktısını bekliyor; PR-09 yazılım/hazırlık sözleşmesi tamamlandı, gerçek yapısal kanıt bekleniyor |
 | 7 | PR-10 deney | Yazılım/hazırlık ve kamuya açık aynı-pervane referans temeli tamamlandı; kalibrasyonlu gerçek sabit/katlanır ham ölçümler bekleniyor |
-| 8 | PR-11/12 optimizasyon ve sürüm | Robust Pareto kararı ve temiz yeniden üretim |
+| 8 | PY-06 karşılaştırma | PY-06A çekirdeği uygulandı; PY-06B kaynak/uygulama hash'li rapor servisi sıradaki kapı |
+| 9 | PR-11/12 optimizasyon ve sürüm | Robust Pareto kararı ve temiz yeniden üretim |
 
 ## İşbirliği sınırları
 
