@@ -32,6 +32,76 @@ must be reassessed before comparison.
 | PY-06E — PR-09 structural correlation | Compare source-bound ANSYS and test observations at matched geometry/material/load case | Unit/load/hash matching, measurement and mesh uncertainty retained; no safety factor or material value inferred |
 | PY-06F — UI and consolidated report | Read-only comparison tables/intervals and evidence status | Explicit run, stale-state invalidation, downloadable source-bound report; qualified/screening/pending/blocked states remain separate |
 
+### PY-06C bounded motor/rotor correlation slice
+
+PY-06C evaluates one operating point. It does not require a matched
+fixed/foldable pair and it does not repeat the PR-07 equilibrium solver or the
+PY-06A target-ratio calculation. A shared single-run validator first verifies the
+selected PR-10 manifest, run decision, summary, calibration date and canonical
+identities. PY-06C then binds that run to one canonical PR-07
+`CoupledOperatingPoint` and independent dynamometer evidence for the same motor,
+serial number, ESC and declared electrical measurement boundary. The run context
+also requires the exact `rotor_shaft_torque` channel and binds the PR-10/PR-07
+design id, open diameter and forward speed. Those context declarations are
+retained as screening provenance; they do not independently qualify the
+underlying geometry or aerodynamic source.
+
+The accepted measurement boundary is explicit `motor_terminal_dc_input`. PR-10
+`voltage * current` must not be compared with PR-07 applied motor-terminal power
+when the experiment was measured at an upstream battery/ESC bus. Battery
+discharge efficiency, manufacturer Kv/Kt values and the PR-07 analytic fixture
+are not substitutes for measured motor efficiency.
+
+The dynamometer record carries separate raw-data and canonical-summary SHA-256
+identities. The latter is recomputed over the complete evidence semantics,
+including metric means, uncertainty budgets, calibration identities, motor/ESC
+identity, date, source and measurement location. Altering a derived value while
+retaining an earlier summary digest therefore fails closed.
+
+For dynamometer torque `Q_d`, selected-run rotor torque `Q_r`, rotational speed
+`n` and angular speed `omega = pi*n/30`, the contract derives
+`P_shaft,d = Q_d*omega`, `P_shaft,r = Q_r*omega` and
+`eta_d = P_shaft,d/P_DC,d`. It reports dynamometer-to-rotor torque and shaft-power
+residuals plus PR-07-to-experiment RPM, DC-power and rotor-torque residuals.
+Standard uncertainty uses the first-order covariance law; every non-independent
+pair has an explicit bounded correlation coefficient. Expanded intervals use the
+declared coverage factor. This follows the
+[NIST TN 1297 propagation law](https://www.nist.gov/pml/nist-technical-note-1297/nist-tn-1297-appendix-law-propagation-uncertainty)
+and [expanded-uncertainty convention](https://www.nist.gov/pml/nist-technical-note-1297/nist-tn-1297-6-expanded-uncertainty).
+[IEC 60034-2-1:2024](https://webstore.iec.ch/en/publication/67756) is retained
+only as test-based efficiency-method precedent; this software contract does not
+claim IEC conformity.
+
+Missing independent dynamometer evidence returns
+`blocked_missing_independent_motor_evidence` with no correlation metrics.
+Identity, measurement-boundary or condition mismatches return
+`blocked_unmatched_motor_rotor_conditions`. A complete software fixture may
+exercise the mathematics, but remains screening-only. No outcome in PY-06C sets
+`physical_qualification=true`; real raw data, certificates, dynamic adequacy and
+independent engineering review remain external gates.
+
+#### TDD gates for PY-06C
+
+- validate exactly one PR-10 run without requiring the opposite propeller role;
+- reuse the PR-10 manifest, calibration, summary and V-times-I validation instead
+  of duplicating it in the motor correlation module;
+- require an exact canonical PR-07 point hash and recheck convergence,
+  feasibility, torque/energy/voltage residuals and shaft-power identities;
+- reject battery efficiency, datasheet/model efficiency, hinge torque and generic
+  torque as dynamometer evidence;
+- bind motor id, serial, ESC, propeller design, raw-data digest, certificate
+  digests, calibration validity and motor-terminal measurement location;
+- enforce inclusive diameter, forward-speed, RPM, voltage, current, temperature
+  and pressure tolerances for the relevant PR-07/PR-10/dynamometer pair;
+- verify finite nonnegative uncertainty budgets and explicit correlation
+  coefficients in `[-1, 1]`, including covariance round-off handling;
+- analytically verify DC power, shaft power, efficiency, torque residual and
+  power residual values and their expanded intervals;
+- retain model residuals as indeterminate when PR-07 model-form uncertainty is
+  absent, even when their point values are small;
+- return immutable machine-readable results with `target_fitting_performed=false`
+  and `physical_qualification=false` for every evidence class.
+
 ### PY-06B1 bounded service slice
 
 PY-06B starts with one application-only service. A single bounded UTF-8 JSON

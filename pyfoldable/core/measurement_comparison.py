@@ -35,6 +35,27 @@ class MeasurementComparisonError(ValueError):
     """Matched comparison cannot be evaluated without changing its meaning."""
 
 
+@dataclass(frozen=True)
+class ValidatedExperimentRunMeasurement:
+    """One exact PR-10 run selected without requiring the opposite role."""
+
+    stand_id: str
+    test_stand_manifest_sha256: str
+    run_decision: ExperimentRunDecision
+    summary: ExperimentSummary
+    metrics: Mapping[str, UncertaintyMetric]
+    identity: Mapping[str, str]
+
+    def as_mapping(self) -> Mapping[str, Any]:
+        return {
+            "stand_id": self.stand_id,
+            "test_stand_manifest_sha256": self.test_stand_manifest_sha256,
+            "run_decision": dict(self.run_decision.as_mapping()),
+            "summary": dict(self.summary.as_mapping()),
+            "identity": dict(self.identity),
+        }
+
+
 def _finite(name: str, value: object) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ValueError(f"{name} must be a finite scalar.")
@@ -373,6 +394,137 @@ def _select_summary(
     return summary
 
 
+def _validated_decision_envelope(
+    manifest: TestStandManifest,
+    decision: ExperimentBundleDecision,
+) -> Mapping[str, ExperimentRunDecision]:
+    if not isinstance(manifest, TestStandManifest):
+        raise MeasurementComparisonError("manifest must be a TestStandManifest.")
+    if not isinstance(decision, ExperimentBundleDecision):
+        raise MeasurementComparisonError("decision must be an ExperimentBundleDecision.")
+    if manifest.id != decision.stand_id:
+        raise MeasurementComparisonError("Manifest and decision test-stand identity mismatch.")
+    try:
+        expected_manifest_sha256 = canonical_test_stand_manifest_sha256(manifest)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise MeasurementComparisonError(
+            "Test-stand manifest cannot be canonically identified."
+        ) from exc
+    if (
+        not isinstance(decision.test_stand_manifest_sha256, str)
+        or re.fullmatch(r"[0-9a-f]{64}", decision.test_stand_manifest_sha256) is None
+        or decision.test_stand_manifest_sha256 != expected_manifest_sha256
+    ):
+        raise MeasurementComparisonError(
+            "Experiment decision manifest digest is missing or mismatched."
+        )
+    if (not isinstance(decision.runs, tuple)
+            or not decision.runs
+            or any(not isinstance(value, ExperimentRunDecision) for value in decision.runs)):
+        raise MeasurementComparisonError("Experiment run decisions must be immutable and typed.")
+    for value in decision.runs:
+        try:
+            _nonempty("run decision run_id", value.run_id)
+        except ValueError as exc:
+            raise MeasurementComparisonError("Experiment run decision ids are invalid.") from exc
+        if (not isinstance(value.failures, tuple)
+                or any(not isinstance(item, str) or not item for item in value.failures)):
+            raise MeasurementComparisonError("Experiment run decision failures must be a string tuple.")
+        if (
+            not isinstance(value.raw_data_sha256, str)
+            or re.fullmatch(r"[0-9a-f]{64}", value.raw_data_sha256) is None
+        ):
+            raise MeasurementComparisonError("Experiment run raw-data digest is invalid.")
+        if (
+            not isinstance(value.summary_sha256, str)
+            or re.fullmatch(r"[0-9a-f]{64}", value.summary_sha256) is None
+        ):
+            raise MeasurementComparisonError("Experiment run summary digest is invalid.")
+        try:
+            _nonempty("run decision design_id", value.design_id)
+            date.fromisoformat(value.experiment_date or "")
+        except (TypeError, ValueError) as exc:
+            raise MeasurementComparisonError(
+                "Experiment run design identity or date is invalid."
+            ) from exc
+    if (not isinstance(decision.missing_roles, tuple)
+            or any(not isinstance(role, str)
+                   or role not in {"fixed_reference", "foldable"}
+                   for role in decision.missing_roles)
+            or len(set(decision.missing_roles)) != len(decision.missing_roles)):
+        raise MeasurementComparisonError("Experiment missing roles must be an immutable role tuple.")
+    run_decisions = {value.run_id: value for value in decision.runs}
+    if len(run_decisions) != len(decision.runs):
+        raise MeasurementComparisonError("Experiment decision run ids must be unique.")
+    return MappingProxyType(run_decisions)
+
+
+def validate_experiment_run_measurement(
+    manifest: TestStandManifest,
+    decision: ExperimentBundleDecision,
+    run_id: str,
+    expected_role: str,
+) -> ValidatedExperimentRunMeasurement:
+    """Validate one exact PR-10 summary and its provenance, independently of its pair."""
+    try:
+        _nonempty("run_id", run_id)
+    except ValueError as exc:
+        raise MeasurementComparisonError("Selected run id is invalid.") from exc
+    if expected_role not in {"fixed_reference", "foldable"}:
+        raise MeasurementComparisonError("Expected experiment role is invalid.")
+    run_decisions = _validated_decision_envelope(manifest, decision)
+    if expected_role in decision.missing_roles:
+        raise MeasurementComparisonError(
+            "Selected experiment role is simultaneously declared missing."
+        )
+    run_decision = run_decisions.get(run_id)
+    if run_decision is None:
+        raise MeasurementComparisonError(f"Selected run id is absent: {run_id}.")
+    if not run_decision.passed:
+        raise MeasurementComparisonError("Selected run failed the experiment software gate.")
+    invalid_calibrations = tuple(
+        calibration.quantity
+        for calibration in manifest.calibrations
+        if not calibration.valid_on(run_decision.experiment_date or "")
+    )
+    if invalid_calibrations:
+        raise MeasurementComparisonError(
+            "Selected run calibration is invalid on its experiment date: "
+            + ", ".join(invalid_calibrations)
+            + "."
+        )
+    summary = _select_summary(
+        decision, run_id, expected_role, manifest.policy.minimum_repeats
+    )
+    coverage_factor = _finite("coverage_factor", manifest.policy.coverage_factor)
+    metrics = _validated_pr10_summary(summary, manifest, coverage_factor)
+    try:
+        actual_summary_sha256 = canonical_experiment_summary_sha256(summary)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise MeasurementComparisonError(
+            "Experiment summary cannot be canonically identified."
+        ) from exc
+    if actual_summary_sha256 != run_decision.summary_sha256:
+        raise MeasurementComparisonError(
+            "Experiment summary digest does not match the assessed run decision."
+        )
+    identity = MappingProxyType({
+        "run_id": run_decision.run_id,
+        "raw_data_sha256": run_decision.raw_data_sha256,
+        "design_id": run_decision.design_id,
+        "experiment_date": run_decision.experiment_date,
+        "summary_sha256": run_decision.summary_sha256,
+    })
+    return ValidatedExperimentRunMeasurement(
+        manifest.id,
+        decision.test_stand_manifest_sha256,
+        run_decision,
+        summary,
+        metrics,
+        identity,
+    )
+
+
 def _comparison_metric(
     quantity: str,
     unit: str,
@@ -439,128 +591,30 @@ def build_matched_experiment_comparison(
     policy: ComparisonPolicy,
 ) -> MatchedExperimentComparison:
     """Compare exact fixed/foldable PR-10 summaries without target fitting."""
-    if not isinstance(manifest, TestStandManifest):
-        raise MeasurementComparisonError("manifest must be a TestStandManifest.")
-    if not isinstance(decision, ExperimentBundleDecision):
-        raise MeasurementComparisonError("decision must be an ExperimentBundleDecision.")
     if not isinstance(fixed_context, RunComparisonContext) or not isinstance(
         foldable_context, RunComparisonContext
     ):
         raise MeasurementComparisonError("Both run comparison contexts are required.")
     if not isinstance(policy, ComparisonPolicy):
         raise MeasurementComparisonError("policy must be a ComparisonPolicy.")
-    if manifest.id != decision.stand_id:
-        raise MeasurementComparisonError("Manifest and decision test-stand identity mismatch.")
-    try:
-        expected_manifest_sha256 = canonical_test_stand_manifest_sha256(manifest)
-    except (TypeError, ValueError, OverflowError) as exc:
-        raise MeasurementComparisonError(
-            "Test-stand manifest cannot be canonically identified."
-        ) from exc
-    if (
-        not isinstance(decision.test_stand_manifest_sha256, str)
-        or re.fullmatch(r"[0-9a-f]{64}", decision.test_stand_manifest_sha256) is None
-        or decision.test_stand_manifest_sha256 != expected_manifest_sha256
-    ):
-        raise MeasurementComparisonError(
-            "Experiment decision manifest digest is missing or mismatched."
-        )
-    if (not isinstance(decision.runs, tuple)
-            or not decision.runs
-            or any(not isinstance(value, ExperimentRunDecision) for value in decision.runs)):
-        raise MeasurementComparisonError("Experiment run decisions must be immutable and typed.")
-    for value in decision.runs:
-        try:
-            _nonempty("run decision run_id", value.run_id)
-        except ValueError as exc:
-            raise MeasurementComparisonError("Experiment run decision ids are invalid.") from exc
-        if (not isinstance(value.failures, tuple)
-                or any(not isinstance(item, str) or not item for item in value.failures)):
-            raise MeasurementComparisonError("Experiment run decision failures must be a string tuple.")
-        if (
-            not isinstance(value.raw_data_sha256, str)
-            or re.fullmatch(r"[0-9a-f]{64}", value.raw_data_sha256) is None
-        ):
-            raise MeasurementComparisonError("Experiment run raw-data digest is invalid.")
-        if (
-            not isinstance(value.summary_sha256, str)
-            or re.fullmatch(r"[0-9a-f]{64}", value.summary_sha256) is None
-        ):
-            raise MeasurementComparisonError("Experiment run summary digest is invalid.")
-        try:
-            _nonempty("run decision design_id", value.design_id)
-            date.fromisoformat(value.experiment_date or "")
-        except (TypeError, ValueError) as exc:
-            raise MeasurementComparisonError(
-                "Experiment run design identity or date is invalid."
-            ) from exc
-    if (not isinstance(decision.missing_roles, tuple)
-            or any(not isinstance(role, str)
-                   or role not in {"fixed_reference", "foldable"}
-                   for role in decision.missing_roles)
-            or len(set(decision.missing_roles)) != len(decision.missing_roles)):
-        raise MeasurementComparisonError("Experiment missing roles must be an immutable role tuple.")
+    _validated_decision_envelope(manifest, decision)
     if not decision.software_gate_passed:
         raise MeasurementComparisonError("Experiment bundle software gate has not passed.")
     if fixed_context.run_id == foldable_context.run_id:
         raise MeasurementComparisonError("Fixed and foldable run ids must differ.")
-    run_decisions = {value.run_id: value for value in decision.runs}
-    if len(run_decisions) != len(decision.runs):
-        raise MeasurementComparisonError("Experiment decision run ids must be unique.")
-    for run_id in (fixed_context.run_id, foldable_context.run_id):
-        run_decision = run_decisions.get(run_id)
-        if run_decision is None:
-            raise MeasurementComparisonError(f"Selected run id is absent: {run_id}.")
-        if not run_decision.passed:
-            raise MeasurementComparisonError("Selected run failed the experiment software gate.")
-        invalid_calibrations = tuple(
-            calibration.quantity
-            for calibration in manifest.calibrations
-            if not calibration.valid_on(run_decision.experiment_date or "")
-        )
-        if invalid_calibrations:
-            raise MeasurementComparisonError(
-                "Selected run calibration is invalid on its experiment date: "
-                + ", ".join(invalid_calibrations)
-                + "."
-            )
+    fixed_selected = validate_experiment_run_measurement(
+        manifest, decision, fixed_context.run_id, "fixed_reference"
+    )
+    foldable_selected = validate_experiment_run_measurement(
+        manifest, decision, foldable_context.run_id, "foldable"
+    )
     selected_run_identities = MappingProxyType({
-        role: MappingProxyType({
-            "run_id": run_decision.run_id,
-            "raw_data_sha256": run_decision.raw_data_sha256,
-            "design_id": run_decision.design_id,
-            "experiment_date": run_decision.experiment_date,
-            "summary_sha256": run_decision.summary_sha256,
-        })
-        for role, run_decision in (
-            ("fixed", run_decisions[fixed_context.run_id]),
-            ("foldable", run_decisions[foldable_context.run_id]),
-        )
+        "fixed": fixed_selected.identity,
+        "foldable": foldable_selected.identity,
     })
-
-    fixed = _select_summary(
-        decision, fixed_context.run_id, "fixed_reference", manifest.policy.minimum_repeats
-    )
-    foldable = _select_summary(
-        decision, foldable_context.run_id, "foldable", manifest.policy.minimum_repeats
-    )
     coverage_factor = _finite("coverage_factor", manifest.policy.coverage_factor)
-    fixed_metrics = _validated_pr10_summary(fixed, manifest, coverage_factor)
-    foldable_metrics = _validated_pr10_summary(foldable, manifest, coverage_factor)
-    for summary, run_decision in (
-        (fixed, run_decisions[fixed_context.run_id]),
-        (foldable, run_decisions[foldable_context.run_id]),
-    ):
-        try:
-            actual_summary_sha256 = canonical_experiment_summary_sha256(summary)
-        except (TypeError, ValueError, OverflowError) as exc:
-            raise MeasurementComparisonError(
-                "Experiment summary cannot be canonically identified."
-            ) from exc
-        if actual_summary_sha256 != run_decision.summary_sha256:
-            raise MeasurementComparisonError(
-                "Experiment summary digest does not match the assessed run decision."
-            )
+    fixed_metrics = fixed_selected.metrics
+    foldable_metrics = foldable_selected.metrics
     validated = {
         output_name: (fixed_metrics[summary_name], foldable_metrics[summary_name])
         for output_name, (summary_name, _unit) in _METRICS.items()
@@ -630,7 +684,7 @@ def build_matched_experiment_comparison(
             target_decision = "screening_target_indeterminate"
     return MatchedExperimentComparison(
         decision.stand_id,
-        expected_manifest_sha256,
+        fixed_selected.test_stand_manifest_sha256,
         fixed_context,
         foldable_context,
         selected_run_identities,

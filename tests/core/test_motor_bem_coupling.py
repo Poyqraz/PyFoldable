@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import math
 
 import pytest
@@ -15,6 +16,7 @@ from pyfoldable.core.motor_bem_coupling import (
     InvalidAeroLoadError,
     NoEquilibriumError,
     make_bem_aero_load_callback,
+    canonical_coupled_operating_point_sha256,
     solve_coupled_operating_point,
 )
 from pythrust.propulsion.models import BatterySpec, MotorSpec, SystemSpec
@@ -95,6 +97,11 @@ def test_result_provenance_is_complete_and_json_safe() -> None:
     assert payload["aero"]["qualification"] == "software_fixture"
     assert payload["settings"]["scan_points"] >= 25
     assert payload["physical_correlation_state"] == "pending"
+    digest = canonical_coupled_operating_point_sha256(result)
+    assert len(digest) == 64
+    assert digest != canonical_coupled_operating_point_sha256(
+        dataclasses.replace(result, throttle=result.throttle - 0.01)
+    )
 
 
 def test_bem_callback_rebuilds_condition_at_every_candidate_rpm() -> None:
