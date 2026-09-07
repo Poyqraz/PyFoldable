@@ -8,6 +8,8 @@ may wrap :func:`solve_bem_rotor` or :func:`solve_foldable_bem_rotor` and return 
 
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping
@@ -206,6 +208,20 @@ class CoupledOperatingPoint:
             "qualification": self.qualification,
             "physical_correlation_state": self.physical_correlation_state,
         }
+
+
+def canonical_coupled_operating_point_sha256(point: CoupledOperatingPoint) -> str:
+    """Return the stable identity of every persisted PR-07 point field."""
+    if not isinstance(point, CoupledOperatingPoint):
+        raise TypeError("point must be a CoupledOperatingPoint.")
+    payload = json.dumps(
+        point.as_mapping(),
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
 
 
 AeroLoadFunction = Callable[[float], AeroLoadSample]

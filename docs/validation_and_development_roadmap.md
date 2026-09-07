@@ -136,9 +136,13 @@ SciSpace + Consensus araştırması, kaynak erişim sınırları ve kabul ölç�
    TDD ile giderildi. [Tamamlanma sınırı ve doğrulama](py05_completion.md).
    **PY-06A — PR #54 ile birleştirildi:** manifest/ham-veri/özet kimlikli
    eş-koşul sabit–katlanır karşılaştırma ve korelasyonlu belirsizlik yayılımı.
-   **PY-06B1 — uygulandı, entegrasyon kapısında:** strict JSON girişli, kaynak ve uygulama hash'li,
+   **PY-06B1 — PR #55 ile birleştirildi:** strict JSON girişli, kaynak ve uygulama hash'li,
    stale-request korumalı rapor servisi. UI ve fiziksel korelasyon bu küçük dilime
    dahil değildir. [PY-06 planı ve kapıları](py06_calibration_uncertainty_plan.md).
+   **PY-06C — tamamlandı:** tek PR-10 çalışma noktasını SHA-bağlı PR-07 sonucu
+   ve bağımsız motor dinamometre/verim kanıtıyla karşılaştıran fail-closed çekirdek;
+   rotor-tork semantiği, motor-terminal güç sınırı, geometri/ileri-hız ve elektriksel
+   koşul eşlemesi ile kanonik dinamometre özet kimliği zorunludur.
    Statik tutunma, çarpışma tepkisi ve BEM/motor tam bağlaşımı tamamlandı iddiası
    yoktur; PR #3 ayrıdır. CI fiziksel doğrulama kapılarını açmaz.
 
@@ -303,7 +307,7 @@ arşiv bütünlüğü sürüm kapısıdır.
 | 5 | PR-07 motor bağlantısı | **Sayısal kapı tamamlandı:** tork/gerilim/enerji dengesi, benzersiz kök ve çoklu başlangıç; fiziksel kapı ölçüm korelasyonunu bekliyor |
 | 6 | PR-08/09 CFD ve FEA | PR-08 CFD gerçek ANSYS çıktısını bekliyor; PR-09 yazılım/hazırlık sözleşmesi tamamlandı, gerçek yapısal kanıt bekleniyor |
 | 7 | PR-10 deney | Yazılım/hazırlık ve kamuya açık aynı-pervane referans temeli tamamlandı; kalibrasyonlu gerçek sabit/katlanır ham ölçümler bekleniyor |
-| 8 | PY-06 karşılaştırma | PY-06A PR #54 ile birleştirildi; PY-06B1 kaynak/uygulama hash'li rapor servisi entegrasyon kapısında |
+| 8 | PY-06 karşılaştırma | PY-06A PR #54 ve PY-06B1 PR #55 ile birleştirildi; PY-06C motor/rotor korelasyon çekirdeği tamamlandı |
 | 9 | PR-11/12 optimizasyon ve sürüm | Robust Pareto kararı ve temiz yeniden üretim |
 
 ## İşbirliği sınırları

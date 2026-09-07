@@ -23,6 +23,7 @@ from pyfoldable.core.measurement_comparison import (
     MeasurementComparisonError,
     RunComparisonContext,
     build_matched_experiment_comparison,
+    validate_experiment_run_measurement,
 )
 
 
@@ -179,6 +180,52 @@ def _policy(**changes) -> ComparisonPolicy:
 
 
 class MeasurementComparisonTests(unittest.TestCase):
+    def test_single_run_validator_does_not_require_opposite_role(self):
+        decision = _decision()
+        fixed_only = dataclasses.replace(
+            decision,
+            runs=(decision.runs[0],),
+            summaries=(decision.summaries[0],),
+            missing_roles=("foldable",),
+        )
+        selected = validate_experiment_run_measurement(
+            _manifest(), fixed_only, "fixed", "fixed_reference"
+        )
+        self.assertEqual(selected.run_decision.run_id, "fixed")
+        self.assertEqual(selected.summary.role, "fixed_reference")
+        self.assertEqual(selected.metrics["electrical_power"].mean, 100.0)
+        self.assertEqual(selected.identity["raw_data_sha256"], "a" * 64)
+
+    def test_single_run_validator_rejects_failed_or_digest_tampered_run(self):
+        decision = _decision()
+        failed = dataclasses.replace(
+            decision,
+            runs=(
+                dataclasses.replace(decision.runs[0], failures=("failed",)),
+                decision.runs[1],
+            ),
+        )
+        with self.assertRaisesRegex(MeasurementComparisonError, "failed"):
+            validate_experiment_run_measurement(
+                _manifest(), failed, "fixed", "fixed_reference"
+            )
+        tampered = dataclasses.replace(
+            decision,
+            summaries=(
+                dataclasses.replace(decision.summaries[0], repeat_count=4),
+                decision.summaries[1],
+            ),
+        )
+        with self.assertRaisesRegex(MeasurementComparisonError, "digest"):
+            validate_experiment_run_measurement(
+                _manifest(), tampered, "fixed", "fixed_reference"
+            )
+        inconsistent = dataclasses.replace(decision, missing_roles=("fixed_reference",))
+        with self.assertRaisesRegex(MeasurementComparisonError, "missing"):
+            validate_experiment_run_measurement(
+                _manifest(), inconsistent, "fixed", "fixed_reference"
+            )
+
     def test_analytic_ratio_difference_and_semantic_labels(self):
         result = build_matched_experiment_comparison(
             _manifest(), _decision(), _context("fixed"),
