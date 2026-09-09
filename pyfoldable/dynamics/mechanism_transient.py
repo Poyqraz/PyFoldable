@@ -280,12 +280,43 @@ def _first_contact(dense, start, end, y0, y1, parameters, controls):
     return name, event_time, (stop, _number("contact velocity", event_state[1]))
 
 
+@dataclass(frozen=True)
+class TransientSamples:
+    """Requested dense-output samples through first contact; never extrapolated."""
+
+    result: TransientResult
+    time_s: tuple[float, ...]
+    angle_rad: tuple[float, ...]
+
+
 def solve_mechanism_transient(request: TransientRequest) -> TransientResult:
+    return sample_mechanism_transient(request, ()).result
+
+
+def sample_mechanism_transient(
+    request: TransientRequest, observation_times_s: tuple[float, ...]
+) -> TransientSamples:
+    """Sample each existing RK45 interpolant without changing integration steps.
+
+    Samples after terminal contact are absent, explicitly exposed by ``time_s``.
+    The original adaptive trajectory and its quadrature remain unchanged.
+    """
     if not isinstance(request, TransientRequest):
         raise ValueError("Expected a validated transient request.")
     p, d, c = request.parameters, request.drive, request.controls
+    if not isinstance(observation_times_s, tuple) or len(observation_times_s) > c.max_samples:
+        raise ValueError("Observation times require a tuple within the sample budget.")
+    for value in observation_times_s:
+        _finite("observation time", value)
+        if not d.time_s[0] <= value <= d.time_s[-1]:
+            raise ValueError("Observation time lies outside the drive window.")
+    if any(b <= a for a, b in zip(observation_times_s, observation_times_s[1:])):
+        raise ValueError("Observation times must be strictly increasing.")
     origin = d.time_s[0]
     knots = tuple(value - origin for value in d.time_s)
+    observation_knots = tuple(value - origin for value in observation_times_s)
+    observed_times, observed_angles = [], []
+    observation_index = 0
     times, states, segment_starts = [], [], []
     state = (request.initial_angle_rad, request.initial_angular_velocity_rad_s)
     contact = None
@@ -343,8 +374,19 @@ def solve_mechanism_transient(request: TransientRequest) -> TransientResult:
                     raise RuntimeError("Transient integration failed.")
                 current_time = float(solver.t)
                 current_state = (_number("state angle", solver.y[0]), _number("state velocity", solver.y[1]))
-                hit = _first_contact(solver.dense_output(), previous_time, current_time,
+                dense = solver.dense_output()
+                hit = _first_contact(dense, previous_time, current_time,
                                      previous_state, current_state, p, c)
+                sample_end = hit[1] if hit else current_time
+                while (observation_index < len(observation_knots)
+                       and observation_knots[observation_index] <= sample_end):
+                    sample_time = observation_knots[observation_index]
+                    if sample_time < previous_time:
+                        raise RuntimeError("Observation would require extrapolation.")
+                    angle = hit[2][0] if hit and sample_time == sample_end else dense(sample_time)[0]
+                    observed_times.append(observation_times_s[observation_index])
+                    observed_angles.append(_number("observed prediction angle", angle))
+                    observation_index += 1
                 if hit:
                     name, event_time, event_state = hit
                     times.append(event_time)
@@ -396,7 +438,7 @@ def solve_mechanism_transient(request: TransientRequest) -> TransientResult:
     viscous_loss = _integral(absolute_times, output["damping_power"])
     friction_loss = _integral(absolute_times, output["friction_power"])
     total_loss = [_number("total dissipation", a + b) for a, b in zip(viscous_loss, friction_loss)]
-    return TransientResult(
+    result = TransientResult(
         "stop_contact" if contact else "completed",
         "Integration terminated at first stop contact." if contact else "Drive history completed without stop contact.",
         tuple(absolute_times), tuple(x[0] for x in states), tuple(x[1] for x in states),
@@ -407,3 +449,4 @@ def solve_mechanism_transient(request: TransientRequest) -> TransientResult:
         tuple(output["damping_power"]), tuple(output["friction_power"]), tuple(output["total_power"]),
         tuple(applied_work), tuple(viscous_loss), tuple(friction_loss), tuple(total_loss),
         tuple(segment_starts), contact)
+    return TransientSamples(result, tuple(observed_times), tuple(observed_angles))
