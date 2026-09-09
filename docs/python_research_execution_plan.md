@@ -50,7 +50,8 @@ No aerodynamic dataset was fabricated from paper abstracts.
 | PY-03 — completed, PR #51 | Validated polar bundle UI + active-draft BEM run | Strict JSON/coordinate identity; explicit geometry-page run; bounded work; input-change invalidation; no benchmark/proxy substitution or metadata-based qualification |
 | PY-04A / PR-11A — implemented first slice | Deterministic finite-grid engine + active chord/twist BEM UI | Canonical grid, strict budgets, failure ledger, analytic tests, explicit run; unknown constraints cannot select a candidate |
 | PY-05A/B — implemented in PR #53 | Prescribed-drive mechanism software workflow | Signed histories, within-step first contact, explicit regularized friction, source-bound active-draft mass/geometry binding, JSON and separate explicit-run UI paths; no static friction/impact continuation or BEM/motor feedback |
-| PY-06 | Calibration, uncertainty, comparison reports | Extend PR-07/09/10; distinguish shaft/hinge moments and electrical/shaft power; matched-diameter/conditions thrust ratio; target fitting is not validation |
+| PY-06 — A/B1/C merged; D1 implemented | Calibration, uncertainty, comparison reports | Matched PR-10 comparisons, motor correlation, source-bound mechanism observations; D2 parameter fitting still awaits identifiable measured data |
+| GEOM-01 — next without measured data | Bounded 250/140 mm hinge/geometry feasibility screening | Reuse UI-03C audit; preserve full-path and station-coverage failures; no automatic canonical design rewrite or CAD claim |
 
 PR-11B physically supported Pareto recommendations, structural safety and passive
 deployment qualification still require real evidence. Keep 250/140 mm geometry

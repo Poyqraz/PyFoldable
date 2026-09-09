@@ -28,9 +28,19 @@ must be reassessed before comparison.
 | PY-06A — matched experiment comparison | Compare one fixed-reference and one foldable PR-10 summary at explicit open diameter, RPM, forward speed, temperature and pressure | Exact role/run/stand identity; bounded matching tolerances; uncertainty-propagated thrust, rotor-shaft-torque and DC electrical-input-power ratios; target interval classification; no target fitting; physical false |
 | PY-06B — source-bound comparison service | Strict JSON loader and immutable report envelope for PY-06A | Duplicate/unknown/nonfinite/oversized input rejection; implementation/input hashes; stale-request rejection; software fixtures cannot promote |
 | PY-06C — PR-07 motor correlation | Compare measured DC electrical input, independently established motor efficiency/shaft power and aerodynamic rotor torque | Electrical and shaft power remain distinct; motor/rotor equilibrium residuals; missing efficiency or dynamometer evidence blocks correlation |
-| PY-06D — PY-05 mechanism identification | Calibrate mass/friction/spring parameters only from measured transition histories | Train/holdout split, parameter bounds, identifiability diagnostics and residuals; target fitting is labelled calibration, never validation |
+| PY-06D1 — implemented observation comparison | Source-bound declared drive/angle histories, exact observation-time predictions and frozen run partitions | No extrapolation or silent post-contact truncation; no fit; measured evidence remains pending; [contract](py06d1_mechanism_observation.md) |
+| PY-06D2 — evidence-dependent identification | Calibrate identifiable parameter combinations only from measured transition histories | Frozen physical-run holdout, independent mass/inertia, bounds, excitation and identifiability diagnostics; calibration is never validation |
 | PY-06E — PR-09 structural correlation | Compare source-bound ANSYS and test observations at matched geometry/material/load case | Unit/load/hash matching, measurement and mesh uncertainty retained; no safety factor or material value inferred |
 | PY-06F — UI and consolidated report | Read-only comparison tables/intervals and evidence status | Explicit run, stale-state invalidation, downloadable source-bound report; qualified/screening/pending/blocked states remain separate |
+
+After D1, the next task that can proceed without prototype measurements is
+GEOM-01 in the [main roadmap](validation_and_development_roadmap.md): reuse the
+geometry audit to explore 250/140 mm feasibility. D2 is not an unconditional next
+task. With zero applied torque, uniformly scaling mass, inertia, spring, damping
+and Coulomb torque leaves the normalized PY-05 equation unchanged; angle alone
+cannot identify all those quantities. Freeze independently measured values or
+identify observable combinations before fitting. Geometry feasibility and
+PR-06C aerodynamic qualification remain parallel dependencies.
 
 ### PY-06C bounded motor/rotor correlation slice
 

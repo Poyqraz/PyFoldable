@@ -1,6 +1,6 @@
 # PyFoldable validation and development roadmap
 
-Bu belge, PR-05E sonrasındaki teknik konumu ve katlanabilir pervane için
+Bu belge, PY-06C sonrası teknik konumu ve katlanabilir pervane için
 **deneyle doğrulanmış, tasarım kararı vermeye elverişli** bir analiz zincirine giden
 yolu tanımlar. Yüzde cinsinden tek bir "tamamlanma" değeri verilmez: yazılım
 altyapısının olgunluğu ile fiziksel tahmin doğruluğu aynı şey değildir.
@@ -9,16 +9,18 @@ altyapısının olgunluğu ile fiziksel tahmin doğruluğu aynı şey değildir.
 
 PR-04 ve PR-05 serileri tamamlandı. XFOIL ve NeuralFoil gerçek regresyonları,
 tekrarlanabilirlik kontrolü, polar ailesi üretimi ve iki boyutlu kesit tüketimi artık
-korunan bir temel oluşturuyor. Proje, **altyapı ve 2B aerodinamik kanıt aşamasının
-sonunda; rotor fiziği doğrulamasının başında** bulunuyor.
+korunan bir temel oluşturuyor. Aktif taslak BEM/tarama arayüzü, PY-05 terminal
+temaslı mekanizma çözümü ve PY-06A–C karşılaştırma altyapısı da mevcut.
+**Yazılım kapsamı genişledi; rotor, mekanizma ve yapı için proje ölçümleriyle
+fiziksel doğrulama tamamlanmadı.**
 
 | Alan | Bugünkü durum | Hedefe göre açık |
 | --- | --- | --- |
 | Polar sağlayıcı altyapısı | Gerçek XFOIL/NeuralFoil regresyonlarıyla nitelikli | Yeni airfoil ve çalışma zarfı büyüdükçe yeniden niteleme |
 | 2B kesit aerodinamiği | Reynolds/Mach enterpolasyonu ve izlenebilir kesit yükleri mevcut | 3B dönel akış ve stall düzeltmeleri |
 | Rotor aerodinamiği | QPROP-tabanlı indüksiyon/swirl, uç/kök kaybı, radyal integrasyon ve üretici-geometri taraması mevcut | Temsili Reynolds-duyarlı spanwise polarlara dayalı rotor seviyesi doğrulama |
-| Motor–pervane etkileşimi | PR-07 kapalı çevrim sayısal çekirdeği ve BEM callback sınırı mevcut | Ölçülmüş motor–pervane korelasyonu |
-| Katlanır mekanizma | PR-06D fold-state sınırı, etkin yarıçap projeksiyonu ve sabit-limit kanıtı mevcut | Fiziksel nitelikli açılma duyarlılığı ve yük–performans geri beslemesi |
+| Motor–pervane etkileşimi | PR-07 çözümü ve PY-06C bağımsız dinamometre karşılaştırma çekirdeği mevcut (PR #56) | Gerçek dinamometre/rotor ölçümleri ve fiziksel korelasyon |
+| Katlanır mekanizma | PY-05 kaynak-bağlı tek rijit uç, öngörülen devir ve ilk temas çözümü; PY-06D1 zaman–açı karşılaştırması | 250/140 mm topoloji fizibilitesi, gerçek geçiş ölçümleri, tanımlanabilir kalibrasyon ve yük–performans geri beslemesi |
 | CFD korelasyonu | Seviye-1 hazırlık/çıktı sözleşmeleri | Ağ bağımsızlığı ve BEM–CFD korelasyonu |
 | Yapısal doğrulama | PR-09 CAD/malzeme/yük-vaka ve FEA sonuç sözleşmesi mevcut | Gerçek CAD, malzeme kartları ve ANSYS Mechanical kanıtı |
 | Deneysel doğrulama | PR-10 v2 provenance zinciri ve PY-06A eş-koşul karşılaştırma çekirdeği mevcut | Kalibre edilmiş standdan gerçek sabit ve katlanır ölçümleri |
@@ -139,14 +141,41 @@ SciSpace + Consensus araştırması, kaynak erişim sınırları ve kabul ölç�
    **PY-06B1 — PR #55 ile birleştirildi:** strict JSON girişli, kaynak ve uygulama hash'li,
    stale-request korumalı rapor servisi. UI ve fiziksel korelasyon bu küçük dilime
    dahil değildir. [PY-06 planı ve kapıları](py06_calibration_uncertainty_plan.md).
-   **PY-06C — tamamlandı:** tek PR-10 çalışma noktasını SHA-bağlı PR-07 sonucu
+   **PY-06C — PR #56 ile birleştirildi:** tek PR-10 çalışma noktasını SHA-bağlı PR-07 sonucu
    ve bağımsız motor dinamometre/verim kanıtıyla karşılaştıran fail-closed çekirdek;
    rotor-tork semantiği, motor-terminal güç sınırı, geometri/ileri-hız ve elektriksel
    koşul eşlemesi ile kanonik dinamometre özet kimliği zorunludur.
+   **PY-06D1 — uygulandı:** kaynak-beyanlı ölçüm/devir sözleşmesi, ölçüm zamanlarında
+   RK45 yoğun çıktı karşılaştırması, eksik temas kapsamı ve fiziksel run/hash bazlı
+   eğitim–holdout ayrımı. Gerçek ölçüm henüz yok; kalibrasyon yapılmadı.
+   [Kapsam, testler ve veri gereksinimleri](py06d1_mechanism_observation.md).
    Statik tutunma, çarpışma tepkisi ve BEM/motor tam bağlaşımı tamamlandı iddiası
    yoktur; PR #3 ayrıdır. CI fiziksel doğrulama kapılarını açmaz.
 
 Bu sıra, veri bekleyen fiziksel PR-06C–PR-10 kapılarının açıldığını göstermez.
+
+### 2026-09-09 Astra hedef–roadmap değerlendirmesi
+
+Yüklenen TÜBİTAK önerisi yeniden karşılaştırıldı: 250 mm açık / 140 mm katlı çap,
+7100 rpm'de aynı çaplı referansa göre en az %85 itki, profil/geometri iyileştirmesi,
+geçiş dinamiği ve PA-CF yapısal kanıtı birlikte hedefleniyor. Önerideki %70 ön test
+beyanı kalibre ham veri içermediğinden PY-06'ya ölçüm olarak taşınmadı. 500/1000 mm
+ölçekler sonraki araştırmadır. MATLAB işleri Python'da yürütülür; baskı yönü bu
+yazılım hattının kapsamında değildir. Kaynak PDF SHA-256:
+`e16db4182fe5171dc7d06bb05c74875e0e80fac726cd8be52df366c29a7e1541`.
+
+| Öncelik | Şimdi yapılabilecek iş | Karar kapısı |
+| --- | --- | --- |
+| Bu artım: PY-06D1 | Ölçüm geçmişlerini mevcut PY-05 ile karşılaştır, kaynak ve bağımsız run ayrımını koru | Analitik/sentetik testler; fiziksel yeterlilik false; gerçek veri bekleniyor |
+| **Sıradaki verisiz geliştirme: GEOM-01** | Mevcut UI-03C denetimini yeniden kullanarak 250/140 mm hedefi için sınırlı menteşe/topoloji fizibilite taraması; station kapsamı ve tam katlanma yolu açıklığı | 100 mm menteşenin en az 200 mm merkez-hat zarfı açıkça başarısız kalır; uygulanamaz aday seçilmez; chord/mesh ve merkez-hat ayrılır; CAD/çarpışma garantisi yok |
+| Paralel aerodinamik bağımlılık | Beş profilin çalışma zarfında temsili polar/rotor nitelemesi ve mevcut chord–twist taramasının kanıtı | PR-06C başarısızlığı görünür; 254 mm referans 250 mm proje ölçümü yerine geçmez |
+| Veri gelince PY-06D2 | Önceden dondurulmuş fiziksel run ayrımıyla tanımlanabilir parametre/parametre bileşimi kestirimi | Bağımsız kütle/atalet ölçümü, sınırlar, uyarım yeterliliği, identifiability ve holdout; yalnız optimizasyon yakınsaması yetmez |
+| PY-06E/F ve UI-05B | Aynı tasarım revizyonunda itki/güç, geçiş ve PA-CF kanıtını birleştir; kararlı sözleşmeleri UI'da kullan | Birim/yük/koşul/revizyon eşliği, belirsizlik, kaynak kimliği ve stale-state kontrolü |
+
+PY-06D2 gerçek veri yokken otomatik bir sonraki iş değildir. Geometrik uyumsuzluk
+ve aerodinamik doğruluk, kalibrasyon veya arayüz tamamlanmasıyla çözülmüş sayılmaz.
+Gelecek GEOM-01 PR'ı fizik modelini büyütmeden mevcut denetim ve arama bütçelerini
+kullanacak; yeni topoloji ancak açık geometri girdisi ve ayrı kabul testleriyle eklenir.
 
 ### PR-06 — rotor aerodinamiği
 
@@ -307,7 +336,7 @@ arşiv bütünlüğü sürüm kapısıdır.
 | 5 | PR-07 motor bağlantısı | **Sayısal kapı tamamlandı:** tork/gerilim/enerji dengesi, benzersiz kök ve çoklu başlangıç; fiziksel kapı ölçüm korelasyonunu bekliyor |
 | 6 | PR-08/09 CFD ve FEA | PR-08 CFD gerçek ANSYS çıktısını bekliyor; PR-09 yazılım/hazırlık sözleşmesi tamamlandı, gerçek yapısal kanıt bekleniyor |
 | 7 | PR-10 deney | Yazılım/hazırlık ve kamuya açık aynı-pervane referans temeli tamamlandı; kalibrasyonlu gerçek sabit/katlanır ham ölçümler bekleniyor |
-| 8 | PY-06 karşılaştırma | PY-06A PR #54 ve PY-06B1 PR #55 ile birleştirildi; PY-06C motor/rotor korelasyon çekirdeği tamamlandı |
+| 8 | PY-06 karşılaştırma | A/B1/C sırasıyla PR #54/#55/#56 ile birleştirildi; D1 gözlem karşılaştırması uygulandı; D2 gerçek veri ve tanımlanabilirlik kapısını bekliyor |
 | 9 | PR-11/12 optimizasyon ve sürüm | Robust Pareto kararı ve temiz yeniden üretim |
 
 ## İşbirliği sınırları
