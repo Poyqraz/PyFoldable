@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-09-09",
+  "purpose": "Provisional external experimental evidence index; not a simulation input or qualification artifact",
+  "physical_qualification": false,
+  "sources": [
+    {
+      "id": "uiuc_apcsf_10x4.7_volume1_v3",
+      "url": "https://m-selig.ae.illinois.edu/props/volume-1/propDB-volume-1.html",
+      "classification": "published_fixed_propeller_baseline",
+      "access_state": "existing_normalized_fixture_inspected",
+      "local_artifact": "tests/fixtures/rotor_benchmark/uiuc_apcsf_10x4.7_v1.json",
+      "local_artifact_sha256": "c6f04a4d32ea9c4421db38ec67a2164be0b81b13c64b0a81718792dfd047531b",
+      "checksum_scope": "normalized_fixture_not_original_raw_measurements",
+      "observables": ["CT", "CP", "J", "RPM"],
+      "license": "Third-party source terms; not relicensed under project license",
+      "blockers": ["run_specific_atmosphere_missing", "raw_sensor_streams_missing", "project_hardware_mismatch"],
+      "physical_qualification": false
+    },
+    {
+      "id": "yang_2022_hinge_identification_v1",
+      "url": "https://data.mendeley.com/datasets/fnw2jrwwhx/1",
+      "doi": "10.17632/fnw2jrwwhx.1",
+      "article_url": "https://www.sciencedirect.com/science/article/pii/S2352340922005856",
+      "article_doi": "10.1016/j.dib.2022.108388",
+      "classification": "external_nonrotating_modal_method_reference",
+      "access_state": "published_table_verified_filenames_search_index_listed_raw_bytes_not_retrieved",
+      "raw_files": [
+        {"name": "damping_test_raw.lvm", "observable": "accelerometer_free_vibration_response", "file_units_verified": false, "sha256": null},
+        {"name": "SpringStiffness_FigS1_data.xlsx", "observable": "spring_torque_angle", "file_units_verified": false, "sha256": null}
+      ],
+      "dataset_license": "CC-BY-4.0",
+      "article_license_as_declared_by_pmc": "CC-BY-NC-ND-4.0",
+      "article_license_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9240987/",
+      "reported_acquisition_rate_hz": 200,
+      "reported_rig_hinge_count": 4,
+      "reported_rig_inertia_kg_m2": 0.0051,
+      "reported_quasi_static_spring_slopes_nm_rad": [0.1, 0.07],
+      "table_locator": "Article Table 1; frequency and damping ratio are system identification outputs; c is calculated per hinge",
+      "table_columns": ["published_test_number", "frequency_hz", "natural_frequency_rad_s", "damping_ratio", "calculated_per_hinge_damping_nm_s_rad"],
+      "published_modal_rows": [
+        [1, 2.425, 15.237, 0.111, 0.0043],
+        [2, 2.462, 15.467, 0.115, 0.0045],
+        [3, 2.642, 16.598, 0.100, 0.0042],
+        [4, 2.440, 15.332, 0.101, 0.0039],
+        [5, 2.516, 15.811, 0.109, 0.0044]
+      ],
+      "compatible_with_py06d1_angle_observation_contract": false,
+      "holdout_status": "not_reserved_all_five_used_in_published_aggregate",
+      "uncertainty_status": "No per-observation uncertainty imported; table dispersion is not a calibration certificate",
+      "blockers": ["raw_bytes_not_retrieved", "angle_history_not_directly_measured", "sensor_mapping_and_units_not_audited", "run_segmentation_not_audited", "prototype_material_geometry_and_rotating_regime_mismatch"],
+      "physical_qualification": false
+    },
+    {
+      "id": "goli_2023_30inch_hover_v1",
+      "url": "https://data.mendeley.com/datasets/69hhwc3fd3/1",
+      "doi": "10.17632/69hhwc3fd3.1",
+      "classification": "cross_scale_screening",
+      "access_state": "repository_description_verified_raw_manifest_and_bytes_not_retrieved",
+      "license": "CC-BY-4.0",
+      "reported_diameter_in": 30,
+      "reported_rpm_range": [1500, 3500],
+      "reported_acquisition_rate_hz": 100,
+      "reported_duration_per_case_s": 60,
+      "reported_propeller_count": 5,
+      "includes_folding_type": true,
+      "reported_motor_count": 1,
+      "reported_battery_count": 1,
+      "reported_test_stand": "Tyto Robotics Flight Stand 50",
+      "regime": "hover",
+      "raw_sha256": null,
+      "file_channel_units_verified": false,
+      "blockers": ["raw_manifest_and_bytes_not_retrieved", "channel_units_not_audited", "independent_repeats_not_verified", "run_specific_calibration_and_uncertainty_not_verified", "fixed_foldable_geometry_matching_not_verified", "project_scale_and_regime_mismatch"],
+      "physical_qualification": false
+    }
+  ]
+}

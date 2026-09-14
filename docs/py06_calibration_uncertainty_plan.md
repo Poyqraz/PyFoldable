@@ -33,9 +33,11 @@ must be reassessed before comparison.
 | PY-06E — PR-09 structural correlation | Compare source-bound ANSYS and test observations at matched geometry/material/load case | Unit/load/hash matching, measurement and mesh uncertainty retained; no safety factor or material value inferred |
 | PY-06F — UI and consolidated report | Read-only comparison tables/intervals and evidence status | Explicit run, stale-state invalidation, downloadable source-bound report; qualified/screening/pending/blocked states remain separate |
 
-After D1, the next task that can proceed without prototype measurements is
-GEOM-01 in the [main roadmap](validation_and_development_roadmap.md): reuse the
-geometry audit to explore 250/140 mm feasibility. D2 is not an unconditional next
+After D1, GEOM-01 implements the bounded geometry audit/mesh scan in the
+[main roadmap](validation_and_development_roadmap.md); GEOM-02 full-span station
+input is next without prototype measurements. Published experimental modal rows
+are retained in the [literature registry](literature_measurement_registry.md),
+but its acceleration source is not a direct PY-06D1 angle input. D2 is not an unconditional next
 task. With zero applied torque, uniformly scaling mass, inertia, spring, damping
 and Coulomb torque leaves the normalized PY-05 equation unchanged; angle alone
 cannot identify all those quantities. Freeze independently measured values or

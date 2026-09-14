@@ -32,6 +32,7 @@ from pyfoldable.application.design_draft import (
 from pyfoldable.application.design_analysis import DesignAnalysisArtifact, DesignAnalysisError, prepare_design_analysis
 from pyfoldable.application.polar_upload import MAX_POLAR_UPLOAD_BYTES, PolarRunRequest, prepare_polar_run, run_polar_run
 from pyfoldable.application.active_design_search import prepare_active_search, run_active_search
+from pyfoldable.application.geometry_search import prepare_geometry_search, run_geometry_search
 from pyfoldable.application.design_search import SearchError
 from pyfoldable.application.evidence_import import (
     EvidenceImportError,
@@ -442,6 +443,61 @@ def _render_planned_page(page: str) -> None:
     st.caption("UI-00/01 güvenli kabuk · Sonraki artımlarda test-first etkinleştirilecek.")
 
 
+def _clear_geometry_search() -> None:
+    st.session_state.pop("geom01_result", None)
+    st.session_state.pop("geom01_request", None)
+
+
+def _render_geometry_search(draft: DesignDraftArtifact) -> None:
+    st.subheader("Geometri fizibilitesi · Menteşe ve katlı açı")
+    st.caption("Çap ve kanat kesitleri güncel taslaktan alınır. Seçilen açılar alternatif katlı konumlardır; kanonik tasarım değiştirilmez.")
+    ratios = st.multiselect("Geometri taraması · menteşe r/R", (.24, .32, .40, .48, .56, .64, .72, .80, .88),
+                            default=(.48, .56, .80))
+    angles = st.multiselect("Geometri taraması · katlı açı [deg]", (-180., -165., -150., -135., -120., -90.),
+                            default=(-180., -150.))
+    try:
+        from pyfoldable.application.design_analysis import _load
+        model, _ = _load(draft)
+        request = prepare_geometry_search(draft,
+            hinge_radii_m=tuple(r * model.blade.diameter_m / 2 for r in ratios), stowed_angles_deg=tuple(angles))
+    except (ValueError, TypeError, OSError) as exc:
+        _clear_geometry_search()
+        st.warning(f"Geometri taraması hazırlanamadı: {exc}")
+        return
+    context = json.loads(request.context_json)
+    if not context["full_180_target_necessary_condition_met"]:
+        st.info(
+            f"Tam 180° katlanmada merkez-hat çap alt sınırı {context['full_180_centerline_lower_bound_m'] * 1000:.1f} mm. "
+            "Mevcut açık çap ve göbekle hedef, yalnız menteşe konumu değiştirilerek karşılanamaz."
+        )
+    if st.session_state.get("geom01_request") != request.request_sha256:
+        _clear_geometry_search()
+    if st.button("Geometri fizibilitesini tara"):
+        _clear_geometry_search()
+        try:
+            result = run_geometry_search(request)
+        except (ValueError, TypeError, OSError) as exc:
+            st.error(f"Geometri taraması durduruldu: {exc}")
+        else:
+            st.session_state["geom01_result"] = result
+            st.session_state["geom01_request"] = request.request_sha256
+    result = st.session_state.get("geom01_result")
+    if not isinstance(result, DesignAnalysisArtifact):
+        return
+    document = json.loads(result.report_json)
+    st.warning("Yüzeylerin katlanma boyunca ve birbirleriyle teması doğrulanmadığı için tasarım adayı önerilmez. Eksik kök/uç yüzeyleri ayrıca engel olarak korunur.")
+    _render_markdown_table([
+        {"Menteşe [mm]": round(row["parameters"]["hinge_radius_m"] * 1000, 2),
+         "Katlı açı [deg]": row["parameters"]["stowed_angle_deg"], "Durum": row["status"],
+         "Merkez-hat çapı [mm]": None if row["objective"] is None else round(row["objective"] * 1000, 2),
+         "Mesh çapı [mm]": None if row["details"].get("mesh_envelope_diameter_m") is None else round(row["details"]["mesh_envelope_diameter_m"] * 1000, 2),
+         "Katlanma yolu göbek açıklığı [mm]": None if not row["details"] else round(row["details"]["proposed_path_minimum_hub_clearance_m"] * 1000, 2)}
+        for row in document["candidates"]])
+    with st.expander("Geometri kısıtları ve eksik veriler"):
+        st.text("\n".join(f"{r['index']}: {r['constraints']} {r['error'] or r['details'].get('mesh_error') or ''}" for r in document["candidates"]))
+    st.download_button("Geometri taramasını JSON indir", data=result.report_json, file_name="geometry_feasibility_screening.json", mime="application/json")
+
+
 def _render_design_geometry() -> None:
     snapshot = load_dashboard_snapshot(REPO_ROOT)
     st.title("Tasarım Geometrisi")
@@ -651,6 +707,7 @@ def _render_design_geometry() -> None:
         )
     except (TypeError, ValueError) as exc:
         _clear_polar_result()
+        _clear_geometry_search()
         st.session_state.pop("py05_bound_result", None)
         st.session_state.pop("py05_bound_request", None)
         st.error(f"Önizleme girdisi geçersiz: {exc}")
@@ -793,6 +850,7 @@ def _render_design_geometry() -> None:
             "İndirilen dosya `unqualified_design_draft` olarak işaretlidir. Kanonik "
             "dosyaya dönüş ancak ayrı review ve doğrulama adımıyla yapılabilir."
         )
+        _render_geometry_search(draft)
         _render_design_preparation(draft)
         _render_bound_mechanism(draft)
 
