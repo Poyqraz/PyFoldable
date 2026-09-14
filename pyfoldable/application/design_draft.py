@@ -17,7 +17,8 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from pyfoldable.core.config import load_design_config
-from pyfoldable.core.airfoil import validate_airfoil_definition
+from pyfoldable.core.airfoil import airfoil_coordinate_sha256, validate_airfoil_definition
+from pyfoldable.application.blade_stations import StationBundle, audit_station_bundle
 from pyfoldable.core.models import (
     AirfoilDefinition,
     BladeGeometry,
@@ -117,6 +118,7 @@ def _validate_scalar(name: str, value: object) -> float:
 def _build_model(
     source: PropellerDesign, inputs: DesignDraftInputs,
     airfoil_definition: AirfoilDefinition | None = None,
+    station_bundle: StationBundle | None = None,
 ) -> PropellerDesign:
     if isinstance(inputs.blade_count, bool) or not isinstance(inputs.blade_count, int):
         raise ValueError("blade_count must be an integer.")
@@ -151,20 +153,45 @@ def _build_model(
     if not source.operating_conditions:
         raise ValueError("The source design must define an operating condition.")
 
+    station_audit = None
+    if station_bundle is not None:
+        if chord_scale != 1.0 or twist_scale != 1.0:
+            raise ValueError("Explicit station geometry requires chord_scale and twist_scale equal to one.")
+        station_audit = audit_station_bundle(station_bundle, diameter_m=diameter_m,
+            hub_radius_m=hub_radius_m, hinge_radius_m=hinge_radius_m, airfoil_id=airfoil_id)
+        if not station_audit.hinge_covered:
+            raise ValueError("The hinge must lie strictly inside the explicit station span.")
+        if airfoil_definition is None or not airfoil_definition.coordinates:
+            raise ValueError("Explicit stations require an explicit coordinate-bound airfoil definition.")
+        definition = validate_airfoil_definition(airfoil_definition)
+        if len(definition.coordinates) > 601:
+            raise ValueError("Explicit station preview supports at most 601 airfoil coordinates.")
+        if airfoil_coordinate_sha256(definition) != station_bundle.airfoil_coordinate_sha256:
+            raise ValueError("Explicit station airfoil coordinate identity does not match the selected profile.")
+
     diameter_scale = diameter_m / source.blade.diameter_m
+    stations = tuple(
+        BladeStation(
+            r_over_R=station.r_over_R,
+            chord_m=station.chord_m * diameter_scale * chord_scale,
+            twist_rad=station.twist_rad * twist_scale,
+            airfoil_id=airfoil_id,
+        )
+        for station in source.blade.stations
+    ) if station_bundle is None else tuple(
+        BladeStation(
+            # Only roundoff-sized tip overshoots pass the bundle validator.
+            r_over_R=min(station.radius_m / (diameter_m / 2), 1.0),
+            chord_m=station.chord_m,
+            twist_rad=station.twist_rad,
+            airfoil_id=airfoil_id,
+        ) for station in station_bundle.stations
+    )
     blade = BladeGeometry(
         diameter_m=diameter_m,
         hub_radius_m=hub_radius_m,
         blade_count=inputs.blade_count,
-        stations=tuple(
-            BladeStation(
-                r_over_R=station.r_over_R,
-                chord_m=station.chord_m * diameter_scale * chord_scale,
-                twist_rad=station.twist_rad * twist_scale,
-                airfoil_id=airfoil_id,
-            )
-            for station in source.blade.stations
-        ),
+        stations=stations,
     )
     hinge = replace(source.hinge, radius_m=hinge_radius_m)
     condition = replace(
@@ -207,7 +234,7 @@ def _build_model(
     metadata = {
         key: value
         for key, value in source.metadata.items()
-        if key not in _RUNTIME_METADATA
+        if key not in _RUNTIME_METADATA and not key.startswith("station_")
     }
     metadata.update(
         {
@@ -219,6 +246,18 @@ def _build_model(
             ),
         }
     )
+    if station_bundle is not None:
+        metadata.update({
+            "station_bundle_sha256": station_bundle.canonical_sha256,
+            "station_source_sha256": station_bundle.raw_sha256,
+            "station_source_json": station_bundle.raw_bytes.decode("utf-8"),
+            "station_bundle_json": station_bundle.canonical_json,
+            "station_source_kind": station_bundle.provenance.kind,
+            "station_span_complete": station_audit.span_complete,
+            "station_root_gap_m": station_audit.root_gap_m,
+            "station_tip_gap_m": station_audit.tip_gap_m,
+            "station_geometry_semantics": "Supplied geometry; source hashes do not authenticate measurements or qualify physics",
+        })
     return replace(
         source,
         id=f"{source.id}_DRAFT",
@@ -520,13 +559,14 @@ def build_design_draft(
     *,
     units: DraftUnitSelection | None = None,
     airfoil_definition: AirfoilDefinition | None = None,
+    station_bundle: StationBundle | None = None,
 ) -> DesignDraftArtifact:
     """Build and round-trip a draft without writing beside or over its source."""
     path = Path(source_path).resolve()
     source_bytes = path.read_bytes()
     source_sha256 = hashlib.sha256(source_bytes).hexdigest()
     source = load_design_config(path)
-    draft = _build_model(source, inputs, airfoil_definition)
+    draft = _build_model(source, inputs, airfoil_definition, station_bundle)
     draft_metadata = dict(draft.metadata)
     draft_metadata["source_design_sha256"] = source_sha256
     draft = replace(draft, metadata=draft_metadata)
