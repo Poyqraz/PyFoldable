@@ -1,6 +1,12 @@
 import pytest
+from pathlib import Path
+import runpy
 
-from examples.run_literature_modal_audit import build_modal_audit
+# examples is intentionally not an installed package. Load its standalone script
+# exactly by path, independent of pytest's console-script versus -m entry point.
+build_modal_audit = runpy.run_path(
+    str(Path(__file__).resolve().parents[2] / "examples/run_literature_modal_audit.py")
+)["build_modal_audit"]
 
 
 def test_modal_audit_keeps_rig_and_per_hinge_quantities_separate():
