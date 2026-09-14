@@ -269,8 +269,12 @@ def build_propeller_preview_mesh(
     radius = spec.diameter_m / 2.0
     first_station_radius = source_stations[0].r_over_R * radius
     last_station_radius = source_stations[-1].r_over_R * radius
+    # Equivalent SI inputs such as 0.144 * 0.125 and 0.018 may differ by an ULP.
+    # Permit only arithmetic coincidence, not a physical extension into the hub.
+    root_at_hub = math.isclose(first_station_radius, spec.hub_radius_m, rel_tol=0.0,
+                              abs_tol=8 * max(math.ulp(first_station_radius), math.ulp(spec.hub_radius_m)))
     if not (
-        spec.hub_radius_m <= first_station_radius
+        (spec.hub_radius_m <= first_station_radius or root_at_hub)
         and first_station_radius < spec.hinge_radius_m < last_station_radius
     ):
         raise ValueError(
