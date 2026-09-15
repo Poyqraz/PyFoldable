@@ -113,3 +113,27 @@ def test_unmodeled_hinge_axis_cannot_use_planar_geometry_gate():
     base = prepare_polar_run(altered, payload(), annulus_count=4)
     search = prepare_active_search(base, chord_scales=(1.,), twist_scales=(1.,), minimum_thrust_n=0.)
     assert json.loads(search.context_json)["geometry_bound"]["constraint"] is None
+
+
+def test_scaled_imported_station_candidates_keep_parent_but_drop_obsolete_binding():
+    from test_blade_stations import SOURCE, inputs, raw
+    from pyfoldable.application.blade_stations import parse_station_bundle
+    from pyfoldable.application.design_draft import build_design_draft
+    from pyfoldable.core.profile_catalog import load_project_airfoil
+    bundle = parse_station_bundle(raw())
+    base = build_design_draft(SOURCE, inputs(), station_bundle=bundle,
+                             airfoil_definition=load_project_airfoil("NACA2412"))
+    request = prepare_active_search(prepare_polar_run(base, payload(), annulus_count=4),
+        chord_scales=(1., 1.2), twist_scales=(1.,), minimum_thrust_n=0.)
+    report = json.loads(run_active_search(request).report_json)
+    assert report["request"]["evaluator_identity"]["base_draft_toml"] == base.toml
+    assert report["status_counts"]["failed"] == 0
+    for row in report["candidates"]:
+        details = row["details"]
+        artifact = replace(base, toml=details["draft_toml"],
+            draft_sha256=details["draft_sha256"], source_sha256=base.draft_sha256)
+        candidate, _ = analysis._load(artifact)
+        assert not any(key.startswith("station_") for key in candidate.metadata)
+        assert candidate.metadata["source_design_sha256"] == base.draft_sha256
+        assert candidate.blade.stations[0].chord_m == pytest.approx(
+            bundle.stations[0].chord_m * row["parameters"]["chord_scale"])

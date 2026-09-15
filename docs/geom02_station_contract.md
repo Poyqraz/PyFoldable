@@ -100,6 +100,10 @@ the applied state and old geometry/BEM/search/bound-mechanism/transient results.
 Restoring old inputs does not resurrect a previous result. Analysis remains an
 explicit action. Changed mass/geometry bindings and polar coverage need their
 own existing validation; no mass/inertia or aerodynamic coefficient is generated.
+PY-04 chord/twist candidates remove obsolete `station_*` bindings after transforming
+the supplied sections. Their parent draft hash and the report's full base TOML
+retain the original source; candidate geometry cannot claim the original bundle's
+measurement/design identity. An end-to-end search regression covers this path.
 
 Use **İstasyon kaynak JSON indir** to retain the original source for the current
 editor revision and **Etkin istasyon JSON indir** for the applied SI bundle.
