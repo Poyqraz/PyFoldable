@@ -52,7 +52,8 @@ No aerodynamic dataset was fabricated from paper abstracts.
 | PY-05A/B — implemented in PR #53 | Prescribed-drive mechanism software workflow | Signed histories, within-step first contact, explicit regularized friction, source-bound active-draft mass/geometry binding, JSON and separate explicit-run UI paths; no static friction/impact continuation or BEM/motor feedback |
 | PY-06 — A/B1/C merged; D1 implemented | Calibration, uncertainty, comparison reports | Matched PR-10 comparisons, motor correlation, source-bound mechanism observations; D2 parameter fitting still awaits identifiable measured data |
 | GEOM-01 — implemented | Bounded 250/140 mm hinge/stowed-angle screening with explicit UI | Reuses audit/mesh/grid; 143 mm full180 necessary bound, separate partial path, failed station coverage and unknown surface/interblade gates |
-| GEOM-02 — next without measured data | Explicit source-bound full-span station editing and surface/path readiness | No silent root/tip extrapolation or CAD guarantee |
+| GEOM-02 — implemented, A in PR #59 | Explicit source-bound station import/editing, coverage audit and one active draft for preview/analysis | Physical measurements are not rescaled; explicit apply/rebind; stale results cleared; complete span does not imply surface collision freedom |
+| GEOM-03 — next bounded geometry slice | Define attachment/contact regions and evaluate surface/interblade clearance along folding motion | Explicit topology and numerical bounds; unresolved motion intervals remain unknown; sampled poses alone cannot certify continuous collision freedom |
 
 PR-11B physically supported Pareto recommendations, structural safety and passive
 deployment qualification still require real evidence. Keep 250/140 mm geometry

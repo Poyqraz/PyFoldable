@@ -179,8 +179,8 @@ def build_mechanism_geometry_audit(
         first_station_radius < inputs.hinge_radius_m < last_station_radius
     )
     station_span_complete = (
-        abs(root_gap) <= tolerance
-        and abs(tip_gap) <= tolerance
+        abs(root_gap) <= 8 * max(math.ulp(first_station_radius), math.ulp(inputs.hub_radius_m))
+        and abs(tip_gap) <= 8 * max(math.ulp(last_station_radius), math.ulp(radius))
         and hinge_station_covered
     )
     minimum_diameter = 2.0 * minimum_radius

@@ -79,8 +79,10 @@ sampled paths. Full regression, exact-head CI and final GitHub review precede me
 
 ## Next bounded work
 
-GEOM-02 should accept explicit, source-bound full-span station definitions in the
-active draft and expose surface/path-clearance readiness. It must not silently
-extend the canonical root/tip sections or claim CAD collision freedom. The raw
+GEOM-02 now accepts explicit, source-bound station definitions in the active draft
+and reports complete/partial span through the [station editor](geom02_station_contract.md).
+It does not extend canonical root/tip sections or claim CAD collision freedom.
+GEOM-03 should define attachment/contact regions and bounded surface/interblade
+clearance along folding motion; unresolved intervals remain unknown. The raw
 literature-data acquisition/observable adapter remains a parallel task; PY-06D2
 fitting still requires suitable independent measurements and identifiability.
