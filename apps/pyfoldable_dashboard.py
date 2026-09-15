@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import sys
+import tempfile
+from dataclasses import asdict
 from pathlib import Path
 
 import plotly.graph_objects as go
@@ -29,6 +32,10 @@ from pyfoldable.application.design_draft import (
     DraftUnitSelection,
     build_design_draft,
 )
+from pyfoldable.application.blade_stations import (
+    MAX_STATION_UPLOAD_BYTES, parse_station_bundle, audit_station_bundle, export_station_bundle,
+)
+from pyfoldable.core.config import load_design_config
 from pyfoldable.application.design_analysis import DesignAnalysisArtifact, DesignAnalysisError, prepare_design_analysis
 from pyfoldable.application.polar_upload import MAX_POLAR_UPLOAD_BYTES, PolarRunRequest, prepare_polar_run, run_polar_run
 from pyfoldable.application.active_design_search import prepare_active_search, run_active_search
@@ -498,6 +505,147 @@ def _render_geometry_search(draft: DesignDraftArtifact) -> None:
     st.download_button("Geometri taramasını JSON indir", data=result.report_json, file_name="geometry_feasibility_screening.json", mime="application/json")
 
 
+def _clear_geometry_dependents() -> None:
+    _clear_polar_result()
+    _clear_geometry_search()
+    for key in ("py05_bound_result", "py05_bound_request", TRANSIENT_RESULT_KEY,
+                TRANSIENT_REQUEST_KEY):
+        st.session_state.pop(key, None)
+
+
+def _clear_applied_stations() -> None:
+    st.session_state.pop("geom02_applied_bundle", None)
+    st.session_state.pop("geom02_applied_identity", None)
+    _clear_geometry_dependents()
+
+
+def _station_editor(snapshot, diameter_mm, hub_mm, hinge_mm, foil, chord_scale, twist_scale):
+    """Stage absolute measurements; only an explicit apply activates this table."""
+    st.subheader("Kanat istasyonlarını düzenle")
+    st.caption(
+        "Radyal konum ve chord mm, twist derece cinsindedir. İlk tablo parametrik "
+        "ölçülerden alınır; sonraki hücreler mutlak ölçüdür. Kök/uç otomatik tamamlanmaz. "
+        "Kaynak türü kullanıcının beyanıdır; ölçüm doğrulaması veya fiziksel yeterlilik değildir."
+    )
+    upload = st.file_uploader("Kanat istasyonları JSON", type=["json"], key="geom02_upload")
+    if upload is not None and upload.size > MAX_STATION_UPLOAD_BYTES:
+        _clear_applied_stations()
+        st.error("İstasyon dosyası 128 KiB sınırını aşıyor.")
+        return None
+    raw = None if upload is None else upload.getvalue()
+    token = "canonical" if raw is None else hashlib.sha256(raw).hexdigest()
+    try:
+        # Parse on every rerun, including failed uploads: never fall back to the
+        # previous valid table under an invalid newly selected file.
+        incoming = None if raw is None else parse_station_bundle(raw)
+        if st.session_state.get("geom02_source_token") != token:
+            _clear_applied_stations()
+            if incoming is None:
+                document = {
+                    "schema_version": 1, "units": {"length": "mm", "angle": "deg"},
+                    "diameter": diameter_mm, "hub_radius": hub_mm,
+                    "airfoil_id": foil.id,
+                    "airfoil_coordinate_sha256": foil.metadata["airfoil_coordinate_sha256"],
+                    "provenance": {"kind": "derived_geometry", "reference": snapshot.design_id,
+                                   "locator": "blade.stations; explicit parametrically scaled seed",
+                                   "revision": "GEOM-02 seed",
+                                   "parent_sha256": hashlib.sha256(Path(snapshot.design_path).read_bytes()).hexdigest()},
+                    "stations": [{"radius": s.r_over_R * diameter_mm / 2,
+                                  "chord": s.chord_m * 1000 * diameter_mm / (snapshot.open_diameter_m * 1000) * chord_scale,
+                                  "twist": s.twist_deg * twist_scale} for s in snapshot.blade_stations],
+                }
+                incoming = parse_station_bundle(json.dumps(document, allow_nan=False).encode())
+            st.session_state["geom02_editor_source"] = incoming
+            st.session_state["geom02_source_token"] = token
+            st.session_state["geom02_editor_revision"] = st.session_state.get("geom02_editor_revision", 0) + 1
+        source = st.session_state["geom02_editor_source"]
+        rows = [{"Radyal konum [mm]": s.radius_m * 1000, "Chord [mm]": s.chord_m * 1000,
+                 "Twist [deg]": math.degrees(s.twist_rad)} for s in source.stations]
+        editor_key = f"geom02_table_{st.session_state['geom02_editor_revision']}"
+        edited = st.data_editor(rows, key=editor_key, num_rows="dynamic", hide_index=True,
+                                column_config={name: st.column_config.NumberColumn(name, required=True)
+                                               for name in rows[0]})
+        st.caption(f"Tablonun bağlı olduğu çap: {source.diameter_m * 1000:g} mm · "
+                   f"Göbek: {source.hub_radius_m * 1000:g} mm · Profil: {source.airfoil_id}")
+        provenance = asdict(source.provenance)
+        if provenance.get("parent_sha256") is None:
+            provenance.pop("parent_sha256", None)
+        with st.expander("İstasyon kaynağı"):
+            st.json(provenance)
+            st.caption(f"Kaynak SHA-256: {source.raw_sha256}")
+            st.caption(f"Normalize istasyon SHA-256: {source.canonical_sha256}")
+            st.download_button("İstasyon kaynak JSON indir", source.raw_bytes,
+                               file_name="station_source.json", mime="application/json")
+        changed = edited != rows
+        document = json.loads(source.canonical_json)
+        if changed:
+            # Untouched cells retain exact SI values. Convert only edited/new
+            # cells, so a chord edit cannot drift a radius through display units.
+            converted = []
+            for index, row in enumerate(edited):
+                point = {}
+                for field, label in (("radius", "Radyal konum [mm]"), ("chord", "Chord [mm]"),
+                                     ("twist", "Twist [deg]")):
+                    value = row[label]
+                    if isinstance(value, bool) or not isinstance(value, (int, float)):
+                        raise ValueError("İstasyon hücreleri sayısal ve dolu olmalıdır.")
+                    if index < len(rows) and value == rows[index][label]:
+                        point[field] = document["stations"][index][field]
+                    else:
+                        point[field] = math.radians(value) if field == "twist" else value / 1000
+                converted.append(point)
+            document["stations"] = converted
+            document["provenance"] = {**provenance, "kind": "derived_geometry",
+                                      "parent_sha256": source.canonical_sha256,
+                                      "revision": "GEOM-02 table edit"}
+        candidate = parse_station_bundle(json.dumps(document, allow_nan=False).encode()) if changed else source
+        context = (diameter_mm, hub_mm, hinge_mm, foil.id, foil.metadata["airfoil_coordinate_sha256"])
+        identity = (candidate.raw_sha256, context)
+        if st.session_state.get("geom02_applied_identity") != identity:
+            _clear_applied_stations()
+        if st.button("Tabloyu güncel ölçülere yeniden bağla"):
+            # Explicit revision changes the envelope/profile only. It cannot move
+            # a measured radius, extrapolate endpoints or rescale a chord.
+            document = json.loads(candidate.canonical_json)
+            document.update(diameter=diameter_mm / 1000, hub_radius=hub_mm / 1000, airfoil_id=foil.id,
+                            airfoil_coordinate_sha256=foil.metadata["airfoil_coordinate_sha256"])
+            document["provenance"] = {**document["provenance"], "kind": "derived_geometry",
+                                      "parent_sha256": candidate.canonical_sha256,
+                                      "revision": "GEOM-02 envelope/profile rebind"}
+            rebound = parse_station_bundle(json.dumps(document, allow_nan=False).encode())
+            _clear_applied_stations()
+            st.session_state["geom02_editor_source"] = rebound
+            st.session_state["geom02_editor_revision"] += 1
+            st.rerun()
+        st.caption("Yeniden bağlama yalnız çap/göbek/profil bağını günceller; istasyon ölçülerini değiştirmez.")
+        audit = audit_station_bundle(candidate, diameter_m=diameter_mm / 1000,
+                                     hub_radius_m=hub_mm / 1000, hinge_radius_m=hinge_mm / 1000,
+                                     airfoil_id=foil.id)
+        if candidate.airfoil_coordinate_sha256 != foil.metadata["airfoil_coordinate_sha256"]:
+            raise ValueError("İstasyon dosyasının profil koordinatları seçili profille uyuşmuyor.")
+        st.info(f"Kök kapsam boşluğu: {audit.root_gap_m * 1000:.4g} mm · "
+                f"Uç kapsam boşluğu: {audit.tip_gap_m * 1000:.4g} mm · "
+                f"Tam kapsam: {'evet' if audit.span_complete else 'hayır'}")
+        st.caption("Yüzeyin katlanma yolu ve kanatlar arası çarpışma: hesaplanmadı (unknown).")
+        _render_markdown_table([{"Radyal konum [mm]": s.radius_m * 1000,
+                                 "r/R (hesaplanan)": s.radius_m / (diameter_mm / 2000)}
+                                for s in candidate.stations])
+        if not audit.hinge_covered:
+            raise ValueError("Menteşe tanımlı istasyon aralığının kesinlikle içinde olmalıdır.")
+        if st.button("İstasyonları uygula"):
+            _clear_applied_stations()
+            st.session_state["geom02_applied_bundle"] = candidate
+            st.session_state["geom02_applied_identity"] = identity
+        applied = st.session_state.get("geom02_applied_bundle")
+        if applied is not None:
+            return applied
+    except (ValueError, TypeError, KeyError, OSError) as exc:
+        _clear_applied_stations()
+        st.error(f"İstasyon girdisi geçersiz: {exc}")
+    st.info("Geometri ve analiz için geçerli istasyonları açıkça uygulayın.")
+    return None
+
+
 def _render_design_geometry() -> None:
     snapshot = load_dashboard_snapshot(REPO_ROOT)
     st.title("Tasarım Geometrisi")
@@ -545,6 +693,11 @@ def _render_design_geometry() -> None:
         step=1,
     )
 
+    station_mode = st.radio("Kanat istasyonu kaynağı", ("Parametrik taslak", "Açık istasyonlar"), horizontal=True)
+    explicit_stations = station_mode == "Açık istasyonlar"
+    if st.session_state.get("geom02_mode") != station_mode:
+        _clear_applied_stations()
+        st.session_state["geom02_mode"] = station_mode
     model_columns = st.columns(4)
     airfoil_id = model_columns[0].selectbox(
         "Kesit modeli",
@@ -557,6 +710,7 @@ def _render_design_geometry() -> None:
         max_value=1.50,
         value=1.00,
         step=0.05,
+        disabled=explicit_stations,
     )
     twist_scale = model_columns[2].slider(
         "Twist ölçeği",
@@ -564,6 +718,7 @@ def _render_design_geometry() -> None:
         max_value=1.50,
         value=1.00,
         step=0.05,
+        disabled=explicit_stations,
     )
     fold_angle_deg = model_columns[3].slider(
         "Katlanma açısı [deg]",
@@ -644,39 +799,12 @@ def _render_design_geometry() -> None:
 
     try:
         selected_airfoil = load_project_airfoil(airfoil_id)
-        preview_spec = PropellerPreviewSpec(
-            diameter_m=diameter_mm / 1000.0,
-            hub_radius_m=hub_radius_mm / 1000.0,
-            blade_count=int(blade_count),
-            hinge_radius_m=hinge_radius_mm / 1000.0,
-            fold_angle_deg=float(fold_angle_deg),
-            airfoil_id=airfoil_id,
-            airfoil_definition=selected_airfoil,
-            chord_scale=float(chord_scale),
-            twist_scale=float(twist_scale),
-        )
-        diameter_scale = preview_spec.diameter_m / snapshot.open_diameter_m
-        preview_mesh = build_propeller_preview_mesh(
-            preview_spec,
-            tuple(
-                PreviewBladeStation(
-                    r_over_R=station.r_over_R,
-                    chord_m=station.chord_m * diameter_scale,
-                    twist_deg=station.twist_deg,
-                )
-                for station in snapshot.blade_stations
-            ),
-        )
-        geometry_audit = build_mechanism_geometry_audit(
-            MechanismGeometryInputs(
-                diameter_m=preview_spec.diameter_m,
-                hub_radius_m=preview_spec.hub_radius_m,
-                hinge_radius_m=preview_spec.hinge_radius_m,
-                fold_angle_deg=preview_spec.fold_angle_deg,
-                stowed_requirement_m=snapshot.stowed_envelope_m,
-            ),
-            tuple(station.r_over_R for station in snapshot.blade_stations),
-        )
+        station_bundle = None
+        if explicit_stations:
+            station_bundle = _station_editor(snapshot, diameter_mm, hub_radius_mm, hinge_radius_mm,
+                                             selected_airfoil, chord_scale, twist_scale)
+            if station_bundle is None:
+                return
         draft = build_design_draft(
             snapshot.design_path,
             DesignDraftInputs(
@@ -685,8 +813,8 @@ def _render_design_geometry() -> None:
                 hinge_radius=f"{hinge_radius_mm} mm",
                 blade_count=int(blade_count),
                 airfoil_id=airfoil_id,
-                chord_scale=float(chord_scale),
-                twist_scale=float(twist_scale),
+                chord_scale=1.0 if explicit_stations else float(chord_scale),
+                twist_scale=1.0 if explicit_stations else float(twist_scale),
                 preview_fold_angle=f"{fold_angle_deg} deg",
                 angular_speed=f"{rpm} rpm",
                 forward_speed=f"{forward_speed_m_s} m/s",
@@ -696,6 +824,7 @@ def _render_design_geometry() -> None:
                 pressure=f"{pressure_pa} Pa",
             ),
             airfoil_definition=selected_airfoil,
+            station_bundle=station_bundle,
             units=DraftUnitSelection(
                 length=length_unit,
                 angle=angle_unit,
@@ -705,12 +834,37 @@ def _render_design_geometry() -> None:
                 pressure=pressure_unit,
             ),
         )
-    except (TypeError, ValueError) as exc:
-        _clear_polar_result()
-        _clear_geometry_search()
-        st.session_state.pop("py05_bound_result", None)
-        st.session_state.pop("py05_bound_request", None)
+        # The round-tripped draft is the single station authority for every mode.
+        # Use the config loader here: geometry itself has no positive-RPM gate.
+        with tempfile.TemporaryDirectory(prefix="pyfoldable-preview-") as directory:
+            draft_path = Path(directory) / "draft.toml"
+            draft_path.write_text(draft.toml, encoding="utf-8")
+            active_model = load_design_config(draft_path)
+        active_stations = active_model.blade.stations
+        preview_spec = PropellerPreviewSpec(
+            diameter_m=active_model.blade.diameter_m,
+            hub_radius_m=active_model.blade.hub_radius_m,
+            blade_count=active_model.blade.blade_count,
+            hinge_radius_m=active_model.hinge.radius_m,
+            fold_angle_deg=float(fold_angle_deg),
+            airfoil_id=airfoil_id, airfoil_definition=selected_airfoil,
+        )
+        preview_mesh = build_propeller_preview_mesh(preview_spec, tuple(
+            PreviewBladeStation(s.r_over_R, s.chord_m, math.degrees(s.twist_rad))
+            for s in active_stations))
+        geometry_audit = build_mechanism_geometry_audit(
+            MechanismGeometryInputs(
+                diameter_m=preview_spec.diameter_m, hub_radius_m=preview_spec.hub_radius_m,
+                hinge_radius_m=preview_spec.hinge_radius_m, fold_angle_deg=preview_spec.fold_angle_deg,
+                stowed_requirement_m=snapshot.stowed_envelope_m),
+            tuple(s.r_over_R for s in active_stations))
+        if st.session_state.get("geom02_active_draft") != draft.draft_sha256:
+            _clear_geometry_dependents()
+            st.session_state["geom02_active_draft"] = draft.draft_sha256
+    except (TypeError, ValueError, OSError) as exc:
+        _clear_applied_stations()
         st.error(f"Önizleme girdisi geçersiz: {exc}")
+        return
     else:
         x_coords, y_coords, z_coords = zip(*preview_mesh.vertices)
         i_faces, j_faces, k_faces = zip(*preview_mesh.faces)
@@ -846,6 +1000,9 @@ def _render_design_geometry() -> None:
             file_name=draft.filename,
             mime="application/toml",
         )
+        if station_bundle is not None:
+            st.download_button("Etkin istasyon JSON indir", export_station_bundle(station_bundle),
+                               file_name="blade_stations.json", mime="application/json")
         st.info(
             "İndirilen dosya `unqualified_design_draft` olarak işaretlidir. Kanonik "
             "dosyaya dönüş ancak ayrı review ve doğrulama adımıyla yapılabilir."
@@ -854,22 +1011,13 @@ def _render_design_geometry() -> None:
         _render_design_preparation(draft)
         _render_bound_mechanism(draft)
 
-    st.subheader("Kanat istasyonları")
-    _render_markdown_table(
-        [
-            {
-                "r/R": station.r_over_R,
-                "Chord [mm]": round(station.chord_m * 1000.0, 3),
-                "Twist [deg]": round(station.twist_deg, 3),
-                "Airfoil": station.airfoil_id,
-            }
-            for station in snapshot.blade_stations
-        ]
-    )
-    st.info(
-        "İstasyon tablosu kanonik girdiyi salt okunur gösterir; önizleme kontrolleri "
-        "yalnız tarayıcı oturumu içindir."
-    )
+    st.subheader("Etkin kanat istasyonları")
+    _render_markdown_table([
+        {"Radyal konum [mm]": s.r_over_R * active_model.blade.diameter_m * 500,
+         "r/R": s.r_over_R, "Chord [mm]": s.chord_m * 1000,
+         "Twist [deg]": math.degrees(s.twist_rad), "Airfoil": s.airfoil_id}
+        for s in active_stations])
+    st.caption("Bu tablo, önizleme, indirilen TOML ve geometri/BEM hazırlığı aynı etkin taslağı kullanır.")
 
 
 def _render_operating_conditions() -> None:

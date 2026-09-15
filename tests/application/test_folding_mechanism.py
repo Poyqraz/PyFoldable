@@ -105,6 +105,13 @@ def test_open_geometry_matches_nominal_diameter_when_station_span_is_complete():
     assert not audit.compatibility_reasons
 
 
+@pytest.mark.parametrize("root_gap,tip_gap", [(1e-12, 0), (-1e-12, 0), (0, 1e-12)])
+def test_station_coverage_does_not_hide_physical_gaps_with_engineering_tolerance(root_gap, tip_gap):
+    audit = build_mechanism_geometry_audit(_inputs(),
+        ((.018 + root_gap) / .125, .5, (.125 - tip_gap) / .125))
+    assert audit.station_span_complete is False
+
+
 @pytest.mark.parametrize(
     "overrides",
     [

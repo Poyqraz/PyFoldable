@@ -86,7 +86,10 @@ def _candidate_draft(base: DesignDraftArtifact, parameters: dict[str, float]) ->
         chord_m=station.chord_m * parameters["chord_scale"],
         twist_rad=station.twist_rad * parameters["twist_scale"])
         for station in model.blade.stations))
-    metadata = {key: value for key, value in model.metadata.items() if key not in design_draft._RUNTIME_METADATA}
+    # A transformed candidate is no longer the supplied station bundle. The
+    # shared base TOML and parent SHA retain its source without a false binding.
+    metadata = {key: value for key, value in model.metadata.items()
+                if key not in design_draft._RUNTIME_METADATA and not key.startswith("station_")}
     metadata.update(source_design_sha256=base.draft_sha256, source_design_id=model.id,
         baseline_draft_sha256=base.draft_sha256,
         search_chord_scale=parameters["chord_scale"], search_twist_scale=parameters["twist_scale"])

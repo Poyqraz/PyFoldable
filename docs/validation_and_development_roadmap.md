@@ -168,7 +168,8 @@ yazılım hattının kapsamında değildir. Kaynak PDF SHA-256:
 | --- | --- | --- |
 | Bu artım: PY-06D1 | Ölçüm geçmişlerini mevcut PY-05 ile karşılaştır, kaynak ve bağımsız run ayrımını koru | Analitik/sentetik testler; fiziksel yeterlilik false; gerçek veri bekleniyor |
 | **GEOM-01 — uygulandı** | Mevcut UI-03C denetimi ve mesh ile sınırlı menteşe/katlı-açı taraması, açık UI butonu ve kaynak-bağlı JSON | Kanonik 100 mm menteşe başarısız; ayrıca herhangi bir menteşeyle tam 180° için 143 mm merkez-hat alt sınırı var. Kısmi yol ayrı; eksik station ve bilinmeyen yüzey/kanatlar arası temas aday seçtirmez |
-| **Sıradaki verisiz geliştirme: GEOM-02** | Aktif taslakta kaynak-bağlı tam-span station girişi ve yüzey/yol açıklığı hazırlığı | Kök/uç chord veya profil otomatik uzatılmaz; revizyon/ölçü kimliği korunur; CAD temas garantisi verilmez |
+| **GEOM-02 — uygulandı, A: PR #59** | Kaynak-bağlı istasyon JSON içe aktarma, tablo düzenleme, açık uygula/yeniden bağla ve ortak etkin taslak | Fiziksel ölçüler ölçeklenmez; eksik kapsam görünür; kaynak/hash ve sonuç geçerliliği korunur; tam kapsam yüzey teması doğrulaması değildir |
+| **Sıradaki geometri adımı: GEOM-03** | Bağlantı/temas bölgelerini açık tanımlayıp katlanma boyunca yüzey ve kanatlar arası açıklığı denetle | Topoloji ve sayısal sınırlar açık olmalı; çözülemeyen hareket aralıkları unknown kalır; yalnız örneklenmiş pozlardan sürekli çarpışmasızlık çıkarılmaz |
 | Paralel aerodinamik bağımlılık | Beş profilin çalışma zarfında temsili polar/rotor nitelemesi ve mevcut chord–twist taramasının kanıtı | PR-06C başarısızlığı görünür; 254 mm referans 250 mm proje ölçümü yerine geçmez |
 | Veri gelince PY-06D2 | Önceden dondurulmuş fiziksel run ayrımıyla tanımlanabilir parametre/parametre bileşimi kestirimi | Bağımsız kütle/atalet ölçümü, sınırlar, uyarım yeterliliği, identifiability ve holdout; yalnız optimizasyon yakınsaması yetmez |
 | PY-06E/F ve UI-05B | Aynı tasarım revizyonunda itki/güç, geçiş ve PA-CF kanıtını birleştir; kararlı sözleşmeleri UI'da kullan | Birim/yük/koşul/revizyon eşliği, belirsizlik, kaynak kimliği ve stale-state kontrolü |
@@ -178,6 +179,12 @@ ve aerodinamik doğruluk, kalibrasyon veya arayüz tamamlanmasıyla çözülmü�
 [GEOM-01 uygulaması](geom01_feasibility_plan.md) fizik modelini büyütmeden mevcut
 denetim ve arama bütçelerini kullanır; yeni topoloji ancak açık geometri girdisi ve
 ayrı kabul testleriyle eklenir.
+
+[GEOM-02 sözleşmesi ve arayüzü](geom02_station_contract.md) mevcut kanat istasyonlarını
+otomatik tamamlamadan düzenler. Önizleme, etkin istasyon tablosu, TOML, GEOM-01 ve
+BEM hazırlığı aynı taslaktan beslenir. İstasyon düzenleme, geçersiz dosya veya
+başarısız uygulama eski geometri/analiz sonuçlarını kaldırır. Kütle/atalet ve polar
+uygunluğu yeni geometri için yeniden doğrulanır; geometri girişi bu kanıtları üretmez.
 
 **Literatür ölçüm hattı — 2026-09-09:** SciSpace/Consensus taramaları ve birincil
 yayın/veri deposu denetimiyle [geçici ölçüm kayıt dizini](literature_measurement_registry.md)
