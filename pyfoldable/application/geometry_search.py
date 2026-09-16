@@ -31,7 +31,7 @@ class GeometrySearchRequest:
 
 
 def _inputs(draft):
-    model, _ = analysis._load(draft)
+    model, _ = analysis._load_geometry(draft)
     hinge = model.hinge
     if (hinge is None or not math.isclose(hinge.axis_elevation_rad, math.pi / 2, abs_tol=1e-12, rel_tol=0)
             or any(value != 0 for value in (hinge.axial_offset_m, hinge.tangential_offset_m,

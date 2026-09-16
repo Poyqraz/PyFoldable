@@ -57,7 +57,8 @@ def _sha(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
-def _load(draft: DesignDraftArtifact) -> tuple[PropellerDesign, float]:
+def _load_geometry(draft: DesignDraftArtifact) -> tuple[PropellerDesign, float]:
+    """Verify the draft identity/schema without imposing aerodynamic run limits."""
     if not isinstance(draft, DesignDraftArtifact):
         raise DesignAnalysisError("Expected a validated design draft artifact.")
     if not isinstance(draft.toml, str) or len(draft.toml.encode("utf-8")) > MAX_DRAFT_BYTES:
@@ -82,6 +83,11 @@ def _load(draft: DesignDraftArtifact) -> tuple[PropellerDesign, float]:
         ).si_value
     except (OSError, ValueError, TypeError, KeyError) as exc:
         raise DesignAnalysisError(f"Invalid draft: {exc}") from exc
+    return design, angle
+
+
+def _load(draft: DesignDraftArtifact) -> tuple[PropellerDesign, float]:
+    design, angle = _load_geometry(draft)
     if not design.operating_conditions:
         raise DesignAnalysisError("The draft has no operating condition.")
     condition = design.operating_conditions[0]

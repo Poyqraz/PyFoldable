@@ -4,8 +4,9 @@ Implemented after PY-06D1, alongside the provisional
 [literature measurement registry](literature_measurement_registry.md).
 The active design page now exposes an explicit geometry scan without requiring
 polars, CFD or prototype measurements. It retains the existing active-draft
-parser and its positive-RPM/nonnegative-forward-speed input boundary, although
-no operating-condition value enters the geometry calculation.
+parser's hash/schema checks. GEOM-03 separates the geometry-only loader from
+BEM's positive-RPM/nonnegative-forward-speed restrictions; operating conditions
+do not enter the geometry calculation.
 
 ## Reuse and scope
 
@@ -82,7 +83,9 @@ sampled paths. Full regression, exact-head CI and final GitHub review precede me
 GEOM-02 now accepts explicit, source-bound station definitions in the active draft
 and reports complete/partial span through the [station editor](geom02_station_contract.md).
 It does not extend canonical root/tip sections or claim CAD collision freedom.
-GEOM-03 should define attachment/contact regions and bounded surface/interblade
-clearance along folding motion; unresolved intervals remain unknown. The raw
+[GEOM-03](geom03_surface_clearance.md) now defines excluded attachment bands and
+bounds retained surface/interblade clearance along folding motion; unresolved
+intervals remain unknown, and results are not promoted into other grid candidates.
+GEOM-04 will refine unresolved triangle-level distances and explicit hardware. The raw
 literature-data acquisition/observable adapter remains a parallel task; PY-06D2
 fitting still requires suitable independent measurements and identifiability.
