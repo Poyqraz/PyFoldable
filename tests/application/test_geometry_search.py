@@ -12,6 +12,16 @@ from pyfoldable.application import geometry_search as service
 from test_polar_upload import draft
 
 
+@pytest.mark.parametrize("changes", [{"angular_speed": "0 rpm"}, {"forward_speed": "-3 m/s"}])
+def test_geometry_does_not_inherit_bem_operating_condition_restrictions(changes):
+    from pyfoldable.application.design_analysis import _load, DesignAnalysisError
+    base = draft(**changes)
+    prepared = prepare_geometry_search(base, hinge_radii_m=(.1,), stowed_angles_deg=(-90.,))
+    assert json.loads(run_geometry_search(prepared).report_json)["evaluations_attempted"] == 1
+    with pytest.raises(DesignAnalysisError):
+        _load(base)  # aerodynamic restrictions are preserved
+
+
 def request(**changes):
     values = dict(hinge_radii_m=(0.06, 0.07, 0.1), stowed_angles_deg=(-180., -150.))
     values.update(changes)

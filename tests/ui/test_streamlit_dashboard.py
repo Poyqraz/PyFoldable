@@ -329,11 +329,26 @@ def test_every_navigation_target_has_a_safe_render_path(page):
     assert app.title
 
 
-def test_dashboard_uses_the_declared_streamlit_140_width_api():
-    source = APP_PATH.read_text(encoding="utf-8")
+@pytest.mark.parametrize("modern", [False, True])
+def test_dashboard_plotly_width_supports_legacy_and_current_api(modern):
+    # Execute the actual helper against both signatures without starting the app.
+    import ast
+    import inspect
+    from types import SimpleNamespace
 
-    assert 'width="stretch"' not in source
-    assert "use_container_width=True" in source
+    def legacy(figure, use_container_width=False):
+        return use_container_width
+
+    def current(figure, width="stretch"):
+        return width
+
+    tree = ast.parse(APP_PATH.read_text(encoding="utf-8"))
+    helper = next(node for node in tree.body
+                  if isinstance(node, ast.FunctionDef) and node.name == "_plotly_width")
+    chart = current if modern else legacy
+    namespace = {"inspect": inspect, "st": SimpleNamespace(plotly_chart=chart)}
+    exec(compile(ast.Module(body=[helper], type_ignores=[]), str(APP_PATH), "exec"), namespace)
+    assert chart(None, **namespace["_plotly_width"]()) == ("stretch" if modern else True)
 
 
 def test_dashboard_avoids_arrow_dependent_convenience_renderers():

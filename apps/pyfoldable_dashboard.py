@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 import math
 import sys
 import tempfile
+from copy import deepcopy
 from dataclasses import asdict
 from pathlib import Path
 
@@ -40,6 +42,9 @@ from pyfoldable.application.design_analysis import DesignAnalysisArtifact, Desig
 from pyfoldable.application.polar_upload import MAX_POLAR_UPLOAD_BYTES, PolarRunRequest, prepare_polar_run, run_polar_run
 from pyfoldable.application.active_design_search import prepare_active_search, run_active_search
 from pyfoldable.application.geometry_search import prepare_geometry_search, run_geometry_search
+from pyfoldable.application.surface_clearance import (
+    SurfaceClearanceInputs, prepare_surface_clearance, run_surface_clearance,
+)
 from pyfoldable.application.design_search import SearchError
 from pyfoldable.application.evidence_import import (
     EvidenceImportError,
@@ -113,6 +118,11 @@ EVIDENCE_KIND_BY_LABEL = {
 }
 TRANSIENT_RESULT_KEY = "py05_transient_result"
 TRANSIENT_REQUEST_KEY = "py05_transient_request"
+
+
+def _plotly_width():
+    """Use the current width API while retaining Streamlit 1.40 compatibility."""
+    return {"width": "stretch"} if "width" in inspect.signature(st.plotly_chart).parameters else {"use_container_width": True}
 
 
 def _render_markdown_table(rows: list[dict[str, object]]) -> None:
@@ -458,13 +468,13 @@ def _clear_geometry_search() -> None:
 def _render_geometry_search(draft: DesignDraftArtifact) -> None:
     st.subheader("Geometri fizibilitesi · Menteşe ve katlı açı")
     st.caption("Çap ve kanat kesitleri güncel taslaktan alınır. Seçilen açılar alternatif katlı konumlardır; kanonik tasarım değiştirilmez.")
-    ratios = st.multiselect("Geometri taraması · menteşe r/R", (.24, .32, .40, .48, .56, .64, .72, .80, .88),
+    ratios = _geometry_control(st.multiselect, "Geometri taraması · menteşe r/R", (.24, .32, .40, .48, .56, .64, .72, .80, .88),
                             default=(.48, .56, .80))
-    angles = st.multiselect("Geometri taraması · katlı açı [deg]", (-180., -165., -150., -135., -120., -90.),
+    angles = _geometry_control(st.multiselect, "Geometri taraması · katlı açı [deg]", (-180., -165., -150., -135., -120., -90.),
                             default=(-180., -150.))
     try:
-        from pyfoldable.application.design_analysis import _load
-        model, _ = _load(draft)
+        from pyfoldable.application.design_analysis import _load_geometry
+        model, _ = _load_geometry(draft)
         request = prepare_geometry_search(draft,
             hinge_radii_m=tuple(r * model.blade.diameter_m / 2 for r in ratios), stowed_angles_deg=tuple(angles))
     except (ValueError, TypeError, OSError) as exc:
@@ -508,15 +518,145 @@ def _render_geometry_search(draft: DesignDraftArtifact) -> None:
 def _clear_geometry_dependents() -> None:
     _clear_polar_result()
     _clear_geometry_search()
+    _clear_surface_clearance()
     for key in ("py05_bound_result", "py05_bound_request", TRANSIENT_RESULT_KEY,
                 TRANSIENT_REQUEST_KEY):
         st.session_state.pop(key, None)
+
+
+def _clear_surface_clearance() -> None:
+    st.session_state.pop("geom03_result", None)
+    st.session_state.pop("geom03_request", None)
+
+
+def _render_surface_clearance(draft: DesignDraftArtifact) -> None:
+    st.subheader("Katlanma yolu · Yüzey açıklığı")
+    st.caption(
+        "Etkin taslağın üçgen yüzeyleri, açık konumdan seçilen açıya kadar birlikte "
+        "katlanır. Ayrılma tüm açı aralığını kapsayan sınırlarla denetlenir; çözülemeyen "
+        "aralıklar bilinmiyor olarak kalır. Göbek, yüksekliği bilinmeyen sonsuz silindir "
+        "engeliyle sınırlanır; bu engele giriş gerçek göbek çarpışması kanıtı değildir."
+    )
+    columns = st.columns(4)
+    endpoint = _geometry_control(columns[0].number_input, "Yüzey denetimi · Hedef açı [deg]",
+                                 min_value=-180., max_value=0., value=-180., step=5.)
+    clearance = _geometry_control(columns[1].number_input, "İstenen yüzey açıklığı [mm]",
+                                  min_value=0., max_value=100., value=.5, step=.1)
+    root_band = _geometry_control(columns[2].number_input, "Göbek bağlantı genişliği [mm]",
+                                 min_value=0., max_value=100., value=0., step=.5)
+    hinge_band = _geometry_control(columns[3].number_input, "Menteşe bağlantı yarı genişliği [mm]",
+                                  min_value=0., max_value=100., value=0., step=.5)
+    source = _geometry_control(st.text_input, "Bağlantı bölgelerinin kaynak/revizyonu", value="")
+    st.caption(
+        "Bağlantı genişlikleri sıfırken yüzey dışlanmaz. Pozitif değerler ilgili kök "
+        "ve menteşe bantlarını denetimden çıkarır; kaynak/revizyon girilmelidir. "
+        "Dışlanan bağlantının kendisi doğrulanmaz, eksik kök/uç tamamlanmaz."
+    )
+    budget = _geometry_control(st.selectbox, "Yüzey denetimi · Karşılaştırma bütçesi",
+                               (5000, 20000, 50000), index=1)
+    try:
+        request = prepare_surface_clearance(draft, SurfaceClearanceInputs(
+            end_angle_deg=float(endpoint), required_clearance_m=clearance / 1000,
+            root_attachment_m=root_band / 1000, hinge_attachment_m=hinge_band / 1000,
+            contact_source=source, max_node_comparisons=budget))
+    except (ValueError, TypeError, OSError) as exc:
+        _clear_surface_clearance()
+        st.warning(f"Yüzey denetimi hazırlanamadı: {exc}")
+        return
+    if st.session_state.get("geom03_request") != request.request_sha256:
+        _clear_surface_clearance()
+    if st.button("Katlanma boyunca yüzey açıklığını denetle"):
+        _clear_surface_clearance()
+        try:
+            result = run_surface_clearance(request)
+        except (ValueError, TypeError, ArithmeticError, OSError) as exc:
+            st.error(f"Yüzey denetimi durduruldu: {exc}")
+        else:
+            st.session_state["geom03_result"] = result
+            st.session_state["geom03_request"] = request.request_sha256
+    artifact = st.session_state.get("geom03_result")
+    if not isinstance(artifact, DesignAnalysisArtifact):
+        return
+    report = json.loads(artifact.report_json)
+    labels = {"separated": "Ayrılma sınırı sağlandı", "violation": "Açıklık ihlali örneği",
+              "unknown": "Bilinmiyor"}
+    st.info(f"Denetlenen yüzeyler: {labels[report['modeled_surface_status']]} · "
+            f"İstasyon kapsamı: {'tam' if report['station_span_complete'] else 'eksik'} · "
+            f"Karşılaştırma: {report['node_comparisons']}/{budget}")
+    st.caption("Sonuç yalnız denetlenen açık üçgen yüzeyler içindir. Pervanenin tamamı, "
+               "dışlanan bağlantılar ve katı cisimlerin çarpışmasızlığı doğrulanmış değildir.")
+    _render_markdown_table([
+        {"Yüzey A": q["a"], "Yüzey B": q["b"], "Durum": labels[q["result"]["status"]],
+         "Sürekli alt sınır [mm]": None if q["result"]["lower_bound_m"] is None else q["result"]["lower_bound_m"] * 1000,
+         "İhlal örneği açıklığı [mm]": None if q["result"]["witness_clearance_m"] is None else q["result"]["witness_clearance_m"] * 1000}
+        for q in report["queries"]])
+    with st.expander("Açı aralıkları ve denetim kapsamı"):
+        figure = go.Figure()
+        shown = 0
+        for query in report["queries"]:
+            name = query["a"] + " / " + query["b"]
+            for interval in query["result"]["intervals"]:
+                if shown >= 256:
+                    break
+                left, right = (math.degrees(interval[key]) for key in ("angle_min_rad", "angle_max_rad"))
+                separated = interval["status"] == "separated"
+                figure.add_trace(go.Scatter(x=[left, right], y=[name, name], mode="lines",
+                    line={"color": "#159895" if separated else "#94A3B8", "width": 5},
+                    name=labels[interval["status"]], showlegend=False))
+                if interval["status"] == "violation":
+                    figure.add_trace(go.Scatter(x=[math.degrees(interval["witness_angle_rad"])], y=[name], mode="markers",
+                        marker={"color": "#DC2626", "size": 9}, name="İhlal örneği", showlegend=False))
+                shown += 1
+        if shown:
+            figure.update_layout(xaxis_title="Katlanma açısı [deg]", height=max(300, min(650, 60 * len(report["queries"]))),
+                                 margin={"l": 10, "r": 10, "t": 20, "b": 30})
+            st.plotly_chart(figure, **_plotly_width())
+        st.caption("Yeşil: tüm aralık için ayrılma sınırı. Gri: çözülemeyen veya yalnız örneği incelenen aralık. "
+                   "Kırmızı nokta: orta açıda açıklık ihlali örneği; aralığın tamamına genellenmez. "
+                   "Grafik en fazla 256 aralık gösterir; tüm kayıtlar JSON içindedir. "
+                   "Bütçe nedeniyle hiç işlenmeyen çiftlerin grafikte aralığı bulunmayabilir.")
+        st.json(report["excluded_regions"])
+    st.download_button("Yüzey açıklığı raporunu JSON indir", artifact.report_json,
+                       file_name=artifact.filename, mime="application/json")
 
 
 def _clear_applied_stations() -> None:
     st.session_state.pop("geom02_applied_bundle", None)
     st.session_state.pop("geom02_applied_identity", None)
     _clear_geometry_dependents()
+
+
+def _geometry_control(widget, label, *args, **kwargs):
+    """Retain settings even when validation temporarily hides downstream widgets."""
+    key = f"_geometry_control_{label}"
+    saved = st.session_state.setdefault("geom_ui_saved_controls", {})
+    defaults = st.session_state.setdefault("geom_ui_control_defaults", {})
+    # Restore through the widget default after cleanup, then keep that default
+    # stable on subsequent renders (older Streamlit uses it in widget identity).
+    if key not in st.session_state and key in saved:
+        defaults[key] = saved[key]
+    if key in defaults:
+        if widget.__name__ in ("selectbox", "radio"):
+            kwargs["index"] = list(args[0]).index(defaults[key])
+        elif widget.__name__ == "multiselect":
+            kwargs["default"] = defaults[key]
+        else:
+            kwargs["value"] = defaults[key]
+    value = widget(label, *args, key=key, **kwargs)
+    saved[key] = value
+    return value
+
+
+def _station_upload_changed(key):
+    """Only an actual upload event replaces/removes the durable source bytes."""
+    upload = st.session_state.get(key)
+    too_large = upload is not None and upload.size > MAX_STATION_UPLOAD_BYTES
+    st.session_state["geom02_saved_upload_error"] = too_large
+    st.session_state["geom02_saved_upload"] = (
+        None if upload is None or too_large else upload.getvalue()
+    )
+    st.session_state.pop("geom02_source_token", None)
+    _clear_applied_stations()
 
 
 def _station_editor(snapshot, diameter_mm, hub_mm, hinge_mm, foil, chord_scale, twist_scale):
@@ -527,12 +667,23 @@ def _station_editor(snapshot, diameter_mm, hub_mm, hinge_mm, foil, chord_scale, 
         "ölçülerden alınır; sonraki hücreler mutlak ölçüdür. Kök/uç otomatik tamamlanmaz. "
         "Kaynak türü kullanıcının beyanıdır; ölçüm doğrulaması veya fiziksel yeterlilik değildir."
     )
-    upload = st.file_uploader("Kanat istasyonları JSON", type=["json"], key="geom02_upload")
-    if upload is not None and upload.size > MAX_STATION_UPLOAD_BYTES:
+    upload_key = f"geom02_upload_{st.session_state.get('geom02_upload_revision', 0)}"
+    st.file_uploader("Kanat istasyonları JSON", type=["json"], key=upload_key,
+                     on_change=_station_upload_changed, args=(upload_key,))
+    if st.button("İstasyon kaynağını temizle"):
+        st.session_state.pop("geom02_saved_upload", None)
+        st.session_state.pop("geom02_saved_upload_error", None)
+        st.session_state.pop("geom02_source_token", None)
+        st.session_state["geom02_upload_revision"] = st.session_state.get("geom02_upload_revision", 0) + 1
+        _clear_applied_stations()
+        st.rerun()
+    if st.session_state.get("geom02_saved_upload_error"):
         _clear_applied_stations()
         st.error("İstasyon dosyası 128 KiB sınırını aşıyor.")
         return None
-    raw = None if upload is None else upload.getvalue()
+    raw = st.session_state.get("geom02_saved_upload")
+    if raw is not None:
+        st.caption("İstasyon kaynağı bu oturumda korunur; kaldırmak için kaynağı temizleyin.")
     token = "canonical" if raw is None else hashlib.sha256(raw).hexdigest()
     try:
         # Parse on every rerun, including failed uploads: never fall back to the
@@ -558,13 +709,18 @@ def _station_editor(snapshot, diameter_mm, hub_mm, hinge_mm, foil, chord_scale, 
             st.session_state["geom02_editor_source"] = incoming
             st.session_state["geom02_source_token"] = token
             st.session_state["geom02_editor_revision"] = st.session_state.get("geom02_editor_revision", 0) + 1
+            st.session_state.pop("geom02_editor_seed_rows", None)
         source = st.session_state["geom02_editor_source"]
         rows = [{"Radyal konum [mm]": s.radius_m * 1000, "Chord [mm]": s.chord_m * 1000,
                  "Twist [deg]": math.degrees(s.twist_rad)} for s in source.stations]
         editor_key = f"geom02_table_{st.session_state['geom02_editor_revision']}"
-        edited = st.data_editor(rows, key=editor_key, num_rows="dynamic", hide_index=True,
+        if "geom02_editor_seed_rows" not in st.session_state:
+            st.session_state["geom02_editor_seed_rows"] = deepcopy(rows)
+        edited = st.data_editor(deepcopy(st.session_state["geom02_editor_seed_rows"]),
+                                key=editor_key, num_rows="dynamic", hide_index=True,
                                 column_config={name: st.column_config.NumberColumn(name, required=True)
                                                for name in rows[0]})
+        st.session_state["geom02_staged_rows"] = deepcopy(edited)
         st.caption(f"Tablonun bağlı olduğu çap: {source.diameter_m * 1000:g} mm · "
                    f"Göbek: {source.hub_radius_m * 1000:g} mm · Profil: {source.airfoil_id}")
         provenance = asdict(source.provenance)
@@ -616,6 +772,7 @@ def _station_editor(snapshot, diameter_mm, hub_mm, hinge_mm, foil, chord_scale, 
             _clear_applied_stations()
             st.session_state["geom02_editor_source"] = rebound
             st.session_state["geom02_editor_revision"] += 1
+            st.session_state.pop("geom02_editor_seed_rows", None)
             st.rerun()
         st.caption("Yeniden bağlama yalnız çap/göbek/profil bağını günceller; istasyon ölçülerini değiştirmez.")
         audit = audit_station_bundle(candidate, diameter_m=diameter_mm / 1000,
@@ -664,28 +821,28 @@ def _render_design_geometry() -> None:
 
     st.subheader("Etkileşimli 2.5D önizleme")
     dimension_columns = st.columns(4)
-    diameter_mm = dimension_columns[0].number_input(
+    diameter_mm = _geometry_control(dimension_columns[0].number_input,
         "Açık çap [mm]",
         min_value=20.0,
         max_value=1000.0,
         value=float(snapshot.open_diameter_m * 1000.0),
         step=5.0,
     )
-    hub_radius_mm = dimension_columns[1].number_input(
+    hub_radius_mm = _geometry_control(dimension_columns[1].number_input,
         "Göbek yarıçapı [mm]",
         min_value=1.0,
         max_value=250.0,
         value=float(snapshot.hub_radius_m * 1000.0),
         step=1.0,
     )
-    hinge_radius_mm = dimension_columns[2].number_input(
+    hinge_radius_mm = _geometry_control(dimension_columns[2].number_input,
         "Menteşe yarıçapı [mm]",
         min_value=2.0,
         max_value=500.0,
         value=float(snapshot.hinge_radius_m * 1000.0),
         step=2.0,
     )
-    blade_count = dimension_columns[3].number_input(
+    blade_count = _geometry_control(dimension_columns[3].number_input,
         "Kanat sayısı",
         min_value=1,
         max_value=8,
@@ -693,18 +850,18 @@ def _render_design_geometry() -> None:
         step=1,
     )
 
-    station_mode = st.radio("Kanat istasyonu kaynağı", ("Parametrik taslak", "Açık istasyonlar"), horizontal=True)
+    station_mode = _geometry_control(st.radio, "Kanat istasyonu kaynağı", ("Parametrik taslak", "Açık istasyonlar"), horizontal=True)
     explicit_stations = station_mode == "Açık istasyonlar"
     if st.session_state.get("geom02_mode") != station_mode:
         _clear_applied_stations()
         st.session_state["geom02_mode"] = station_mode
     model_columns = st.columns(4)
-    airfoil_id = model_columns[0].selectbox(
+    airfoil_id = _geometry_control(model_columns[0].selectbox,
         "Kesit modeli",
         PROJECT_AIRFOIL_IDS,
         index=PROJECT_AIRFOIL_IDS.index("NACA2412"),
     )
-    chord_scale = model_columns[1].slider(
+    chord_scale = _geometry_control(model_columns[1].slider,
         "Chord ölçeği",
         min_value=0.50,
         max_value=1.50,
@@ -712,7 +869,7 @@ def _render_design_geometry() -> None:
         step=0.05,
         disabled=explicit_stations,
     )
-    twist_scale = model_columns[2].slider(
+    twist_scale = _geometry_control(model_columns[2].slider,
         "Twist ölçeği",
         min_value=0.00,
         max_value=1.50,
@@ -720,7 +877,7 @@ def _render_design_geometry() -> None:
         step=0.05,
         disabled=explicit_stations,
     )
-    fold_angle_deg = model_columns[3].slider(
+    fold_angle_deg = _geometry_control(model_columns[3].slider,
         "Katlanma açısı [deg]",
         min_value=-180,
         max_value=0,
@@ -735,21 +892,21 @@ def _render_design_geometry() -> None:
     )
     condition = snapshot.operating_conditions[0]
     condition_columns = st.columns(3)
-    rpm = condition_columns[0].number_input(
+    rpm = _geometry_control(condition_columns[0].number_input,
         "RPM",
         min_value=0.0,
         max_value=100000.0,
         value=float(condition.rpm),
         step=100.0,
     )
-    forward_speed_m_s = condition_columns[1].number_input(
+    forward_speed_m_s = _geometry_control(condition_columns[1].number_input,
         "V∞ [m/s]",
         min_value=-200.0,
         max_value=200.0,
         value=float(condition.forward_speed_m_s),
         step=1.0,
     )
-    air_density_kg_m3 = condition_columns[2].number_input(
+    air_density_kg_m3 = _geometry_control(condition_columns[2].number_input,
         "ρ [kg/m³]",
         min_value=0.01,
         max_value=5.0,
@@ -758,7 +915,7 @@ def _render_design_geometry() -> None:
         format="%.4f",
     )
     atmosphere_columns = st.columns(3)
-    dynamic_viscosity_pa_s = atmosphere_columns[0].number_input(
+    dynamic_viscosity_pa_s = _geometry_control(atmosphere_columns[0].number_input,
         "μ [Pa·s]",
         min_value=1.0e-7,
         max_value=1.0e-3,
@@ -766,14 +923,14 @@ def _render_design_geometry() -> None:
         step=1.0e-7,
         format="%.7g",
     )
-    temperature_k = atmosphere_columns[1].number_input(
+    temperature_k = _geometry_control(atmosphere_columns[1].number_input,
         "T [K]",
         min_value=1.0,
         max_value=1000.0,
         value=float(condition.temperature_k),
         step=1.0,
     )
-    pressure_pa = atmosphere_columns[2].number_input(
+    pressure_pa = _geometry_control(atmosphere_columns[2].number_input,
         "p [Pa]",
         min_value=1.0,
         max_value=2_000_000.0,
@@ -783,16 +940,16 @@ def _render_design_geometry() -> None:
 
     with st.expander("Taslak çıktı birimleri"):
         unit_columns = st.columns(3)
-        length_unit = unit_columns[0].selectbox("Uzunluk", ("mm", "m", "cm", "in"))
-        angle_unit = unit_columns[1].selectbox("Açı", ("deg", "rad"))
-        angular_speed_unit = unit_columns[2].selectbox(
+        length_unit = _geometry_control(unit_columns[0].selectbox, "Uzunluk", ("mm", "m", "cm", "in"))
+        angle_unit = _geometry_control(unit_columns[1].selectbox, "Açı", ("deg", "rad"))
+        angular_speed_unit = _geometry_control(unit_columns[2].selectbox,
             "Açısal hız",
             ("rpm", "rad/s"),
         )
         second_unit_columns = st.columns(3)
-        speed_unit = second_unit_columns[0].selectbox("İleri hız", ("m/s", "km/h"))
-        temperature_unit = second_unit_columns[1].selectbox("Sıcaklık", ("K", "degC"))
-        pressure_unit = second_unit_columns[2].selectbox(
+        speed_unit = _geometry_control(second_unit_columns[0].selectbox, "İleri hız", ("m/s", "km/h"))
+        temperature_unit = _geometry_control(second_unit_columns[1].selectbox, "Sıcaklık", ("K", "degC"))
+        pressure_unit = _geometry_control(second_unit_columns[2].selectbox,
             "Basınç",
             ("Pa", "kPa", "MPa"),
         )
@@ -949,7 +1106,7 @@ def _render_design_geometry() -> None:
         )
         st.plotly_chart(
             figure,
-            use_container_width=True,
+            **_plotly_width(),
             config={"displaylogo": False},
         )
         preview_metrics = st.columns(4)
@@ -1008,6 +1165,7 @@ def _render_design_geometry() -> None:
             "dosyaya dönüş ancak ayrı review ve doğrulama adımıyla yapılabilir."
         )
         _render_geometry_search(draft)
+        _render_surface_clearance(draft)
         _render_design_preparation(draft)
         _render_bound_mechanism(draft)
 
@@ -1113,7 +1271,7 @@ def _render_bound_mechanism(draft: DesignDraftArtifact) -> None:
         go.Scatter(x=result["time_s"], y=result["angle_rad"], mode="lines")
     )
     figure.update_layout(xaxis_title="t [s]", yaxis_title="θ [rad]")
-    st.plotly_chart(figure, use_container_width=True)
+    st.plotly_chart(figure, **_plotly_width())
     st.download_button(
         "Aktif mekanizma sonucunu JSON indir",
         data=artifact.report_json,
@@ -1226,7 +1384,7 @@ def _render_mechanism_transient() -> None:
                 f"temas öncesi hız {result['contact']['preimpact_angular_velocity_rad_s']:.6g} rad/s")
     figure = go.Figure(go.Scatter(x=result["time_s"], y=result["angle_rad"], mode="lines", name="θ [rad]"))
     figure.update_layout(xaxis_title="t [s]", yaxis_title="θ [rad]")
-    st.plotly_chart(figure, use_container_width=True)
+    st.plotly_chart(figure, **_plotly_width())
     st.download_button("Geçiş sonucunu JSON indir", data=artifact.report_json,
                        file_name=artifact.filename, mime="application/json")
 
@@ -1421,7 +1579,7 @@ def _render_folding_mechanism() -> None:
         },
         legend={"orientation": "h"},
     )
-    st.plotly_chart(geometry_figure, use_container_width=True, config={"displaylogo": False})
+    st.plotly_chart(geometry_figure, **_plotly_width(), config={"displaylogo": False})
 
     metrics = st.columns(4)
     metrics[0].metric(
@@ -1492,7 +1650,7 @@ def _render_folding_mechanism() -> None:
         plot_bgcolor="rgba(0,0,0,0)",
         legend={"orientation": "h"},
     )
-    st.plotly_chart(moment_figure, use_container_width=True, config={"displaylogo": False})
+    st.plotly_chart(moment_figure, **_plotly_width(), config={"displaylogo": False})
     selected_metrics = st.columns(4)
     selected_metrics[0].metric(
         "Merkezkaç momenti", f"{fixture.selected.centrifugal_moment_nm:.6f} N·m"
@@ -1543,7 +1701,7 @@ def _render_opening_chart(rows: list[dict[str, float]]) -> None:
     )
     st.plotly_chart(
         figure,
-        use_container_width=True,
+        **_plotly_width(),
         config={"displayModeBar": False},
     )
 
@@ -1721,6 +1879,20 @@ def main() -> None:
         page = st.radio("Çalışma alanı", PAGES)
         st.divider()
         st.caption("Niteliksiz çıktılar tasarım kararı değildir.")
+
+    # Retain ordinary form widgets when another page is rendered. File uploaders
+    # and editors are deliberately excluded: their durable data is stored above,
+    # never assigned back into restricted widget state.
+    if page != "Tasarım Geometrisi":
+        for key in list(st.session_state):
+            if key.startswith("_geometry_control_"):
+                st.session_state[key] = st.session_state[key]
+    previous_page = st.session_state.get("geom02_previous_page")
+    if (page == "Tasarım Geometrisi" and previous_page != page
+            and "geom02_staged_rows" in st.session_state):
+        st.session_state["geom02_editor_seed_rows"] = deepcopy(st.session_state["geom02_staged_rows"])
+        st.session_state["geom02_editor_revision"] = st.session_state.get("geom02_editor_revision", 0) + 1
+    st.session_state["geom02_previous_page"] = page
 
     if page == "Genel Bakış":
         _render_overview()
