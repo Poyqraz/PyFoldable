@@ -54,7 +54,7 @@ No aerodynamic dataset was fabricated from paper abstracts.
 | GEOM-01 — implemented | Bounded 250/140 mm hinge/stowed-angle screening with explicit UI | Reuses audit/mesh/grid; 143 mm full180 necessary bound, separate partial path, failed station coverage and unknown surface/interblade gates |
 | GEOM-02 — merged, PR #59/#60 | Explicit source-bound station import/editing, coverage audit and one active draft for preview/analysis | Physical measurements are not rescaled; explicit apply/rebind; stale results cleared; complete span does not imply surface collision freedom |
 | GEOM-03 — implemented | Declared contact-band exclusions, continuous BVH bounds on retained surfaces, hub-envelope/sample witnesses and interval-ledger UI | Synchronous planar mesh screening; unresolved intervals remain unknown; no CAD/solid or full-propeller clearance claim |
-| GEOM-04 — next bounded geometry slice | Triangle-level distance/contact refinement for unresolved boxes, explicitly supplied joint/hub solid geometry | Narrow-phase and topology acceptance tests; no inferred hardware, no promotion from sampled poses or omitted joints |
+| [GEOM-04 — planned](geom04_execution_plan.md) | A: triangle distance; B: continuous refinement; C1/C2: explicit hardware contract and bounded solid queries; D: UI | TDD and independent review per slice; first delivery 04A; no Gemini wait; Cursor Bugbot when available; no inferred hardware or physical qualification |
 
 PR-11B physically supported Pareto recommendations, structural safety and passive
 deployment qualification still require real evidence. Keep 250/140 mm geometry
