@@ -1,52 +1,89 @@
-# AGENTS.md
+# PyFoldable agent contract
 
-## Cursor Cloud specific instructions
+## Purpose and orientation
 
-PyFoldable is a pure-Python scientific library (numpy/scipy, optional matplotlib)
-for tip-hinged foldable propeller analysis. It also includes a Streamlit engineering
-workspace under `apps/`; numerical workflows remain available through `pytest` and
-the standalone scripts in `examples/`.
+Python research software for tip-hinged foldable propellers: numerical analysis,
+geometry screening, evidence comparison and a Streamlit engineering workspace.
+Software correctness is distinct from physical qualification of the prototype.
 
-### Environment
-- Use the virtualenv at `venv/` created by the update script. Run tools via
-  `./venv/bin/python` and `./venv/bin/pytest` (the package is installed editable, so
-  source edits are picked up without reinstalling).
-- Requires Python >=3.10 (CI tests 3.10 and 3.11; local VM may have 3.12). System
-  package `python3.12-venv` is needed to create the venv; the update script installs it.
+Read progressively; do not ingest the entire repository:
 
-### Lint / test / build / run
-- Tests: `./venv/bin/pytest tests/ -q` (**1063 passed**, 9 skipped locally after the
-  PY-04A deterministic active-design search slice; CI remains the merge authority).
-- No linter is configured in this repo (no ruff/flake8/black config or deps). For a
-  baseline syntax check use `./venv/bin/python -m compileall pyfoldable pythrust examples tests`.
-- PY-05 completion and its evidence boundary are documented in
-  `docs/py05_completion.md`. Its unittest-compatible regressions do not replace
-  the complete CI suite or real Streamlit AppTest checks.
-- Build/run = executing the `examples/*.py` scripts or
-  `./venv/bin/streamlit run apps/pyfoldable_dashboard.py`; see README.
+1. [Current state and known gaps](docs/agent/current-state.md).
+2. [Architecture, data and critical flows](docs/architecture/overview.md).
+3. [Development commands and test selection](docs/development/commands.md).
+4. Relevant source, tests and the linked feature contract.
+5. [Decisions](docs/architecture/decisions.md) and
+   [handoff protocol](docs/agent/handoff-protocol.md) when changing boundaries or resuming.
 
-### Required development and review workflow
+Evidence precedence: code → tests → schemas → CI → runtime configuration → docs
+→ git history → conversation. Record conflicts; never turn plans into facts.
 
-- Plan a bounded slice, then use TDD (observe failing tests before implementation).
-- Run a separate automated reviewer, independent of the implementation agent.
-  Address its substantive findings and rerun affected tests before shipping.
-- Check GitHub reviews last, together with successful CI for the exact PR head.
-  Merge only after these gates pass, then verify the merged tree against the
-  tested tree. A GitHub bot review does not replace independent review.
-- Preserve unrelated working-tree edits; PR #3 is a separate workstream.
+## Repository map and boundaries
 
-### Non-obvious gotchas
-- Several example scripts are a **pipeline** and must be run in order because each one
-  consumes the previous one's CSV/output under `outputs/` (they print a clear
-  "Run examples/X first." message when a prerequisite is missing). Working order:
-  `run_design_variant_sweep` → `run_design_variant_summary` →
-  `run_design_variant_decision_matrix`; and
-  `run_moment_kinematics_validation` → `run_foldable_visuals`;
-  `run_deployment_diagnostics` → `generate_foldable_engineering_report`.
-- `examples/run_foldable_sweep.py` uses `reference_scaled` thrust mode and loads the
-  first-party synthetic software fixture to supply `fixed_thrust_n` per RPM (hover
-  J=0). It is not physical qualification evidence. The legacy path
-  `data/propellers/apc_202602/` remains temporarily stable.
-- Standalone quick-start scripts (no pipeline): `run_foldable_sweep`, `run_foldable_operating_point`,
-  `run_prescribed_rpm_physics`, `run_cfd_preparation`.
-- Generated artifacts land in `outputs/` (gitignored) and `reports/`.
+- `pyfoldable/core/`: SI design schema, polars/BEM, motor coupling, evidence contracts.
+- `pyfoldable/application/`: source-bound requests, budgets, reports and UI services.
+- `pyfoldable/geometry/`: bounded surface/solid distance and continuous clearance.
+- `pyfoldable/dynamics/`: legacy dynamics and the separate PY-05 transient workflow.
+- `pyfoldable/visualization/`: schematics and 2.5D previews; not CAD/CFD results.
+- `pythrust/`: bundled legacy propeller/propulsion compatibility slice.
+- `apps/pyfoldable_dashboard.py`: Streamlit presentation and session state.
+- `configs/`, `data/`, `tests/fixtures/`, `reports/`: distinct configuration,
+  source, test and archived evidence roles. Examples also use ignored `outputs/`.
+
+No application database, migrations, REST service, login or role model exists.
+The UI calls Python services synchronously. Legacy `pyfoldable.models` and
+canonical `core.models` are different contracts; do not merge them casually.
+
+## Canonical commands
+
+From the repository root, use one Python environment (Python >=3.10):
+
+```bash
+python -m venv venv
+./venv/bin/python -m pip install -e ".[dev,plot,ui]"
+./venv/bin/python -m pytest tests/ -q
+./venv/bin/python -m streamlit run apps/pyfoldable_dashboard.py
+```
+
+Reuse an existing working environment. CI tests Python 3.10/3.11. No repository
+lint, formatter or typecheck gate exists. See the command guide for syntax,
+packaging, Windows, optional solvers and example pipeline prerequisites.
+Do not assume an untracked Cursor update script or preinstalled environment exists.
+
+## Architectural invariants and sensitive areas
+
+- Explicit units enter the canonical parser; solver models use SI. Respect
+  signed-angle frames; do not mix legacy and PY-05 conventions.
+- Hashes identify content, not truth/authenticity. Preserve source, revision,
+  solver/settings, units and operating-condition provenance together.
+- Synthetic fixtures, literature context, meshes and CI do not qualify a project
+  rotor, mechanism or structure. Keep failed/pending/unknown evidence visible.
+- UI solves require explicit actions. Changed inputs invalidate results/downloads;
+  uploaded drafts do not overwrite canonical evidence. Preserve navigation state.
+- Preserve budgets, fail-closed bounds and incomplete coverage. GEOM-04 clearance
+  does not automatically qualify GEOM-01 search candidates.
+- Upload parsing, repository path containment, XFOIL execution and cache locks are
+  trust boundaries. Never accept uploaded solver commands, weaken validation to
+  pass tests, expose credentials or commit secrets.
+- Preserve third-party rights. `data/propellers/apc_202602/` holds first-party
+  synthetic fixtures, not redistributable APC measurements.
+
+## Change protocol and Definition of Done
+
+1. Inspect status/base and plan a bounded slice. Preserve unrelated work; PR #3 is
+   separate. Read current code before following an old plan.
+2. Behavior changes use TDD: observe a failing regression, implement, rerun affected
+   tests. Documentation-only changes use evidence/link/command checks, not invented
+   behavioral tests for prose.
+3. Run a separate automated reviewer independent of implementation. Address its
+   findings, verify fixes and update the relevant contract/status.
+4. Check GitHub reviews last with successful CI for the exact PR head. Use Cursor
+   Bugbot when available; Gemini is not a gate. Neither replaces independent review.
+5. Follow [contribution requirements](CONTRIBUTING.md), including the CLA statement;
+   never fabricate a person's agreement. Merge only after applicable gates pass.
+6. Verify merged tree equals tested tree. Report tests, skipped checks and evidence
+   limits. For unfinished work, commit a handoff with exact refs.
+
+Never silently rescale measurements, fill missing geometry/materials, relax
+qualification gates, replace archived reports with session results, or claim a
+stale check covers a new commit. No broad refactor belongs in a documentation task.

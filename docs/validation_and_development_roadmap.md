@@ -1,9 +1,13 @@
 # PyFoldable validation and development roadmap
 
-Bu belge, PY-06C sonrası teknik konumu ve katlanabilir pervane için
+Bu belge, GEOM-04 sonrası teknik konumu ve katlanabilir pervane için
 **deneyle doğrulanmış, tasarım kararı vermeye elverişli** bir analiz zincirine giden
 yolu tanımlar. Yüzde cinsinden tek bir "tamamlanma" değeri verilmez: yazılım
 altyapısının olgunluğu ile fiziksel tahmin doğruluğu aynı şey değildir.
+
+Kod/CI tabanlı tarihli durum, dokümantasyon farkları ve yeni ajan başlangıcı:
+[güncel repo hafızası](agent/current-state.md). Ayrıntılı özellik sözleşmeleri
+bu yol haritasındaki bağlantılarda kalır.
 
 ## Güncel konum
 
