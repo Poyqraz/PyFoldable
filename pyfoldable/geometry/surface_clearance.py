@@ -18,6 +18,8 @@ from dataclasses import dataclass
 import math
 import sys
 
+from .triangle_distance import triangle_distance, point_triangle_distance
+
 Vec3 = tuple[float, float, float]
 Triangle = tuple[Vec3, Vec3, Vec3]
 MAX_TRIANGLES = 12000
@@ -75,9 +77,10 @@ class ClearanceControls:
     max_depth: int = 8
     max_intervals: int = 255
     max_node_comparisons: int = 50000
+    max_feature_tests: int = 2048
 
     def __post_init__(self):
-        for name, minimum, maximum in (('max_depth', 0, 8), ('max_intervals', 1, 255), ('max_node_comparisons', 1, 200000)):
+        for name, minimum, maximum in (('max_depth', 0, 8), ('max_intervals', 1, 255), ('max_node_comparisons', 1, 200000), ('max_feature_tests', 0, 200000)):
             value = getattr(self, name)
             if type(value) is not int or not minimum <= value <= maximum:
                 raise ValueError(f'{name} must be an integer in [{minimum}, {maximum}]')
@@ -91,6 +94,10 @@ class ClearanceInterval:
     lower_bound_m: float | None = None
     witness_clearance_m: float | None = None
     witness_angle_rad: float | None = None
+    method: str = 'aabb_bound'
+    contact_status: str = 'unknown'
+    point_a: Vec3 | None = None
+    point_b: Vec3 | None = None
 
 
 @dataclass(frozen=True)
@@ -101,6 +108,19 @@ class ClearanceReport:
     node_comparisons: int
     intervals: tuple[ClearanceInterval, ...]
     reason: str
+    feature_tests: int = 0
+    contact_status: str = 'unknown'
+
+
+@dataclass(frozen=True)
+class _Check:
+    status: str
+    lower: float | None = None
+    witness: float | None = None
+    method: str = 'aabb_bound'
+    contact: str = 'unknown'
+    point_a: Vec3 | None = None
+    point_b: Vec3 | None = None
 
 
 @dataclass(frozen=True)
@@ -126,7 +146,7 @@ def _tree(triangles, pivot):
 
 
 def _rotate(point, part, angle):
-    if not part.moving:
+    if not part.moving or angle == 0:
         return point
     x, y = point[0]-part.pivot[0], point[1]-part.pivot[1]
     c, s = math.cos(angle), math.sin(angle)
@@ -156,6 +176,7 @@ class _Budget:
     def __init__(self, controls):
         self.controls = controls
         self.used = 0
+        self.features = 0
 
     def take(self):
         if self.used >= self.controls.max_node_comparisons:
@@ -163,15 +184,53 @@ class _Budget:
         self.used += 1
         return True
 
+    @property
+    def remaining_features(self):
+        return self.controls.max_feature_tests - self.features
+
+
+def _motion(node, part, width):
+    return 2 * node.radius * math.sin(width / 4) if part.moving else 0.
+
+
+def _narrow_pair(na, nb, a, b, middle, width, clearance, budget):
+    minimum = math.inf
+    unresolved = False
+    movement = _motion(na, a, width) + _motion(nb, b, width) + 4 * NUMERICAL_PAD_M
+    for ta in na.triangles:
+        posed_a = tuple(_rotate(p, a, middle) for p in ta)
+        for tb in nb.triangles:
+            if budget.remaining_features <= 0:
+                return _Check('unknown', method='feature_budget_exhausted')
+            result = triangle_distance(posed_a, tuple(_rotate(p, b, middle) for p in tb),
+                                       max_feature_tests=min(64, budget.remaining_features))
+            budget.features += result.feature_tests
+            if result.upper_m + 4 * NUMERICAL_PAD_M < clearance:
+                return _Check('violation', witness=result.upper_m + 4 * NUMERICAL_PAD_M,
+                              method='triangle_distance', contact=result.contact_status,
+                              point_a=result.point_a, point_b=result.point_b)
+            if result.contact_status == 'intersecting' and clearance == 0:
+                contact = 'rounded_pose_contact' if middle != 0 and (a.moving or b.moving) else 'intersecting'
+                return _Check('unknown', method='triangle_distance', contact=contact,
+                              point_a=result.point_a, point_b=result.point_b)
+            lower = max(0., result.lower_m - movement)
+            if lower > clearance + NUMERICAL_PAD_M:
+                minimum = min(minimum, lower)
+            else:
+                unresolved = True
+    return _Check('unknown', method='triangle_distance') if unresolved else _Check(
+        'separated', minimum, method='triangle_distance', contact='separated')
+
 
 def _pair_interval(a, b, tree_a, tree_b, lo, hi, clearance, budget):
     middle, width = (lo+hi)/2, hi-lo
     stack = [(tree_a,tree_b)]
     minimum = math.inf
     unresolved = False
+    method = 'aabb_bound'
     while stack:
         if not budget.take():
-            return 'unknown', None, None
+            return _Check('unknown', method='node_budget_exhausted')
         na, nb = stack.pop()
         lower = _gap(_box(na,a,middle,width), _box(nb,b,middle,width))
         if lower > clearance+NUMERICAL_PAD_M:
@@ -181,13 +240,20 @@ def _pair_interval(a, b, tree_a, tree_b, lo, hi, clearance, budget):
             samples_b = tuple(_samples(nb,b,middle))
             witness = min(math.dist(p,q) for p in _samples(na,a,middle) for q in samples_b)
             if witness < clearance-NUMERICAL_PAD_M:
-                return 'violation', None, witness
-            unresolved = True
+                return _Check('violation', witness=witness, method='surface_sample')
+            refined = _narrow_pair(na, nb, a, b, middle, width, clearance, budget)
+            method = refined.method
+            if refined.status == 'violation' or refined.contact in ('intersecting', 'rounded_pose_contact'):
+                return refined
+            if refined.status == 'separated':
+                minimum = min(minimum, refined.lower)
+            else:
+                unresolved = True
         elif na.children and (not nb.children or na.radius >= nb.radius):
             stack.extend((child,nb) for child in na.children)
         else:
             stack.extend((na,child) for child in nb.children)
-    return ('unknown',None,None) if unresolved else ('separated',minimum,None)
+    return _Check('unknown', method=method) if unresolved else _Check('separated', minimum, method=method, contact='separated')
 
 
 def _hub_interval(part, tree, radius, lo, hi, clearance, budget):
@@ -195,9 +261,10 @@ def _hub_interval(part, tree, radius, lo, hi, clearance, budget):
     stack = [tree]
     minimum = math.inf
     unresolved = False
+    method = 'aabb_bound'
     while stack:
         if not budget.take():
-            return 'unknown',None,None
+            return _Check('unknown', method='node_budget_exhausted')
         node = stack.pop()
         low,high = _box(node,part,middle,width)
         lower = math.hypot(*(max(0.,low[i],-high[i]) for i in range(2)))-radius-NUMERICAL_PAD_M
@@ -208,9 +275,29 @@ def _hub_interval(part, tree, radius, lo, hi, clearance, budget):
         else:
             witness = min(math.hypot(p[0],p[1])-radius for p in _samples(node,part,middle))
             if witness < clearance-NUMERICAL_PAD_M:
-                return 'violation',None,witness
-            unresolved = True
-    return ('unknown',None,None) if unresolved else ('separated',minimum,None)
+                return _Check('violation', witness=witness, method='surface_sample')
+            for triangle in node.triangles:
+                if budget.remaining_features <= 0:
+                    unresolved = True
+                    method = 'feature_budget_exhausted'
+                    break
+                posed = tuple(_rotate(p, part, middle) for p in triangle)
+                projected = tuple((p[0], p[1], 0.) for p in posed)
+                result = point_triangle_distance((0., 0., 0.), projected,
+                    max_feature_tests=min(64, budget.remaining_features))
+                budget.features += result.feature_tests
+                method = 'projected_triangle_distance'
+                upper = result.upper_m - radius + 4 * NUMERICAL_PAD_M
+                if upper < clearance - NUMERICAL_PAD_M:
+                    # Witness lies on the XY projection, not necessarily at z=0
+                    # on the source surface; keep coordinates out of the 3D plot.
+                    return _Check('violation', witness=upper, method=method)
+                lower = result.lower_m - radius - _motion(node, part, width) - 4 * NUMERICAL_PAD_M
+                if lower > clearance + NUMERICAL_PAD_M:
+                    minimum = min(minimum, lower)
+                else:
+                    unresolved = True
+    return _Check('unknown', method=method) if unresolved else _Check('separated', minimum, method=method, contact='separated')
 
 
 def _query(interval_check, lo, hi, clearance, controls, obstacle):
@@ -233,21 +320,25 @@ def _query(interval_check, lo, hi, clearance, controls, obstacle):
             rows.append(ClearanceInterval(left,right,'unknown'))
             continue
         attempted += 1
-        status,lower,witness = interval_check(left,right,clearance,budget)
-        if status == 'violation':
-            rows.append(ClearanceInterval(left,right,status,lower,witness,(left+right)/2))
+        result = interval_check(left,right,clearance,budget)
+        status, lower, witness = result.status, result.lower, result.witness
+        if status == 'violation' or result.contact in ('intersecting', 'rounded_pose_contact'):
+            rows.append(ClearanceInterval(left,right,status,lower,witness,(left+right)/2,
+                result.method, result.contact, result.point_a, result.point_b))
             # A witness settles this query, not the rest of the motion path.
             # Keep unvisited intervals visible instead of dropping them.
             rows.extend(ClearanceInterval(a,b,'unknown') for a,b,_ in pending)
-            return ClearanceReport(status,None,witness,budget.used,tuple(rows),f'witnessed clearance violation against {obstacle}; no physical qualification')
+            reason = 'witnessed clearance violation' if status == 'violation' else 'surface contact in reported pose; zero-clearance query remains unresolved'
+            return ClearanceReport(status,None,witness,budget.used,tuple(rows),f'{reason} against {obstacle}; no physical qualification', budget.features, result.contact)
         if status == 'unknown' and depth < controls.max_depth and right > left and attempted < controls.max_intervals and budget.used < controls.max_node_comparisons:
             middle = (left+right)/2
             pending.extend(((middle,right,depth+1),(left,middle,depth+1)))
         else:
-            rows.append(ClearanceInterval(left,right,status,lower,witness))
+            rows.append(ClearanceInterval(left,right,status,lower,witness,method=result.method,
+                contact_status=result.contact, point_a=result.point_a, point_b=result.point_b))
     separated = all(row.status == 'separated' for row in rows)
     lower = min(row.lower_bound_m for row in rows) if separated else None
-    return ClearanceReport('separated' if separated else 'unknown',lower,None,budget.used,tuple(rows),f'continuous conservative mesh bounds against {obstacle}' if separated else 'unresolved boxes or subdivision/comparison budget; no collision conclusion')
+    return ClearanceReport('separated' if separated else 'unknown',lower,None,budget.used,tuple(rows),f'continuous conservative mesh bounds against {obstacle}' if separated else 'unresolved boxes or subdivision/comparison budget; no collision conclusion',budget.features,'separated' if separated else 'unknown')
 
 
 def pair_clearance(a: SurfacePart, b: SurfacePart, *, angle_min_rad=0., angle_max_rad=0., clearance_m=0., controls: ClearanceControls | None = None) -> ClearanceReport:

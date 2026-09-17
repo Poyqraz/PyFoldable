@@ -108,3 +108,20 @@ def test_full_span_separation_remains_scoped_to_retained_surfaces():
     assert report["station_span_complete"] is True
     assert report["classification"] == "screening-only"
     assert report["full_propeller_clearance"] is None
+
+
+def test_refined_service_binds_and_shares_feature_budget():
+    req = request(max_feature_tests=23)
+    report = json.loads(run_surface_clearance(req).report_json)
+    assert report['schema_version'] == 2
+    assert report['request']['inputs']['max_feature_tests'] == 23
+    assert report['feature_tests'] == sum(q['result']['feature_tests'] for q in report['queries'])
+    assert 0 <= report['feature_tests'] <= 23
+    assert 'geometry/triangle_distance.py' in report['request']['implementation_sha256']
+    assert req.request_sha256 != request(max_feature_tests=24).request_sha256
+
+
+@pytest.mark.parametrize('value', [-1, True, 200001])
+def test_invalid_feature_budget_rejected(value):
+    with pytest.raises(ValueError):
+        request(max_feature_tests=value)
