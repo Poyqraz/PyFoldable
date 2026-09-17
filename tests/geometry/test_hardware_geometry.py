@@ -246,3 +246,28 @@ def test_triangle_kernel_precision_failure_propagates_unknown(monkeypatch):
     r = surface_solid_distance((((3., 0., 0.),)*3,), box(), max_triangle_queries=200)
     assert r.penetration is None and r.contact_status == 'unknown'
     assert r.reason == 'precision_limit'
+
+
+@pytest.mark.parametrize('cylinder', [False, True], ids=['convex', 'envelope'])
+@pytest.mark.parametrize('reverse_wins', [False, True], ids=['forward', 'reverse'])
+def test_solid_distance_witnesses_follow_argument_order(monkeypatch, cylinder, reverse_wins):
+    """Directional queries may return different valid upper bounds under a budget."""
+    import pyfoldable.geometry.hardware as hw
+    a = (finite_cylinder(radius_m=1., height_m=2., segments=8,
+                         approximation_tolerance_m=.1) if cylinder else box())
+    b = transform_solid(box(), I, (5., 0., 0.))
+    near_a, far_a, point_b = (1., 0., 0.), (-1., 0., 0.), (4., 0., 0.)
+    forward = hw.SolidDistanceResult(
+        2., 5. if reverse_wins else 3., False, 'separated', 1,
+        'fixture', far_a if reverse_wins else near_a, point_b)
+    reverse = hw.SolidDistanceResult(
+        2., 3. if reverse_wins else 5., False, 'separated', 1,
+        'fixture', point_b, near_a if reverse_wins else far_a)
+    results = iter((forward, reverse, forward, reverse))
+    monkeypatch.setattr(hw, '_query', lambda *args: next(results))
+
+    result = solid_solid_distance(a, b, max_triangle_queries=500)
+
+    assert result.lower_m == 2. and result.upper_m == 3.
+    assert result.point_a == near_a
+    assert result.point_b == point_b

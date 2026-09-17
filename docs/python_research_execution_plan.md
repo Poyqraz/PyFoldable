@@ -54,7 +54,7 @@ No aerodynamic dataset was fabricated from paper abstracts.
 | GEOM-01 — implemented | Bounded 250/140 mm hinge/stowed-angle screening with explicit UI | Reuses audit/mesh/grid; 143 mm full180 necessary bound, separate partial path, failed station coverage and unknown surface/interblade gates |
 | GEOM-02 — merged, PR #59/#60 | Explicit source-bound station import/editing, coverage audit and one active draft for preview/analysis | Physical measurements are not rescaled; explicit apply/rebind; stale results cleared; complete span does not imply surface collision freedom |
 | GEOM-03 — implemented | Declared contact-band exclusions, continuous BVH bounds on retained surfaces, hub-envelope/sample witnesses and interval-ledger UI | Synchronous planar mesh screening; unresolved intervals remain unknown; no CAD/solid or full-propeller clearance claim |
-| [GEOM-04 — implemented](geom04_surface_hardware.md) | Exact triangle distance; continuous refinement; explicit finite hub/convex hardware, containment, source-bound reports and UI | A merged in PR #62; TDD, independent review and Cursor Bugbot; bounded synchronous geometry screening, no full-propeller or physical qualification |
+| [GEOM-04 — implemented](geom04_surface_hardware.md) | Exact triangle distance; continuous refinement; explicit finite hub/convex hardware, containment, source-bound reports and UI | A: PR #62; B/C/D integration: PR #63; TDD, independent review and Cursor Bugbot; bounded synchronous geometry screening, no full-propeller or physical qualification |
 
 PR-11B physically supported Pareto recommendations, structural safety and passive
 deployment qualification still require real evidence. Keep 250/140 mm geometry

@@ -5,7 +5,7 @@ bracketed by certified inner/outer prisms: lower distances use the outer solid,
 upper distances use the inner solid. Neither approximation is physical evidence.
 """
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from fractions import Fraction as F
 import math
 
@@ -404,6 +404,8 @@ def solid_solid_distance(a,b,*,max_triangle_queries=5000):
     first=query(ai,bi,max_triangle_queries-pre_count)
     remaining=max_triangle_queries-pre_count-first.queries
     second=query(bi,ai,remaining)
+    # Both candidates must label witnesses in the caller's (a, b) order.
+    second=replace(second, point_a=second.point_b, point_b=second.point_a)
     count=pre_count+first.queries+second.queries
     if a is ai and b is bi:
         lower = min(first.lower_m, second.lower_m)
