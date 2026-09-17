@@ -23,6 +23,10 @@ from .design_analysis import DesignAnalysisArtifact, _json, _sha
 from .design_draft import DesignDraftArtifact
 from .folding_mechanism import MechanismGeometryInputs, build_mechanism_geometry_audit
 from .geometry_search import _inputs
+from .hardware_contract import load_hardware_json
+from .hardware_clearance import MotionShape, query_motion_pair, rotation_z
+from .hardware_contract import body_to_solid
+from pyfoldable.geometry.hardware import CylinderEnvelope, transformed_solid
 
 
 @dataclass(frozen=True)
@@ -35,6 +39,8 @@ class SurfaceClearanceInputs:
     max_depth: int = 6
     max_intervals: int = 127
     max_node_comparisons: int = 50000
+    max_feature_tests: int = 2048
+    max_hardware_queries: int = 256
 
     def __post_init__(self):
         for name in ("end_angle_deg", "required_clearance_m", "root_attachment_m", "hinge_attachment_m"):
@@ -51,7 +57,8 @@ class SurfaceClearanceInputs:
         if (self.root_attachment_m or self.hinge_attachment_m) and not self.contact_source.strip():
             raise ValueError("Excluded contact regions require an explicit source/revision reference.")
         for name, lo, hi in (("max_depth", 0, 8), ("max_intervals", 1, 255),
-                             ("max_node_comparisons", 1, 200000)):
+                             ("max_node_comparisons", 1, 200000),
+                             ("max_feature_tests", 0, 200000), ("max_hardware_queries", 0, 10000)):
             if type(getattr(self, name)) is not int or not lo <= getattr(self, name) <= hi:
                 raise ValueError(f"{name} must be an integer within [{lo}, {hi}].")
 
@@ -62,9 +69,11 @@ class SurfaceClearanceRequest:
     inputs: SurfaceClearanceInputs
     request_sha256: str
     context_json: str
+    hardware_json: bytes | None = None
 
 
-def prepare_surface_clearance(draft: DesignDraftArtifact, inputs: SurfaceClearanceInputs) -> SurfaceClearanceRequest:
+def prepare_surface_clearance(draft: DesignDraftArtifact, inputs: SurfaceClearanceInputs,
+                              *, hardware_json: bytes | None = None) -> SurfaceClearanceRequest:
     if not isinstance(inputs, SurfaceClearanceInputs):
         raise ValueError("Expected explicit surface-clearance inputs.")
     SurfaceClearanceInputs(**asdict(inputs))
@@ -85,16 +94,37 @@ def prepare_surface_clearance(draft: DesignDraftArtifact, inputs: SurfaceClearan
         raise ValueError("Surface screening triangle budget exceeded (12000).")
     if any(abs(s.chord_m) > 2 for s in blade.stations):
         raise ValueError("Surface screening supports section chords up to 2 m.")
+    hardware = load_hardware_json(hardware_json) if hardware_json is not None else None
+    finite_hubs = []
+    if hardware is not None:
+        for body in hardware.bodies:
+            if body.binding != 'hub' and int(body.binding.split('_')[1]) > blade.blade_count:
+                raise ValueError('Hardware binding refers to a blade outside the active design.')
+            if isinstance(body.solid, CylinderEnvelope):
+                finite_hubs.append(body)
+                if abs(body.solid.radius_m - blade.hub_radius_m) > 1e-12:
+                    raise ValueError('Declared finite hub radius must match the active design hub radius.')
+                r,t=body.rotation,body.translation_m
+                if max(abs(t[0]),abs(t[1]),abs(r[0][2]),abs(r[1][2]),abs(r[2][0]),abs(r[2][1])) > 1e-12:
+                    raise ValueError('Finite hub axis must coincide with the active rotor z axis.')
+        if len(finite_hubs)>1:
+            raise ValueError('At most one declared finite hub is supported.')
     root = Path(__file__).parents[1]
-    paths = ("application/surface_clearance.py", "geometry/surface_clearance.py",
+    paths = ("application/surface_clearance.py", "geometry/surface_clearance.py", "geometry/triangle_distance.py",
+             "application/hardware_contract.py", "application/hardware_clearance.py", "geometry/hardware.py",
              "application/geometry_search.py", "application/design_analysis.py",
              "application/folding_mechanism.py", "visualization/propeller_25d.py",
              "core/models.py", "core/config.py", "core/airfoil.py", "core/units.py")
     context = {
-        "schema_version": 1, "draft_toml": draft.toml, "draft_sha256": draft.draft_sha256,
+        "schema_version": 2, "draft_toml": draft.toml, "draft_sha256": draft.draft_sha256,
         "source_sha256": draft.source_sha256, "inputs": asdict(inputs),
         "motion": "synchronous_planar_rigid_tips_from_zero_to_declared_endpoint",
-        "hub_obstacle": "infinite_cylinder_conservative_envelope",
+        "hub_obstacle": "declared_finite_cylinder" if finite_hubs else "infinite_cylinder_conservative_envelope",
+        "hardware": None if hardware is None else {
+            **json.loads(hardware.canonical_json), "raw_sha256": hardware.raw_sha256,
+            "canonical_sha256": hardware.canonical_sha256,
+            "binding_frames": "hub=rotor_origin; blade_root=open_rotor_origin; blade_tip=open_hinge_origin; axes=open_blade_axes",
+        },
         "model_scope": "retained_open_preview_triangle_surfaces_not_solid_bodies",
         "maximum_triangles": triangle_bound,
         "airfoil_coordinate_sha256": foil.metadata["airfoil_coordinate_sha256"],
@@ -103,7 +133,7 @@ def prepare_surface_clearance(draft: DesignDraftArtifact, inputs: SurfaceClearan
         "python": platform.python_version(),
     }
     text = _json(context)
-    return SurfaceClearanceRequest(draft, inputs, _sha(text), text)
+    return SurfaceClearanceRequest(draft, inputs, _sha(text), text, hardware_json)
 
 
 def _clip_triangle(triangle, *, minimum_x, maximum_x):
@@ -160,7 +190,7 @@ def _parts(model, foil, inputs):
 def run_surface_clearance(request: SurfaceClearanceRequest) -> DesignAnalysisArtifact:
     if not isinstance(request, SurfaceClearanceRequest):
         raise ValueError("Expected prepared surface-clearance request.")
-    if prepare_surface_clearance(request.draft, request.inputs) != request:
+    if prepare_surface_clearance(request.draft, request.inputs, hardware_json=request.hardware_json) != request:
         raise ValueError("Surface-clearance request identity changed.")
     model, target, foil = _inputs(request.draft)
     inputs = request.inputs
@@ -168,28 +198,58 @@ def run_surface_clearance(request: SurfaceClearanceRequest) -> DesignAnalysisArt
     audit = build_mechanism_geometry_audit(MechanismGeometryInputs(model.blade.diameter_m,
         model.blade.hub_radius_m, model.hinge.radius_m, inputs.end_angle_deg, target),
         tuple(s.r_over_R for s in model.blade.stations))
-    jobs = [("hub", p, None) for p in parts]
+    context = json.loads(request.context_json)
+    jobs = [] if context['hub_obstacle']=='declared_finite_cylinder' else [("hub", p, None) for p in parts]
     for i, a in enumerate(parts):
         for j, b in enumerate(parts[i + 1:], i + 1):
             jobs.append(("own_root_tip" if i // 2 == j // 2 else "interblade", a, b))
-    rows, used = [], 0
+    rows, used, features = [], 0, 0
     for kind, a, b in jobs:
         remaining = inputs.max_node_comparisons - used
         if remaining <= 0:
             result = {"status": "unknown", "lower_bound_m": None, "witness_clearance_m": None,
-                      "node_comparisons": 0, "intervals": [], "reason": "global_budget_exhausted"}
+                      "node_comparisons": 0, "feature_tests": 0, "contact_status": "unknown",
+                      "intervals": [], "reason": "global_budget_exhausted"}
         else:
             options = dict(angle_min_rad=math.radians(inputs.end_angle_deg), angle_max_rad=0.,
                 clearance_m=inputs.required_clearance_m,
-                controls=ClearanceControls(inputs.max_depth, inputs.max_intervals, remaining))
+                controls=ClearanceControls(inputs.max_depth, inputs.max_intervals, remaining,
+                    inputs.max_feature_tests - features))
             result = asdict(hub_clearance(a, model.blade.hub_radius_m, **options) if b is None
                             else pair_clearance(a, b, **options))
             used += result["node_comparisons"]
+            features += result["feature_tests"]
         rows.append({"kind": kind, "a": a.name, "b": "hub_envelope" if b is None else b.name, "result": result})
+    hardware_used, hardware_rows = 0, []
+    if request.hardware_json is not None:
+        hardware = load_hardware_json(request.hardware_json)
+        shapes = []
+        lookup = {p.name: p for p in parts}
+        for body in hardware.bodies:
+            solid = body_to_solid(body)
+            pivot, moving = (0.,0.,0.), False
+            if body.binding != 'hub':
+                part = lookup[body.binding]
+                index = int(body.binding.split('_')[1]) - 1
+                yaw = 2*math.pi*index/model.blade.blade_count
+                pivot, moving = part.pivot, part.moving
+                origin = pivot if moving else (0.,0.,0.)
+                solid = transformed_solid(solid,rotation_z(yaw),origin)
+            shapes.append(MotionShape(body.name,solid=solid,pivot=pivot,moving=moving,tolerance_m=body.tolerance_m))
+        surface_shapes = [MotionShape.from_part(p) for p in parts]
+        hardware_jobs = [('hardware_surface',a,b) for a in surface_shapes for b in shapes]
+        hardware_jobs += [('hardware_pair',a,b) for i,a in enumerate(shapes) for b in shapes[i+1:]]
+        for kind,a,b in hardware_jobs:
+            result = query_motion_pair(a,b,angle_min_rad=math.radians(inputs.end_angle_deg),angle_max_rad=0.,
+                clearance_m=inputs.required_clearance_m,max_queries=inputs.max_hardware_queries-hardware_used,
+                max_depth=inputs.max_depth,max_intervals=inputs.max_intervals)
+            hardware_used += result['hardware_queries']
+            hardware_rows.append(dict(kind=kind,a=a.name,b=b.name,result=result))
+        rows.extend(hardware_rows)
     states = {r["result"]["status"] for r in rows}
     status = "violation" if "violation" in states else "unknown" if "unknown" in states else "separated"
     document = {
-        "schema_version": 1, "request": json.loads(request.context_json),
+        "schema_version": 2, "request": json.loads(request.context_json),
         "request_sha256": request.request_sha256, "physical_qualification": False,
         "classification": "failed" if status == "violation" else "blocked" if status == "unknown" or not audit.station_span_complete else "screening-only",
         "modeled_surface_status": status, "full_propeller_clearance": None,
@@ -200,9 +260,15 @@ def run_surface_clearance(request: SurfaceClearanceRequest) -> DesignAnalysisArt
             "status": "not_evaluated", "scope": "declared_reference_radial_bands_move_with_each_rigid_part"},
         "original_triangle_count": original_count,
         "retained_triangle_count": sum(len(p.triangles) for p in parts),
-        "node_comparisons": used, "queries": rows,
+        "node_comparisons": used, "feature_tests": features, "queries": rows,
+        "hardware_queries": hardware_used,
+        "hardware_status": ('violation' if any(q['result']['status']=='violation' for q in hardware_rows)
+                            else 'unknown' if any(q['result']['status']=='unknown' for q in hardware_rows)
+                            else 'separated') if hardware_rows else None,
         "limitations": ["open_triangle_surfaces_not_solid_containment", "excluded_contact_regions_not_evaluated",
-                        "synchronous_blades_only", "hub_is_infinite_cylinder_bound_not_measured_solid",
+                        "synchronous_blades_only", "hardware_source_claims_not_independently_qualified",
+                        "hub_is_infinite_cylinder_bound_not_measured_solid" if context['hub_obstacle'] != 'declared_finite_cylinder'
+                        else "finite_hub_inner_outer_envelopes_with_explicit_dimensions",
                         "interval_bounds_are_floating_point_screening_not_formal_or_physical_certification"],
     }
     text = _json(document)

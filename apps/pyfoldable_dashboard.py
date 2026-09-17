@@ -42,6 +42,7 @@ from pyfoldable.application.design_analysis import DesignAnalysisArtifact, Desig
 from pyfoldable.application.polar_upload import MAX_POLAR_UPLOAD_BYTES, PolarRunRequest, prepare_polar_run, run_polar_run
 from pyfoldable.application.active_design_search import prepare_active_search, run_active_search
 from pyfoldable.application.geometry_search import prepare_geometry_search, run_geometry_search
+from pyfoldable.application.hardware_contract import MAX_HARDWARE_BYTES
 from pyfoldable.application.surface_clearance import (
     SurfaceClearanceInputs, prepare_surface_clearance, run_surface_clearance,
 )
@@ -529,13 +530,25 @@ def _clear_surface_clearance() -> None:
     st.session_state.pop("geom03_request", None)
 
 
+def _hardware_upload_changed(key):
+    """Retain uploaded bytes only on a real change, including explicit removal."""
+    upload = st.session_state.get(key)
+    too_large = upload is not None and upload.size > MAX_HARDWARE_BYTES
+    st.session_state["geom04_saved_upload_error"] = too_large
+    st.session_state["geom04_saved_upload"] = (
+        None if upload is None or too_large else upload.getvalue()
+    )
+    _clear_surface_clearance()
+
+
 def _render_surface_clearance(draft: DesignDraftArtifact) -> None:
     st.subheader("Katlanma yolu · Yüzey açıklığı")
     st.caption(
         "Etkin taslağın üçgen yüzeyleri, açık konumdan seçilen açıya kadar birlikte "
         "katlanır. Ayrılma tüm açı aralığını kapsayan sınırlarla denetlenir; çözülemeyen "
-        "aralıklar bilinmiyor olarak kalır. Göbek, yüksekliği bilinmeyen sonsuz silindir "
-        "engeliyle sınırlanır; bu engele giriş gerçek göbek çarpışması kanıtı değildir."
+        "aralıklar bilinmiyor olarak kalır. Açık ölçülü donanım dosyası isteğe bağlıdır; "
+        "donanım olmadan göbek sonsuz silindir zarfıyla sınırlanır. Bu zarfa giriş "
+        "gerçek göbek çarpışması kanıtı değildir."
     )
     columns = st.columns(4)
     endpoint = _geometry_control(columns[0].number_input, "Yüzey denetimi · Hedef açı [deg]",
@@ -554,11 +567,33 @@ def _render_surface_clearance(draft: DesignDraftArtifact) -> None:
     )
     budget = _geometry_control(st.selectbox, "Yüzey denetimi · Karşılaştırma bütçesi",
                                (5000, 20000, 50000), index=1)
+    feature_budget = _geometry_control(st.selectbox, "Dar faz · Özellik sorgusu bütçesi",
+                                       (512, 2048, 8192), index=1)
+    hardware_budget = _geometry_control(st.selectbox, "Donanım · Sorgu bütçesi",
+                                        (64, 256, 1024), index=1)
+    upload_key = f"geom04_upload_{st.session_state.get('geom04_upload_revision', 0)}"
+    st.file_uploader("Göbek ve bağlantı geometrisi JSON", type=["json"], key=upload_key,
+                     on_change=_hardware_upload_changed, args=(upload_key,))
+    if st.button("Donanım kaynağını temizle"):
+        st.session_state.pop("geom04_saved_upload", None)
+        st.session_state.pop("geom04_saved_upload_error", None)
+        st.session_state["geom04_upload_revision"] = st.session_state.get("geom04_upload_revision", 0) + 1
+        _clear_surface_clearance()
+        st.rerun()
+    st.caption("İsteğe bağlı donanım: kaynak, revizyon, birim, rijit parça ve transform "
+               "tanımlı sonlu silindir veya kapalı dışbükey geometri. Ölçü üretilmez. "
+               "Dosya bu oturumda korunur; kaldırmak için kaynağı temizleyin.")
+    if st.session_state.get("geom04_saved_upload_error"):
+        _clear_surface_clearance()
+        st.error(f"Donanım dosyası {MAX_HARDWARE_BYTES // 1024} KiB sınırını aşıyor.")
+        return
     try:
         request = prepare_surface_clearance(draft, SurfaceClearanceInputs(
             end_angle_deg=float(endpoint), required_clearance_m=clearance / 1000,
             root_attachment_m=root_band / 1000, hinge_attachment_m=hinge_band / 1000,
-            contact_source=source, max_node_comparisons=budget))
+            contact_source=source, max_node_comparisons=budget,
+            max_feature_tests=feature_budget, max_hardware_queries=hardware_budget),
+            hardware_json=st.session_state.get("geom04_saved_upload"))
     except (ValueError, TypeError, OSError) as exc:
         _clear_surface_clearance()
         st.warning(f"Yüzey denetimi hazırlanamadı: {exc}")
@@ -582,11 +617,18 @@ def _render_surface_clearance(draft: DesignDraftArtifact) -> None:
               "unknown": "Bilinmiyor"}
     st.info(f"Denetlenen yüzeyler: {labels[report['modeled_surface_status']]} · "
             f"İstasyon kapsamı: {'tam' if report['station_span_complete'] else 'eksik'} · "
-            f"Karşılaştırma: {report['node_comparisons']}/{budget}")
+            f"Karşılaştırma: {report['node_comparisons']}/{budget} · "
+            f"Özellik sorgusu: {report['feature_tests']}/{feature_budget} · "
+            f"Donanım sorgusu: {report['hardware_queries']}/{hardware_budget}")
+    if report.get("hardware_status") is not None:
+        st.caption(f"Bildirilen donanım kapsamı: {labels.get(report['hardware_status'], report['hardware_status'])}")
     st.caption("Sonuç yalnız denetlenen açık üçgen yüzeyler içindir. Pervanenin tamamı, "
                "dışlanan bağlantılar ve katı cisimlerin çarpışmasızlığı doğrulanmış değildir.")
     _render_markdown_table([
         {"Yüzey A": q["a"], "Yüzey B": q["b"], "Durum": labels[q["result"]["status"]],
+         "Yöntem": ", ".join(sorted({i.get("method", "aabb_bound") for i in q["result"]["intervals"]})),
+         "Temas": q["result"].get("contact_status", "unknown"),
+         "Özellik sorgusu": q["result"].get("feature_tests", 0),
          "Sürekli alt sınır [mm]": None if q["result"]["lower_bound_m"] is None else q["result"]["lower_bound_m"] * 1000,
          "İhlal örneği açıklığı [mm]": None if q["result"]["witness_clearance_m"] is None else q["result"]["witness_clearance_m"] * 1000}
         for q in report["queries"]])
@@ -615,7 +657,21 @@ def _render_surface_clearance(draft: DesignDraftArtifact) -> None:
                    "Kırmızı nokta: orta açıda açıklık ihlali örneği; aralığın tamamına genellenmez. "
                    "Grafik en fazla 256 aralık gösterir; tüm kayıtlar JSON içindedir. "
                    "Bütçe nedeniyle hiç işlenmeyen çiftlerin grafikte aralığı bulunmayabilir.")
+        witnesses = [
+            {"Yüzey A": query["a"], "Yüzey B": query["b"],
+             "Örnek açı [deg]": math.degrees(interval["witness_angle_rad"]),
+             "Nokta A [m]": interval["point_a"], "Nokta B [m]": interval["point_b"],
+             "Yöntem": interval["method"]}
+            for query in report["queries"] for interval in query["result"]["intervals"]
+            if interval.get("witness_angle_rad") is not None
+            and interval.get("point_a") is not None and interval.get("point_b") is not None
+        ]
+        if witnesses:
+            st.caption("Tanık noktaları yalnız belirtilen örnek pozuna aittir; sürekli yol alt sınırı değildir.")
+            _render_markdown_table(witnesses[:256])
         st.json(report["excluded_regions"])
+        if report["request"].get("hardware") is not None:
+            st.json(report["request"]["hardware"])
     st.download_button("Yüzey açıklığı raporunu JSON indir", artifact.report_json,
                        file_name=artifact.filename, mime="application/json")
 

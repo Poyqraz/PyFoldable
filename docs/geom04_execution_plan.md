@@ -1,6 +1,7 @@
 # GEOM-04 — yüzey mesafesi ve açık donanım geometrisi
 
-Durum: **04A uygulandı; 04B–04D geliştirme aşamasında**. Başlangıç: GEOM-03 / PR #61,
+Durum: **04A–04D uygulandı**; kapsam ve sınırlar [teslim belgesinde](geom04_surface_hardware.md).
+04A: PR #62. Başlangıç: GEOM-03 / PR #61,
 `943f5f3e5f950e4d2b2c18f5968e5b39f7cad710`. Tarih: 2026-09-16.
 
 ## Amaç ve sınır
