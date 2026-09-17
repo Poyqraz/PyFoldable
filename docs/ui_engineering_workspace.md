@@ -1,5 +1,9 @@
 # PyFoldable Engineering Workspace
 
+Bu belge arayüz artımlarının sözleşme ve teslim tarihçesini korur. Güncel sayfa
+kapsamı, GEOM-04 ve tamamlanmamış entegrasyonlar için
+[repo durumunu](agent/current-state.md) okuyun.
+
 ## Amaç
 
 Bu çalışma hattı, mevcut PyFoldable çekirdeğini yeniden yazmadan tasarım girdilerini,

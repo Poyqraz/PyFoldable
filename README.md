@@ -4,6 +4,11 @@
 
 **Uçtan eklemli katlanabilir pervane için sayısal analiz ve mühendislik raporlama paketi**
 
+Yeni geliştirici/ajan: [AGENTS.md](AGENTS.md) →
+[güncel durum ve açık işler](docs/agent/current-state.md) →
+[mimari](docs/architecture/overview.md) →
+[komutlar ve testler](docs/development/commands.md).
+
 PyFoldable; uçtan mafsallı (tip-hinged) katlanabilir pervane geometrisinin kinematik modelini,
 menteşe dinamiğini, kalibrasyonlu itki bölünmesini ve motor bağlantılı performans
 değerlendirmesini tek bir doğrulanabilir iş akışında birleştirir. Paket; tasarım varyantı
@@ -109,6 +114,14 @@ PyArrow/Pandas/Altair çalışma zamanı köprüsüne bağlı değildir.
 
 ### Mühendislik çalışma alanı
 
+Güncel geometri hattı kaynak-bağlı istasyon düzenlemeyi, sınırlı aday taramasını,
+sürekli yüzey açıklığı denetimini ve sonlu göbek/dışbükey donanım girdilerini içerir
+([GEOM-02](docs/geom02_station_contract.md), [GEOM-04](docs/geom04_surface_hardware.md)).
+PY-05'in ayrı mekanizma ekranları açık çalıştırma ve ilk temas sınırını korur
+([tamamlanma kaydı](docs/py05_completion.md)). PY-06 karşılaştırma API'leri ve
+henüz tamamlanmamış sayfalar [güncel durum](docs/agent/current-state.md) belgesinde
+ayrılır; GEOM-04 sonuçları aday seçimine otomatik bağlanmış değildir.
+
 ```bash
 streamlit run apps/pyfoldable_dashboard.py
 ```
@@ -192,6 +205,12 @@ pytest tests/ -q
 
 ## 7100 dev/dak ana sonuçları
 
+Bu tablo **tarihsel V2 model çıktısıdır**; kalibre edilmiş proje pervanesi ölçümü
+değildir. Referans yazılım fixture'ı ve sabit ön-test katsayısı sınırları
+[veri açıklamasında](data/propellers/apc_202602/README.md) ve
+[model varsayımlarında](reports/foldable_v2_engineering_design/model_assumptions_and_limits.md)
+verilir. Aşağıdaki sayılar yeni BEM çalışmasıyla yeniden hesaplanmış değildir.
+
 Motor bağlantılı katmanda interpolasyonla elde edilen mühendislik kontrol noktası
 (`CHECKPOINT_RPM` = 7100 dev/dak):
 
@@ -208,13 +227,17 @@ Ek kontrol noktası verileri: gaz **0.768**, akım **17.0 A**, güç **150 W**
 
 ## Geçerlilik kapsamı
 
-Bu aşama **sayısal ön tasarım ve model tabanlı değerlendirme** üretir. Paket;
+Yukarıdaki tarihsel V2 rapor hattı **sayısal ön tasarım ve model tabanlı değerlendirme** üretir;
 
 - kinematik model, menteşe dinamiği, kalibrasyonlu itki bölünmesi ve motor bağlantılı
   performans katmanını bir arada sunar;
 - Seviye-1 **CFD hazırlık tabloları** ile işletim noktası ve sınır koşulu girdisi sağlar;
 - motor bağlantısını `reference_load_postprocess` seviyesinde modeller (RPM/akım/güç referans
   pervane dengesinden; katlanabilir `D_aero` yükü sonradan işlenir).
+
+Güncel çekirdekte ayrıca `pyfoldable/core/motor_bem_coupling.py` altında PR-07
+bağlı motor–BEM çözücüsü bulunur; bu, V2 tablosunu geriye dönük olarak değiştirmez.
+Fiziksel korelasyon durumu [güncel yol haritasında](docs/validation_and_development_roadmap.md) ayrılır.
 
 Kalibrasyonlu proje pervanesi deneyi, tam ileri-uçuş BEM kapsamı, CFD korelasyonu ve yapısal
 analiz sonraki doğrulama adımları için referans alınır. Ayrıntı:
