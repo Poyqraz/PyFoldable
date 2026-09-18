@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from ..aero_closing import closing_moment_nm
 from ..models import FoldablePropellerConfig
 from ..geometry_helpers import tip_radial_extension_from_config
 from .hinge_moment_geometry import centrifugal_moment_nm_for_model
@@ -21,6 +22,7 @@ class HingeMomentComponents:
     M_friction_nm: float
     M_stop_nm: float
     M_net_nm: float
+    M_closing_nm: float = 0.0
 
 
 def centrifugal_moment_nm(
@@ -108,8 +110,9 @@ def compute_hinge_moments(
     M_damp = damping_moment_nm(theta_dot_rad_s, config)
     M_stop = stop_moment_nm(theta_deg, config)
     M_aero = aero_hinge_moment_nm(rpm, theta_deg, tip_thrust_n, config)
+    M_close = closing_moment_nm(rpm, theta_deg, config, theta_dependent=True)
 
-    M_without_fric = M_cent + M_aero - M_stiff - M_damp - M_stop
+    M_without_fric = M_cent + M_aero - M_close - M_stiff - M_damp - M_stop
     M_fric = coulomb_friction_moment_nm(theta_dot_rad_s, M_without_fric, config)
     M_net = M_without_fric - M_fric
 
@@ -121,6 +124,7 @@ def compute_hinge_moments(
         M_friction_nm=M_fric,
         M_stop_nm=M_stop,
         M_net_nm=M_net,
+        M_closing_nm=M_close,
     )
 
 
