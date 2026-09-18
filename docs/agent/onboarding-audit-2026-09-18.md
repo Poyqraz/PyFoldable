@@ -397,6 +397,7 @@ can read.
 | `docs/development_roadmap.md` | “Complete in this change” on PR-05D | Self-labeled PR-04/05 history; later roadmap is `validation_and_development_roadmap.md` | header warning | Keep as history |
 | `docs/python_research_execution_plan.md` | “after PY-05, the next ordered software slice is PY-06” | PY-06A–D1 and GEOM-01–04 later marked implemented in the same file | ordered-slices table | Prefer current-state / validation roadmap for “next” |
 | `docs/py04_deterministic_design_search.md` | Local **1063 passed, 9 skipped** | Current suite 1464 passed, 9 skipped | pytest this audit; current-state | Leave as dated delivery record |
+| README vs `docs/development/commands.md` | `pytest tests/ -q` vs `./venv/bin/python -m pytest tests/ -q` | Same suite; different interpreter discipline | `README.md`, `tests.yml` | Prefer the venv interpreter for agent work |
 | `docs/agent/current-state.md` / this audit | GEOM-01 still reports unknown surface/interblade constraints | Constraint values stay `None`; details include `surface_path_clearance_status`: `unknown_no_swept_surface_collision_model` | `pyfoldable/application/geometry_search.py` | Keep wording; do not turn unknown into passed |
 
 Correct and still true (spot-checked): no DB/auth; GEOM-04 does not select
