@@ -9,11 +9,14 @@ Software correctness is distinct from physical qualification of the prototype.
 Read progressively; do not ingest the entire repository:
 
 1. [Current state and known gaps](docs/agent/current-state.md).
-2. [Architecture, data and critical flows](docs/architecture/overview.md).
-3. [Development commands and test selection](docs/development/commands.md).
-4. Relevant source, tests and the linked feature contract.
-5. [Decisions](docs/architecture/decisions.md) and
+2. [Task → file navigation map](docs/agent/navigation-map.md) when locating a change.
+3. [Architecture, data and critical flows](docs/architecture/overview.md).
+4. [Development commands and test selection](docs/development/commands.md).
+5. Relevant source, tests and the linked feature contract.
+6. [Decisions](docs/architecture/decisions.md) and
    [handoff protocol](docs/agent/handoff-protocol.md) when changing boundaries or resuming.
+7. Dated independent re-audit (application tree unchanged since GEOM-04):
+   [2026-09-18 onboarding audit](docs/agent/onboarding-audit-2026-09-18.md).
 
 Evidence precedence: code → tests → schemas → CI → runtime configuration → docs
 → git history → conversation. Record conflicts; never turn plans into facts.
