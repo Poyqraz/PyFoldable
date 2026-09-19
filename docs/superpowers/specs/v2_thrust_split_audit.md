@@ -1,7 +1,9 @@
 # V2 Thrust Split Model Audit
 
 **Date:** 2026-06-20  
-**Scope:** `pythrust/foldable/dynamics/split_thrust.py` (V2 prescribed-RPM path)
+**Scope:** `pyfoldable/dynamics/split_thrust.py` (V2 prescribed-RPM path).
+The historical `pythrust/foldable/` prefix is the pre-export layout; that tree
+is not in this repository.
 
 ## Current model — `independent_tip_disk`
 

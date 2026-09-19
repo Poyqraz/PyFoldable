@@ -12,8 +12,10 @@ Every result remains `physical_qualification=false`.
 Still outside this boundary are measured PA-CF mass/friction calibration, static
 stiction/breakaway, contact reaction/impact/restitution/latching, arbitrary hinge
 axes, aerodynamic feedback and motor/BEM transients. Those require separate
-models and evidence, not hidden defaults. PY-06 is next for calibration,
-uncertainty and comparison infrastructure. PR #3 remains separate. The 250/140 mm
+models and evidence, not hidden defaults. PY-06A/B1/C/D1 comparison APIs have
+since shipped; remaining D2/E/F work is evidence-dependent
+([current state](agent/current-state.md),
+[PY-06 plan](py06_calibration_uncertainty_plan.md)). PR #3 remains separate. The 250/140 mm
 envelope conflict and PR-06C/09/10 gates are unchanged. Print orientation remains
 outside scope.
 
