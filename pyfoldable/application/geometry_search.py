@@ -1,12 +1,13 @@
 """GEOM-01: bounded planar hinge/stow screening using the existing audit/mesh."""
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 import hashlib
 import json
 import math
 from pathlib import Path
 import platform
+import re
 
 from pyfoldable.core.units import normalize_quantity
 from pyfoldable.visualization.propeller_25d import (
@@ -17,9 +18,19 @@ from .design_draft import DesignDraftArtifact
 from .design_search import (
     Evaluation, GridSearchPlan, SearchAxis, SearchError, _json, _sha, run_grid_search,
 )
+from .hardware_contract import load_hardware_json
 
 _CONSTRAINTS = ("centerline_target", "centerline_path_clearance", "station_span_complete",
                 "mesh_envelope_target", "surface_path_clearance", "interblade_clearance")
+_SURFACE_KINDS = frozenset({"hub", "own_root_tip"})
+_INTERBLADE_KINDS = frozenset({"interblade"})
+_HARDWARE_KINDS = frozenset({"hardware_surface", "hardware_pair"})
+_HINGE_RADIUS_LINE = re.compile(r'(?m)^radius = "[^"]+"')
+_CLEARANCE_SOURCES = (
+    "application/surface_clearance.py", "geometry/surface_clearance.py",
+    "geometry/triangle_distance.py", "application/hardware_contract.py",
+    "application/hardware_clearance.py", "geometry/hardware.py",
+)
 
 
 @dataclass(frozen=True)
@@ -28,6 +39,85 @@ class GeometrySearchRequest:
     plan: GridSearchPlan
     request_sha256: str
     context_json: str
+    clearance_inputs: object | None = None
+    hardware_json: bytes | None = None
+
+
+def _clearance_module():
+    # Late import: surface_clearance already imports geometry_search._inputs.
+    from . import surface_clearance
+    return surface_clearance
+
+
+def _draft_with_hinge_radius(draft: DesignDraftArtifact, hinge_radius_m: float) -> DesignDraftArtifact:
+    """Rewrite only the [hinge] radius so clearance sees this candidate's geometry."""
+    if not math.isfinite(hinge_radius_m) or hinge_radius_m <= 0:
+        raise SearchError("Candidate hinge radius must be a positive finite length.")
+    start = draft.toml.find("[hinge]")
+    if start < 0:
+        raise SearchError("Candidate draft is missing a hinge table.")
+    nxt = draft.toml.find("\n[", start + 1)
+    section = draft.toml[start:] if nxt < 0 else draft.toml[start:nxt]
+    updated, count = _HINGE_RADIUS_LINE.subn(f'radius = "{hinge_radius_m:.17g} m"', section, count=1)
+    if count != 1:
+        raise SearchError("Candidate draft is missing a hinge radius.")
+    text = draft.toml[:start] + updated + ("" if nxt < 0 else draft.toml[nxt:])
+    return DesignDraftArtifact(draft.filename, text, draft.source_sha256,
+                               hashlib.sha256(text.encode("utf-8")).hexdigest())
+
+
+def _query_statuses(queries, kinds):
+    return [(query.get("result") or {}).get("status") for query in queries if query.get("kind") in kinds]
+
+
+def _reduce_statuses(statuses, *, present):
+    if not present:
+        return False if "violation" in statuses else None
+    if "violation" in statuses:
+        return False
+    if any(status != "separated" for status in statuses):
+        return None
+    return True
+
+
+def _and_closed(left, right):
+    if left is False or right is False:
+        return False
+    if left is None or right is None:
+        return None
+    return True
+
+
+def _map_clearance_constraints(queries, hardware_json):
+    """True only from present separated pairs; unknown/missing stay unknown."""
+    if not isinstance(queries, list):
+        return None, None
+    surface_kinds = {query.get("kind") for query in queries if query.get("kind") in _SURFACE_KINDS}
+    required_surface = {"own_root_tip"}
+    if "hub" in surface_kinds or hardware_json is None:
+        required_surface.add("hub")
+    surface = _reduce_statuses(_query_statuses(queries, _SURFACE_KINDS),
+                               present=required_surface <= surface_kinds)
+    interblade = _reduce_statuses(_query_statuses(queries, _INTERBLADE_KINDS),
+                                  present="interblade" in {query.get("kind") for query in queries})
+    if hardware_json is not None:
+        hardware_kinds = {query.get("kind") for query in queries if query.get("kind") in _HARDWARE_KINDS}
+        hardware = _reduce_statuses(_query_statuses(queries, _HARDWARE_KINDS),
+                                    present=bool(hardware_kinds))
+        surface = _and_closed(surface, hardware)
+        interblade = _and_closed(interblade, hardware)
+    return surface, interblade
+
+
+def _compact_queries(queries):
+    compact = []
+    for query in queries:
+        result = query.get("result") or {}
+        compact.append({
+            "kind": query.get("kind"), "a": query.get("a"), "b": query.get("b"),
+            "result": {"status": result.get("status")},
+        })
+    return compact
 
 
 def _inputs(draft):
@@ -55,11 +145,14 @@ def _inputs(draft):
 def prepare_geometry_search(
     draft: DesignDraftArtifact, *, hinge_radii_m: tuple[float, ...],
     stowed_angles_deg: tuple[float, ...], max_evaluations: int = 25,
+    clearance_inputs=None, hardware_json: bytes | None = None,
 ) -> GeometrySearchRequest:
     """Validate budgets and source identity without generating candidate meshes."""
     model, target, foil = _inputs(draft)
     if type(max_evaluations) is not int or not 1 <= max_evaluations <= 25:
         raise SearchError("Geometry evaluation budget must be an integer from 1 to 25.")
+    if hardware_json is not None and clearance_inputs is None:
+        raise SearchError("Hardware cannot bind without clearance inputs.")
     blade = model.blade
     radius = blade.diameter_m / 2
     plan = GridSearchPlan((
@@ -73,10 +166,34 @@ def prepare_geometry_search(
     vertex_budget = count * (len(blade.stations) + 2) * len(foil.coordinates) * blade.blade_count
     if vertex_budget > 250_000 or blade.blade_count > 8:
         raise SearchError("Aggregate preview budget is 250000 vertices and at most eight blades.")
+    binding = None
+    if clearance_inputs is not None:
+        clearance = _clearance_module()
+        if not isinstance(clearance_inputs, clearance.SurfaceClearanceInputs):
+            raise SearchError("Expected explicit surface-clearance inputs.")
+        clearance.SurfaceClearanceInputs(**asdict(clearance_inputs))
+        try:
+            clearance.prepare_surface_clearance(
+                draft, replace(clearance_inputs, end_angle_deg=min(stowed_angles_deg)),
+                hardware_json=hardware_json)
+        except ValueError as exc:
+            raise SearchError(str(exc)) from exc
+        hardware = None if hardware_json is None else load_hardware_json(hardware_json)
+        binding = {
+            "inputs": asdict(clearance_inputs),
+            "hardware_raw_sha256": None if hardware is None else hardware.raw_sha256,
+            "hardware_canonical_sha256": None if hardware is None else hardware.canonical_sha256,
+            "physical_qualification": False,
+            "full_propeller_clearance": None,
+            "reuse_policy": "rebuild_draft_and_request_per_candidate_never_reuse_foreign_geometry",
+            "end_angle_policy": "candidate_stowed_angle_within_declared_travel",
+        }
     root = Path(__file__).parents[1]
     sources = ("application/geometry_search.py", "application/folding_mechanism.py",
                "application/design_search.py", "application/design_analysis.py",
                "visualization/propeller_25d.py", "core/airfoil.py", "core/models.py", "core/config.py", "core/units.py")
+    if binding is not None:
+        sources += _CLEARANCE_SOURCES
     context = {
         "schema_version": 1, "classification": "geometry_feasibility_screening_only",
         "base_draft_toml": draft.toml, "base_draft_sha256": draft.draft_sha256,
@@ -92,8 +209,10 @@ def prepare_geometry_search(
         "implementation_sha256": {path: hashlib.sha256((root / path).read_bytes()).hexdigest() for path in sources},
         "python": platform.python_version(),
     }
+    if binding is not None:
+        context["candidate_clearance"] = binding
     text = _json(context)
-    return GeometrySearchRequest(draft, plan, _sha(text), text)
+    return GeometrySearchRequest(draft, plan, _sha(text), text, clearance_inputs, hardware_json)
 
 
 def run_geometry_search(request: GeometrySearchRequest) -> analysis.DesignAnalysisArtifact:
@@ -104,14 +223,23 @@ def run_geometry_search(request: GeometrySearchRequest) -> analysis.DesignAnalys
     if set(axes) != {"hinge_radius_m", "stowed_angle_deg"}:
         raise SearchError("Geometry grid axes do not match the prepared contract.")
     fresh = prepare_geometry_search(request.draft, hinge_radii_m=axes["hinge_radius_m"],
-        stowed_angles_deg=axes["stowed_angle_deg"], max_evaluations=request.plan.max_evaluations)
+        stowed_angles_deg=axes["stowed_angle_deg"], max_evaluations=request.plan.max_evaluations,
+        clearance_inputs=request.clearance_inputs, hardware_json=request.hardware_json)
     if fresh != request:
         raise SearchError("Geometry request identity changed.")
     model, target, foil = _inputs(request.draft)
     blade = model.blade
     stations = tuple(PreviewBladeStation(s.r_over_R, s.chord_m, math.degrees(s.twist_rad)) for s in blade.stations)
+    remaining_nodes = remaining_features = remaining_hardware = 0
+    clearance = None
+    if request.clearance_inputs is not None:
+        clearance = _clearance_module()
+        remaining_nodes = request.clearance_inputs.max_node_comparisons
+        remaining_features = request.clearance_inputs.max_feature_tests
+        remaining_hardware = request.clearance_inputs.max_hardware_queries
 
     def evaluate(parameters):
+        nonlocal remaining_nodes, remaining_features, remaining_hardware
         h, angle = parameters["hinge_radius_m"], parameters["stowed_angle_deg"]
         audit = geometry.build_mechanism_geometry_audit(
             geometry.MechanismGeometryInputs(blade.diameter_m, blade.hub_radius_m, h, angle, target),
@@ -128,12 +256,55 @@ def run_geometry_search(request: GeometrySearchRequest) -> analysis.DesignAnalys
         # On 0..-180 degrees every point of the moving radial centreline has
         # nonincreasing distance to the origin. Its path minimum is at the endpoint.
         path_clearance = audit.hub_centerline_clearance_m
+        surface = interblade = None
+        clearance_details = {
+            "surface_path_clearance_status": "unknown_no_swept_surface_collision_model",
+            "full_propeller_clearance": None,
+            "physical_qualification": False,
+        }
+        if clearance is not None:
+            clearance_details.update(candidate_hinge_radius_m=h, clearance_end_angle_deg=angle)
+            if remaining_nodes < 1:
+                clearance_details["surface_path_clearance_status"] = "unknown_clearance_budget_exhausted"
+            else:
+                try:
+                    candidate_inputs = replace(
+                        request.clearance_inputs, end_angle_deg=angle,
+                        max_node_comparisons=remaining_nodes,
+                        max_feature_tests=remaining_features,
+                        max_hardware_queries=remaining_hardware)
+                    clearance_request = clearance.prepare_surface_clearance(
+                        _draft_with_hinge_radius(request.draft, h), candidate_inputs,
+                        hardware_json=request.hardware_json)
+                    report = json.loads(clearance.run_surface_clearance(clearance_request).report_json)
+                    queries = report.get("queries") if isinstance(report.get("queries"), list) else []
+                    surface, interblade = _map_clearance_constraints(queries, request.hardware_json)
+                    remaining_nodes = max(0, remaining_nodes - int(report.get("node_comparisons") or 0))
+                    remaining_features = max(0, remaining_features - int(report.get("feature_tests") or 0))
+                    remaining_hardware = max(0, remaining_hardware - int(report.get("hardware_queries") or 0))
+                    if surface is False:
+                        status = "scoped_geom04_violation"
+                    elif surface is True:
+                        status = "scoped_geom04_separated_not_physical_qualification"
+                    else:
+                        status = "unknown_scoped_geom04"
+                    clearance_details.update(
+                        surface_path_clearance_status=status,
+                        clearance_request_sha256=clearance_request.request_sha256,
+                        modeled_surface_status=report.get("modeled_surface_status"),
+                        clearance_queries=_compact_queries(queries),
+                    )
+                except ValueError as exc:
+                    clearance_details.update(
+                        surface_path_clearance_status="unknown_candidate_clearance_unresolved",
+                        clearance_error=str(exc)[:1024],
+                    )
         constraints = {
             "centerline_target": audit.current_envelope_requirement_met,
             "centerline_path_clearance": path_clearance > 0.0,
             "station_span_complete": audit.station_span_complete,
             "mesh_envelope_target": None if mesh is None else mesh_diameter <= target,
-            "surface_path_clearance": None, "interblade_clearance": None,
+            "surface_path_clearance": surface, "interblade_clearance": interblade,
         }
         return Evaluation(audit.centerline_envelope_diameter_m, constraints, {
             "audit": asdict(audit), "proposed_path_minimum_hub_clearance_m": path_clearance,
@@ -142,8 +313,8 @@ def run_geometry_search(request: GeometrySearchRequest) -> analysis.DesignAnalys
             "mesh_envelope_diameter_m": mesh_diameter, "mesh_error": mesh_error,
             "mesh_qualification": None if mesh is None else mesh.qualification,
             "airfoil_coordinate_sha256": None if mesh is None else mesh.airfoil_coordinate_sha256,
-            "surface_path_clearance_status": "unknown_no_swept_surface_collision_model",
             "canonical_design_modified": False,
+            **clearance_details,
         })
 
     return run_grid_search(request.plan, evaluate, evaluator_identity={
