@@ -282,9 +282,9 @@ def run_geometry_search(request: GeometrySearchRequest) -> analysis.DesignAnalys
                     remaining_nodes = max(0, remaining_nodes - int(report.get("node_comparisons") or 0))
                     remaining_features = max(0, remaining_features - int(report.get("feature_tests") or 0))
                     remaining_hardware = max(0, remaining_hardware - int(report.get("hardware_queries") or 0))
-                    if surface is False:
+                    if surface is False or interblade is False:
                         status = "scoped_geom04_violation"
-                    elif surface is True:
+                    elif surface is True and interblade is True:
                         status = "scoped_geom04_separated_not_physical_qualification"
                     else:
                         status = "unknown_scoped_geom04"

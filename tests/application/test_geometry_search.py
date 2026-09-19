@@ -292,6 +292,47 @@ def test_forged_clearance_qualification_flags_cannot_pass_or_widen_scope(monkeyp
     assert row["constraints"]["interblade_clearance"] is True
 
 
+def test_bound_hardware_without_hardware_rows_stays_unknown(monkeypatch):
+    from test_hardware_clearance_motion import raw
+    prepared, _ = _bind_clearance(
+        monkeypatch, _clearance_artifact(_separated_surface_queries()),
+        hardware_json=raw(),
+    )
+    row = json.loads(run_geometry_search(prepared).report_json)["candidates"][0]
+    assert row["constraints"]["surface_path_clearance"] is None
+    assert row["constraints"]["interblade_clearance"] is None
+    assert row["status"] != "feasible"
+
+
+def test_hardware_violation_fails_both_constraints(monkeypatch):
+    from test_hardware_clearance_motion import raw
+    queries = _separated_surface_queries() + [_query("hardware_surface", "violation")]
+    prepared, _ = _bind_clearance(
+        monkeypatch, _clearance_artifact(queries), hardware_json=raw(),
+    )
+    row = json.loads(run_geometry_search(prepared).report_json)["candidates"][0]
+    assert row["constraints"]["surface_path_clearance"] is False
+    assert row["constraints"]["interblade_clearance"] is False
+    assert row["status"] != "feasible"
+    assert row["details"]["surface_path_clearance_status"] == "scoped_geom04_violation"
+
+
+def test_candidate_clearance_error_stays_unknown(monkeypatch):
+    def boom(request):
+        raise ValueError("candidate clearance failed")
+
+    monkeypatch.setattr("pyfoldable.application.surface_clearance.run_surface_clearance", boom)
+    prepared = prepare_geometry_search(
+        draft(), hinge_radii_m=(.06,), stowed_angles_deg=(-10.,),
+        clearance_inputs=SurfaceClearanceInputs(end_angle_deg=-10.),
+    )
+    row = json.loads(run_geometry_search(prepared).report_json)["candidates"][0]
+    assert row["constraints"]["surface_path_clearance"] is None
+    assert row["constraints"]["interblade_clearance"] is None
+    assert row["details"]["surface_path_clearance_status"] == "unknown_candidate_clearance_unresolved"
+    assert row["status"] != "feasible"
+
+
 def test_hardware_unknown_blocks_both_constraints_even_if_surfaces_separated(monkeypatch):
     from test_hardware_clearance_motion import raw
     queries = _separated_surface_queries() + [

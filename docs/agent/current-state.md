@@ -100,10 +100,11 @@ history. The current roadmap and feature contracts have authority over undated
 - Full numerical solver qualification, input-rights provenance and cache/geometry
   validation remain review-sensitive. No production hosting/security policy exists.
 
-**Subsequent update 2026-09-19:** GEOM-01 can bind candidate-specific GEOM-04
-inputs on the application service. Unbound searches keep the 2026-09-17 Partial
-row above. Bound mapping rebuilds each candidate draft/request, revalidates
-hardware, meters aggregate work and never promotes unknown to passed or sets
+**Subsequent update 2026-09-19:** the application service can bind
+candidate-specific GEOM-04 inputs. The 2026-09-17 Partial row still describes
+the default unbound/UI path, not a claim that the service cannot bind. Bound
+mapping rebuilds each candidate draft/request, revalidates hardware, meters
+aggregate work and never promotes unknown to passed or sets
 `physical_qualification`. See [GEOM-01](../geom01_feasibility_plan.md).
 
 **Proposed next bounded development slice, not implemented or newly authorized by
