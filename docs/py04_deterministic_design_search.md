@@ -93,19 +93,20 @@ quadratic minimum, tie order, budgets before callbacks, all-failed/unknown cases
 noncompounding station changes, strict polar identity, exact report hashes, real
 BEM calls with explicitly synthetic test polars, and Streamlit state invalidation.
 
-Final local verification: **1063 passed, 9 skipped** (full `tests/`, Python 3.12),
-including 73 added tests. The independent final reviewer passed 188 targeted
-application/UI tests and found no remaining blocker after corrections. Syntax
-compilation and whitespace checks passed; a launched Streamlit process returned
-HTTP 200 `ok` on its health endpoint. UI behavior was checked with AppTest, not a
-claim of manual visual inspection. CI on Python 3.10/3.11 and the final GitHub
-review check remain required before merge.
+At PY-04A delivery, local verification recorded **1063 passed, 9 skipped**
+(full `tests/`, Python 3.12), including 73 added tests. That figure is a dated
+milestone, not the standing suite size. Current verification is
+`./venv/bin/python -m pytest tests/ -q`
+([commands](development/commands.md)). The independent final reviewer passed 188
+targeted application/UI tests and found no remaining blocker after corrections.
+Syntax compilation and whitespace checks passed; a launched Streamlit process
+returned HTTP 200 `ok` on its health endpoint. UI behavior was checked with
+AppTest, not a claim of manual visual inspection.
 
 This completes the first bounded PY-04A/PR-11A software slice, **not all robust
 optimization work**. Broader variables, adaptive/stochastic methods and Pareto
 search are deferred; PR-11B physical recommendations remain gated on real evidence.
-Next ordered slice: PY-05 mechanism transient contracts and synthetic limiting
-cases, reusing the existing dynamics and keeping PR #3 separate. Confirm coordinate
-signs, explicit mass/CG/inertia/friction, RPM history and stop-event policy before
-implementation; do not invent missing material data or claim passive closure.
-Print orientation/manufacturing DoE remains outside this workstream.
+At delivery the next ordered slice was PY-05 (since completed;
+[PY-05 completion](py05_completion.md)). Keep PR #3 separate. Do not invent
+missing material data or claim passive closure. Print orientation/manufacturing
+DoE remains outside this workstream.

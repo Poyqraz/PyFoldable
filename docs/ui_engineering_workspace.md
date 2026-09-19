@@ -154,17 +154,22 @@ açılma tahmini, ANSYS gerilmesi/teması/ömrü veya fiziksel yeterlilik üretm
 UI-05'in ilk dilimi; yayımlanmış CFD referans fixture'ı ve sürümlü
 PR-09/PR-10 sözleşme raporlarını en çok 5 MiB olacak biçimde yalnız oturum belleğinde
 denetler. Tür, şema, CAD/test-stand kimliği, birim, qualification veya SHA sınırı
-bozulursa dosya reddedilir; repo'ya yazılmaz ve fiziksel yeterlilik üretmez. Sıradaki
-kontrollü dilim gerçek ANSYS sonuç vakaları ile kalibre ham deney run/sample
-bundle'larını typed çekirdeklere bağlamaktır. Henüz etkinleştirilmeyen sayfalar güvenli
+bozulursa dosya reddedilir; repo'ya yazılmaz ve fiziksel yeterlilik üretmez. Gerçek
+ANSYS sonuçları ve kalibre ham deney run/sample bağlama, kanıt gelene kadar
+planlı/kanıta bağlı kalır ([güncel durum](agent/current-state.md)). Henüz
+etkinleştirilmeyen sayfalar güvenli
 placeholder'dır: analiz çalıştırmaz ve örnek mühendislik sonucu üretmez.
 
 ## Çalıştırma ve test
 
+Kanonik kurulum ve doğrulama, aynı sanal ortam yorumlayıcısıyladır:
+[geliştirme sözleşmesi](development/commands.md)
+(`./venv/bin/python -m pip install -e ".[dev,plot,ui]"`).
+
 ```bash
-pip install -e ".[dev,plot,ui]"
-streamlit run apps/pyfoldable_dashboard.py
-pytest tests/application/test_dashboard.py tests/application/test_design_draft.py \
+./venv/bin/python -m pip install -e ".[dev,plot,ui]"
+./venv/bin/python -m streamlit run apps/pyfoldable_dashboard.py
+./venv/bin/python -m pytest tests/application/test_dashboard.py tests/application/test_design_draft.py \
   tests/application/test_analysis_run.py \
   tests/visualization/test_propeller_25d.py \
   tests/ui/test_streamlit_dashboard.py -q
