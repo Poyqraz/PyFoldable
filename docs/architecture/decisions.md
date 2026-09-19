@@ -57,10 +57,10 @@ rescale measured stations. Report excluded contact bands and unresolved interval
 
 Consequences: 2.5D preview is not CAD. Exact triangle predicates do not establish
 full-propeller collision freedom; `full_propeller_clearance` stays null. Synchronous
-planar screening does not prove asynchronous or arbitrary 3D motion. GEOM-01
-search currently has no candidate-specific clearance integration, so its unknown
-constraints cannot select a design. Reverse solid-query witnesses must preserve
-caller body order (PR #63 regression).
+planar screening does not prove asynchronous or arbitrary 3D motion. GEOM-01 may
+bind candidate-specific GEOM-04 inputs; unbound rows keep surface/interblade
+unknown, and bound True values are scoped screening only. Reverse solid-query
+witnesses must preserve caller body order (PR #63 regression).
 
 Evidence: `pyfoldable/application/blade_stations.py`, `geometry_search.py`,
 `surface_clearance.py` in that application directory; `pyfoldable/geometry/`;

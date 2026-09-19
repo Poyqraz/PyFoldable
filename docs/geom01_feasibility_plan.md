@@ -55,8 +55,18 @@ unknown. Chord-inclusive endpoint mesh diameter is reported separately from
 centreline diameter. Missing mesh coverage is recorded without inventing a mesh.
 
 All rows retain failed/unknown constraints. Swept-surface and interblade
-constraints are always unknown, so `best_candidate` is absent even if all other
-necessary conditions pass. The endpoint mesh is a 2.5D preview, not a CAD solid.
+constraints stay unknown unless a search binds candidate-specific GEOM-04
+inputs. A bound run rebuilds each candidate draft and clearance request; it
+never reuses another geometry's report. Pair status maps to
+`surface_path_clearance` / `interblade_clearance` as False on violation, True
+only when the required pair kinds exist and are separated, and None when any
+required pair is missing, unknown or budget-exhausted. Hardware, when bound,
+is revalidated against that candidate and unknown hardware keeps both
+constraints unknown. `physical_qualification` stays false and
+`full_propeller_clearance` stays null. `best_candidate` remains absent unless
+every required constraint is True; that selection is still numerical
+screening, not physical qualification. The endpoint mesh is a 2.5D preview,
+not a CAD solid.
 
 ## Run and verify
 
@@ -80,12 +90,10 @@ sampled paths. Full regression, exact-head CI and final GitHub review precede me
 
 ## Next bounded work
 
-GEOM-02 now accepts explicit, source-bound station definitions in the active draft
-and reports complete/partial span through the [station editor](geom02_station_contract.md).
-It does not extend canonical root/tip sections or claim CAD collision freedom.
-[GEOM-03](geom03_surface_clearance.md) now defines excluded attachment bands and
-bounds retained surface/interblade clearance along folding motion; unresolved
-intervals remain unknown, and results are not promoted into other grid candidates.
-GEOM-04 will refine unresolved triangle-level distances and explicit hardware. The raw
+GEOM-02–04 remain the station, retained-surface and hardware screening path.
+This increment only lets GEOM-01 consume already-scoped GEOM-04 evidence for
+the candidate that produced it. Unresolved intervals stay unknown; unknown
+never becomes passed; GEOM-04 itself is unchanged. The dashboard search
+action still runs unbound unless a later UI slice opts in. The raw
 literature-data acquisition/observable adapter remains a parallel task; PY-06D2
 fitting still requires suitable independent measurements and identifiability.

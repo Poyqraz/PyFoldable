@@ -100,14 +100,16 @@ history. The current roadmap and feature contracts have authority over undated
 - Full numerical solver qualification, input-rights provenance and cache/geometry
   validation remain review-sensitive. No production hosting/security policy exists.
 
+**Subsequent update 2026-09-19:** GEOM-01 can bind candidate-specific GEOM-04
+inputs on the application service. Unbound searches keep the 2026-09-17 Partial
+row above. Bound mapping rebuilds each candidate draft/request, revalidates
+hardware, meters aggregate work and never promotes unknown to passed or sets
+`physical_qualification`. See [GEOM-01](../geom01_feasibility_plan.md).
+
 **Proposed next bounded development slice, not implemented or newly authorized by
-this document:** connect candidate-specific scoped clearance to geometry search.
-Rebuild each candidate's draft and clearance request; explicitly validate hardware
-bindings against its hinge/frame; meter aggregate work; retain pair/interval/source
-evidence and missing/excluded scope. Never reuse an active-design clearance result
-for different geometry or imply full-propeller/physical qualification. Design the
-contract and RED tests before implementation. PY-06D2 is not the automatic next
-task without identifiable measured data.
+this document:** optional dashboard opt-in so the geometry-search action can bind
+already-scoped GEOM-04 inputs without changing the default unbound UI path.
+PY-06D2 is not the automatic next task without identifiable measured data.
 
 Unresolved inputs: engineers' CAD/material/ANSYS/raw-measurement packages and their
 rights/quality; representative polar validation; a separately agreed hosting model

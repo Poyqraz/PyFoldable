@@ -138,6 +138,7 @@ and work exhaustion, source identity and AppTest lifecycle regressions. Real
 Streamlit startup is checked separately. Independent review, Cursor Bugbot,
 exact-head CI and merged-tree comparison are integration gates.
 
-Follow-up work may connect these scoped reports to GEOM-01 candidate evaluation;
-missing geometry and evidence must remain explicit gates. Asynchronous motion,
-general CAD solids and physical qualification require separate work.
+GEOM-01 can now consume these scoped reports only for the candidate whose draft
+and request were rebuilt; missing geometry and evidence remain explicit gates.
+Asynchronous motion, general CAD solids and physical qualification require
+separate work.
