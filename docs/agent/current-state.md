@@ -100,17 +100,21 @@ history. The current roadmap and feature contracts have authority over undated
 - Full numerical solver qualification, input-rights provenance and cache/geometry
   validation remain review-sensitive. No production hosting/security policy exists.
 
-**Subsequent update 2026-09-19:** the application service can bind
-candidate-specific GEOM-04 inputs. The 2026-09-17 Partial row still describes
-the default unbound/UI path, not a claim that the service cannot bind. Bound
-mapping rebuilds each candidate draft/request, revalidates hardware, meters
-aggregate work and never promotes unknown to passed or sets
-`physical_qualification`. See [GEOM-01](../geom01_feasibility_plan.md).
+**Subsequent update 2026-09-20:** the application service can bind
+candidate-specific GEOM-04 inputs as **evidence only**. The 2026-09-17 Partial
+row still describes the GEOM-01 gates: `surface_path_clearance` and
+`interblade_clearance` remain unknown. Bound runs rebuild each candidate
+draft/request, revalidate hardware, meter aggregate work and attach pair
+evidence under `scoped_geom04_*`. They do not assign True or False to the
+protected GEOM-01 constraints or set `physical_qualification`. See
+[GEOM-01](../geom01_feasibility_plan.md).
 
 **Proposed next bounded development slice, not implemented or newly authorized by
-this document:** optional dashboard opt-in so the geometry-search action can bind
-already-scoped GEOM-04 inputs without changing the default unbound UI path.
-PY-06D2 is not the automatic next task without identifiable measured data.
+this document:** a separately reviewed mapping from attached GEOM-04 evidence
+into GEOM-01 selection constraints, or optional dashboard opt-in to bind
+already-scoped GEOM-04 inputs on the unbound UI path. Neither is authorized by
+the evidence-only attachment. PY-06D2 is not the automatic next task without
+identifiable measured data.
 
 Unresolved inputs: engineers' CAD/material/ANSYS/raw-measurement packages and their
 rights/quality; representative polar validation; a separately agreed hosting model

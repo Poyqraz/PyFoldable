@@ -55,18 +55,18 @@ unknown. Chord-inclusive endpoint mesh diameter is reported separately from
 centreline diameter. Missing mesh coverage is recorded without inventing a mesh.
 
 All rows retain failed/unknown constraints. Swept-surface and interblade
-constraints stay unknown unless a search binds candidate-specific GEOM-04
-inputs. A bound run rebuilds each candidate draft and clearance request; it
-never reuses another geometry's report. Pair status maps to
-`surface_path_clearance` / `interblade_clearance` as False on violation, True
-only when the required pair kinds exist and are separated, and None when any
-required pair is missing, unknown or budget-exhausted. Hardware, when bound,
-is revalidated against that candidate and unknown hardware keeps both
-constraints unknown. `physical_qualification` stays false and
-`full_propeller_clearance` stays null. `best_candidate` remains absent unless
-every required constraint is True; that selection is still numerical
-screening, not physical qualification. The endpoint mesh is a 2.5D preview,
-not a CAD solid.
+constraints remain unknown (`None`) on every GEOM-01 row, including when a
+search binds candidate-specific GEOM-04 inputs. A bound run rebuilds each
+candidate draft and clearance request, meters shared work, and never reuses
+another geometry's report. GEOM-04 pair status, witnesses, bounds, intervals,
+exclusions and hardware provenance stay in candidate details under a separate
+classification (`scoped_geom04_violation`, `scoped_geom04_separated`,
+`unknown_scoped_geom04`). That label does not change
+`surface_path_clearance` or `interblade_clearance`. `physical_qualification`
+stays false and `full_propeller_clearance` stays null. `best_candidate` remains
+absent unless every required constraint is True; with the two surface gates
+unknown, selection stays blocked. The endpoint mesh is a 2.5D preview, not a
+CAD solid.
 
 ## Run and verify
 
@@ -91,9 +91,10 @@ sampled paths. Full regression, exact-head CI and final GitHub review precede me
 ## Next bounded work
 
 GEOM-02–04 remain the station, retained-surface and hardware screening path.
-This increment only lets GEOM-01 consume already-scoped GEOM-04 evidence for
-the candidate that produced it. Unresolved intervals stay unknown; unknown
-never becomes passed; GEOM-04 itself is unchanged. The dashboard search
-action still runs unbound unless a later UI slice opts in. The raw
-literature-data acquisition/observable adapter remains a parallel task; PY-06D2
-fitting still requires suitable independent measurements and identifiability.
+This increment only attaches already-scoped GEOM-04 evidence to the GEOM-01
+candidate that produced it. It does not change GEOM-01 feasibility gates.
+A later reviewed slice would be required before any mapping into
+`surface_path_clearance` / `interblade_clearance`. The dashboard search action
+still runs unbound unless a later UI slice opts in. The raw literature-data
+acquisition/observable adapter remains a parallel task; PY-06D2 fitting still
+requires suitable independent measurements and identifiability.
