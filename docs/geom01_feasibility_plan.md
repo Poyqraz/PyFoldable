@@ -60,14 +60,22 @@ search binds candidate-specific GEOM-04 inputs. A bound run rebuilds each
 candidate draft and clearance request, gives every candidate its configured
 node/feature/hardware limits, and records aggregate ceilings of
 `N ×` those limits. It never reuses another geometry's report. A completed
-artifact is attached only after request/report SHA and context identity
-checks; mismatch, malformed JSON, impossible accounting and programming
-errors abort the search. The complete GEOM-04 report is retained under
+artifact is attached only after request/report SHA, strict finite JSON,
+report schema/content, request-context identity, qualification invariants
+and query-level accounting checks. `physical_qualification` other than
+false or `full_propeller_clearance` other than null aborts; the attached
+report is the decoded artifact, never rewritten. Malformed JSON, NaN or
+Infinity, schema errors, accounting contradictions and programming errors
+abort the search. Candidate-domain prepare failures raise
+`SurfaceClearanceValidationError` and become bounded
+`candidate_validation_failed`; other `ValueError` values from preparation
+or execution abort. The complete GEOM-04 report is retained under
 `details.geom04_clearance` (execution status, candidate/request identity,
-artifact hashes, full report or an explicit failure reason). If that
+artifact hashes, full report or an explicit failure reason). If a valid
 payload cannot fit the existing 256 KiB search-details snapshot, only the
 evidence attachment is replaced with a bounded oversize descriptor; the
-GEOM-01 audit, objective and constraints remain. GEOM-04 pair status,
+GEOM-01 audit, objective and constraints remain. Serialization or schema
+failure is not treated as oversize. GEOM-04 pair status,
 witnesses, bounds, intervals, exclusions and hardware provenance stay in
 that namespace under a separate classification (`scoped_geom04_violation`,
 `scoped_geom04_separated`, `unknown_scoped_geom04`). That label does not

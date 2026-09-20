@@ -15,8 +15,7 @@ Branch / current commit / tree:
 `cursor/geom01-candidate-clearance-36c6`
 
 Tested implementation SHA/tree:
-`c7cb4144f0dc912c73d1f3d1b1d2d063c48db739`
-(this handoff commit may follow that SHA)
+`5e7a3ca5046101d391ce75408fc1704df4ecd74d`
 
 PR and remote head:
 https://github.com/Poyqraz/PyFoldable/pull/67
@@ -28,23 +27,29 @@ Completed:
   `interblade_clearance=None` for every GEOM-04 outcome
 - `physical_qualification=False`, `full_propeller_clearance=None`
 - No dashboard opt-in; no GEOM-04 numerical redesign
-- Astra blockers:
-  1. Completed artifacts must match the exact candidate request SHA,
-     report SHA, decoded object, report request SHA and request context
-     (hinge/endpoint/hardware/controls). Mismatch aborts the search.
-  2. Broad `except ValueError` around run/decode/identity/accounting
-     removed. Only `prepare_surface_clearance` at the candidate hinge is
-     a documented domain-validation catch (`SearchError` re-raised).
-     `_draft_with_hinge_radius` is outside that catch. Identity, JSON,
-     programming errors, GEOM-04 `ArithmeticError` and execution abort.
-  3. Complete GEOM-04 report retained under `details.geom04_clearance`.
-  4. Oversized evidence replaces only that namespace; GEOM-01 audit,
-     objective and constraints remain. 256 KiB snapshot limit unchanged.
+- Closed Astra blockers:
+  1. Foreign/mismatched artifacts abort (request SHA, report digest,
+     decoded request SHA/context, hinge/endpoint/hardware/controls).
+  2. Only `SurfaceClearanceValidationError` from candidate
+     `prepare_surface_clearance` becomes `candidate_validation_failed`.
+     Programming `ValueError`, `SearchError`, `ArithmeticError`,
+     `TypeError` and serializer failures abort. `_draft_with_hinge_radius`
+     stays outside that catch.
+  3. Valid completed GEOM-04 reports attach unchanged
+     (`attached == json.loads(original.report_json)`).
+     `physical_qualification is True` or `full_propeller_clearance is not
+     None` aborts; no sanitization/`_search_safe_report`.
+  4. Oversized *valid* evidence replaces only that namespace; GEOM-01
+     audit, objective and constraints remain. 256 KiB snapshot limit
+     unchanged. Serialization/schema failure aborts; it is not oversize.
   5. Grid prepare no longer validates exclusions against the base hinge.
      Candidate prepare/hardware/exclusions use that candidate's geometry.
-  6. Each candidate gets the configured `max_node_comparisons`,
-     `max_feature_tests` and `max_hardware_queries`. Context records
-     `N ×` aggregate ceilings. Impossible accounting aborts.
+  6. Per-candidate configured budgets; aggregate `N ×` ceilings.
+  7. Strict finite JSON (`parse_constant` rejects NaN/Infinity) and
+     report schema/content validation before attachment.
+  8. Query-level node/feature/hardware accounting must be nonnegative
+     integers, cannot exceed ceilings, and must reconcile with
+     report-level totals.
 
 Remaining:
 - Exact-head GitHub CI for the PR head after this handoff commit
@@ -58,18 +63,21 @@ Important decisions and evidence paths:
 - Unbound default is unchanged; UI/examples do not pass clearance inputs
 - GEOM-04 engine is not forked; late import only because
   `surface_clearance` already imports `geometry_search._inputs`
+- `surface_clearance.py` change is exception taxonomy only
+  (`SurfaceClearanceValidationError` for input/candidate-domain raises).
+  Numerical algorithms are unchanged.
 - Request context `selection_effect` is
   `evidence_only_does_not_alter_geom01_constraints`
 - Request context `budget_policy` is
   `per_candidate_configured_limits_not_shared_grid_remainder`
 - Nested search details still cannot declare `physical_qualification`
-  other than false (existing `run_grid_search` snapshot rule). A forged
-  True in a GEOM-04 report is stored as false in the attached copy so the
-  audit is not wiped.
+  other than false (existing `run_grid_search` snapshot rule). Invalid
+  qualification in a GEOM-04 report aborts before attachment.
 - Scope: no generic search-engine redesign; no GEOM-04 kernel change
 
 Files changed versus current GitHub `main` (`d7afc39`):
 - `pyfoldable/application/geometry_search.py`
+- `pyfoldable/application/surface_clearance.py` (exception taxonomy only)
 - `tests/application/test_geometry_search.py`
 - `docs/geom01_feasibility_plan.md`
 - `docs/geom04_surface_hardware.md`
@@ -84,7 +92,22 @@ Unrelated work to preserve:
 - PR #3, UI work, legacy cleanup, Cursor rules/skills
 
 Tests passed (command, result, tested SHA/tree):
-- Record after the docs/handoff commit and full suite on that HEAD
+- RED (production `6e00689`, tests then at `1066b24`): 17 expected
+  adversarial failures (forged qualification, programming/serializer
+  prepare ValueError, NaN/Infinity, missing/malformed schema,
+  query-level overclaim/ledger, details serializer vs oversize).
+  Already-correct paths stayed green (invalid candidate geometry,
+  valid unmutated report, top-level negative/non-integer, oversize).
+- GREEN implementation `5e7a3ca5046101d391ce75408fc1704df4ecd74d`:
+  `./venv/bin/python -m pytest tests/application/test_geometry_search.py
+  tests/application/test_surface_clearance_service.py
+  tests/application/test_hardware_clearance_motion.py
+  tests/geometry/test_surface_clearance.py -q` → 122 passed
+  `./venv/bin/python -m compileall -q pyfoldable pythrust apps examples tests`
+  `git diff --check`
+  `./venv/bin/python -m pytest tests/ -q` → 1510 passed, 9 skipped,
+  37 subtests passed
+- This handoff commit may follow `5e7a3ca5046101d391ce75408fc1704df4ecd74d`; re-record HEAD after push
 
 Tests failing / skipped / not run (reason):
 - 9 skipped: missing generated/reference foldable CSVs (legacy, unchanged)
@@ -93,7 +116,7 @@ Independent review (reviewed SHA, findings, disposition):
 - Pending on the exact head after this documentation commit
 
 GitHub CI / reviews (exact head, URLs, pending gates):
-- Record exact-head Tests workflow after push
+- Record exact-head Tests workflow after push of this handoff
 - Human review and CLA check remain; do not merge
 
 Known risks and evidence limits:

@@ -139,10 +139,13 @@ Streamlit startup is checked separately. Independent review, Cursor Bugbot,
 exact-head CI and merged-tree comparison are integration gates.
 
 GEOM-01 can attach these scoped reports to the candidate whose draft and
-request were rebuilt, after cryptographic request/report identity checks.
-Each search candidate receives the configured GEOM-04 budgets unchanged;
-the search records aggregate ceilings of `N ×` those limits. The complete
-report is retained under `geom04_clearance` as evidence only: it does not
+request were rebuilt, after cryptographic request/report identity checks,
+strict finite JSON, report schema/content, qualification invariants and
+query-level accounting. Invalid qualification, schema or accounting aborts;
+a valid report is attached unchanged. Each search candidate receives the
+configured GEOM-04 budgets unchanged; the search records aggregate ceilings
+of `N ×` those limits. The complete report is retained under
+`geom04_clearance` as evidence only: it does not
 assign True or False to GEOM-01 `surface_path_clearance` or
 `interblade_clearance`. Missing geometry and evidence remain explicit gates.
 Asynchronous motion, general CAD solids and physical qualification require

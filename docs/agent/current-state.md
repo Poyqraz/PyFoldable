@@ -118,8 +118,14 @@ row still describes the GEOM-01 gates: `surface_path_clearance` and
 draft/request, validate exclusions/hardware against that candidate hinge,
 give each candidate its configured GEOM-04 limits, and record `N ×` aggregate
 ceilings. Completed artifacts are identity-bound or the search aborts.
-Evidence is the complete namespaced GEOM-04 report; oversized payloads fail
-closed without wiping the GEOM-01 audit. They do not assign True or False to
+Only intentional `SurfaceClearanceValidationError` from candidate prepare
+becomes bounded `candidate_validation_failed`; other programming
+`ValueError` values abort. Valid reports are attached unchanged.
+`physical_qualification=true` or `full_propeller_clearance` other than
+null, non-finite JSON, schema errors and query-level accounting
+contradictions abort. Evidence is the complete namespaced GEOM-04 report;
+a valid payload that exceeds 256 KiB fails closed without wiping the
+GEOM-01 audit. They do not assign True or False to
 the protected GEOM-01 constraints or set `physical_qualification`. See
 [GEOM-01](../geom01_feasibility_plan.md).
 
