@@ -709,3 +709,28 @@ def test_impossible_candidate_accounting_aborts_search(monkeypatch):
         monkeypatch, overclaim, max_node_comparisons=1,
     )
     _assert_search_aborts(prepared)
+
+
+def test_geom04_arithmetic_error_aborts_search(monkeypatch):
+    def boom(request):
+        raise ZeroDivisionError("injected arithmetic failure from GEOM-04 execution")
+
+    monkeypatch.setattr("pyfoldable.application.surface_clearance.run_surface_clearance", boom)
+    prepared = prepare_geometry_search(
+        draft(), hinge_radii_m=(.06,), stowed_angles_deg=(-10.,),
+        clearance_inputs=SurfaceClearanceInputs(end_angle_deg=-10.),
+    )
+    _assert_search_aborts(prepared)
+
+
+def test_hinge_rewrite_valueerror_aborts_rather_than_failed_evidence(monkeypatch):
+    def boom(*args, **kwargs):
+        raise ValueError("injected hinge rewrite error")
+
+    monkeypatch.setattr(service, "_draft_with_hinge_radius", boom)
+    prepared = prepare_geometry_search(
+        draft(), hinge_radii_m=(.06,), stowed_angles_deg=(-10.,),
+        clearance_inputs=SurfaceClearanceInputs(end_angle_deg=-10.),
+    )
+    with pytest.raises(ValueError, match="injected hinge rewrite"):
+        run_geometry_search(prepared)

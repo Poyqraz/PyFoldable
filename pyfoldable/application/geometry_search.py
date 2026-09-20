@@ -348,12 +348,15 @@ def run_geometry_search(request: GeometrySearchRequest) -> analysis.DesignAnalys
         }
         if clearance is not None:
             candidate_inputs = replace(request.clearance_inputs, end_angle_deg=angle)
+            candidate_draft = _draft_with_hinge_radius(request.draft, h)
             clearance_request = artifact = None
             try:
                 # Narrow candidate-validation boundary: exclusions/hardware vs this hinge.
                 clearance_request = clearance.prepare_surface_clearance(
-                    _draft_with_hinge_radius(request.draft, h), candidate_inputs,
+                    candidate_draft, candidate_inputs,
                     hardware_json=request.hardware_json)
+            except SearchError:
+                raise
             except ValueError as exc:
                 evidence = _geom04_namespace(
                     execution_status="candidate_validation_failed",
@@ -361,7 +364,10 @@ def run_geometry_search(request: GeometrySearchRequest) -> analysis.DesignAnalys
                     reason="unknown_candidate_clearance_unresolved",
                     error=str(exc)[:1024])
             else:
-                artifact = clearance.run_surface_clearance(clearance_request)
+                try:
+                    artifact = clearance.run_surface_clearance(clearance_request)
+                except ArithmeticError as exc:
+                    raise SearchError("Candidate clearance execution failed.") from exc
                 report = _verify_bound_clearance_artifact(
                     artifact, clearance_request, hinge_radius_m=h, end_angle_deg=angle)
                 _assert_candidate_accounting(report, candidate_inputs)

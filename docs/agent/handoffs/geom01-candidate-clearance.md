@@ -34,8 +34,9 @@ Completed:
      (hinge/endpoint/hardware/controls). Mismatch aborts the search.
   2. Broad `except ValueError` around run/decode/identity/accounting
      removed. Only `prepare_surface_clearance` at the candidate hinge is
-     a documented domain-validation catch. Identity, JSON, programming
-     errors and GEOM-04 execution abort.
+     a documented domain-validation catch (`SearchError` re-raised).
+     `_draft_with_hinge_radius` is outside that catch. Identity, JSON,
+     programming errors, GEOM-04 `ArithmeticError` and execution abort.
   3. Complete GEOM-04 report retained under `details.geom04_clearance`.
   4. Oversized evidence replaces only that namespace; GEOM-01 audit,
      objective and constraints remain. 256 KiB snapshot limit unchanged.
