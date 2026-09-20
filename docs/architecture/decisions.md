@@ -60,6 +60,8 @@ full-propeller collision freedom; `full_propeller_clearance` stays null. Synchro
 planar screening does not prove asynchronous or arbitrary 3D motion. GEOM-01 may
 bind candidate-specific GEOM-04 evidence without changing
 `surface_path_clearance` or `interblade_clearance`; those gates stay unknown.
+Candidate-bound GEOM-04 evidence uses per-candidate budgets, identity-bound
+artifacts and a namespaced complete report; it does not change those gates.
 Reverse solid-query witnesses must preserve caller body order (PR #63 regression).
 
 Evidence: `pyfoldable/application/blade_stations.py`, `geometry_search.py`,

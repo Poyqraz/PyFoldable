@@ -2,20 +2,20 @@
 
 Goal:
 Evidence integration only. Execute, bind, hash and inspect candidate-specific
-GEOM-04 clearance without changing GEOM-01 selection constraints.
+GEOM-04 clearance without changing GEOM-01 selection constraints. Candidate
+evidence must be identity-bound, per-candidate budgeted, and fail-closed.
 
 Code base commit:
 GitHub `origin/main` at last fetch:
 `d7afc391d5f41b15259826b99a5ed7560153439e`
-Documentation reconciliation commit incorporated from PR #66 branch:
-`24cac8f4ab7d026c338f3a48495b6ce28204d524`
+PR #66 was still OPEN/draft at that fetch. Documentation reconciliation
+`24cac8f4ab7d026c338f3a48495b6ce28204d524` is already in this branch.
 
 Branch / current commit / tree:
 `cursor/geom01-candidate-clearance-36c6`
 
 Tested implementation SHA/tree:
-`1bd4e41868be54a88873f82aef749ce816ee39a5`
-(merge of `24cac8f` into the evidence-only branch; no Python/test edit)
+`c7cb4144f0dc912c73d1f3d1b1d2d063c48db739`
 (this handoff commit may follow that SHA)
 
 PR and remote head:
@@ -24,28 +24,31 @@ https://github.com/Poyqraz/PyFoldable/pull/67
 Completed:
 - Optional `clearance_inputs` / `hardware_json` on `prepare_geometry_search`
 - Per-candidate draft hinge rewrite and GEOM-04 prepare/run
-- Shared BVH/feature/hardware budgets; no report reuse
 - Protected gates always `surface_path_clearance=None` and
   `interblade_clearance=None` for every GEOM-04 outcome
-- Separate details classification: `scoped_geom04_violation`,
-  `scoped_geom04_separated`, `unknown_scoped_geom04`
-- Pair/interval/witness/bound/exclusion/hardware provenance attached
 - `physical_qualification=False`, `full_propeller_clearance=None`
-- Mapping helpers `_map_clearance_constraints`, `_reduce_statuses` and
-  `_and_closed` removed
-- Contract docs revised so this slice does not change GEOM-01 gates
-- Synced PR #66 documentation reconciliation (`24cac8f`): auto-merge of
-  `docs/agent/current-state.md` kept the 2026-09-19 drift ledger and the
-  2026-09-20 evidence-only note. No application or test files changed.
-- Local compileall and full pytest on `1bd4e41`: 1480 passed, 9 skipped,
-  37 subtests passed; 36 geometry-search tests passed
-- Independent review of `e12ebb9`: approve (evidence-only contract)
+- No dashboard opt-in; no GEOM-04 numerical redesign
+- Astra blockers:
+  1. Completed artifacts must match the exact candidate request SHA,
+     report SHA, decoded object, report request SHA and request context
+     (hinge/endpoint/hardware/controls). Mismatch aborts the search.
+  2. Broad `except ValueError` around run/decode/identity/accounting
+     removed. Only `prepare_surface_clearance` at the candidate hinge is
+     a documented domain-validation catch. Identity, JSON, programming
+     errors and GEOM-04 execution abort.
+  3. Complete GEOM-04 report retained under `details.geom04_clearance`.
+  4. Oversized evidence replaces only that namespace; GEOM-01 audit,
+     objective and constraints remain. 256 KiB snapshot limit unchanged.
+  5. Grid prepare no longer validates exclusions against the base hinge.
+     Candidate prepare/hardware/exclusions use that candidate's geometry.
+  6. Each candidate gets the configured `max_node_comparisons`,
+     `max_feature_tests` and `max_hardware_queries`. Context records
+     `N ×` aggregate ceilings. Impossible accounting aborts.
 
 Remaining:
 - Exact-head GitHub CI for the PR head after this handoff commit
 - Independent human review; do not merge from this agent
-- GitHub still listed PR #66 as OPEN at last fetch; `origin/main` had not
-  moved past `d7afc39`. If #66 squash-merges later, re-sync this branch
+- If GitHub later squash-merges #66, re-sync this branch
 - Optional later UI opt-in; dashboard remains unbound
 - A later reviewed slice would be required before mapping GEOM-04 into
   GEOM-01 constraint Booleans
@@ -54,12 +57,15 @@ Important decisions and evidence paths:
 - Unbound default is unchanged; UI/examples do not pass clearance inputs
 - GEOM-04 engine is not forked; late import only because
   `surface_clearance` already imports `geometry_search._inputs`
-- GEOM-04 outcomes never assign True or False to the two protected
-  GEOM-01 constraints. Violation and separated stay visible in details.
 - Request context `selection_effect` is
   `evidence_only_does_not_alter_geom01_constraints`
-- One clearance report is never reused for another hinge/angle
-- Synchronization required documentation merge only; no semantic/code change
+- Request context `budget_policy` is
+  `per_candidate_configured_limits_not_shared_grid_remainder`
+- Nested search details still cannot declare `physical_qualification`
+  other than false (existing `run_grid_search` snapshot rule). A forged
+  True in a GEOM-04 report is stored as false in the attached copy so the
+  audit is not wiped.
+- Scope: no generic search-engine redesign; no GEOM-04 kernel change
 
 Files changed versus current GitHub `main` (`d7afc39`):
 - `pyfoldable/application/geometry_search.py`
@@ -69,11 +75,7 @@ Files changed versus current GitHub `main` (`d7afc39`):
 - `docs/architecture/decisions.md`
 - `docs/agent/current-state.md`
 - `docs/agent/handoffs/geom01-candidate-clearance.md`
-- Plus PR #66 documentation files until GitHub `main` contains `24cac8f`:
-  `docs/foldable_conventions.md`, `docs/py04_deterministic_design_search.md`,
-  `docs/py05_completion.md`, `docs/python_research_execution_plan.md`,
-  `docs/superpowers/specs/v2_thrust_split_audit.md`,
-  `docs/ui_engineering_workspace.md`
+- Plus PR #66 documentation files until GitHub `main` contains `24cac8f`
 
 Unrelated work to preserve:
 - Dirty `reports/foldable_v2_engineering_design/report_key_results.csv`
@@ -81,30 +83,23 @@ Unrelated work to preserve:
 - PR #3, UI work, legacy cleanup, Cursor rules/skills
 
 Tests passed (command, result, tested SHA/tree):
-- `./venv/bin/python -m pytest tests/application/test_geometry_search.py -q`
-  → 36 passed on `1bd4e41`
-- `./venv/bin/python -m compileall -q pyfoldable pythrust apps examples tests`
-  → exit 0
-- `git diff --check` → exit 0 (unstaged CSV CRLF warning only)
-- `./venv/bin/python -m pytest tests/ -q` → 1480 passed, 9 skipped,
-  37 subtests passed on `1bd4e41`
+- Record after the docs/handoff commit and full suite on that HEAD
 
 Tests failing / skipped / not run (reason):
 - 9 skipped: missing generated/reference foldable CSVs (legacy, unchanged)
 
 Independent review (reviewed SHA, findings, disposition):
-- Automated reviewer on `e12ebb9`: approve (evidence-only)
-- Sync merge `1bd4e41` did not change production Python or tests
+- Pending on the exact head after this documentation commit
 
 GitHub CI / reviews (exact head, URLs, pending gates):
-- Record exact-head Tests workflow after this handoff is pushed
+- Record exact-head Tests workflow after push
 - Human review and CLA check remain; do not merge
 
 Known risks and evidence limits:
 - Hinge radius rewrite is a `[hinge]` TOML line replacement; missing
   radius fails closed
-- Attached query/interval payloads must fit the 256 KiB search-details
-  snapshot; oversized details fail closed rather than pass
+- Attached complete reports must fit 256 KiB or the evidence attachment
+  is replaced with an explicit oversize failure
 - Synthetic fixtures and CI do not qualify a project rotor
 - This slice does not make a candidate feasible from GEOM-04 evidence
 
@@ -115,10 +110,8 @@ Unresolved questions:
 
 Next recommended action:
 Independent review of PR #67 after exact-head CI is green. Do not merge
-from this handoff. If GitHub `main` later contains a squash of #66 rather
-than `24cac8f`, re-sync.
+from this handoff.
 
 Rollback (affected commits/artifacts; preserve unrelated work):
-- Revert `c6732d4`, `94725c4`, `978a723`, `c137eaa`, `e411c3d`,
-  `e12ebb9`, `b516e49`, `1bd4e41` and the later handoff commit
+- Revert this workstream on `cursor/geom01-candidate-clearance-36c6`
 - Leave the unstaged CSV and other branches untouched

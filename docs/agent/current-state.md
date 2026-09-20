@@ -115,9 +115,12 @@ history. The current roadmap and feature contracts have authority over undated
 candidate-specific GEOM-04 inputs as **evidence only**. The 2026-09-17 Partial
 row still describes the GEOM-01 gates: `surface_path_clearance` and
 `interblade_clearance` remain unknown. Bound runs rebuild each candidate
-draft/request, revalidate hardware, meter aggregate work and attach pair
-evidence under `scoped_geom04_*`. They do not assign True or False to the
-protected GEOM-01 constraints or set `physical_qualification`. See
+draft/request, validate exclusions/hardware against that candidate hinge,
+give each candidate its configured GEOM-04 limits, and record `N ×` aggregate
+ceilings. Completed artifacts are identity-bound or the search aborts.
+Evidence is the complete namespaced GEOM-04 report; oversized payloads fail
+closed without wiping the GEOM-01 audit. They do not assign True or False to
+the protected GEOM-01 constraints or set `physical_qualification`. See
 [GEOM-01](../geom01_feasibility_plan.md).
 
 **Proposed next bounded development slice, not implemented or newly authorized by
