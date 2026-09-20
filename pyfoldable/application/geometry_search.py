@@ -31,6 +31,21 @@ _CLEARANCE_SOURCES = (
 )
 _GEOM01_UNKNOWN = "unknown_no_swept_surface_collision_model"
 _SEARCH_DETAILS_BUDGET = 256 * 1024
+_PAIR_STATUSES = frozenset({"violation", "unknown", "separated"})
+_CLASSIFICATIONS = frozenset({"failed", "blocked", "screening-only"})
+_SURFACE_QUERY_KINDS = frozenset({"hub", "own_root_tip", "interblade"})
+_HARDWARE_QUERY_KINDS = frozenset({"hardware_surface", "hardware_pair"})
+_REPORT_REQUIRED_KEYS = (
+    "schema_version", "request", "request_sha256", "physical_qualification",
+    "classification", "modeled_surface_status", "full_propeller_clearance",
+    "station_span_complete", "root_gap_m", "tip_gap_m", "excluded_regions",
+    "original_triangle_count", "retained_triangle_count", "node_comparisons",
+    "feature_tests", "queries", "hardware_queries", "hardware_status",
+    "limitations",
+)
+_EXCLUDED_REGION_REQUIRED_KEYS = (
+    "root_radial_width_m", "hinge_half_width_m", "source", "status", "scope",
+)
 
 
 @dataclass(frozen=True)
@@ -111,18 +126,8 @@ def _static_hardware_binding(blade, hardware_json):
     return hardware
 
 
-def _search_safe_report(report):
-    """Search details forbid nested physical_qualification other than false."""
-    if not report or report.get("physical_qualification") is False:
-        return report
-    safe = dict(report)
-    safe["physical_qualification"] = False
-    return safe
-
-
 def _geom04_namespace(*, execution_status, hinge_radius_m, end_angle_deg, reason=None,
                       clearance_request=None, artifact=None, report=None, error=None):
-    report = _search_safe_report(report)
     return {
         "execution_status": execution_status,
         "candidate_hinge_radius_m": hinge_radius_m,
@@ -137,26 +142,119 @@ def _geom04_namespace(*, execution_status, hinge_radius_m, end_angle_deg, reason
     }
 
 
-def _details_fit(details):
-    try:
-        encoded = _json(dict(details)).encode()
-    except SearchError:
-        return False
-    return len(encoded) <= _SEARCH_DETAILS_BUDGET
+def _details_size(details):
+    return len(_json(dict(details)).encode())
 
 
-def _verify_bound_clearance_artifact(artifact, clearance_request, *, hinge_radius_m, end_angle_deg):
-    """Bind a completed GEOM-04 artifact to the exact candidate request or abort."""
-    if artifact.request_sha256 != clearance_request.request_sha256:
-        raise SearchError("Candidate clearance artifact identity mismatch.")
-    if hashlib.sha256(artifact.report_json.encode("utf-8")).hexdigest() != artifact.report_sha256:
-        raise SearchError("Candidate clearance artifact identity mismatch.")
-    try:
-        report = json.loads(artifact.report_json)
-    except ValueError as exc:
-        raise SearchError("Candidate clearance artifact identity mismatch.") from exc
-    if not isinstance(report, dict):
-        raise SearchError("Candidate clearance artifact identity mismatch.")
+def _reject_json_constant(token):
+    raise ValueError(f"non-standard JSON number {token}")
+
+
+def _schema_error():
+    raise SearchError("Candidate clearance report schema is invalid.")
+
+
+def _accounting_error():
+    raise SearchError("Candidate clearance accounting is internally inconsistent.")
+
+
+def _nonneg_int(value):
+    if type(value) is not int or value < 0:
+        _accounting_error()
+    return value
+
+
+def _schema_nonneg_int(value):
+    if type(value) is not int or value < 0:
+        _schema_error()
+    return value
+
+
+def _finite_number(value):
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        _schema_error()
+    return value
+
+
+def _assert_finite_json(value):
+    pending = [value]
+    while pending:
+        node = pending.pop()
+        if isinstance(node, dict):
+            pending.extend(node.values())
+        elif isinstance(node, list):
+            pending.extend(node)
+        elif isinstance(node, bool) or node is None or isinstance(node, str):
+            continue
+        elif isinstance(node, (int, float)):
+            if not math.isfinite(node):
+                raise SearchError("Candidate clearance report contains non-finite numbers.")
+        else:
+            _schema_error()
+
+
+def _assert_clearance_query(query):
+    if not isinstance(query, dict) or not isinstance(query.get("kind"), str):
+        _schema_error()
+    if not isinstance(query.get("a"), str) or not isinstance(query.get("b"), str):
+        _schema_error()
+    result = query.get("result")
+    if not isinstance(result, dict) or result.get("status") not in _PAIR_STATUSES:
+        _schema_error()
+    if "intervals" in result and not isinstance(result["intervals"], list):
+        _schema_error()
+    kind = query["kind"]
+    if kind in _SURFACE_QUERY_KINDS:
+        if "node_comparisons" not in result or "feature_tests" not in result:
+            _schema_error()
+    elif kind in _HARDWARE_QUERY_KINDS:
+        if "hardware_queries" not in result:
+            _schema_error()
+    else:
+        _schema_error()
+
+
+def _assert_clearance_report_schema(report):
+    if any(key not in report for key in _REPORT_REQUIRED_KEYS):
+        _schema_error()
+    if type(report["schema_version"]) is not int:
+        _schema_error()
+    if not isinstance(report["request"], dict) or not isinstance(report["request_sha256"], str):
+        _schema_error()
+    if type(report["physical_qualification"]) is not bool:
+        _schema_error()
+    if report["classification"] not in _CLASSIFICATIONS:
+        _schema_error()
+    if report["modeled_surface_status"] not in _PAIR_STATUSES:
+        _schema_error()
+    if type(report["station_span_complete"]) is not bool:
+        _schema_error()
+    _finite_number(report["root_gap_m"])
+    _finite_number(report["tip_gap_m"])
+    excluded = report["excluded_regions"]
+    if not isinstance(excluded, dict) or any(key not in excluded for key in _EXCLUDED_REGION_REQUIRED_KEYS):
+        _schema_error()
+    _finite_number(excluded["root_radial_width_m"])
+    _finite_number(excluded["hinge_half_width_m"])
+    if not isinstance(excluded["source"], str) or not isinstance(excluded["scope"], str):
+        _schema_error()
+    if excluded["status"] != "not_evaluated":
+        _schema_error()
+    _schema_nonneg_int(report["original_triangle_count"])
+    _schema_nonneg_int(report["retained_triangle_count"])
+    if not isinstance(report["queries"], list):
+        _schema_error()
+    for query in report["queries"]:
+        _assert_clearance_query(query)
+    if report["hardware_status"] is not None and report["hardware_status"] not in _PAIR_STATUSES:
+        _schema_error()
+    limitations = report["limitations"]
+    if not isinstance(limitations, list) or any(not isinstance(item, str) for item in limitations):
+        _schema_error()
+    _assert_finite_json(report)
+
+
+def _assert_clearance_report_request(report, clearance_request, *, hinge_radius_m, end_angle_deg):
     if report.get("request_sha256") != clearance_request.request_sha256:
         raise SearchError("Candidate clearance artifact identity mismatch.")
     request_context = json.loads(clearance_request.context_json)
@@ -178,18 +276,74 @@ def _verify_bound_clearance_artifact(artifact, clearance_request, *, hinge_radiu
         raise SearchError("Candidate clearance artifact identity mismatch.")
     if inputs.get("max_hardware_queries") != clearance_request.inputs.max_hardware_queries:
         raise SearchError("Candidate clearance artifact identity mismatch.")
-    return report
+
+
+def _assert_qualification_invariants(report):
+    if report.get("physical_qualification") is not False:
+        raise SearchError("Candidate clearance report violates qualification invariants.")
+    if report.get("full_propeller_clearance") is not None:
+        raise SearchError("Candidate clearance report violates qualification invariants.")
+
+
+def _query_usage(result, key):
+    if key not in result:
+        return 0
+    return _nonneg_int(result[key])
 
 
 def _assert_candidate_accounting(report, inputs):
-    for key, ceiling in (
-        ("node_comparisons", inputs.max_node_comparisons),
-        ("feature_tests", inputs.max_feature_tests),
-        ("hardware_queries", inputs.max_hardware_queries),
-    ):
-        used = report.get(key)
-        if type(used) is not int or used < 0 or used > ceiling:
+    ceilings = {
+        "node_comparisons": inputs.max_node_comparisons,
+        "feature_tests": inputs.max_feature_tests,
+        "hardware_queries": inputs.max_hardware_queries,
+    }
+    totals = {key: _nonneg_int(report.get(key)) for key in ceilings}
+    for key, used in totals.items():
+        if used > ceilings[key]:
             raise SearchError("Candidate clearance accounting exceeds configured ceilings.")
+    ledger = dict.fromkeys(ceilings, 0)
+    for query in report["queries"]:
+        kind, result = query["kind"], query["result"]
+        if kind in _SURFACE_QUERY_KINDS:
+            node, features = _query_usage(result, "node_comparisons"), _query_usage(result, "feature_tests")
+            if node > ceilings["node_comparisons"] or features > ceilings["feature_tests"]:
+                raise SearchError("Candidate clearance accounting exceeds configured ceilings.")
+            if _query_usage(result, "hardware_queries"):
+                _accounting_error()
+            ledger["node_comparisons"] += node
+            ledger["feature_tests"] += features
+        else:
+            used = _query_usage(result, "hardware_queries")
+            if used > ceilings["hardware_queries"]:
+                raise SearchError("Candidate clearance accounting exceeds configured ceilings.")
+            if _query_usage(result, "node_comparisons") or _query_usage(result, "feature_tests"):
+                _accounting_error()
+            ledger["hardware_queries"] += used
+    if ledger != totals:
+        _accounting_error()
+    for key, used in ledger.items():
+        if used > ceilings[key]:
+            raise SearchError("Candidate clearance accounting exceeds configured ceilings.")
+
+
+def _accept_bound_clearance_report(artifact, clearance_request, inputs, *, hinge_radius_m, end_angle_deg):
+    """Identity, digest, schema, qualification and accounting, without mutating the report."""
+    if artifact.request_sha256 != clearance_request.request_sha256:
+        raise SearchError("Candidate clearance artifact identity mismatch.")
+    if hashlib.sha256(artifact.report_json.encode("utf-8")).hexdigest() != artifact.report_sha256:
+        raise SearchError("Candidate clearance artifact identity mismatch.")
+    try:
+        report = json.loads(artifact.report_json, parse_constant=_reject_json_constant)
+    except ValueError as exc:
+        raise SearchError("Candidate clearance report is not strict finite JSON.") from exc
+    if not isinstance(report, dict):
+        raise SearchError("Candidate clearance report schema is invalid.")
+    _assert_clearance_report_schema(report)
+    _assert_clearance_report_request(
+        report, clearance_request, hinge_radius_m=hinge_radius_m, end_angle_deg=end_angle_deg)
+    _assert_qualification_invariants(report)
+    _assert_candidate_accounting(report, inputs)
+    return report
 
 
 def _inputs(draft):
@@ -355,9 +509,7 @@ def run_geometry_search(request: GeometrySearchRequest) -> analysis.DesignAnalys
                 clearance_request = clearance.prepare_surface_clearance(
                     candidate_draft, candidate_inputs,
                     hardware_json=request.hardware_json)
-            except SearchError:
-                raise
-            except ValueError as exc:
+            except clearance.SurfaceClearanceValidationError as exc:
                 evidence = _geom04_namespace(
                     execution_status="candidate_validation_failed",
                     hinge_radius_m=h, end_angle_deg=angle,
@@ -368,15 +520,15 @@ def run_geometry_search(request: GeometrySearchRequest) -> analysis.DesignAnalys
                     artifact = clearance.run_surface_clearance(clearance_request)
                 except ArithmeticError as exc:
                     raise SearchError("Candidate clearance execution failed.") from exc
-                report = _verify_bound_clearance_artifact(
-                    artifact, clearance_request, hinge_radius_m=h, end_angle_deg=angle)
-                _assert_candidate_accounting(report, candidate_inputs)
+                report = _accept_bound_clearance_report(
+                    artifact, clearance_request, candidate_inputs,
+                    hinge_radius_m=h, end_angle_deg=angle)
                 evidence = _geom04_namespace(
                     execution_status="completed",
                     hinge_radius_m=h, end_angle_deg=angle,
                     clearance_request=clearance_request, artifact=artifact, report=report)
             details["geom04_clearance"] = evidence
-            if not _details_fit(details):
+            if _details_size(details) > _SEARCH_DETAILS_BUDGET:
                 details["geom04_clearance"] = _geom04_namespace(
                     execution_status="evidence_attachment_exceeds_search_details_budget",
                     hinge_radius_m=h, end_angle_deg=angle,

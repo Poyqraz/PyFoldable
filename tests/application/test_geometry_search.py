@@ -38,16 +38,30 @@ def _bound_report_artifact(request, **fields):
         "excluded_regions": {
             "root_radial_width_m": 0.0, "hinge_half_width_m": 0.0,
             "source": "", "status": "not_evaluated",
+            "scope": "declared_reference_radial_bands_move_with_each_rigid_part",
         },
         "original_triangle_count": 1,
         "retained_triangle_count": 1,
-        "node_comparisons": 1,
-        "feature_tests": 0,
-        "hardware_queries": 0,
         "queries": _separated_surface_queries(),
         "hardware_status": None,
         "limitations": ["open_triangle_surfaces_not_solid_containment"],
     }
+    queries = fields.get("queries", document["queries"])
+    if "node_comparisons" not in fields:
+        document["node_comparisons"] = sum(
+            (query.get("result") or {}).get("node_comparisons", 0)
+            for query in queries if query.get("kind") in {"hub", "own_root_tip", "interblade"}
+            and type((query.get("result") or {}).get("node_comparisons")) is int)
+    if "feature_tests" not in fields:
+        document["feature_tests"] = sum(
+            (query.get("result") or {}).get("feature_tests", 0)
+            for query in queries if query.get("kind") in {"hub", "own_root_tip", "interblade"}
+            and type((query.get("result") or {}).get("feature_tests")) is int)
+    if "hardware_queries" not in fields:
+        document["hardware_queries"] = sum(
+            (query.get("result") or {}).get("hardware_queries", 0)
+            for query in queries if query.get("kind") in {"hardware_surface", "hardware_pair"}
+            and type((query.get("result") or {}).get("hardware_queries")) is int)
     document.update(fields)
     text = json.dumps(document, sort_keys=True, separators=(",", ":"), allow_nan=False)
     return DesignAnalysisArtifact(
@@ -71,7 +85,7 @@ def _geom04(row):
 
 def _query(kind, status, **fields):
     result = {
-        "status": status, "node_comparisons": 1, "feature_tests": 0,
+        "status": status, "node_comparisons": 0, "feature_tests": 0,
         "lower_bound_m": 0.002 if status == "separated" else None,
         "witness_clearance_m": 0.0 if status == "violation" else None,
         "contact_status": "contact" if status == "violation" else "unknown",
@@ -92,7 +106,8 @@ def _assert_protected_constraints_unknown(row, result=None):
 
 
 def _separated_surface_queries():
-    return [_query("hub", "separated"), _query("own_root_tip", "separated"),
+    return [_query("hub", "separated", node_comparisons=1),
+            _query("own_root_tip", "separated"),
             _query("interblade", "separated")]
 
 
@@ -353,7 +368,9 @@ def test_geom04_unknown_keeps_protected_constraints_none(monkeypatch):
 
 def test_hardware_violation_evidence_does_not_alter_protected_constraints(monkeypatch):
     from test_hardware_clearance_motion import raw
-    queries = _separated_surface_queries() + [_query("hardware_surface", "violation")]
+    queries = _separated_surface_queries() + [
+        _query("hardware_surface", "violation", hardware_queries=0),
+    ]
     prepared, calls = _bind_clearance(
         monkeypatch, _clearance_artifact(queries), hardware_json=raw(),
     )
@@ -511,7 +528,9 @@ def test_invalid_report_identity_aborts_search(monkeypatch):
 
 def test_hardware_unknown_evidence_does_not_alter_protected_constraints(monkeypatch):
     from test_hardware_clearance_motion import raw
-    queries = _separated_surface_queries() + [_query("hardware_surface", "unknown")]
+    queries = _separated_surface_queries() + [
+        _query("hardware_surface", "unknown", hardware_queries=0),
+    ]
     prepared, calls = _bind_clearance(
         monkeypatch, _clearance_artifact(queries, hardware_queries=0),
         hardware_json=raw(),
