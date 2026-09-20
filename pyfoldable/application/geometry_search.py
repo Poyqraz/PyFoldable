@@ -22,15 +22,13 @@ from .hardware_contract import load_hardware_json
 
 _CONSTRAINTS = ("centerline_target", "centerline_path_clearance", "station_span_complete",
                 "mesh_envelope_target", "surface_path_clearance", "interblade_clearance")
-_SURFACE_KINDS = frozenset({"hub", "own_root_tip"})
-_INTERBLADE_KINDS = frozenset({"interblade"})
-_HARDWARE_KINDS = frozenset({"hardware_surface", "hardware_pair"})
 _HINGE_RADIUS_LINE = re.compile(r'(?m)^radius = "[^"]+"')
 _CLEARANCE_SOURCES = (
     "application/surface_clearance.py", "geometry/surface_clearance.py",
     "geometry/triangle_distance.py", "application/hardware_contract.py",
     "application/hardware_clearance.py", "geometry/hardware.py",
 )
+_GEOM01_UNKNOWN = "unknown_no_swept_surface_collision_model"
 
 
 @dataclass(frozen=True)
@@ -66,58 +64,47 @@ def _draft_with_hinge_radius(draft: DesignDraftArtifact, hinge_radius_m: float) 
                                hashlib.sha256(text.encode("utf-8")).hexdigest())
 
 
-def _query_statuses(queries, kinds):
-    return [(query.get("result") or {}).get("status") for query in queries if query.get("kind") in kinds]
-
-
-def _reduce_statuses(statuses, *, present):
-    if not present:
-        return False if "violation" in statuses else None
+def _classify_scoped_geom04(report):
+    """Evidence label only; never a GEOM-01 constraint value."""
+    statuses = []
+    modeled = report.get("modeled_surface_status")
+    if modeled is not None:
+        statuses.append(modeled)
+    hardware = report.get("hardware_status")
+    if hardware is not None:
+        statuses.append(hardware)
+    for query in report.get("queries") or []:
+        statuses.append((query.get("result") or {}).get("status"))
     if "violation" in statuses:
-        return False
-    if any(status != "separated" for status in statuses):
-        return None
-    return True
+        return "scoped_geom04_violation"
+    if statuses and all(status == "separated" for status in statuses):
+        return "scoped_geom04_separated"
+    return "unknown_scoped_geom04"
 
 
-def _and_closed(left, right):
-    if left is False or right is False:
-        return False
-    if left is None or right is None:
-        return None
-    return True
-
-
-def _map_clearance_constraints(queries, hardware_json):
-    """True only from present separated pairs; unknown/missing stay unknown."""
-    if not isinstance(queries, list):
-        return None, None
-    surface_kinds = {query.get("kind") for query in queries if query.get("kind") in _SURFACE_KINDS}
-    required_surface = {"own_root_tip"}
-    if "hub" in surface_kinds or hardware_json is None:
-        required_surface.add("hub")
-    surface = _reduce_statuses(_query_statuses(queries, _SURFACE_KINDS),
-                               present=required_surface <= surface_kinds)
-    interblade = _reduce_statuses(_query_statuses(queries, _INTERBLADE_KINDS),
-                                  present="interblade" in {query.get("kind") for query in queries})
-    if hardware_json is not None:
-        hardware_kinds = {query.get("kind") for query in queries if query.get("kind") in _HARDWARE_KINDS}
-        hardware = _reduce_statuses(_query_statuses(queries, _HARDWARE_KINDS),
-                                    present=bool(hardware_kinds))
-        surface = _and_closed(surface, hardware)
-        interblade = _and_closed(interblade, hardware)
-    return surface, interblade
-
-
-def _compact_queries(queries):
-    compact = []
-    for query in queries:
-        result = query.get("result") or {}
-        compact.append({
-            "kind": query.get("kind"), "a": query.get("a"), "b": query.get("b"),
-            "result": {"status": result.get("status")},
-        })
-    return compact
+def _clearance_evidence(report, *, clearance_request, artifact, geometry_request,
+                        hinge_radius_m, end_angle_deg, reason=None):
+    hardware = json.loads(geometry_request.context_json).get("candidate_clearance") or {}
+    return {
+        "surface_path_clearance_status": _GEOM01_UNKNOWN,
+        "scoped_geom04_status": _classify_scoped_geom04(report),
+        "scoped_geom04_reason": reason,
+        "full_propeller_clearance": None,
+        "physical_qualification": False,
+        "candidate_hinge_radius_m": hinge_radius_m,
+        "clearance_end_angle_deg": end_angle_deg,
+        "clearance_request_sha256": None if clearance_request is None else clearance_request.request_sha256,
+        "clearance_report_sha256": None if artifact is None else artifact.report_sha256,
+        "modeled_surface_status": report.get("modeled_surface_status"),
+        "hardware_status": report.get("hardware_status"),
+        "clearance_queries": list(report.get("queries") or []),
+        "clearance_excluded_regions": report.get("excluded_regions"),
+        "clearance_node_comparisons": report.get("node_comparisons"),
+        "clearance_feature_tests": report.get("feature_tests"),
+        "clearance_hardware_queries": report.get("hardware_queries"),
+        "clearance_hardware_raw_sha256": hardware.get("hardware_raw_sha256"),
+        "clearance_hardware_canonical_sha256": hardware.get("hardware_canonical_sha256"),
+    }
 
 
 def _inputs(draft):
@@ -187,6 +174,7 @@ def prepare_geometry_search(
             "full_propeller_clearance": None,
             "reuse_policy": "rebuild_draft_and_request_per_candidate_never_reuse_foreign_geometry",
             "end_angle_policy": "candidate_stowed_angle_within_declared_travel",
+            "selection_effect": "evidence_only_does_not_alter_geom01_constraints",
         }
     root = Path(__file__).parents[1]
     sources = ("application/geometry_search.py", "application/folding_mechanism.py",
@@ -216,7 +204,11 @@ def prepare_geometry_search(
 
 
 def run_geometry_search(request: GeometrySearchRequest) -> analysis.DesignAnalysisArtifact:
-    """Compare proposed hinge/stowed endpoints; unknown surface constraints block selection."""
+    """Compare proposed hinge/stowed endpoints; unknown surface constraints block selection.
+
+    Optional GEOM-04 binding attaches candidate-specific evidence only. It does
+    not assign True or False to surface_path_clearance or interblade_clearance.
+    """
     if not isinstance(request, GeometrySearchRequest) or not isinstance(request.plan, GridSearchPlan):
         raise SearchError("Expected a prepared geometry grid.")
     axes = {axis.name: axis.values for axis in request.plan.axes}
@@ -256,16 +248,17 @@ def run_geometry_search(request: GeometrySearchRequest) -> analysis.DesignAnalys
         # On 0..-180 degrees every point of the moving radial centreline has
         # nonincreasing distance to the origin. Its path minimum is at the endpoint.
         path_clearance = audit.hub_centerline_clearance_m
-        surface = interblade = None
         clearance_details = {
-            "surface_path_clearance_status": "unknown_no_swept_surface_collision_model",
+            "surface_path_clearance_status": _GEOM01_UNKNOWN,
             "full_propeller_clearance": None,
             "physical_qualification": False,
         }
         if clearance is not None:
-            clearance_details.update(candidate_hinge_radius_m=h, clearance_end_angle_deg=angle)
             if remaining_nodes < 1:
-                clearance_details["surface_path_clearance_status"] = "unknown_clearance_budget_exhausted"
+                clearance_details.update(_clearance_evidence(
+                    {}, clearance_request=None, artifact=None, geometry_request=request,
+                    hinge_radius_m=h, end_angle_deg=angle,
+                    reason="unknown_clearance_budget_exhausted"))
             else:
                 try:
                     candidate_inputs = replace(
@@ -276,35 +269,27 @@ def run_geometry_search(request: GeometrySearchRequest) -> analysis.DesignAnalys
                     clearance_request = clearance.prepare_surface_clearance(
                         _draft_with_hinge_radius(request.draft, h), candidate_inputs,
                         hardware_json=request.hardware_json)
-                    report = json.loads(clearance.run_surface_clearance(clearance_request).report_json)
-                    queries = report.get("queries") if isinstance(report.get("queries"), list) else []
-                    surface, interblade = _map_clearance_constraints(queries, request.hardware_json)
+                    artifact = clearance.run_surface_clearance(clearance_request)
+                    report = json.loads(artifact.report_json)
                     remaining_nodes = max(0, remaining_nodes - int(report.get("node_comparisons") or 0))
                     remaining_features = max(0, remaining_features - int(report.get("feature_tests") or 0))
                     remaining_hardware = max(0, remaining_hardware - int(report.get("hardware_queries") or 0))
-                    if surface is False or interblade is False:
-                        status = "scoped_geom04_violation"
-                    elif surface is True and interblade is True:
-                        status = "scoped_geom04_separated_not_physical_qualification"
-                    else:
-                        status = "unknown_scoped_geom04"
-                    clearance_details.update(
-                        surface_path_clearance_status=status,
-                        clearance_request_sha256=clearance_request.request_sha256,
-                        modeled_surface_status=report.get("modeled_surface_status"),
-                        clearance_queries=_compact_queries(queries),
-                    )
+                    clearance_details.update(_clearance_evidence(
+                        report if isinstance(report, dict) else {},
+                        clearance_request=clearance_request, artifact=artifact,
+                        geometry_request=request, hinge_radius_m=h, end_angle_deg=angle))
                 except ValueError as exc:
-                    clearance_details.update(
-                        surface_path_clearance_status="unknown_candidate_clearance_unresolved",
-                        clearance_error=str(exc)[:1024],
-                    )
+                    clearance_details.update(_clearance_evidence(
+                        {}, clearance_request=None, artifact=None, geometry_request=request,
+                        hinge_radius_m=h, end_angle_deg=angle,
+                        reason="unknown_candidate_clearance_unresolved"))
+                    clearance_details["clearance_error"] = str(exc)[:1024]
         constraints = {
             "centerline_target": audit.current_envelope_requirement_met,
             "centerline_path_clearance": path_clearance > 0.0,
             "station_span_complete": audit.station_span_complete,
             "mesh_envelope_target": None if mesh is None else mesh_diameter <= target,
-            "surface_path_clearance": surface, "interblade_clearance": interblade,
+            "surface_path_clearance": None, "interblade_clearance": None,
         }
         return Evaluation(audit.centerline_envelope_diameter_m, constraints, {
             "audit": asdict(audit), "proposed_path_minimum_hub_clearance_m": path_clearance,

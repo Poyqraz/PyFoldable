@@ -14,14 +14,27 @@ from pyfoldable.application.surface_clearance import SurfaceClearanceInputs
 from test_polar_upload import draft
 
 
+def _modeled_status(queries):
+    states = {(query.get("result") or {}).get("status") for query in queries}
+    if "violation" in states:
+        return "violation"
+    if not states or "unknown" in states or None in states:
+        return "unknown"
+    return "separated"
+
+
 def _clearance_artifact(queries, **extra):
     document = {
         "physical_qualification": extra.get("physical_qualification", False),
         "full_propeller_clearance": extra.get("full_propeller_clearance", None),
-        "modeled_surface_status": extra.get("modeled_surface_status", "unknown"),
+        "modeled_surface_status": extra.get("modeled_surface_status", _modeled_status(queries)),
         "node_comparisons": extra.get("node_comparisons", 1),
         "feature_tests": extra.get("feature_tests", 0),
         "hardware_queries": extra.get("hardware_queries", 0),
+        "excluded_regions": extra.get("excluded_regions", {
+            "root_radial_width_m": 0., "hinge_half_width_m": 0.,
+            "source": "", "status": "not_evaluated",
+        }),
         "queries": queries,
         "request_sha256": "a" * 64,
     }
@@ -30,9 +43,26 @@ def _clearance_artifact(queries, **extra):
                                   "surface_clearance_screening.json")
 
 
-def _query(kind, status):
-    return {"kind": kind, "a": "a", "b": "b",
-            "result": {"status": status, "node_comparisons": 1, "feature_tests": 0}}
+def _query(kind, status, **fields):
+    result = {
+        "status": status, "node_comparisons": 1, "feature_tests": 0,
+        "lower_bound_m": 0.002 if status == "separated" else None,
+        "witness_clearance_m": 0.0 if status == "violation" else None,
+        "contact_status": "contact" if status == "violation" else "unknown",
+        "reason": status,
+        "intervals": [{"status": status, "lower_bound_m": None, "witness_angle_rad": 0.0 if status == "violation" else None}],
+    }
+    result.update(fields)
+    return {"kind": kind, "a": "a", "b": "b", "result": result}
+
+
+def _assert_protected_constraints_unknown(row, result=None):
+    assert row["constraints"]["surface_path_clearance"] is None
+    assert row["constraints"]["interblade_clearance"] is None
+    assert row["status"] != "feasible"
+    if result is not None:
+        assert result["best_candidate"] is None
+        assert result["physical_qualification"] is False
 
 
 def _separated_surface_queries():
@@ -211,6 +241,7 @@ def test_clearance_binding_changes_request_identity_and_keeps_qualification_clos
     assert bound.request_sha256 != tighter.request_sha256
     assert context["candidate_clearance"]["physical_qualification"] is False
     assert context["candidate_clearance"]["full_propeller_clearance"] is None
+    assert context["candidate_clearance"]["selection_effect"] == "evidence_only_does_not_alter_geom01_constraints"
     assert context["base_draft_toml"] == draft().toml
 
 
@@ -243,34 +274,90 @@ def test_candidate_clearance_rebuilds_draft_and_never_reuses_one_report(monkeypa
     assert len(set(identities)) == 4
     assert prepared.draft == draft()
     for row in result["candidates"]:
+        _assert_protected_constraints_unknown(row, result)
         assert row["details"]["full_propeller_clearance"] is None
         assert row["details"]["physical_qualification"] is False
         assert row["details"]["candidate_hinge_radius_m"] == pytest.approx(row["parameters"]["hinge_radius_m"])
         assert row["details"]["clearance_end_angle_deg"] == pytest.approx(row["parameters"]["stowed_angle_deg"])
         assert row["details"]["clearance_request_sha256"] != result["candidates"][0]["details"]["clearance_request_sha256"] or row is result["candidates"][0]
+        assert row["details"]["surface_path_clearance_status"] == "unknown_no_swept_surface_collision_model"
 
 
-def test_query_mapping_never_promotes_unknown_or_missing_pairs_to_passed(monkeypatch):
-    cases = [
-        ([], None, None),
-        ([_query("interblade", "separated")], None, True),
-        ([_query("hub", "separated"), _query("own_root_tip", "unknown"),
-          _query("interblade", "separated")], None, True),
-        ([_query("hub", "separated"), _query("own_root_tip", "separated"),
-          _query("interblade", "unknown")], True, None),
-        ([_query("hub", "violation"), _query("own_root_tip", "separated"),
-          _query("interblade", "separated")], False, True),
-        ([_query("hub", "separated"), _query("own_root_tip", "separated"),
-          _query("interblade", "violation")], True, False),
-        (_separated_surface_queries(), True, True),
-    ]
-    for queries, surface, interblade in cases:
-        prepared, _ = _bind_clearance(monkeypatch, _clearance_artifact(queries))
-        row = json.loads(run_geometry_search(prepared).report_json)["candidates"][0]
-        assert row["constraints"]["surface_path_clearance"] is surface
-        assert row["constraints"]["interblade_clearance"] is interblade
-        if surface is not True or interblade is not True:
-            assert row["status"] != "feasible"
+def test_geom04_violation_is_visible_but_does_not_change_geom01_constraints(monkeypatch):
+    queries = [_query("hub", "violation"), _query("own_root_tip", "separated"),
+               _query("interblade", "separated")]
+    prepared, _ = _bind_clearance(monkeypatch, _clearance_artifact(queries))
+    result = json.loads(run_geometry_search(prepared).report_json)
+    row = result["candidates"][0]
+    _assert_protected_constraints_unknown(row, result)
+    assert row["details"]["scoped_geom04_status"] == "scoped_geom04_violation"
+    assert any(query["result"]["status"] == "violation" for query in row["details"]["clearance_queries"])
+    assert any(query["result"].get("witness_clearance_m") == 0.0 for query in row["details"]["clearance_queries"])
+    assert any(query["result"].get("intervals") for query in row["details"]["clearance_queries"])
+    assert row["details"]["clearance_excluded_regions"]["status"] == "not_evaluated"
+    assert row["details"]["surface_path_clearance_status"] == "unknown_no_swept_surface_collision_model"
+
+
+def test_geom04_separated_is_visible_but_does_not_change_geom01_constraints(monkeypatch):
+    prepared, _ = _bind_clearance(monkeypatch, _clearance_artifact(_separated_surface_queries()))
+    result = json.loads(run_geometry_search(prepared).report_json)
+    row = result["candidates"][0]
+    _assert_protected_constraints_unknown(row, result)
+    assert row["details"]["scoped_geom04_status"] == "scoped_geom04_separated"
+    assert {query["result"]["status"] for query in row["details"]["clearance_queries"]} == {"separated"}
+    assert all(query["result"].get("lower_bound_m") == 0.002 for query in row["details"]["clearance_queries"])
+    assert row["details"]["modeled_surface_status"] == "separated"
+    assert row["details"]["surface_path_clearance_status"] == "unknown_no_swept_surface_collision_model"
+
+
+def test_geom04_unknown_keeps_protected_constraints_none(monkeypatch):
+    queries = [_query("hub", "unknown"), _query("own_root_tip", "separated"),
+               _query("interblade", "separated")]
+    prepared, _ = _bind_clearance(monkeypatch, _clearance_artifact(queries))
+    result = json.loads(run_geometry_search(prepared).report_json)
+    row = result["candidates"][0]
+    _assert_protected_constraints_unknown(row, result)
+    assert row["details"]["scoped_geom04_status"] == "unknown_scoped_geom04"
+    assert any(query["result"]["status"] == "unknown" for query in row["details"]["clearance_queries"])
+
+
+def test_hardware_violation_evidence_does_not_alter_protected_constraints(monkeypatch):
+    from test_hardware_clearance_motion import raw
+    queries = _separated_surface_queries() + [_query("hardware_surface", "violation")]
+    prepared, calls = _bind_clearance(
+        monkeypatch, _clearance_artifact(queries), hardware_json=raw(),
+    )
+    result = json.loads(run_geometry_search(prepared).report_json)
+    row = result["candidates"][0]
+    _assert_protected_constraints_unknown(row, result)
+    assert calls and calls[0].hardware_json == raw()
+    assert row["details"]["scoped_geom04_status"] == "scoped_geom04_violation"
+    assert any(query["kind"] == "hardware_surface" and query["result"]["status"] == "violation"
+               for query in row["details"]["clearance_queries"])
+    assert row["details"]["clearance_hardware_raw_sha256"] == hashlib.sha256(raw()).hexdigest()
+
+
+def test_bound_geom04_result_cannot_make_a_candidate_feasible_or_selectable(monkeypatch):
+    base = draft(chord_scale=.1)
+    text, root_count = re.subn(r"r_over_R = 0\.2(?:0*)\b", "r_over_R = 0.144", base.toml)
+    text, tip_count = re.subn(r"r_over_R = 0\.98(?:0*)\b", "r_over_R = 1.0", text)
+    assert root_count == tip_count == 1
+    complete = replace(base, toml=text, draft_sha256=hashlib.sha256(text.encode()).hexdigest())
+    monkeypatch.setattr(
+        "pyfoldable.application.surface_clearance.run_surface_clearance",
+        lambda request: _clearance_artifact(_separated_surface_queries()),
+    )
+    prepared = prepare_geometry_search(
+        complete, hinge_radii_m=(.06,), stowed_angles_deg=(-150.,),
+        clearance_inputs=SurfaceClearanceInputs(end_angle_deg=-150.),
+    )
+    result = json.loads(run_geometry_search(prepared).report_json)
+    row = result["candidates"][0]
+    assert row["constraints"]["station_span_complete"] is True
+    assert row["constraints"]["mesh_envelope_target"] is True
+    assert row["details"]["scoped_geom04_status"] == "scoped_geom04_separated"
+    _assert_protected_constraints_unknown(row, result)
+    assert row["status"] == "blocked"
 
 
 def test_forged_clearance_qualification_flags_cannot_pass_or_widen_scope(monkeypatch):
@@ -285,36 +372,22 @@ def test_forged_clearance_qualification_flags_cannot_pass_or_widen_scope(monkeyp
     )
     result = json.loads(run_geometry_search(prepared).report_json)
     row = result["candidates"][0]
+    _assert_protected_constraints_unknown(row, result)
     assert result["physical_qualification"] is False
     assert row["details"]["physical_qualification"] is False
     assert row["details"]["full_propeller_clearance"] is None
-    assert row["constraints"]["surface_path_clearance"] is True
-    assert row["constraints"]["interblade_clearance"] is True
+    assert row["details"]["scoped_geom04_status"] == "scoped_geom04_separated"
 
 
-def test_bound_hardware_without_hardware_rows_stays_unknown(monkeypatch):
+def test_bound_hardware_without_hardware_rows_stays_unknown_and_does_not_pass(monkeypatch):
     from test_hardware_clearance_motion import raw
     prepared, _ = _bind_clearance(
         monkeypatch, _clearance_artifact(_separated_surface_queries()),
         hardware_json=raw(),
     )
-    row = json.loads(run_geometry_search(prepared).report_json)["candidates"][0]
-    assert row["constraints"]["surface_path_clearance"] is None
-    assert row["constraints"]["interblade_clearance"] is None
-    assert row["status"] != "feasible"
-
-
-def test_hardware_violation_fails_both_constraints(monkeypatch):
-    from test_hardware_clearance_motion import raw
-    queries = _separated_surface_queries() + [_query("hardware_surface", "violation")]
-    prepared, _ = _bind_clearance(
-        monkeypatch, _clearance_artifact(queries), hardware_json=raw(),
-    )
-    row = json.loads(run_geometry_search(prepared).report_json)["candidates"][0]
-    assert row["constraints"]["surface_path_clearance"] is False
-    assert row["constraints"]["interblade_clearance"] is False
-    assert row["status"] != "feasible"
-    assert row["details"]["surface_path_clearance_status"] == "scoped_geom04_violation"
+    result = json.loads(run_geometry_search(prepared).report_json)
+    row = result["candidates"][0]
+    _assert_protected_constraints_unknown(row, result)
 
 
 def test_candidate_clearance_error_stays_unknown(monkeypatch):
@@ -326,27 +399,25 @@ def test_candidate_clearance_error_stays_unknown(monkeypatch):
         draft(), hinge_radii_m=(.06,), stowed_angles_deg=(-10.,),
         clearance_inputs=SurfaceClearanceInputs(end_angle_deg=-10.),
     )
-    row = json.loads(run_geometry_search(prepared).report_json)["candidates"][0]
-    assert row["constraints"]["surface_path_clearance"] is None
-    assert row["constraints"]["interblade_clearance"] is None
-    assert row["details"]["surface_path_clearance_status"] == "unknown_candidate_clearance_unresolved"
-    assert row["status"] != "feasible"
+    result = json.loads(run_geometry_search(prepared).report_json)
+    row = result["candidates"][0]
+    _assert_protected_constraints_unknown(row, result)
+    assert row["details"]["scoped_geom04_status"] == "unknown_scoped_geom04"
+    assert row["details"]["surface_path_clearance_status"] == "unknown_no_swept_surface_collision_model"
 
 
-def test_hardware_unknown_blocks_both_constraints_even_if_surfaces_separated(monkeypatch):
+def test_hardware_unknown_evidence_does_not_alter_protected_constraints(monkeypatch):
     from test_hardware_clearance_motion import raw
-    queries = _separated_surface_queries() + [
-        _query("hardware_surface", "unknown"),
-    ]
+    queries = _separated_surface_queries() + [_query("hardware_surface", "unknown")]
     prepared, calls = _bind_clearance(
         monkeypatch, _clearance_artifact(queries, hardware_queries=0),
         hardware_json=raw(),
     )
-    row = json.loads(run_geometry_search(prepared).report_json)["candidates"][0]
+    result = json.loads(run_geometry_search(prepared).report_json)
+    row = result["candidates"][0]
     assert calls and calls[0].hardware_json == raw()
-    assert row["constraints"]["surface_path_clearance"] is None
-    assert row["constraints"]["interblade_clearance"] is None
-    assert row["status"] != "feasible"
+    _assert_protected_constraints_unknown(row, result)
+    assert row["details"]["scoped_geom04_status"] == "unknown_scoped_geom04"
 
 
 def test_shared_clearance_budget_leaves_later_candidates_unknown(monkeypatch):
@@ -360,33 +431,28 @@ def test_shared_clearance_budget_leaves_later_candidates_unknown(monkeypatch):
     result = json.loads(run_geometry_search(prepared).report_json)
     assert len(calls) == 1
     first, second = result["candidates"]
-    assert first["constraints"]["surface_path_clearance"] is True
-    assert first["constraints"]["interblade_clearance"] is True
-    assert second["constraints"]["surface_path_clearance"] is None
-    assert second["constraints"]["interblade_clearance"] is None
-    assert second["details"]["surface_path_clearance_status"] == "unknown_clearance_budget_exhausted"
-    assert second["status"] != "feasible"
-    assert result["best_candidate"] is None
+    _assert_protected_constraints_unknown(first, result)
+    _assert_protected_constraints_unknown(second, result)
+    assert first["details"]["scoped_geom04_status"] == "scoped_geom04_separated"
+    assert second["details"]["scoped_geom04_status"] == "unknown_scoped_geom04"
+    assert second["details"]["scoped_geom04_reason"] == "unknown_clearance_budget_exhausted"
 
 
-def test_real_candidate_clearance_stays_unqualified_and_pair_scoped():
+def test_real_candidate_clearance_attaches_evidence_without_changing_gates():
     prepared = prepare_geometry_search(
         draft(chord_scale=.1), hinge_radii_m=(.1,), stowed_angles_deg=(-10.,),
         clearance_inputs=SurfaceClearanceInputs(end_angle_deg=-180., max_node_comparisons=4000),
     )
     result = json.loads(run_geometry_search(prepared).report_json)
     row = result["candidates"][0]
-    assert result["physical_qualification"] is False
+    _assert_protected_constraints_unknown(row, result)
     assert row["details"]["full_propeller_clearance"] is None
     assert row["details"]["physical_qualification"] is False
     assert row["details"]["clearance_end_angle_deg"] == pytest.approx(-10.)
-    assert row["constraints"]["surface_path_clearance"] is not True or all(
-        query["result"]["status"] == "separated"
-        for query in row["details"]["clearance_queries"]
-        if query["kind"] in {"hub", "own_root_tip"}
-    )
-    if row["constraints"]["surface_path_clearance"] is True:
-        assert row["details"]["surface_path_clearance_status"] != "unknown_no_swept_surface_collision_model"
-    if None in row["constraints"].values():
-        assert row["status"] == "blocked"
-        assert result["best_candidate"] is None
+    assert row["details"]["clearance_request_sha256"]
+    assert row["details"]["clearance_queries"]
+    assert row["details"]["scoped_geom04_status"] in {
+        "scoped_geom04_violation", "scoped_geom04_separated", "unknown_scoped_geom04",
+    }
+    assert row["details"]["surface_path_clearance_status"] == "unknown_no_swept_surface_collision_model"
+    assert row["status"] != "feasible"
