@@ -5,13 +5,17 @@ Evidence integration only. Execute, bind, hash and inspect candidate-specific
 GEOM-04 clearance without changing GEOM-01 selection constraints.
 
 Code base commit:
-`d7afc391d5f41b15259826b99a5ed7560153439e` (`main`)
+GitHub `origin/main` at last fetch:
+`d7afc391d5f41b15259826b99a5ed7560153439e`
+Documentation reconciliation commit incorporated from PR #66 branch:
+`24cac8f4ab7d026c338f3a48495b6ce28204d524`
 
 Branch / current commit / tree:
 `cursor/geom01-candidate-clearance-36c6`
 
 Tested implementation SHA/tree:
-`e12ebb90b3edc08c851dfa099f3567a1271c6ed0`
+`1bd4e41868be54a88873f82aef749ce816ee39a5`
+(merge of `24cac8f` into the evidence-only branch; no Python/test edit)
 (this handoff commit may follow that SHA)
 
 PR and remote head:
@@ -30,15 +34,18 @@ Completed:
 - Mapping helpers `_map_clearance_constraints`, `_reduce_statuses` and
   `_and_closed` removed
 - Contract docs revised so this slice does not change GEOM-01 gates
-- Local compileall and full pytest on `e12ebb9`: 1480 passed, 9 skipped,
-  37 subtests passed
-- Independent review of `e12ebb9`: approve (stale prior handoff was P2)
+- Synced PR #66 documentation reconciliation (`24cac8f`): auto-merge of
+  `docs/agent/current-state.md` kept the 2026-09-19 drift ledger and the
+  2026-09-20 evidence-only note. No application or test files changed.
+- Local compileall and full pytest on `1bd4e41`: 1480 passed, 9 skipped,
+  37 subtests passed; 36 geometry-search tests passed
+- Independent review of `e12ebb9`: approve (evidence-only contract)
 
 Remaining:
 - Exact-head GitHub CI for the PR head after this handoff commit
 - Independent human review; do not merge from this agent
-- PR #66 is still open; `main` has not moved past `d7afc39`. Re-fetch and
-  merge/rebase onto latest `main` if #66 lands before merge of #67
+- GitHub still listed PR #66 as OPEN at last fetch; `origin/main` had not
+  moved past `d7afc39`. If #66 squash-merges later, re-sync this branch
 - Optional later UI opt-in; dashboard remains unbound
 - A later reviewed slice would be required before mapping GEOM-04 into
   GEOM-01 constraint Booleans
@@ -52,8 +59,9 @@ Important decisions and evidence paths:
 - Request context `selection_effect` is
   `evidence_only_does_not_alter_geom01_constraints`
 - One clearance report is never reused for another hinge/angle
+- Synchronization required documentation merge only; no semantic/code change
 
-Files changed:
+Files changed versus current GitHub `main` (`d7afc39`):
 - `pyfoldable/application/geometry_search.py`
 - `tests/application/test_geometry_search.py`
 - `docs/geom01_feasibility_plan.md`
@@ -61,6 +69,11 @@ Files changed:
 - `docs/architecture/decisions.md`
 - `docs/agent/current-state.md`
 - `docs/agent/handoffs/geom01-candidate-clearance.md`
+- Plus PR #66 documentation files until GitHub `main` contains `24cac8f`:
+  `docs/foldable_conventions.md`, `docs/py04_deterministic_design_search.md`,
+  `docs/py05_completion.md`, `docs/python_research_execution_plan.md`,
+  `docs/superpowers/specs/v2_thrust_split_audit.md`,
+  `docs/ui_engineering_workspace.md`
 
 Unrelated work to preserve:
 - Dirty `reports/foldable_v2_engineering_design/report_key_results.csv`
@@ -69,21 +82,19 @@ Unrelated work to preserve:
 
 Tests passed (command, result, tested SHA/tree):
 - `./venv/bin/python -m pytest tests/application/test_geometry_search.py -q`
-  → 36 passed on `e12ebb9`
+  → 36 passed on `1bd4e41`
 - `./venv/bin/python -m compileall -q pyfoldable pythrust apps examples tests`
   → exit 0
+- `git diff --check` → exit 0 (unstaged CSV CRLF warning only)
 - `./venv/bin/python -m pytest tests/ -q` → 1480 passed, 9 skipped,
-  37 subtests passed on `e12ebb9`
+  37 subtests passed on `1bd4e41`
 
 Tests failing / skipped / not run (reason):
 - 9 skipped: missing generated/reference foldable CSVs (legacy, unchanged)
 
 Independent review (reviewed SHA, findings, disposition):
-- Automated reviewer on `e12ebb9`: approve
-- P2: this handoff was stale vs the evidence-only contract (fixed here)
-- P3: hardware-empty label is not a gate; unbound details gained
-  explicit `physical_qualification=false` / `full_propeller_clearance=null`
-  without changing constraints. Left as-is.
+- Automated reviewer on `e12ebb9`: approve (evidence-only)
+- Sync merge `1bd4e41` did not change production Python or tests
 
 GitHub CI / reviews (exact head, URLs, pending gates):
 - Record exact-head Tests workflow after this handoff is pushed
@@ -104,10 +115,10 @@ Unresolved questions:
 
 Next recommended action:
 Independent review of PR #67 after exact-head CI is green. Do not merge
-from this handoff. If PR #66 merges first, sync this branch onto that
-`main` before merge.
+from this handoff. If GitHub `main` later contains a squash of #66 rather
+than `24cac8f`, re-sync.
 
 Rollback (affected commits/artifacts; preserve unrelated work):
 - Revert `c6732d4`, `94725c4`, `978a723`, `c137eaa`, `e411c3d`,
-  `e12ebb9` and the later handoff commit
+  `e12ebb9`, `b516e49`, `1bd4e41` and the later handoff commit
 - Leave the unstaged CSV and other branches untouched
