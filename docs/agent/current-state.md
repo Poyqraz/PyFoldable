@@ -3,8 +3,15 @@
 **Audited 2026-09-17. Code baseline:**
 `ca81d2d2b19622d65453e269d7bfcb48e70aec32` (merged GEOM-04 PR #63).
 This is a dated snapshot, not a claim that the branch never advances. Recheck git
-before starting. This increment adds repository memory only; it does not change
-application behavior or introduce a feature migration.
+before starting.
+
+**2026-09-19 documentation reconciliation** at main `d7afc391d5f41b15259826b99a5ed7560153439e`
+(no application change): an independent re-audit of the 2026-09-17 snapshot
+corrected stale `pythrust/foldable/` paths and undated “next PY-06 / PY-05”
+sentences in historical plans. A large onboarding dump and task→file map were
+reviewed against AGENTS.md, this file, architecture overview and the commands
+guide, then **not** added; they duplicated those pages. This increment does not
+change application behavior.
 
 ## Reality summary
 
@@ -79,6 +86,10 @@ results/plans as history; they do not recompute experiments or change solver log
 | README package-wide `reference_load_postprocess` wording | True of the old V2 report; `core/motor_bem_coupling.py` provides a separate coupled solver | Scope paragraph to historical V2 output and link modern solver; leave old numbers untouched |
 | README 7100 RPM table has no adjacent fixture/target-factor warning | Synthetic reference and fixed pretest factor documented in data README and report assumptions | Add immediate classification; retain values as historical model output |
 | GEOM-01 result reason `unknown_no_swept_surface_collision_model` | GEOM-04 exists, but `geometry_search.py` still leaves surface/interblade constraints `None` | **Open diagnostic wording debt**: change only with the next reviewed behavioral slice; do not turn unknown into passed |
+| `docs/foldable_conventions.md` and `docs/superpowers/specs/v2_thrust_split_audit.md` name `pythrust/foldable/` | Code lives under `pyfoldable/dynamics/` and related `pyfoldable` modules; `pythrust/` is only propellers/propulsion | **Corrected 2026-09-19**; keep V1/V2 vs core/PY-05 distinction |
+| Undated “next PY-06” / “next PY-05” in PY-04/PY-05 delivery prose | PY-05 and PY-06A–D1 plus GEOM-01–04 have shipped | **Corrected 2026-09-19** as dated delivery history; remaining work stays evidence-dependent |
+| PY-04A “1063 passed” read as the standing suite size | Dated milestone; current command is `./venv/bin/python -m pytest tests/ -q` | **Corrected 2026-09-19** in the PY-04A record; keep the count as history |
+| Independent 2026-09-18 20-section dump / navigation map | Same facts already live in AGENTS.md, this file, architecture overview, commands | **Not imported**; avoid a second always-loaded dump |
 
 `docs/development_roadmap.md` already identifies itself as PR-04/05 history; its
 chronology remains intact. Historical test counts in dated delivery records remain
