@@ -6,16 +6,20 @@ GEOM-04 clearance without changing GEOM-01 selection constraints. Candidate
 evidence must be identity-bound, per-candidate budgeted, and fail-closed.
 
 Code base commit:
-GitHub `origin/main` at last fetch:
+GitHub `origin/main` re-fetched 2026-09-20:
 `d7afc391d5f41b15259826b99a5ed7560153439e`
-PR #66 was still OPEN/draft at that fetch. Documentation reconciliation
-`24cac8f4ab7d026c338f3a48495b6ce28204d524` is already in this branch.
+PR #66 remains OPEN/draft (`24cac8f4ab7d026c338f3a48495b6ce28204d524`).
+`git merge origin/main` on this branch: already up to date. No merge commit.
+No conflict resolution. No semantic Python or test change.
 
 Branch / current commit / tree:
 `cursor/geom01-candidate-clearance-36c6`
 
 Tested implementation SHA/tree:
 `5e7a3ca5046101d391ce75408fc1704df4ecd74d`
+Exact PR HEAD at last documentation refresh:
+`f87ae10addec5c8b7a0a02baab0fb6e66124eebb`
+(this handoff commit may follow that SHA)
 
 PR and remote head:
 https://github.com/Poyqraz/PyFoldable/pull/67
@@ -52,9 +56,9 @@ Completed:
      report-level totals.
 
 Remaining:
-- Exact-head GitHub CI for the PR head after this handoff commit
 - Independent human review; do not merge from this agent
-- If GitHub later squash-merges #66, re-sync this branch
+- GitHub still has not merged PR #66, so `main...HEAD` still includes
+  `24cac8f` documentation files. Re-sync after a real squash/merge.
 - Optional later UI opt-in; dashboard remains unbound
 - A later reviewed slice would be required before mapping GEOM-04 into
   GEOM-01 constraint Booleans
@@ -74,17 +78,27 @@ Important decisions and evidence paths:
   other than false (existing `run_grid_search` snapshot rule). Invalid
   qualification in a GEOM-04 report aborts before attachment.
 - Scope: no generic search-engine redesign; no GEOM-04 kernel change
+- Conversation claims that PR #66 is merged are not GitHub facts:
+  `origin/main` and the GitHub PR API still show #66 OPEN/draft.
 
 Files changed versus current GitHub `main` (`d7afc39`):
+PR #67 application/tests/docs:
 - `pyfoldable/application/geometry_search.py`
 - `pyfoldable/application/surface_clearance.py` (exception taxonomy only)
 - `tests/application/test_geometry_search.py`
 - `docs/geom01_feasibility_plan.md`
 - `docs/geom04_surface_hardware.md`
 - `docs/architecture/decisions.md`
-- `docs/agent/current-state.md`
+- `docs/agent/current-state.md` (also carries #66 dated reconciliation)
 - `docs/agent/handoffs/geom01-candidate-clearance.md`
-- Plus PR #66 documentation files until GitHub `main` contains `24cac8f`
+PR #66-only documentation still present because GitHub `main` does not
+contain `24cac8f`:
+- `docs/foldable_conventions.md`
+- `docs/py04_deterministic_design_search.md`
+- `docs/py05_completion.md`
+- `docs/python_research_execution_plan.md`
+- `docs/superpowers/specs/v2_thrust_split_audit.md`
+- `docs/ui_engineering_workspace.md`
 
 Unrelated work to preserve:
 - Dirty `reports/foldable_v2_engineering_design/report_key_results.csv`
@@ -93,30 +107,29 @@ Unrelated work to preserve:
 
 Tests passed (command, result, tested SHA/tree):
 - RED (production `6e00689`, tests then at `1066b24`): 17 expected
-  adversarial failures (forged qualification, programming/serializer
-  prepare ValueError, NaN/Infinity, missing/malformed schema,
-  query-level overclaim/ledger, details serializer vs oversize).
-  Already-correct paths stayed green (invalid candidate geometry,
-  valid unmutated report, top-level negative/non-integer, oversize).
+  adversarial failures
 - GREEN implementation `5e7a3ca5046101d391ce75408fc1704df4ecd74d`:
-  `./venv/bin/python -m pytest tests/application/test_geometry_search.py
-  tests/application/test_surface_clearance_service.py
-  tests/application/test_hardware_clearance_motion.py
-  tests/geometry/test_surface_clearance.py -q` → 122 passed
-  `./venv/bin/python -m compileall -q pyfoldable pythrust apps examples tests`
-  `git diff --check`
-  `./venv/bin/python -m pytest tests/ -q` → 1510 passed, 9 skipped,
-  37 subtests passed
-- This handoff commit may follow `5e7a3ca5046101d391ce75408fc1704df4ecd74d`; re-record HEAD after push
+  focused 122 passed; full suite 1510 passed, 9 skipped, 37 subtests;
+  compileall and `git diff --check` OK
+- Exact-head CI on documentation HEAD
+  `f87ae10addec5c8b7a0a02baab0fb6e66124eebb`:
+  Python 3.10/3.11 success, 1510 passed, 9 skipped, 37 subtests
+  - push: https://github.com/Poyqraz/PyFoldable/actions/runs/35534145960
+  - pull_request: https://github.com/Poyqraz/PyFoldable/actions/runs/35534148836
+- Re-record commands on the commit that contains this refresh
 
 Tests failing / skipped / not run (reason):
 - 9 skipped: missing generated/reference foldable CSVs (legacy, unchanged)
 
 Independent review (reviewed SHA, findings, disposition):
-- Pending on the exact head after this documentation commit
+- Automated independent review APPROVE at
+  `f87ae10addec5c8b7a0a02baab0fb6e66124eebb`
+- Human review still required; do not merge
 
 GitHub CI / reviews (exact head, URLs, pending gates):
-- Record exact-head Tests workflow after push of this handoff
+- Exact-head Tests on `f87ae10` succeeded (URLs above)
+- If this documentation commit moves HEAD, record the new exact-head
+  Tests workflow after push
 - Human review and CLA check remain; do not merge
 
 Known risks and evidence limits:
@@ -133,8 +146,9 @@ Unresolved questions:
 - Whether the dashboard should later opt in to bound clearance
 
 Next recommended action:
-Independent review of PR #67 after exact-head CI is green. Do not merge
-from this handoff.
+Final adversarial review of PR #67 at the exact HEAD after this refresh
+and its CI. Do not merge from this handoff. Re-sync only after GitHub
+`main` actually contains PR #66.
 
 Rollback (affected commits/artifacts; preserve unrelated work):
 - Revert this workstream on `cursor/geom01-candidate-clearance-36c6`
