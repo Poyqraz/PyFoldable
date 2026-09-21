@@ -6,19 +6,20 @@ GEOM-04 clearance without changing GEOM-01 selection constraints. Candidate
 evidence must be identity-bound, per-candidate budgeted, and fail-closed.
 
 Code base commit:
-GitHub `origin/main` re-fetched 2026-09-20:
-`d7afc391d5f41b15259826b99a5ed7560153439e`
-PR #66 remains OPEN/draft (`24cac8f4ab7d026c338f3a48495b6ce28204d524`).
-`git merge origin/main` on this branch: already up to date. No merge commit.
-No conflict resolution. No semantic Python or test change.
+GitHub `origin/main` re-fetched 2026-09-21:
+`f1a45a404044d2d5b35e695b91761c7e28ab585b`
+(`Merge pull request #66`). Matches the requested SHA; `main` has not
+advanced further. `git merge origin/main` completed with the `ort`
+strategy and no conflicts. No semantic Python or test change.
+`git diff 5e7a3ca HEAD -- pyfoldable tests` is empty.
 
 Branch / current commit / tree:
 `cursor/geom01-candidate-clearance-36c6`
 
 Tested implementation SHA/tree:
 `5e7a3ca5046101d391ce75408fc1704df4ecd74d`
-Exact PR HEAD at last documentation refresh:
-`f87ae10addec5c8b7a0a02baab0fb6e66124eebb`
+Merge-onto-main SHA:
+`336f4a6ee752edc7ed4fd82f4ebfc137afd48df1`
 (this handoff commit may follow that SHA)
 
 PR and remote head:
@@ -54,11 +55,11 @@ Completed:
   8. Query-level node/feature/hardware accounting must be nonnegative
      integers, cannot exceed ceilings, and must reconcile with
      report-level totals.
+- Synchronized onto merged PR #66. Effective `main...HEAD` no longer
+  carries the #66-only documentation files.
 
 Remaining:
 - Independent human review; do not merge from this agent
-- GitHub still has not merged PR #66, so `main...HEAD` still includes
-  `24cac8f` documentation files. Re-sync after a real squash/merge.
 - Optional later UI opt-in; dashboard remains unbound
 - A later reviewed slice would be required before mapping GEOM-04 into
   GEOM-01 constraint Booleans
@@ -78,27 +79,16 @@ Important decisions and evidence paths:
   other than false (existing `run_grid_search` snapshot rule). Invalid
   qualification in a GEOM-04 report aborts before attachment.
 - Scope: no generic search-engine redesign; no GEOM-04 kernel change
-- Conversation claims that PR #66 is merged are not GitHub facts:
-  `origin/main` and the GitHub PR API still show #66 OPEN/draft.
 
-Files changed versus current GitHub `main` (`d7afc39`):
-PR #67 application/tests/docs:
+Files changed versus current GitHub `main` (`f1a45a4`):
 - `pyfoldable/application/geometry_search.py`
 - `pyfoldable/application/surface_clearance.py` (exception taxonomy only)
 - `tests/application/test_geometry_search.py`
 - `docs/geom01_feasibility_plan.md`
 - `docs/geom04_surface_hardware.md`
 - `docs/architecture/decisions.md`
-- `docs/agent/current-state.md` (also carries #66 dated reconciliation)
+- `docs/agent/current-state.md` (#67 evidence-only subsequent update)
 - `docs/agent/handoffs/geom01-candidate-clearance.md`
-PR #66-only documentation still present because GitHub `main` does not
-contain `24cac8f`:
-- `docs/foldable_conventions.md`
-- `docs/py04_deterministic_design_search.md`
-- `docs/py05_completion.md`
-- `docs/python_research_execution_plan.md`
-- `docs/superpowers/specs/v2_thrust_split_audit.md`
-- `docs/ui_engineering_workspace.md`
 
 Unrelated work to preserve:
 - Dirty `reports/foldable_v2_engineering_design/report_key_results.csv`
@@ -111,25 +101,20 @@ Tests passed (command, result, tested SHA/tree):
 - GREEN implementation `5e7a3ca5046101d391ce75408fc1704df4ecd74d`:
   focused 122 passed; full suite 1510 passed, 9 skipped, 37 subtests;
   compileall and `git diff --check` OK
-- Exact-head CI on documentation HEAD
-  `f87ae10addec5c8b7a0a02baab0fb6e66124eebb`:
-  Python 3.10/3.11 success, 1510 passed, 9 skipped, 37 subtests
-  - push: https://github.com/Poyqraz/PyFoldable/actions/runs/35534145960
-  - pull_request: https://github.com/Poyqraz/PyFoldable/actions/runs/35534148836
-- Re-record commands on the commit that contains this refresh
+- Re-run the same commands on the exact HEAD after this main-sync
+  and record the new exact-head CI
 
 Tests failing / skipped / not run (reason):
 - 9 skipped: missing generated/reference foldable CSVs (legacy, unchanged)
 
 Independent review (reviewed SHA, findings, disposition):
-- Automated independent review APPROVE at
-  `f87ae10addec5c8b7a0a02baab0fb6e66124eebb`
+- Automated independent review APPROVE at pre-sync
+  `f87ae10addec5c8b7a0a02baab0fb6e66124eebb` (behavior identical to
+  `5e7a3ca`; this sync is merge + handoff only)
 - Human review still required; do not merge
 
 GitHub CI / reviews (exact head, URLs, pending gates):
-- Exact-head Tests on `f87ae10` succeeded (URLs above)
-- If this documentation commit moves HEAD, record the new exact-head
-  Tests workflow after push
+- Record exact-head Tests workflow after push of this sync HEAD
 - Human review and CLA check remain; do not merge
 
 Known risks and evidence limits:
@@ -146,9 +131,8 @@ Unresolved questions:
 - Whether the dashboard should later opt in to bound clearance
 
 Next recommended action:
-Final adversarial review of PR #67 at the exact HEAD after this refresh
-and its CI. Do not merge from this handoff. Re-sync only after GitHub
-`main` actually contains PR #66.
+Final Astra adversarial review of PR #67 at the exact HEAD after this
+main-sync and its CI. Do not merge from this handoff.
 
 Rollback (affected commits/artifacts; preserve unrelated work):
 - Revert this workstream on `cursor/geom01-candidate-clearance-36c6`
