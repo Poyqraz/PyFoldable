@@ -1,8 +1,12 @@
 # Katlanabilir Pervane Birim ve Açı Konvansiyonları
 
-Bu belge, `pythrust/foldable/` modülünde kullanılan fiziksel büyüklük ve açı
-konvansiyonlarını tanımlar. katlanır pervane modülü kapsamında üretilen tüm
-sayısal çıktılar bu standarda uyar.
+Bu belge, **eski V1/V2** katlanır-pervane yolunun fiziksel büyüklük ve açı
+konvansiyonlarını tanımlar. Uygulama `pyfoldable/dynamics/`, kök `pyfoldable`
+modülleri (`models.py`, `kinematics.py`, `effective_diameter.py`) ve
+`configs/foldable/` altındadır. Bundled `pythrust/` yalnız
+`propellers` / `propulsion` uyumluluk dilimidir; `pythrust/foldable/` diye bir
+ağaç yoktur. Bu sözleşmeler kanonik `pyfoldable.core` SI şeması ve ayrı PY-05
+geçiş çerçevesiyle karıştırılmamalıdır.
 
 ## Birimler
 
@@ -216,7 +220,7 @@ width and motor connection in V1.
 
 ## Dynamic spin-up (V1 skeleton)
 
-Time-dependent ODE layer under `pythrust/foldable/dynamics/` — additive to the
+Time-dependent ODE layer under `pyfoldable/dynamics/` (`simulation.py`) — additive to the
 static/quasi-static foldable model.
 
 **Outputs:**
@@ -251,7 +255,7 @@ static/quasi-static foldable model.
 
 ## Propeller-first physics (V2)
 
-Prescribed-RPM validation path under `pythrust/foldable/dynamics/` — **no motor module**.
+Prescribed-RPM validation path under `pyfoldable/dynamics/` (`physics_simulation.py`, `split_thrust.py`) — **no motor module**.
 Use config `TIP_HINGED_250_V02.json` with parallel-stow geometry.
 
 **Angle convention (V02):**

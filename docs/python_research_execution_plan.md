@@ -70,8 +70,11 @@ BEM/motor coupling and physical deployment qualification remain separate work.
 
 PY-04A extends merged `100636d`; [search contracts and retrospective review](py04_deterministic_design_search.md)
 record the bounded first algorithm, active-draft adapter and UI. It is not a claim
-that robust/Pareto optimization is complete. Broader search methods are deferred;
-after PY-05, the next ordered software slice is PY-06, with no claim of passive deployment.
+that robust/Pareto optimization is complete. Broader search methods are deferred.
+At PY-04A delivery the next software slices were PY-05 then PY-06; PY-05 and
+PY-06A–D1, plus GEOM-01–04, have since shipped. Remaining PY-06D2/E/F work is
+evidence-dependent. See [current state](agent/current-state.md). This history
+does not claim passive deployment.
 
 PY-02 extends merged main `656b756` without repeating PY-01. Sources, exact
 sampling decisions, compatibility and TDD acceptance are recorded in
@@ -135,6 +138,8 @@ No archived gate or benchmark result is modified by this work.
 
 Local verification on 2026-09-01: **858 passed, 9 skipped** in the complete
 `tests/` suite, including 34 new service tests and two new Streamlit regressions.
+That count is a dated PY-01 milestone, not the standing suite size; current
+verification is `./venv/bin/python -m pytest tests/ -q`.
 `compileall` succeeded. TDD red stages were observed before adding the service
 and before connecting its UI. Independent review found no blocking issue in the
 supported domain. Skipped tests remain skipped; no new physical evidence is claimed.
