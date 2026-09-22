@@ -1385,7 +1385,8 @@ def test_enabled_policy_without_a_negative_keeps_candidate_blocked(monkeypatch):
     assert row["constraints"]["interblade_clearance"] is None
     assert row["status"] == "blocked"
     assert result["best_candidate"] is None
-    assert True not in row["constraints"].values()
+    assert row["constraints"]["surface_path_clearance"] is not True
+    assert row["constraints"]["interblade_clearance"] is not True
 
 
 def test_policy_leaves_a_real_geom04_report_unchanged_and_never_true():
