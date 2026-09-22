@@ -125,8 +125,9 @@ becomes bounded `candidate_validation_failed`; other programming
 failed grid row). Valid reports are attached unchanged. Query/interval
 acceptance follows the GEOM-04 producer contract; malformed interval
 evidence aborts before oversize classification.
-`physical_qualification=true` or `full_propeller_clearance` other than
-null, non-finite JSON, schema errors and query-level accounting
+`physical_qualification=true` anywhere in the accepted report tree, or
+`full_propeller_clearance` other than null, aborts before generic snapshot
+handling; nested `physical_qualification=False` remains valid. Non-finite JSON, schema errors and query-level accounting
 contradictions abort. Evidence is the complete namespaced GEOM-04 report;
 a valid payload that exceeds 256 KiB fails closed without wiping the
 GEOM-01 audit. They do not assign True or False to

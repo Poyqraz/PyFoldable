@@ -63,8 +63,10 @@ node/feature/hardware limits, and records aggregate ceilings of
 artifact is attached only after request/report SHA, strict finite JSON,
 report schema/content, request-context identity, qualification invariants
 and query-level accounting checks. `physical_qualification` other than
-false or `full_propeller_clearance` other than null aborts; the attached
-report is the decoded artifact, never rewritten. Malformed JSON, NaN or
+literal false anywhere in the accepted report tree, or
+`full_propeller_clearance` other than null, aborts before attachment so
+generic snapshot handling cannot turn the forgery into a failed grid row;
+the attached report is the decoded artifact, never rewritten. Malformed JSON, NaN or
 Infinity, schema errors, accounting contradictions and programming errors
 abort the search. Candidate-domain prepare failures raise
 `SurfaceClearanceValidationError` and become bounded

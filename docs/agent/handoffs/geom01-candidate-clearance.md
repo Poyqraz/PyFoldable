@@ -14,11 +14,13 @@ Branch / current commit / tree:
 `cursor/geom01-candidate-clearance-36c6`
 
 Tested implementation SHA/tree:
-GREEN production:
-`7411440feb9be084aaa3272cd31a13845b7157a4`
-RED tests:
-`6d437c9`
-(this handoff/docs commit follows that SHA)
+GREEN nested-qualification:
+`d5dd46ea8690fd81d81e4e2f4c3c77855011c3a0`
+RED nested-qualification tests:
+`40ff39d`
+Previous reviewed HEAD:
+`2c31a28905ee630093d1a33ae4581c2e3b2cdc99`
+(this handoff/docs commit follows `d5dd46e`)
 
 PR and remote head:
 https://github.com/Poyqraz/PyFoldable/pull/67
@@ -44,9 +46,12 @@ Completed:
      `design_search.py` is unchanged.
   3. Valid completed GEOM-04 reports attach unchanged
      (`attached == json.loads(original.report_json)`).
-     `physical_qualification is True` or `full_propeller_clearance is not
-     None` aborts; no sanitization/`_search_safe_report`.
-     Query/interval acceptance is derived from `ClearanceReport`,
+     `physical_qualification is True` anywhere in the accepted report
+     tree, or `full_propeller_clearance is not None` at top level, aborts
+     before `Evaluation` / generic snapshot; nested
+     `physical_qualification=False` remains valid and unchanged.
+     No sanitization/`_search_safe_report`. `design_search.py` is
+     unchanged. Query/interval acceptance is derived from `ClearanceReport`,
      `ClearanceInterval` and hardware `_row` / `query_motion_pair`.
      Missing `intervals`/`reason`, non-object intervals, invalid interval
      status and non-numeric bounds abort. Schema runs before 256 KiB
@@ -96,11 +101,12 @@ Files changed versus current GitHub `main` (`f1a45a4`):
 - `docs/agent/current-state.md`
 - `docs/agent/handoffs/geom01-candidate-clearance.md`
 
-This increment versus previous PR head `12ffac6`:
-- `pyfoldable/application/geometry_search.py` (prepare ArithmeticError wrap;
-  full query/interval producer schema)
+This increment versus previous PR head `2c31a28`:
+- `pyfoldable/application/geometry_search.py` (recursive
+  `physical_qualification is False` walk before Evaluation)
 - `tests/application/test_geometry_search.py`
-- the four documentation files above plus this handoff
+- `docs/geom01_feasibility_plan.md`, `docs/agent/current-state.md`,
+  this handoff
 
 Unrelated work to preserve:
 - Dirty `reports/foldable_v2_engineering_design/report_key_results.csv`
@@ -108,23 +114,22 @@ Unrelated work to preserve:
 - PR #3, UI work, legacy cleanup, Cursor rules/skills
 
 Tests passed (command, result, tested SHA/tree):
-- RED on production `12ffac6` / tests `6d437c9`: 8 expected failures
-  (prepare ArithmeticError failed-row; six query/interval schema cases;
-  oversized malformed classified as oversize). Retain paths green
-  (ValidationError bounded; ValueError/TypeError/SearchError abort;
-  valid oversize; empty intervals).
-- GREEN `7411440feb9be084aaa3272cd31a13845b7157a4`:
-  focused geometry-search 77 passed; surface/hardware 57 passed;
-  full suite 1521 passed, 9 skipped, 37 subtests;
+- RED on production `2c31a28` / tests `40ff39d`: 2 expected failures
+  (nested `physical_qualification: true` at report extra and under
+  query/result became failed grid rows). Retain nested False attach
+  unchanged; top-level True still aborts; real GEOM-04 report unchanged.
+- GREEN `d5dd46ea8690fd81d81e4e2f4c3c77855011c3a0`:
+  geometry-search 80 passed; surface/hardware 56 passed;
+  full suite 1524 passed, 9 skipped, 37 subtests;
   compileall and `git diff --check` OK (CSV CRLF warning only, unstaged)
+  `design_search.py` unchanged vs `2c31a28`.
 
 Tests failing / skipped / not run (reason):
 - 9 skipped: missing generated/reference foldable CSVs (legacy, unchanged)
 
 Independent review (reviewed SHA, findings, disposition):
-- Automated independent review APPROVE at GREEN `7411440`
-  (`design_search.py` unchanged; producer-derived schema; protected
-  gates still None)
+- Automated independent review APPROVE at GREEN `d5dd46e`
+  (`design_search.py` unchanged; recursive abort before Evaluation)
 - Human review still required; do not merge
 
 GitHub CI / reviews (exact head, URLs, pending gates):
