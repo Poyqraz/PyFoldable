@@ -67,7 +67,20 @@ grid row. Attached evidence must match the GEOM-04 query/interval producer
 fields; malformed reports abort before oversize classification.
 Reverse solid-query witnesses must preserve caller body order (PR #63 regression).
 
+**Amendment 2026-09-22 — negative clearance policy v1.** The PR #67 evidence
+attachment above is unchanged: accepted reports stay immutable and, with no
+policy, both surface gates stay unknown. A separate opt-in declaration,
+`geom01_negative_clearance_v1`, may set `surface_path_clearance` or
+`interblade_clearance` to `False` from a qualifying witness on the accepted
+report. v1 has no `True` result. Same-blade root/tip and the unique declared
+finite-cylinder hub can reject the surface-path gate; retained interblade
+pairs can reject the interblade gate. Infinite-cylinder fallback, contact-only
+observations, general hardware and hardware pairs do not. Threshold and motion
+domain must match exactly or both gates stay unknown. This is screening, not
+physical qualification.
+
 Evidence: `pyfoldable/application/blade_stations.py`, `geometry_search.py`,
+`geometry_clearance_policy.py`,
 `surface_clearance.py` in that application directory; `pyfoldable/geometry/`;
 `tests/geometry/test_hardware_geometry.py::test_solid_distance_witnesses_follow_argument_order`;
 [GEOM-02](../geom02_station_contract.md), [GEOM-04](../geom04_surface_hardware.md).

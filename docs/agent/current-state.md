@@ -36,7 +36,7 @@ ranges: [pyproject.toml](../../pyproject.toml); UI routing:
 | Current | PY-05 prescribed-drive transient, source-bound geometry/mass binding and explicit-run UI | [completion](../py05_completion.md), `pyfoldable/dynamics/mechanism_transient.py`, `tests/ui/test_bound_mechanism_ui.py` |
 | Current | PY-06A/B1/C/D1: matched experiments, comparison service, motor correlation and mechanism observation/partition APIs | `pyfoldable/core/measurement_comparison.py`, `motor_rotor_correlation.py`, `mechanism_observation.py`; `pyfoldable/application/measurement_comparison.py` |
 | Current | GEOM-01–04: feasibility scan, explicit station import/edit, continuous retained-surface bounds, triangle refinement, finite/convex hardware and UI | [GEOM-02](../geom02_station_contract.md), [GEOM-03](../geom03_surface_clearance.md), [GEOM-04](../geom04_surface_hardware.md), `pyfoldable/application/surface_clearance.py`, `tests/geometry/` |
-| Partial | Candidate search cannot consume candidate-specific GEOM-04 clearance; surface/interblade constraints remain unknown, so no automatic promotion | `pyfoldable/application/geometry_search.py::run_geometry_search`, `active_design_search.py`; GEOM-04 contract final scope paragraph |
+| Partial | Default GEOM-01 surface gates stay unknown. Opt-in `geom01_negative_clearance_v1` may set either gate to False from accepted GEOM-04 witnesses; it cannot set True or select a candidate | `pyfoldable/application/geometry_clearance_policy.py`, `geometry_search.py`; [GEOM-01](../geom01_feasibility_plan.md) |
 | Partial | CFD/FEA/experiment UI inspects specific existing canonical contracts in session; not arbitrary ANSYS or raw experimental import, not evidence promotion | `pyfoldable/application/evidence_import.py::_CANONICAL_IDENTITIES`, `inspect_evidence_upload`; `tests/application/test_evidence_import.py` |
 | Partial | Full workspace coverage: Motor–Pervane, Doğrulama ve Kanıtlar, Raporlar are placeholder pages despite lower-layer APIs | `apps/pyfoldable_dashboard.py::main`, `_render_planned_page` |
 | Planned / evidence-dependent | PY-06D2 identifiable parameter fitting, E structural correlation, F consolidated comparison UI, physically supported Pareto recommendations | [PY-06 plan](../py06_calibration_uncertainty_plan.md), [Python roadmap](../python_research_execution_plan.md) |
@@ -133,6 +133,16 @@ a valid payload that exceeds 256 KiB fails closed without wiping the
 GEOM-01 audit. They do not assign True or False to
 the protected GEOM-01 constraints or set `physical_qualification`. See
 [GEOM-01](../geom01_feasibility_plan.md).
+
+**Subsequent update 2026-09-22:** evidence acquisition and the decision policy
+are separate. With no policy, the gates above stay `None`. Supplying
+`geom01_negative_clearance_v1` binds its declaration into the GEOM-01 request
+identity and may set `surface_path_clearance` or `interblade_clearance` to
+`False` only. `True` is not a v1 result. The policy does not rerun GEOM-04,
+does not mutate the attached report, and does not change generic grid
+selection. A `False` gate makes the existing grid mark that candidate
+infeasible; unresolved gates stay blocked. `physical_qualification` stays
+false and `full_propeller_clearance` stays null.
 
 **Proposed next bounded development slice, not implemented or newly authorized by
 this document:** a separately reviewed mapping from attached GEOM-04 evidence
