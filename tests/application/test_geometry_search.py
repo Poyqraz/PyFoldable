@@ -1206,3 +1206,68 @@ def test_empty_intervals_remain_valid_producer_budget_exhaustion(monkeypatch):
     assert _geom04(row)["execution_status"] == "completed"
     assert all(query["result"]["intervals"] == [] for query in _geom04(row)["report"]["queries"])
     _assert_protected_constraints_unknown(row, result)
+
+
+def _assert_aborts_not_failed_grid_row(prepared):
+    try:
+        artifact = run_geometry_search(prepared)
+    except SearchError:
+        return
+    document = json.loads(artifact.report_json)
+    row = document["candidates"][0]
+    pytest.fail(
+        "nested qualification forgery must abort before Evaluation; got "
+        f"all_evaluations_succeeded={document.get('all_evaluations_succeeded')} "
+        f"status={row.get('status')} constraints={row.get('constraints')} "
+        f"details={row.get('details')}"
+    )
+
+
+def test_nested_forged_qualification_aborts_before_failed_row(monkeypatch):
+    def mutate(report):
+        report["extra"] = {"physical_qualification": True}
+
+    monkeypatch.setattr(
+        "pyfoldable.application.surface_clearance.run_surface_clearance",
+        lambda request: _rehashed_artifact(request, mutate),
+    )
+    prepared = prepare_geometry_search(
+        draft(), hinge_radii_m=(.06,), stowed_angles_deg=(-10.,),
+        clearance_inputs=SurfaceClearanceInputs(end_angle_deg=-10.),
+    )
+    _assert_aborts_not_failed_grid_row(prepared)
+
+
+def test_deep_nested_forged_qualification_in_query_result_aborts(monkeypatch):
+    def mutate(report):
+        report["queries"][0]["result"]["extra"] = {"physical_qualification": True}
+
+    monkeypatch.setattr(
+        "pyfoldable.application.surface_clearance.run_surface_clearance",
+        lambda request: _rehashed_artifact(request, mutate),
+    )
+    prepared = prepare_geometry_search(
+        draft(), hinge_radii_m=(.06,), stowed_angles_deg=(-10.,),
+        clearance_inputs=SurfaceClearanceInputs(end_angle_deg=-10.),
+    )
+    _assert_aborts_not_failed_grid_row(prepared)
+
+
+def test_nested_false_qualification_attaches_unchanged(monkeypatch):
+    captured = {}
+
+    def factory(request):
+        artifact = _rehashed_artifact(
+            request, lambda report: report.__setitem__(
+                "extra", {"physical_qualification": False}))
+        captured["artifact"] = artifact
+        return artifact
+
+    prepared, _ = _bind_clearance(monkeypatch, factory)
+    result = json.loads(run_geometry_search(prepared).report_json)
+    row = result["candidates"][0]
+    attached = _geom04(row)["report"]
+    original = json.loads(captured["artifact"].report_json)
+    assert attached == original
+    assert attached["extra"]["physical_qualification"] is False
+    _assert_protected_constraints_unknown(row, result)
