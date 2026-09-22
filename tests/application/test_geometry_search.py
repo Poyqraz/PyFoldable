@@ -1039,3 +1039,177 @@ def test_details_serialization_error_aborts_rather_than_oversize(monkeypatch):
     monkeypatch.setattr(service, "_json", boom)
     prepared, _ = _bind_clearance(monkeypatch, _clearance_artifact(_separated_surface_queries()))
     _assert_search_aborts(prepared)
+
+
+def _rehashed_artifact(request, mutate, **fields):
+    artifact = _bound_report_artifact(request, **fields)
+    report = json.loads(artifact.report_json)
+    mutate(report)
+    text = json.dumps(report, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    return DesignAnalysisArtifact(
+        request.request_sha256, hashlib.sha256(text.encode()).hexdigest(), text,
+        "surface_clearance_screening.json")
+
+
+def _assert_prepare_aborts_without_failed_report(prepared):
+    try:
+        artifact = run_geometry_search(prepared)
+    except ValueError:
+        return
+    document = json.loads(artifact.report_json)
+    row = document["candidates"][0]
+    pytest.fail(
+        "candidate preparation failure must abort the search; got finite-grid "
+        f"report all_evaluations_succeeded={document.get('all_evaluations_succeeded')} "
+        f"status={row.get('status')} constraints={row.get('constraints')} "
+        f"details={row.get('details')}"
+    )
+
+
+def test_prepare_arithmetic_error_aborts_search_not_failed_row(monkeypatch):
+    from pyfoldable.application import surface_clearance as clearance
+
+    prepared = prepare_geometry_search(
+        draft(), hinge_radii_m=(.06,), stowed_angles_deg=(-10.,),
+        clearance_inputs=SurfaceClearanceInputs(end_angle_deg=-10.),
+    )
+
+    def boom(*args, **kwargs):
+        raise ZeroDivisionError("injected arithmetic failure from candidate preparation")
+
+    monkeypatch.setattr(clearance, "prepare_surface_clearance", boom)
+    _assert_prepare_aborts_without_failed_report(prepared)
+
+
+def test_prepare_typeerror_aborts_search(monkeypatch):
+    from pyfoldable.application import surface_clearance as clearance
+
+    prepared = prepare_geometry_search(
+        draft(), hinge_radii_m=(.06,), stowed_angles_deg=(-10.,),
+        clearance_inputs=SurfaceClearanceInputs(end_angle_deg=-10.),
+    )
+
+    def boom(*args, **kwargs):
+        raise TypeError("injected type error from candidate preparation")
+
+    monkeypatch.setattr(clearance, "prepare_surface_clearance", boom)
+    with pytest.raises(TypeError, match="injected type error from candidate preparation"):
+        run_geometry_search(prepared)
+
+
+def test_prepare_searcherror_aborts_search(monkeypatch):
+    from pyfoldable.application import surface_clearance as clearance
+
+    prepared = prepare_geometry_search(
+        draft(), hinge_radii_m=(.06,), stowed_angles_deg=(-10.,),
+        clearance_inputs=SurfaceClearanceInputs(end_angle_deg=-10.),
+    )
+
+    def boom(*args, **kwargs):
+        raise SearchError("injected search error from candidate preparation")
+
+    monkeypatch.setattr(clearance, "prepare_surface_clearance", boom)
+    _assert_search_aborts(prepared)
+
+
+def _schema_case_aborts(monkeypatch, mutate, **fields):
+    monkeypatch.setattr(
+        "pyfoldable.application.surface_clearance.run_surface_clearance",
+        lambda request: _rehashed_artifact(request, mutate, **fields),
+    )
+    prepared = prepare_geometry_search(
+        draft(), hinge_radii_m=(.06,), stowed_angles_deg=(-10.,),
+        clearance_inputs=SurfaceClearanceInputs(end_angle_deg=-10.),
+    )
+    _assert_search_aborts(prepared)
+
+
+def test_non_object_interval_aborts_search(monkeypatch):
+    _schema_case_aborts(
+        monkeypatch,
+        lambda report: report["queries"][0]["result"].__setitem__(
+            "intervals", ["not an interval"]),
+    )
+
+
+def test_invalid_interval_status_aborts_search(monkeypatch):
+    def mutate(report):
+        report["queries"][0]["result"]["intervals"][0]["status"] = "not-a-status"
+
+    _schema_case_aborts(monkeypatch, mutate)
+
+
+def test_non_numeric_interval_lower_bound_aborts_search(monkeypatch):
+    def mutate(report):
+        report["queries"][0]["result"]["intervals"][0]["lower_bound_m"] = "bad"
+
+    _schema_case_aborts(monkeypatch, mutate)
+
+
+def test_object_query_lower_bound_aborts_search(monkeypatch):
+    def mutate(report):
+        report["queries"][0]["result"]["lower_bound_m"] = {"nested": True}
+
+    _schema_case_aborts(monkeypatch, mutate)
+
+
+def test_missing_query_result_intervals_aborts_search(monkeypatch):
+    def mutate(report):
+        del report["queries"][0]["result"]["intervals"]
+
+    _schema_case_aborts(monkeypatch, mutate)
+
+
+def test_missing_query_result_reason_aborts_search(monkeypatch):
+    def mutate(report):
+        del report["queries"][0]["result"]["reason"]
+
+    _schema_case_aborts(monkeypatch, mutate)
+
+
+def test_oversized_malformed_interval_aborts_as_invalid_not_oversize(monkeypatch):
+    def malformed_oversize(request):
+        def mutate(report):
+            report["queries"][0]["result"]["intervals"][0]["status"] = "not-a-status"
+
+        return _rehashed_artifact(request, mutate, padding="x" * (300 * 1024))
+
+    complete = _complete_span_draft()
+    monkeypatch.setattr(
+        "pyfoldable.application.surface_clearance.run_surface_clearance",
+        malformed_oversize,
+    )
+    prepared = prepare_geometry_search(
+        complete, hinge_radii_m=(.06,), stowed_angles_deg=(-150.,),
+        clearance_inputs=SurfaceClearanceInputs(end_angle_deg=-150.),
+    )
+    try:
+        artifact = run_geometry_search(prepared)
+    except ValueError:
+        return
+    document = json.loads(artifact.report_json)
+    namespace = document["candidates"][0]["details"]["geom04_clearance"]
+    pytest.fail(
+        "malformed oversized evidence must abort as invalid; got "
+        f"execution_status={namespace.get('execution_status')} "
+        f"all_evaluations_succeeded={document.get('all_evaluations_succeeded')}"
+    )
+
+
+def test_empty_intervals_remain_valid_producer_budget_exhaustion(monkeypatch):
+    def exhausted(request):
+        queries = [
+            _query("hub", "unknown", node_comparisons=1, intervals=[]),
+            _query("own_root_tip", "unknown", intervals=[]),
+            _query("interblade", "unknown", intervals=[]),
+        ]
+        return _bound_report_artifact(
+            request, queries=queries, modeled_surface_status="unknown",
+            classification="blocked")
+
+    prepared, _ = _bind_clearance(monkeypatch, exhausted)
+    result = json.loads(run_geometry_search(prepared).report_json)
+    row = result["candidates"][0]
+    assert _geom04(row)["execution_status"] == "completed"
+    assert all(query["result"]["intervals"] == [] for query in _geom04(row)["report"]["queries"])
+    _assert_protected_constraints_unknown(row, result)
