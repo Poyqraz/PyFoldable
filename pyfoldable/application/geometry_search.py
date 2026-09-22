@@ -337,10 +337,17 @@ def _assert_clearance_report_request(report, clearance_request, *, hinge_radius_
 
 
 def _assert_qualification_invariants(report):
-    if report.get("physical_qualification") is not False:
-        raise SearchError("Candidate clearance report violates qualification invariants.")
     if report.get("full_propeller_clearance") is not None:
         raise SearchError("Candidate clearance report violates qualification invariants.")
+    pending = [report]
+    while pending:
+        node = pending.pop()
+        if isinstance(node, dict):
+            if "physical_qualification" in node and node["physical_qualification"] is not False:
+                raise SearchError("Candidate clearance report violates qualification invariants.")
+            pending.extend(node.values())
+        elif isinstance(node, list):
+            pending.extend(node)
 
 
 def _query_usage(result, key):
