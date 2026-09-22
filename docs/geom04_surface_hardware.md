@@ -141,7 +141,10 @@ exact-head CI and merged-tree comparison are integration gates.
 GEOM-01 can attach these scoped reports to the candidate whose draft and
 request were rebuilt, after cryptographic request/report identity checks,
 strict finite JSON, report schema/content, qualification invariants and
-query-level accounting. Invalid qualification, schema or accounting aborts;
+query-level accounting. Query and interval fields are checked against the
+GEOM-04 producer contract (`ClearanceReport`, `ClearanceInterval`, hardware
+`_row`); malformed interval evidence aborts before oversize classification.
+Invalid qualification, schema or accounting aborts;
 a valid report is attached unchanged. Each search candidate receives the
 configured GEOM-04 budgets unchanged; the search records aggregate ceilings
 of `N ×` those limits. The complete report is retained under

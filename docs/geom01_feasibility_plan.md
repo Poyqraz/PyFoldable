@@ -68,8 +68,14 @@ report is the decoded artifact, never rewritten. Malformed JSON, NaN or
 Infinity, schema errors, accounting contradictions and programming errors
 abort the search. Candidate-domain prepare failures raise
 `SurfaceClearanceValidationError` and become bounded
-`candidate_validation_failed`; other `ValueError` values from preparation
-or execution abort. The complete GEOM-04 report is retained under
+`candidate_validation_failed`; other programming failures from preparation
+or execution abort, including `ValueError`, `TypeError`, `SearchError` and
+`ArithmeticError` (the last is wrapped as `SearchError` at the prepare
+boundary so generic grid search cannot record a failed row). Query and
+interval objects must match the GEOM-04 producer fields
+(`ClearanceReport` / `ClearanceInterval` / hardware `_row`); missing
+`intervals`/`reason`, non-object intervals or non-numeric bounds abort
+before size classification. The complete GEOM-04 report is retained under
 `details.geom04_clearance` (execution status, candidate/request identity,
 artifact hashes, full report or an explicit failure reason). If a valid
 payload cannot fit the existing 256 KiB search-details snapshot, only the

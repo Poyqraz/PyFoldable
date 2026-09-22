@@ -1057,21 +1057,6 @@ def _rehashed_artifact(request, mutate, **fields):
         "surface_clearance_screening.json")
 
 
-def _assert_prepare_aborts_without_failed_report(prepared):
-    try:
-        artifact = run_geometry_search(prepared)
-    except ValueError:
-        return
-    document = json.loads(artifact.report_json)
-    row = document["candidates"][0]
-    pytest.fail(
-        "candidate preparation failure must abort the search; got finite-grid "
-        f"report all_evaluations_succeeded={document.get('all_evaluations_succeeded')} "
-        f"status={row.get('status')} constraints={row.get('constraints')} "
-        f"details={row.get('details')}"
-    )
-
-
 def test_prepare_arithmetic_error_aborts_search_not_failed_row(monkeypatch):
     from pyfoldable.application import surface_clearance as clearance
 

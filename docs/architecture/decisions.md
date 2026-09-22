@@ -62,6 +62,9 @@ bind candidate-specific GEOM-04 evidence without changing
 `surface_path_clearance` or `interblade_clearance`; those gates stay unknown.
 Candidate-bound GEOM-04 evidence uses per-candidate budgets, identity-bound
 artifacts and a namespaced complete report; it does not change those gates.
+Preparation `ArithmeticError` aborts the search rather than becoming a failed
+grid row. Attached evidence must match the GEOM-04 query/interval producer
+fields; malformed reports abort before oversize classification.
 Reverse solid-query witnesses must preserve caller body order (PR #63 regression).
 
 Evidence: `pyfoldable/application/blade_stations.py`, `geometry_search.py`,

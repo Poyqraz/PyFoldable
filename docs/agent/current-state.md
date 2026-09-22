@@ -120,7 +120,11 @@ give each candidate its configured GEOM-04 limits, and record `N ×` aggregate
 ceilings. Completed artifacts are identity-bound or the search aborts.
 Only intentional `SurfaceClearanceValidationError` from candidate prepare
 becomes bounded `candidate_validation_failed`; other programming
-`ValueError` values abort. Valid reports are attached unchanged.
+`ValueError`, `TypeError`, `SearchError` and `ArithmeticError` values abort
+(the prepare `ArithmeticError` is wrapped as `SearchError` so it is not a
+failed grid row). Valid reports are attached unchanged. Query/interval
+acceptance follows the GEOM-04 producer contract; malformed interval
+evidence aborts before oversize classification.
 `physical_qualification=true` or `full_propeller_clearance` other than
 null, non-finite JSON, schema errors and query-level accounting
 contradictions abort. Evidence is the complete namespaced GEOM-04 report;
