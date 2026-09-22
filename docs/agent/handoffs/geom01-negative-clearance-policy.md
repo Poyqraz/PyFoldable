@@ -14,8 +14,21 @@ GitHub `origin/main` at implementation start:
 Branch:
 `cursor/geom01-negative-clearance-policy-36c6`
 
+Tested commits:
+- RED `68e4c8c` (module absent; integration import failed)
+- GREEN policy `39601e7`
+- Docs `e9f0ff1` (this handoff update follows that commit)
+
+Local verification on GREEN:
+- policy + geometry-search: 124 passed
+- surface/hardware: 56 passed
+- full suite: 1568 passed, 9 skipped, 37 subtests
+- `compileall` and `git diff --check` OK (unstaged CSV CRLF warning only)
+- Independent automated review: APPROVE
+- `design_search.py` and GEOM-04 numerical kernels unchanged
+
 PR:
-Do not merge. Record the PR URL after opening.
+Do not merge.
 
 Completed:
 - `NegativeClearancePolicy` / `decide_negative_clearance` in
