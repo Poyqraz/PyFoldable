@@ -176,6 +176,22 @@ def _finite_number(value):
     return value
 
 
+def _optional_finite_number(value):
+    if value is None:
+        return None
+    return _finite_number(value)
+
+
+def _optional_point(value):
+    if value is None:
+        return None
+    if not isinstance(value, (list, tuple)) or len(value) != 3:
+        _schema_error()
+    for coordinate in value:
+        _finite_number(coordinate)
+    return value
+
+
 def _assert_finite_json(value):
     pending = [value]
     while pending:
@@ -193,25 +209,67 @@ def _assert_finite_json(value):
             _schema_error()
 
 
+def _assert_clearance_interval(interval):
+    if not isinstance(interval, dict):
+        _schema_error()
+    required = (
+        "angle_min_rad", "angle_max_rad", "status", "lower_bound_m",
+        "witness_clearance_m", "witness_angle_rad", "method",
+        "contact_status", "point_a", "point_b",
+    )
+    if any(key not in interval for key in required):
+        _schema_error()
+    _finite_number(interval["angle_min_rad"])
+    _finite_number(interval["angle_max_rad"])
+    if interval["status"] not in _PAIR_STATUSES:
+        _schema_error()
+    _optional_finite_number(interval["lower_bound_m"])
+    _optional_finite_number(interval["witness_clearance_m"])
+    _optional_finite_number(interval["witness_angle_rad"])
+    if not isinstance(interval["method"], str):
+        _schema_error()
+    if not isinstance(interval["contact_status"], str):
+        _schema_error()
+    _optional_point(interval["point_a"])
+    _optional_point(interval["point_b"])
+
+
 def _assert_clearance_query(query):
-    if not isinstance(query, dict) or not isinstance(query.get("kind"), str):
+    if not isinstance(query, dict):
+        _schema_error()
+    kind = query.get("kind")
+    if kind not in _SURFACE_QUERY_KINDS and kind not in _HARDWARE_QUERY_KINDS:
         _schema_error()
     if not isinstance(query.get("a"), str) or not isinstance(query.get("b"), str):
         _schema_error()
     result = query.get("result")
-    if not isinstance(result, dict) or result.get("status") not in _PAIR_STATUSES:
+    if not isinstance(result, dict):
         _schema_error()
-    if "intervals" in result and not isinstance(result["intervals"], list):
+    required = (
+        "status", "lower_bound_m", "witness_clearance_m", "intervals",
+        "reason", "contact_status",
+    )
+    if any(key not in result for key in required):
         _schema_error()
-    kind = query["kind"]
+    if result["status"] not in _PAIR_STATUSES:
+        _schema_error()
+    _optional_finite_number(result["lower_bound_m"])
+    _optional_finite_number(result["witness_clearance_m"])
+    if not isinstance(result["reason"], str):
+        _schema_error()
+    if not isinstance(result["contact_status"], str):
+        _schema_error()
+    intervals = result["intervals"]
+    if not isinstance(intervals, list):
+        _schema_error()
+    for interval in intervals:
+        _assert_clearance_interval(interval)
     if kind in _SURFACE_QUERY_KINDS:
         if "node_comparisons" not in result or "feature_tests" not in result:
             _schema_error()
-    elif kind in _HARDWARE_QUERY_KINDS:
+    else:
         if "hardware_queries" not in result:
             _schema_error()
-    else:
-        _schema_error()
 
 
 def _assert_clearance_report_schema(report):
@@ -515,6 +573,8 @@ def run_geometry_search(request: GeometrySearchRequest) -> analysis.DesignAnalys
                     hinge_radius_m=h, end_angle_deg=angle,
                     reason="unknown_candidate_clearance_unresolved",
                     error=str(exc)[:1024])
+            except ArithmeticError as exc:
+                raise SearchError("Candidate clearance preparation failed.") from exc
             else:
                 try:
                     artifact = clearance.run_surface_clearance(clearance_request)

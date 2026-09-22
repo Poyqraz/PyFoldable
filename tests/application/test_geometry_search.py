@@ -90,7 +90,13 @@ def _query(kind, status, **fields):
         "witness_clearance_m": 0.0 if status == "violation" else None,
         "contact_status": "contact" if status == "violation" else "unknown",
         "reason": status,
-        "intervals": [{"status": status, "lower_bound_m": None, "witness_angle_rad": 0.0 if status == "violation" else None}],
+        "intervals": [{
+            "angle_min_rad": 0.0, "angle_max_rad": 0.0, "status": status,
+            "lower_bound_m": None, "witness_clearance_m": None,
+            "witness_angle_rad": 0.0 if status == "violation" else None,
+            "method": "aabb_bound", "contact_status": "unknown",
+            "point_a": None, "point_b": None,
+        }],
     }
     result.update(fields)
     return {"kind": kind, "a": "a", "b": "b", "result": result}
@@ -1078,7 +1084,9 @@ def test_prepare_arithmetic_error_aborts_search_not_failed_row(monkeypatch):
         raise ZeroDivisionError("injected arithmetic failure from candidate preparation")
 
     monkeypatch.setattr(clearance, "prepare_surface_clearance", boom)
-    _assert_prepare_aborts_without_failed_report(prepared)
+    with pytest.raises(SearchError, match="Candidate clearance preparation failed.") as caught:
+        run_geometry_search(prepared)
+    assert isinstance(caught.value.__cause__, ZeroDivisionError)
 
 
 def test_prepare_typeerror_aborts_search(monkeypatch):
