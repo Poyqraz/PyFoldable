@@ -111,14 +111,35 @@ history. The current roadmap and feature contracts have authority over undated
 - Full numerical solver qualification, input-rights provenance and cache/geometry
   validation remain review-sensitive. No production hosting/security policy exists.
 
+**Subsequent update 2026-09-20:** the application service can bind
+candidate-specific GEOM-04 inputs as **evidence only**. The 2026-09-17 Partial
+row still describes the GEOM-01 gates: `surface_path_clearance` and
+`interblade_clearance` remain unknown. Bound runs rebuild each candidate
+draft/request, validate exclusions/hardware against that candidate hinge,
+give each candidate its configured GEOM-04 limits, and record `N ×` aggregate
+ceilings. Completed artifacts are identity-bound or the search aborts.
+Only intentional `SurfaceClearanceValidationError` from candidate prepare
+becomes bounded `candidate_validation_failed`; other programming
+`ValueError`, `TypeError`, `SearchError` and `ArithmeticError` values abort
+(the prepare `ArithmeticError` is wrapped as `SearchError` so it is not a
+failed grid row). Valid reports are attached unchanged. Query/interval
+acceptance follows the GEOM-04 producer contract; malformed interval
+evidence aborts before oversize classification.
+`physical_qualification=true` anywhere in the accepted report tree, or
+`full_propeller_clearance` other than null, aborts before generic snapshot
+handling; nested `physical_qualification=False` remains valid. Non-finite JSON, schema errors and query-level accounting
+contradictions abort. Evidence is the complete namespaced GEOM-04 report;
+a valid payload that exceeds 256 KiB fails closed without wiping the
+GEOM-01 audit. They do not assign True or False to
+the protected GEOM-01 constraints or set `physical_qualification`. See
+[GEOM-01](../geom01_feasibility_plan.md).
+
 **Proposed next bounded development slice, not implemented or newly authorized by
-this document:** connect candidate-specific scoped clearance to geometry search.
-Rebuild each candidate's draft and clearance request; explicitly validate hardware
-bindings against its hinge/frame; meter aggregate work; retain pair/interval/source
-evidence and missing/excluded scope. Never reuse an active-design clearance result
-for different geometry or imply full-propeller/physical qualification. Design the
-contract and RED tests before implementation. PY-06D2 is not the automatic next
-task without identifiable measured data.
+this document:** a separately reviewed mapping from attached GEOM-04 evidence
+into GEOM-01 selection constraints, or optional dashboard opt-in to bind
+already-scoped GEOM-04 inputs on the unbound UI path. Neither is authorized by
+the evidence-only attachment. PY-06D2 is not the automatic next task without
+identifiable measured data.
 
 Unresolved inputs: engineers' CAD/material/ANSYS/raw-measurement packages and their
 rights/quality; representative polar validation; a separately agreed hosting model

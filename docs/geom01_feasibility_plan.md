@@ -55,8 +55,44 @@ unknown. Chord-inclusive endpoint mesh diameter is reported separately from
 centreline diameter. Missing mesh coverage is recorded without inventing a mesh.
 
 All rows retain failed/unknown constraints. Swept-surface and interblade
-constraints are always unknown, so `best_candidate` is absent even if all other
-necessary conditions pass. The endpoint mesh is a 2.5D preview, not a CAD solid.
+constraints remain unknown (`None`) on every GEOM-01 row, including when a
+search binds candidate-specific GEOM-04 inputs. A bound run rebuilds each
+candidate draft and clearance request, gives every candidate its configured
+node/feature/hardware limits, and records aggregate ceilings of
+`N ×` those limits. It never reuses another geometry's report. A completed
+artifact is attached only after request/report SHA, strict finite JSON,
+report schema/content, request-context identity, qualification invariants
+and query-level accounting checks. `physical_qualification` other than
+literal false anywhere in the accepted report tree, or
+`full_propeller_clearance` other than null, aborts before attachment so
+generic snapshot handling cannot turn the forgery into a failed grid row;
+the attached report is the decoded artifact, never rewritten. Malformed JSON, NaN or
+Infinity, schema errors, accounting contradictions and programming errors
+abort the search. Candidate-domain prepare failures raise
+`SurfaceClearanceValidationError` and become bounded
+`candidate_validation_failed`; other programming failures from preparation
+or execution abort, including `ValueError`, `TypeError`, `SearchError` and
+`ArithmeticError` (the last is wrapped as `SearchError` at the prepare
+boundary so generic grid search cannot record a failed row). Query and
+interval objects must match the GEOM-04 producer fields
+(`ClearanceReport` / `ClearanceInterval` / hardware `_row`); missing
+`intervals`/`reason`, non-object intervals or non-numeric bounds abort
+before size classification. The complete GEOM-04 report is retained under
+`details.geom04_clearance` (execution status, candidate/request identity,
+artifact hashes, full report or an explicit failure reason). If a valid
+payload cannot fit the existing 256 KiB search-details snapshot, only the
+evidence attachment is replaced with a bounded oversize descriptor; the
+GEOM-01 audit, objective and constraints remain. Serialization or schema
+failure is not treated as oversize. GEOM-04 pair status,
+witnesses, bounds, intervals, exclusions and hardware provenance stay in
+that namespace under a separate classification (`scoped_geom04_violation`,
+`scoped_geom04_separated`, `unknown_scoped_geom04`). That label does not
+change
+`surface_path_clearance` or `interblade_clearance`. `physical_qualification`
+stays false and `full_propeller_clearance` stays null. `best_candidate` remains
+absent unless every required constraint is True; with the two surface gates
+unknown, selection stays blocked. The endpoint mesh is a 2.5D preview, not a
+CAD solid.
 
 ## Run and verify
 
@@ -80,12 +116,11 @@ sampled paths. Full regression, exact-head CI and final GitHub review precede me
 
 ## Next bounded work
 
-GEOM-02 now accepts explicit, source-bound station definitions in the active draft
-and reports complete/partial span through the [station editor](geom02_station_contract.md).
-It does not extend canonical root/tip sections or claim CAD collision freedom.
-[GEOM-03](geom03_surface_clearance.md) now defines excluded attachment bands and
-bounds retained surface/interblade clearance along folding motion; unresolved
-intervals remain unknown, and results are not promoted into other grid candidates.
-GEOM-04 will refine unresolved triangle-level distances and explicit hardware. The raw
-literature-data acquisition/observable adapter remains a parallel task; PY-06D2
-fitting still requires suitable independent measurements and identifiability.
+GEOM-02–04 remain the station, retained-surface and hardware screening path.
+This increment only attaches already-scoped GEOM-04 evidence to the GEOM-01
+candidate that produced it. It does not change GEOM-01 feasibility gates.
+A later reviewed slice would be required before any mapping into
+`surface_path_clearance` / `interblade_clearance`. The dashboard search action
+still runs unbound unless a later UI slice opts in. The raw literature-data
+acquisition/observable adapter remains a parallel task; PY-06D2 fitting still
+requires suitable independent measurements and identifiability.

@@ -29,6 +29,10 @@ from .hardware_contract import body_to_solid
 from pyfoldable.geometry.hardware import CylinderEnvelope, transformed_solid
 
 
+class SurfaceClearanceValidationError(ValueError):
+    """Intentional GEOM-04 input or candidate-domain validation failure."""
+
+
 @dataclass(frozen=True)
 class SurfaceClearanceInputs:
     end_angle_deg: float = -180.
@@ -46,21 +50,21 @@ class SurfaceClearanceInputs:
         for name in ("end_angle_deg", "required_clearance_m", "root_attachment_m", "hinge_attachment_m"):
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
-                raise ValueError(f"{name} must be a finite number.")
+                raise SurfaceClearanceValidationError(f"{name} must be a finite number.")
         if not -180 <= self.end_angle_deg <= 0:
-            raise ValueError("End angle must lie between -180 and zero degrees.")
+            raise SurfaceClearanceValidationError("End angle must lie between -180 and zero degrees.")
         if not 0 <= self.required_clearance_m <= .1 or min(self.root_attachment_m, self.hinge_attachment_m) < 0:
-            raise ValueError("Clearance must be 0–0.1 m and contact widths nonnegative.")
+            raise SurfaceClearanceValidationError("Clearance must be 0–0.1 m and contact widths nonnegative.")
         if not isinstance(self.contact_source, str) or len(self.contact_source) > 2048:
-            raise ValueError("Contact source must be bounded text.")
+            raise SurfaceClearanceValidationError("Contact source must be bounded text.")
         self.contact_source.encode("utf-8")
         if (self.root_attachment_m or self.hinge_attachment_m) and not self.contact_source.strip():
-            raise ValueError("Excluded contact regions require an explicit source/revision reference.")
+            raise SurfaceClearanceValidationError("Excluded contact regions require an explicit source/revision reference.")
         for name, lo, hi in (("max_depth", 0, 8), ("max_intervals", 1, 255),
                              ("max_node_comparisons", 1, 200000),
                              ("max_feature_tests", 0, 200000), ("max_hardware_queries", 0, 10000)):
             if type(getattr(self, name)) is not int or not lo <= getattr(self, name) <= hi:
-                raise ValueError(f"{name} must be an integer within [{lo}, {hi}].")
+                raise SurfaceClearanceValidationError(f"{name} must be an integer within [{lo}, {hi}].")
 
 
 @dataclass(frozen=True)
@@ -81,34 +85,34 @@ def prepare_surface_clearance(draft: DesignDraftArtifact, inputs: SurfaceClearan
     blade, hinge = model.blade, model.hinge
     radius = blade.diameter_m / 2
     if inputs.end_angle_deg < math.degrees(hinge.stowed_angle_rad):
-        raise ValueError("Proposed path exceeds the declared hinge travel.")
+        raise SurfaceClearanceValidationError("Proposed path exceeds the declared hinge travel.")
     if inputs.root_attachment_m > (hinge.radius_m - blade.hub_radius_m) / 4:
-        raise ValueError("Root exclusion cannot exceed a quarter of the root span.")
+        raise SurfaceClearanceValidationError("Root exclusion cannot exceed a quarter of the root span.")
     if inputs.hinge_attachment_m > min(hinge.radius_m - blade.hub_radius_m, radius - hinge.radius_m) / 4:
-        raise ValueError("Hinge exclusion cannot exceed a quarter of either segment span.")
+        raise SurfaceClearanceValidationError("Hinge exclusion cannot exceed a quarter of either segment span.")
     if not 0 < blade.diameter_m <= 2 or blade.blade_count > 8:
-        raise ValueError("Surface screening supports diameters up to 2 m and at most eight blades.")
+        raise SurfaceClearanceValidationError("Surface screening supports diameters up to 2 m and at most eight blades.")
     # A clipped triangle generates at most three triangles. Bound before meshing.
     triangle_bound = 6 * (len(blade.stations) + 1) * len(foil.coordinates) * blade.blade_count
     if triangle_bound > 12000:
-        raise ValueError("Surface screening triangle budget exceeded (12000).")
+        raise SurfaceClearanceValidationError("Surface screening triangle budget exceeded (12000).")
     if any(abs(s.chord_m) > 2 for s in blade.stations):
-        raise ValueError("Surface screening supports section chords up to 2 m.")
+        raise SurfaceClearanceValidationError("Surface screening supports section chords up to 2 m.")
     hardware = load_hardware_json(hardware_json) if hardware_json is not None else None
     finite_hubs = []
     if hardware is not None:
         for body in hardware.bodies:
             if body.binding != 'hub' and int(body.binding.split('_')[1]) > blade.blade_count:
-                raise ValueError('Hardware binding refers to a blade outside the active design.')
+                raise SurfaceClearanceValidationError('Hardware binding refers to a blade outside the active design.')
             if isinstance(body.solid, CylinderEnvelope):
                 finite_hubs.append(body)
                 if abs(body.solid.radius_m - blade.hub_radius_m) > 1e-12:
-                    raise ValueError('Declared finite hub radius must match the active design hub radius.')
+                    raise SurfaceClearanceValidationError('Declared finite hub radius must match the active design hub radius.')
                 r,t=body.rotation,body.translation_m
                 if max(abs(t[0]),abs(t[1]),abs(r[0][2]),abs(r[1][2]),abs(r[2][0]),abs(r[2][1])) > 1e-12:
-                    raise ValueError('Finite hub axis must coincide with the active rotor z axis.')
+                    raise SurfaceClearanceValidationError('Finite hub axis must coincide with the active rotor z axis.')
         if len(finite_hubs)>1:
-            raise ValueError('At most one declared finite hub is supported.')
+            raise SurfaceClearanceValidationError('At most one declared finite hub is supported.')
     root = Path(__file__).parents[1]
     paths = ("application/surface_clearance.py", "geometry/surface_clearance.py", "geometry/triangle_distance.py",
              "application/hardware_contract.py", "application/hardware_clearance.py", "geometry/hardware.py",
