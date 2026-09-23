@@ -19,6 +19,9 @@ from .design_draft import DesignDraftArtifact
 from .design_search import (
     Evaluation, GridSearchPlan, SearchAxis, SearchError, _json, _sha, run_grid_search,
 )
+from .geometry_clearance_policy import (
+    ClearancePolicyError, NegativeClearancePolicy, decide_negative_clearance,
+)
 from .hardware_contract import load_hardware_json
 
 _CONSTRAINTS = ("centerline_target", "centerline_path_clearance", "station_span_complete",
@@ -30,6 +33,7 @@ _CLEARANCE_SOURCES = (
     "application/hardware_clearance.py", "geometry/hardware.py",
 )
 _GEOM01_UNKNOWN = "unknown_no_swept_surface_collision_model"
+_POLICY_SURFACE_FAILURE = "negative_clearance_policy_relevant_violation"
 _SEARCH_DETAILS_BUDGET = 256 * 1024
 _PAIR_STATUSES = frozenset({"violation", "unknown", "separated"})
 _CLASSIFICATIONS = frozenset({"failed", "blocked", "screening-only"})
@@ -56,6 +60,7 @@ class GeometrySearchRequest:
     context_json: str
     clearance_inputs: object | None = None
     hardware_json: bytes | None = None
+    clearance_policy: NegativeClearancePolicy | None = None
 
 
 def _clearance_module():
@@ -391,6 +396,53 @@ def _assert_candidate_accounting(report, inputs):
             raise SearchError("Candidate clearance accounting exceeds configured ceilings.")
 
 
+def _policy_gate(decision):
+    return {
+        "value": decision.value,
+        "reason": decision.reason,
+        "query_index": decision.query_index,
+        "interval_index": decision.interval_index,
+    }
+
+
+def _record_negative_policy(policy, details, constraints, evidence, report):
+    """Apply v1 only to the evidence state that will remain in the details."""
+    if policy is None:
+        return
+    if evidence is None:
+        status = "no_evidence"
+        accepted = None
+    elif evidence["execution_status"] == "completed":
+        status = "completed"
+        accepted = report
+    elif evidence["execution_status"] == "candidate_validation_failed":
+        status = "candidate_validation_failed"
+        accepted = None
+    elif evidence["execution_status"] == "evidence_attachment_exceeds_search_details_budget":
+        status = "evidence_unavailable_oversize"
+        accepted = None
+    else:
+        raise SearchError("Candidate clearance policy rejected the evidence state.")
+    try:
+        decision = decide_negative_clearance(policy, accepted, evidence_status=status)
+    except ClearancePolicyError as exc:
+        raise SearchError("Candidate clearance policy rejected the evidence.") from exc
+    if (decision.surface_path_clearance.value is True
+            or decision.interblade_clearance.value is True):
+        raise SearchError("Negative clearance policy cannot promote a gate to true.")
+    details["geom04_negative_clearance_policy"] = {
+        "policy_id": decision.policy_id,
+        "surface_path_clearance": _policy_gate(decision.surface_path_clearance),
+        "interblade_clearance": _policy_gate(decision.interblade_clearance),
+    }
+    constraints["surface_path_clearance"] = decision.surface_path_clearance.value
+    constraints["interblade_clearance"] = decision.interblade_clearance.value
+    if constraints["surface_path_clearance"] is False:
+        details["surface_path_clearance_status"] = _POLICY_SURFACE_FAILURE
+    else:
+        details["surface_path_clearance_status"] = _GEOM01_UNKNOWN
+
+
 def _accept_bound_clearance_report(artifact, clearance_request, inputs, *, hinge_radius_m, end_angle_deg):
     """Identity, digest, schema, qualification and accounting, without mutating the report."""
     if artifact.request_sha256 != clearance_request.request_sha256:
@@ -437,6 +489,7 @@ def prepare_geometry_search(
     draft: DesignDraftArtifact, *, hinge_radii_m: tuple[float, ...],
     stowed_angles_deg: tuple[float, ...], max_evaluations: int = 25,
     clearance_inputs=None, hardware_json: bytes | None = None,
+    clearance_policy: NegativeClearancePolicy | None = None,
 ) -> GeometrySearchRequest:
     """Validate budgets and source identity without generating candidate meshes."""
     model, target, foil = _inputs(draft)
@@ -472,7 +525,11 @@ def prepare_geometry_search(
             "full_propeller_clearance": None,
             "reuse_policy": "rebuild_draft_and_request_per_candidate_never_reuse_foreign_geometry",
             "end_angle_policy": "candidate_stowed_angle_within_declared_travel",
-            "selection_effect": "evidence_only_does_not_alter_geom01_constraints",
+            "selection_effect": (
+                "negative_policy_may_set_clearance_constraints_false_never_true"
+                if isinstance(clearance_policy, NegativeClearancePolicy) and clearance_policy.enabled
+                else "evidence_only_does_not_alter_geom01_constraints"
+            ),
             "budget_policy": "per_candidate_configured_limits_not_shared_grid_remainder",
             "per_candidate_max_node_comparisons": clearance_inputs.max_node_comparisons,
             "per_candidate_max_feature_tests": clearance_inputs.max_feature_tests,
@@ -487,6 +544,10 @@ def prepare_geometry_search(
                "visualization/propeller_25d.py", "core/airfoil.py", "core/models.py", "core/config.py", "core/units.py")
     if binding is not None:
         sources += _CLEARANCE_SOURCES
+    if clearance_policy is not None:
+        if not isinstance(clearance_policy, NegativeClearancePolicy):
+            raise SearchError("Expected an explicit negative-clearance policy.")
+        sources += ("application/geometry_clearance_policy.py",)
     context = {
         "schema_version": 1, "classification": "geometry_feasibility_screening_only",
         "base_draft_toml": draft.toml, "base_draft_sha256": draft.draft_sha256,
@@ -504,15 +565,19 @@ def prepare_geometry_search(
     }
     if binding is not None:
         context["candidate_clearance"] = binding
+    if clearance_policy is not None:
+        context["negative_clearance_policy"] = clearance_policy.declaration()
     text = _json(context)
-    return GeometrySearchRequest(draft, plan, _sha(text), text, clearance_inputs, hardware_json)
+    return GeometrySearchRequest(
+        draft, plan, _sha(text), text, clearance_inputs, hardware_json, clearance_policy)
 
 
 def run_geometry_search(request: GeometrySearchRequest) -> analysis.DesignAnalysisArtifact:
     """Compare proposed hinge/stowed endpoints; unknown surface constraints block selection.
 
-    Optional GEOM-04 binding attaches candidate-specific evidence only. It does
-    not assign True or False to surface_path_clearance or interblade_clearance.
+    Optional GEOM-04 binding attaches candidate-specific evidence only. An
+    explicit negative-clearance policy may then set either surface gate to
+    False, or leave it None. This policy never sets either gate to True.
     """
     if not isinstance(request, GeometrySearchRequest) or not isinstance(request.plan, GridSearchPlan):
         raise SearchError("Expected a prepared geometry grid.")
@@ -521,7 +586,8 @@ def run_geometry_search(request: GeometrySearchRequest) -> analysis.DesignAnalys
         raise SearchError("Geometry grid axes do not match the prepared contract.")
     fresh = prepare_geometry_search(request.draft, hinge_radii_m=axes["hinge_radius_m"],
         stowed_angles_deg=axes["stowed_angle_deg"], max_evaluations=request.plan.max_evaluations,
-        clearance_inputs=request.clearance_inputs, hardware_json=request.hardware_json)
+        clearance_inputs=request.clearance_inputs, hardware_json=request.hardware_json,
+        clearance_policy=request.clearance_policy)
     if fresh != request:
         raise SearchError("Geometry request identity changed.")
     model, target, foil = _inputs(request.draft)
@@ -568,7 +634,7 @@ def run_geometry_search(request: GeometrySearchRequest) -> analysis.DesignAnalys
         if clearance is not None:
             candidate_inputs = replace(request.clearance_inputs, end_angle_deg=angle)
             candidate_draft = _draft_with_hinge_radius(request.draft, h)
-            clearance_request = artifact = None
+            clearance_request = artifact = report = None
             try:
                 # Narrow candidate-validation boundary: exclusions/hardware vs this hinge.
                 clearance_request = clearance.prepare_surface_clearance(
@@ -595,12 +661,18 @@ def run_geometry_search(request: GeometrySearchRequest) -> analysis.DesignAnalys
                     hinge_radius_m=h, end_angle_deg=angle,
                     clearance_request=clearance_request, artifact=artifact, report=report)
             details["geom04_clearance"] = evidence
+            _record_negative_policy(request.clearance_policy, details, constraints, evidence, report)
             if _details_size(details) > _SEARCH_DETAILS_BUDGET:
                 details["geom04_clearance"] = _geom04_namespace(
                     execution_status="evidence_attachment_exceeds_search_details_budget",
                     hinge_radius_m=h, end_angle_deg=angle,
                     reason="complete_geom04_report_exceeds_existing_256_kib_search_details_snapshot",
                     clearance_request=clearance_request, artifact=artifact)
+                _record_negative_policy(
+                    request.clearance_policy, details, constraints,
+                    details["geom04_clearance"], None)
+        elif request.clearance_policy is not None:
+            _record_negative_policy(request.clearance_policy, details, constraints, None, None)
         return Evaluation(audit.centerline_envelope_diameter_m, constraints, details)
 
     return run_grid_search(request.plan, evaluate, evaluator_identity={

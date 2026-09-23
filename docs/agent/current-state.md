@@ -36,7 +36,7 @@ ranges: [pyproject.toml](../../pyproject.toml); UI routing:
 | Current | PY-05 prescribed-drive transient, source-bound geometry/mass binding and explicit-run UI | [completion](../py05_completion.md), `pyfoldable/dynamics/mechanism_transient.py`, `tests/ui/test_bound_mechanism_ui.py` |
 | Current | PY-06A/B1/C/D1: matched experiments, comparison service, motor correlation and mechanism observation/partition APIs | `pyfoldable/core/measurement_comparison.py`, `motor_rotor_correlation.py`, `mechanism_observation.py`; `pyfoldable/application/measurement_comparison.py` |
 | Current | GEOM-01–04: feasibility scan, explicit station import/edit, continuous retained-surface bounds, triangle refinement, finite/convex hardware and UI | [GEOM-02](../geom02_station_contract.md), [GEOM-03](../geom03_surface_clearance.md), [GEOM-04](../geom04_surface_hardware.md), `pyfoldable/application/surface_clearance.py`, `tests/geometry/` |
-| Partial | Candidate search cannot consume candidate-specific GEOM-04 clearance; surface/interblade constraints remain unknown, so no automatic promotion | `pyfoldable/application/geometry_search.py::run_geometry_search`, `active_design_search.py`; GEOM-04 contract final scope paragraph |
+| Partial | Default GEOM-01 surface gates stay unknown. Opt-in `geom01_negative_clearance_v1` may set either gate to False from accepted GEOM-04 witnesses; it cannot set True or select a candidate | `pyfoldable/application/geometry_clearance_policy.py`, `geometry_search.py`; [GEOM-01](../geom01_feasibility_plan.md) |
 | Partial | CFD/FEA/experiment UI inspects specific existing canonical contracts in session; not arbitrary ANSYS or raw experimental import, not evidence promotion | `pyfoldable/application/evidence_import.py::_CANONICAL_IDENTITIES`, `inspect_evidence_upload`; `tests/application/test_evidence_import.py` |
 | Partial | Full workspace coverage: Motor–Pervane, Doğrulama ve Kanıtlar, Raporlar are placeholder pages despite lower-layer APIs | `apps/pyfoldable_dashboard.py::main`, `_render_planned_page` |
 | Planned / evidence-dependent | PY-06D2 identifiable parameter fitting, E structural correlation, F consolidated comparison UI, physically supported Pareto recommendations | [PY-06 plan](../py06_calibration_uncertainty_plan.md), [Python roadmap](../python_research_execution_plan.md) |
@@ -85,7 +85,7 @@ results/plans as history; they do not recompute experiments or change solver log
 | README workspace overview lacks later geometry/hardware and mechanism paths | Dashboard renders geometry search, clearance and bound mechanism | Add concise capability pointers to authoritative contracts/current state |
 | README package-wide `reference_load_postprocess` wording | True of the old V2 report; `core/motor_bem_coupling.py` provides a separate coupled solver | Scope paragraph to historical V2 output and link modern solver; leave old numbers untouched |
 | README 7100 RPM table has no adjacent fixture/target-factor warning | Synthetic reference and fixed pretest factor documented in data README and report assumptions | Add immediate classification; retain values as historical model output |
-| GEOM-01 result reason `unknown_no_swept_surface_collision_model` | GEOM-04 exists, but `geometry_search.py` still leaves surface/interblade constraints `None` | **Open diagnostic wording debt**: change only with the next reviewed behavioral slice; do not turn unknown into passed |
+| GEOM-01 result reason `unknown_no_swept_surface_collision_model` | With no negative policy, or when `surface_path_clearance` stays `None`, this diagnostic remains. A v1 policy `False` on that gate records `negative_clearance_policy_relevant_violation` | **Corrected 2026-09-23**: unknown is not a pass; interblade-only `False` does not rewrite the surface-path diagnostic |
 | `docs/foldable_conventions.md` and `docs/superpowers/specs/v2_thrust_split_audit.md` name `pythrust/foldable/` | Code lives under `pyfoldable/dynamics/` and related `pyfoldable` modules; `pythrust/` is only propellers/propulsion | **Corrected 2026-09-19**; keep V1/V2 vs core/PY-05 distinction |
 | Undated “next PY-06” / “next PY-05” in PY-04/PY-05 delivery prose | PY-05 and PY-06A–D1 plus GEOM-01–04 have shipped | **Corrected 2026-09-19** as dated delivery history; remaining work stays evidence-dependent |
 | PY-04A “1063 passed” read as the standing suite size | Dated milestone; current command is `./venv/bin/python -m pytest tests/ -q` | **Corrected 2026-09-19** in the PY-04A record; keep the count as history |
@@ -134,11 +134,32 @@ GEOM-01 audit. They do not assign True or False to
 the protected GEOM-01 constraints or set `physical_qualification`. See
 [GEOM-01](../geom01_feasibility_plan.md).
 
+**Subsequent update 2026-09-22:** evidence acquisition and the decision policy
+are separate. With no policy, the gates above stay `None`. Supplying
+`geom01_negative_clearance_v1` binds its declaration into the GEOM-01 request
+identity and may set `surface_path_clearance` or `interblade_clearance` to
+`False` only. `True` is not a v1 result. The policy does not rerun GEOM-04,
+does not mutate the attached report, and does not change generic grid
+selection. A `False` gate makes the existing grid mark that candidate
+infeasible; unresolved gates stay blocked. `physical_qualification` stays
+false and `full_propeller_clearance` stays null.
+
+**Subsequent update 2026-09-23:** a usable violation witness is strictly below
+the policy threshold, and the query witness equals the single violation
+interval witness exactly. Hardware roles follow producer position, so a
+hardware body may use a blade-shaped name. Enabled clearance binding records
+`selection_effect=negative_policy_may_set_clearance_constraints_false_never_true`.
+Disabled or absent policy keeps
+`evidence_only_does_not_alter_geom01_constraints`. Final surface `False`
+sets `surface_path_clearance_status` to
+`negative_clearance_policy_relevant_violation`; `None` keeps
+`unknown_no_swept_surface_collision_model`.
+
 **Proposed next bounded development slice, not implemented or newly authorized by
-this document:** a separately reviewed mapping from attached GEOM-04 evidence
-into GEOM-01 selection constraints, or optional dashboard opt-in to bind
-already-scoped GEOM-04 inputs on the unbound UI path. Neither is authorized by
-the evidence-only attachment. PY-06D2 is not the automatic next task without
+this document:** optional dashboard opt-in to bind already-scoped GEOM-04
+inputs on the unbound UI path, and any `True` promotion of the clearance
+gates. The opt-in v1 negative mapping above is separate from that UI work and
+does not authorize `True`. PY-06D2 is not the automatic next task without
 identifiable measured data.
 
 Unresolved inputs: engineers' CAD/material/ANSYS/raw-measurement packages and their

@@ -67,7 +67,35 @@ grid row. Attached evidence must match the GEOM-04 query/interval producer
 fields; malformed reports abort before oversize classification.
 Reverse solid-query witnesses must preserve caller body order (PR #63 regression).
 
+**Amendment 2026-09-22 — negative clearance policy v1.** The PR #67 evidence
+attachment above is unchanged: accepted reports stay immutable and, with no
+policy, both surface gates stay unknown. A separate opt-in declaration,
+`geom01_negative_clearance_v1`, may set `surface_path_clearance` or
+`interblade_clearance` to `False` from a qualifying witness on the accepted
+report. v1 has no `True` result. Same-blade root/tip and a `hardware_surface`
+body whose binding is `hub` and whose geometry kind is `finite_cylinder` can
+reject the surface-path gate; retained interblade pairs can reject the
+interblade gate. Infinite-cylinder fallback, contact-only observations,
+general hardware and hardware pairs do not. Threshold and motion domain must
+match exactly or both gates stay unknown. This is screening, not physical
+qualification.
+
+**Correction 2026-09-23.** A producer `violation` proves the threshold only
+when the query-level witness and the single violation-interval witness are
+exactly equal and strictly less than `required_clearance_m`. Hardware identity
+follows producer position: `hardware_surface` is surface then hardware body,
+`hardware_pair` is two hardware bodies, and hub is surface then
+`hub_envelope`. Enabled policy request provenance is
+`negative_policy_may_set_clearance_constraints_false_never_true`; a disabled
+or absent policy keeps
+`evidence_only_does_not_alter_geom01_constraints`. Final
+`surface_path_clearance=False` records
+`surface_path_clearance_status=negative_clearance_policy_relevant_violation`.
+`None` leaves `unknown_no_swept_surface_collision_model`. Contradictory
+violation evidence aborts; it does not become unknown.
+
 Evidence: `pyfoldable/application/blade_stations.py`, `geometry_search.py`,
+`geometry_clearance_policy.py`,
 `surface_clearance.py` in that application directory; `pyfoldable/geometry/`;
 `tests/geometry/test_hardware_geometry.py::test_solid_distance_witnesses_follow_argument_order`;
 [GEOM-02](../geom02_station_contract.md), [GEOM-04](../geom04_surface_hardware.md).

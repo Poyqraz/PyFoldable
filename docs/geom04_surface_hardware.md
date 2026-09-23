@@ -148,8 +148,16 @@ Invalid qualification, schema or accounting aborts;
 a valid report is attached unchanged. Each search candidate receives the
 configured GEOM-04 budgets unchanged; the search records aggregate ceilings
 of `N ×` those limits. The complete report is retained under
-`geom04_clearance` as evidence only: it does not
+`geom04_clearance` as evidence only: the evidence namespace itself does not
 assign True or False to GEOM-01 `surface_path_clearance` or
-`interblade_clearance`. Missing geometry and evidence remain explicit gates.
+`interblade_clearance`. An optional later policy,
+`geom01_negative_clearance_v1`, may read that accepted report and set either
+gate to `False` or leave it `None`; it never promotes `True` and it does not
+mutate the report. It classifies `hardware_surface` and `hardware_pair` by
+producer role, not by whether a hardware name looks like a blade part. A
+`violation` is usable only when the query witness and the single violation
+interval witness are exactly equal and strictly below the policy threshold;
+a contradictory violation aborts the search. Missing geometry and evidence
+remain explicit gates.
 Asynchronous motion, general CAD solids and physical qualification require
 separate work.

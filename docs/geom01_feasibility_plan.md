@@ -54,9 +54,45 @@ stations cover only 0.20R–0.98R, and swept-surface/interblade clearances remai
 unknown. Chord-inclusive endpoint mesh diameter is reported separately from
 centreline diameter. Missing mesh coverage is recorded without inventing a mesh.
 
-All rows retain failed/unknown constraints. Swept-surface and interblade
+All rows retain failed/unknown constraints unless an explicit policy says
+otherwise. With no negative-clearance policy, swept-surface and interblade
 constraints remain unknown (`None`) on every GEOM-01 row, including when a
-search binds candidate-specific GEOM-04 inputs. A bound run rebuilds each
+search binds candidate-specific GEOM-04 inputs. PR #67 attached that evidence
+without changing the gates. A separate opt-in policy,
+`geom01_negative_clearance_v1`, may set `surface_path_clearance` or
+`interblade_clearance` to `False` from a qualifying retained-surface or
+finite-cylinder-hub witness. It never sets either gate to `True`. A resolved
+producer `violation` counts only when `result.witness_clearance_m` and the
+single violation interval's `witness_clearance_m` are exactly equal and
+strictly less than the policy threshold. Equality with the threshold is not a
+violation. Query/interval disagreement, a missing or extra violation interval,
+or a witness angle outside that interval or outside the candidate path raises
+`ClearancePolicyError` and aborts the search; contradictory violation evidence
+is not downgraded to unknown. At a zero threshold, contact-only surface
+evidence stays unresolved. A negative hardware-penetration witness can still
+set `False`. Hardware rows use producer roles: `hardware_surface` keeps `a` as
+the retained blade surface and `b` as the declared hardware body;
+`hardware_pair` treats both names as hardware bodies. A blade-shaped hardware
+name does not change that role. The surface gate can become `False` for a
+`hardware_surface` row only when body `b` has binding `hub` and geometry kind
+`finite_cylinder`. The hub query order is surface part then `hub_envelope`.
+The policy threshold and motion domain must match the accepted report exactly;
+a mismatch leaves both gates unknown. Infinite-cylinder, contact-only,
+general-hardware and hardware-pair evidence do not resolve these gates. When
+clearance inputs are bound and this policy is enabled, request
+`selection_effect` is
+`negative_policy_may_set_clearance_constraints_false_never_true`. With no
+policy, or with the policy disabled, that field stays
+`evidence_only_does_not_alter_geom01_constraints`. A final
+`surface_path_clearance` of `False` sets
+`surface_path_clearance_status` to
+`negative_clearance_policy_relevant_violation`. While that gate remains
+`None`, including an interblade-only `False`, the status stays
+`unknown_no_swept_surface_collision_model`. The witness reason and indexes
+stay in `details.geom04_negative_clearance_policy`. A qualifying negative
+still counts when other coverage is incomplete. If the final details payload
+cannot retain the report inside 256 KiB, the policy result is unknown rather
+than a hidden `False`. A bound run rebuilds each
 candidate draft and clearance request, gives every candidate its configured
 node/feature/hardware limits, and records aggregate ceilings of
 `N ×` those limits. It never reuses another geometry's report. A completed
@@ -88,10 +124,13 @@ witnesses, bounds, intervals, exclusions and hardware provenance stay in
 that namespace under a separate classification (`scoped_geom04_violation`,
 `scoped_geom04_separated`, `unknown_scoped_geom04`). That label does not
 change
-`surface_path_clearance` or `interblade_clearance`. `physical_qualification`
+`surface_path_clearance` or `interblade_clearance`. Only the separate
+negative-clearance policy may set those gates, and only to `False` or `None`.
+`physical_qualification`
 stays false and `full_propeller_clearance` stays null. `best_candidate` remains
-absent unless every required constraint is True; with the two surface gates
-unknown, selection stays blocked. The endpoint mesh is a 2.5D preview, not a
+absent unless every required constraint is True. Unknown surface gates keep the
+candidate blocked; a policy `False` makes it infeasible under the existing grid
+and still does not select it. The endpoint mesh is a 2.5D preview, not a
 CAD solid.
 
 ## Run and verify
