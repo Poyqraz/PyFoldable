@@ -158,6 +158,11 @@ producer role, not by whether a hardware name looks like a blade part. A
 `violation` is usable only when the query witness and the single violation
 interval witness are exactly equal and strictly below the policy threshold;
 a contradictory violation aborts the search. Missing geometry and evidence
-remain explicit gates.
+remain explicit gates. A separate diagnostic,
+`geom01_positive_readiness_v1`, may read the final accepted report and report
+proof prerequisites only. It does not execute this solver, does not mutate the
+report, and does not set `surface_path_clearance` or `interblade_clearance`.
+`preconditions_satisfied` is not `True`. Surface-path readiness keeps
+`shared_hinge_contact_domain_unresolved` under the current open-surface model.
 Asynchronous motion, general CAD solids and physical qualification require
 separate work.

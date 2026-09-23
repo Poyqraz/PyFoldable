@@ -94,8 +94,19 @@ or absent policy keeps
 `None` leaves `unknown_no_swept_surface_collision_model`. Contradictory
 violation evidence aborts; it does not become unknown.
 
+**Clarification 2026-09-23 — positive readiness is not a decision.**
+`geom01_positive_readiness_v1` is an optional diagnostic over the final
+accepted GEOM-04 state. It does not replace this ADR and it does not authorize
+`True`. `preconditions_satisfied` means only that the evidence meets the
+prerequisites declared by that question. The current numerical open-surface
+model duplicates the hinge station, so surface-path readiness remains blocked
+by `shared_hinge_contact_domain_unresolved` even when retained triangles look
+separated. Interblade readiness can report `preconditions_satisfied` without
+setting `interblade_clearance`. No readiness result changes constraints,
+selection, `physical_qualification`, or `full_propeller_clearance`.
+
 Evidence: `pyfoldable/application/blade_stations.py`, `geometry_search.py`,
-`geometry_clearance_policy.py`,
+`geometry_clearance_policy.py`, `geometry_clearance_readiness.py`,
 `surface_clearance.py` in that application directory; `pyfoldable/geometry/`;
 `tests/geometry/test_hardware_geometry.py::test_solid_distance_witnesses_follow_argument_order`;
 [GEOM-02](../geom02_station_contract.md), [GEOM-04](../geom04_surface_hardware.md).

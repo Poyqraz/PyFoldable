@@ -82,6 +82,10 @@ triangle limit but is not counted as a node comparison.
 The existing GEOM-01 candidate search remains separate: this report checks the
 active design, not every different hinge position in a grid. It does not turn
 GEOM-01's uncomputed surface/interblade constraints into passed constraints.
+A later GEOM-01 readiness diagnostic may read an accepted report; it does not
+rerun this solver and `preconditions_satisfied` is not a GEOM-01 gate value.
+The current open-surface model still duplicates the hinge station into the
+root and tip, so surface-path readiness keeps that shared contact unresolved.
 
 ## Workspace and UI corrections
 
