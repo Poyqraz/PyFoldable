@@ -166,7 +166,18 @@ Interblade readiness can be `preconditions_satisfied` on a full-span,
 zero-exclusion separated candidate and still leaves the GEOM-01 gate at
 `None` unless the negative policy has set `False`. The readiness namespace is
 omitted in full when it would exceed the existing 256 KiB details budget.
-This diagnostic does not authorize a future `True` promotion.
+This diagnostic does not authorize a future `True` promotion. A separated
+claim is validated against the producer threshold even when the readiness
+question uses another threshold; only a producer-valid report can then record
+`threshold_mismatch`. Gate dimensions carry explicit states (`satisfied`,
+`blocked`, `not_assessed`, `not_applicable`). Readiness `ArithmeticError`
+aborts the search as `SearchError` rather than becoming a failed candidate row.
+
+**Follow-up, not a merge blocker:** an extra dyadic zero-width singleton can
+sit beside an already separated parent interval and still be accepted. It adds
+no angular extent and no separation proof, and it did not create a false
+`preconditions_satisfied`. A parent/child ledger check is deferred. The
+GEOM-04 subdivision producer is unchanged.
 
 **Proposed next bounded development slice, not implemented or newly authorized by
 this document:** optional dashboard opt-in to bind already-scoped GEOM-04

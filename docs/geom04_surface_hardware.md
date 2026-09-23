@@ -164,5 +164,8 @@ proof prerequisites only. It does not execute this solver, does not mutate the
 report, and does not set `surface_path_clearance` or `interblade_clearance`.
 `preconditions_satisfied` is not `True`. Surface-path readiness keeps
 `shared_hinge_contact_domain_unresolved` under the current open-surface model.
+A separated claim is judged against this solver's own requested clearance
+before any readiness-question comparison. Readiness arithmetic failures abort
+the search.
 Asynchronous motion, general CAD solids and physical qualification require
 separate work.

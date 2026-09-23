@@ -501,6 +501,8 @@ def _attach_positive_readiness(request, details, constraints, blade, hinge_radiu
         )
     except ClearanceReadinessError as exc:
         raise SearchError("Candidate clearance readiness rejected the evidence.") from exc
+    except ArithmeticError as exc:
+        raise SearchError("Candidate clearance readiness rejected the evidence.") from exc
     if report is not None and _json(report) != report_token:
         raise SearchError("Candidate clearance readiness rejected the evidence.")
     document = readiness_document(readiness)

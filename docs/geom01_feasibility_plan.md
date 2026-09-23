@@ -148,8 +148,23 @@ above the question threshold. That still leaves `interblade_clearance` at
 separation supports the hub component only when the question declares
 `infinite_envelope_under_nominal_containment`. A declared finite-cylinder hub
 uses its own guarded hardware rows. General hardware stays outside these two
-gates. Contradictory separated evidence aborts through `ClearanceReadinessError`
-and `SearchError`; incomplete evidence blocks the diagnostic.
+gates. A claimed `separated` query is checked against the producer threshold in the
+accepted report, `request.inputs.required_clearance_m`, before the question
+threshold is considered. A lower bound that is missing, non-finite, equal to
+that producer threshold, or below it aborts through `ClearanceReadinessError`
+and `SearchError`. It is not recorded as `threshold_mismatch`. Only after that
+producer claim is internally valid does an exact mismatch with
+`question.required_clearance_m` become the blocker `threshold_mismatch`.
+Each gate's `dimensions` field is an ordered list of `{name, state}` records.
+States are `satisfied`, `blocked`, `not_assessed`, and `not_applicable`.
+`preconditions_satisfied` requires every applicable dimension to be
+`satisfied`. Unavailable evidence blocks `candidate_binding` and leaves the
+other dimensions `not_assessed`. A one-blade interblade gate is
+`not_applicable` in every dimension. `ArithmeticError` raised while assessing
+readiness becomes `SearchError` and aborts the search; it does not become a
+failed grid row. `design_search.py` is unchanged. Contradictory separated
+evidence aborts through `ClearanceReadinessError` and `SearchError`;
+incomplete evidence blocks the diagnostic.
 `physical_qualification`
 stays false and `full_propeller_clearance` stays null. `best_candidate` remains
 absent unless every required constraint is True. Unknown surface gates keep the

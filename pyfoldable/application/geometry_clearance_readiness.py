@@ -6,10 +6,21 @@ execute clearance, build meshes, read files, hash reports, or mutate evidence.
 proof prerequisites. It is not a constraint value and it never means True.
 
 One-blade rotors have no interblade obligations, so that gate is
-`not_applicable` before evidence availability is considered. Surface-path
-readiness always carries `shared_hinge_contact_domain_unresolved` once a
-completed report is assessed: the supported open-surface model duplicates the
-hinge station and this question does not treat that contact as permitted.
+`not_applicable` before evidence availability is considered. Every dimension
+on that gate is `not_applicable`. Question and candidate fields stay on the
+parent result.
+
+A claimed `separated` query is always checked against the producer threshold
+in `request.inputs.required_clearance_m`. That check does not depend on the
+readiness question. The question threshold is compared afterwards, and a
+mismatch is only `threshold_mismatch`.
+
+Each gate publishes the fixed dimensions with a state: `satisfied`,
+`blocked`, `not_assessed`, or `not_applicable`. Evidence that was never
+read does not mark downstream dimensions satisfied. Surface-path readiness
+always carries `shared_hinge_contact_domain_unresolved` once a completed
+report is assessed: the supported open-surface model duplicates the hinge
+station and this question does not treat that contact as permitted.
 """
 from __future__ import annotations
 
@@ -128,6 +139,14 @@ class CandidateClearanceFacts:
 
 
 @dataclass(frozen=True)
+class DimensionReadiness:
+    """One fixed proof dimension and its machine-readable state."""
+
+    name: str
+    state: str
+
+
+@dataclass(frozen=True)
 class ReadinessBlocker:
     code: str
     dimension: str
@@ -173,13 +192,69 @@ def _sort_key(blocker):
     )
 
 
-def _gate(blockers, *, applicable):
+_ALWAYS_EVALUATED = frozenset({
+    "question_compatibility",
+    "candidate_binding",
+    "radial_coverage",
+    "exclusions",
+    "pair_coverage",
+    "model_compatibility",
+})
+_INTERBLADE_NOT_APPLICABLE = frozenset({"hub_suitability", "contact_domain"})
+
+
+def _dimension_rows(blockers, *, not_applicable, evaluated):
+    blocked = {blocker.dimension for blocker in blockers}
+    rows = []
+    for name in DIMENSIONS:
+        if name in not_applicable:
+            if name in blocked:
+                raise ClearanceReadinessError("A blocker was recorded outside this gate's dimensions.")
+            state = "not_applicable"
+        elif name in blocked:
+            state = "blocked"
+        elif name in evaluated:
+            state = "satisfied"
+        else:
+            state = "not_assessed"
+        rows.append(DimensionReadiness(name, state))
+    return tuple(rows)
+
+
+def _unavailable_dimensions():
+    return tuple(
+        DimensionReadiness(name, "blocked" if name == "candidate_binding" else "not_assessed")
+        for name in DIMENSIONS)
+
+
+def _not_applicable_dimensions():
+    return tuple(DimensionReadiness(name, "not_applicable") for name in DIMENSIONS)
+
+
+def _evaluated_dimensions(queries, *, complete, surface):
+    evaluated = set(_ALWAYS_EVALUATED)
+    if surface:
+        evaluated.update(("hub_suitability", "contact_domain"))
+    if complete:
+        evaluated.update(("angular_coverage", "numerical_resolution"))
+        if all(query["result"]["status"] == "separated" for query in queries):
+            evaluated.add("separation_support")
+    return evaluated
+
+
+def _gate(blockers, *, applicable, dimensions):
     if not applicable:
-        return GateReadiness("not_applicable", None, (), DIMENSIONS, _NOT_APPLICABLE_BASIS)
+        return GateReadiness(
+            "not_applicable", None, (), _not_applicable_dimensions(), _NOT_APPLICABLE_BASIS)
     ordered = tuple(sorted(blockers, key=_sort_key))
     if not ordered:
-        return GateReadiness("preconditions_satisfied", None, (), DIMENSIONS, _PROOF_BASIS)
-    return GateReadiness("blocked", ordered[0].code, ordered, DIMENSIONS, _PROOF_BASIS)
+        unresolved = [row.name for row in dimensions if row.state not in {"satisfied", "not_applicable"}]
+        if unresolved:
+            raise ClearanceReadinessError("Preconditions cannot hide an unresolved dimension.")
+        return GateReadiness("preconditions_satisfied", None, (), dimensions, _PROOF_BASIS)
+    if not any(row.state == "blocked" for row in dimensions):
+        raise ClearanceReadinessError("Blocked readiness is missing a blocked dimension.")
+    return GateReadiness("blocked", ordered[0].code, ordered, dimensions, _PROOF_BASIS)
 
 
 def _part(name):
@@ -384,9 +459,9 @@ def _require_separation(result, intervals, threshold):
         lower = interval.get("lower_bound_m")
         if not _finite(lower):
             raise ClearanceReadinessError("Separated lower bound is missing or non-finite.")
-        if threshold is not None and not lower > threshold:
+        if not _finite(threshold) or not lower > threshold:
             raise ClearanceReadinessError(
-                "Separated lower bound does not strictly exceed the readiness threshold.")
+                "Separated lower bound does not strictly exceed the producer clearance.")
         lowers.append(lower)
     query_lower = result.get("lower_bound_m")
     if not lowers or not _finite(query_lower) or query_lower != min(lowers):
@@ -505,10 +580,11 @@ def assess_positive_clearance_readiness(question, *, evidence_status, report, ca
     if evidence_status in _UNAVAILABLE:
         detail = _UNAVAILABLE[evidence_status]
         unavailable = [_blocker("evidence_unavailable", "candidate_binding", evidence_detail=detail)]
+        unavailable_dimensions = _unavailable_dimensions()
         return PositiveClearanceReadiness(
             DIAGNOSTIC_ID, EFFECT, question, evidence_status,
-            _gate(unavailable, applicable=True),
-            _gate(unavailable, applicable=interblade_applies),
+            _gate(unavailable, applicable=True, dimensions=unavailable_dimensions),
+            _gate(unavailable, applicable=interblade_applies, dimensions=unavailable_dimensions),
         )
     if evidence_status != "completed":
         raise ClearanceReadinessError("Unsupported candidate clearance evidence state.")
@@ -517,7 +593,9 @@ def assess_positive_clearance_readiness(question, *, evidence_status, report, ca
     request = report.get("request")
     inputs = request.get("inputs") if isinstance(request, dict) else None
     reported_threshold = inputs.get("required_clearance_m") if isinstance(inputs, dict) else None
-    thresholds_match = _finite(reported_threshold) and reported_threshold == question.required_clearance_m
+    if not _finite(reported_threshold):
+        raise ClearanceReadinessError("Accepted report is missing its required clearance.")
+    thresholds_match = reported_threshold == question.required_clearance_m
     common, inputs = _common_blockers(question, report, candidate, thresholds_match)
     bodies = _hardware_bodies(request)
     mode, hub_name = _hub_mode(request, bodies)
@@ -541,11 +619,10 @@ def assess_positive_clearance_readiness(question, *, evidence_status, report, ca
         relevant.append((role, key, query))
     depth, limit = _budgets(inputs)
     start = math.radians(float(candidate.end_angle_deg))
-    threshold = question.required_clearance_m if thresholds_match else None
     surface = list(common)
     interblade = [] if not interblade_applies else list(common)
     for role, key, query in relevant:
-        found = _inspect(query, key, start, threshold, depth, limit)
+        found = _inspect(query, key, start, reported_threshold, depth, limit)
         if role == "interblade":
             interblade.extend(found)
         else:
@@ -560,10 +637,20 @@ def assess_positive_clearance_readiness(question, *, evidence_status, report, ca
     if mode == _INFINITE_HUB and question.hub_containment != HUB_NOMINAL_CONTAINMENT:
         surface.append(_blocker("hub_model_not_positive_sufficient", "hub_suitability"))
     surface.append(_blocker("shared_hinge_contact_domain_unresolved", "contact_domain"))
+    surface_queries = [query for role, _key, query in relevant if role != "interblade"]
+    inter_queries = [query for role, _key, query in relevant if role == "interblade"]
+    surface_dimensions = _dimension_rows(
+        surface, not_applicable=frozenset(),
+        evaluated=_evaluated_dimensions(
+            surface_queries, complete=(own_keys | hub_keys) <= set(seen), surface=True))
+    inter_dimensions = _dimension_rows(
+        interblade, not_applicable=_INTERBLADE_NOT_APPLICABLE,
+        evaluated=_evaluated_dimensions(
+            inter_queries, complete=inter_keys <= set(seen), surface=False))
     return PositiveClearanceReadiness(
         DIAGNOSTIC_ID, EFFECT, question, evidence_status,
-        _gate(surface, applicable=True),
-        _gate(interblade, applicable=interblade_applies),
+        _gate(surface, applicable=True, dimensions=surface_dimensions),
+        _gate(interblade, applicable=interblade_applies, dimensions=inter_dimensions),
     )
 
 
@@ -587,7 +674,7 @@ def _gate_document(gate):
         "assessment": gate.assessment,
         "primary_reason": gate.primary_reason,
         "blockers": [_blocker_document(blocker) for blocker in gate.blockers],
-        "dimensions": list(gate.dimensions),
+        "dimensions": [{"name": item.name, "state": item.state} for item in gate.dimensions],
         "proof_basis": gate.proof_basis,
     }
 

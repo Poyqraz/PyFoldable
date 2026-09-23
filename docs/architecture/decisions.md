@@ -103,7 +103,11 @@ model duplicates the hinge station, so surface-path readiness remains blocked
 by `shared_hinge_contact_domain_unresolved` even when retained triangles look
 separated. Interblade readiness can report `preconditions_satisfied` without
 setting `interblade_clearance`. No readiness result changes constraints,
-selection, `physical_qualification`, or `full_propeller_clearance`.
+selection, `physical_qualification`, or `full_propeller_clearance`. Separated
+evidence is integrity-checked against the producer threshold independently of
+the question threshold. Each gate exposes per-dimension states, and an
+unexpected readiness `ArithmeticError` aborts the search instead of becoming
+a failed grid row.
 
 Evidence: `pyfoldable/application/blade_stations.py`, `geometry_search.py`,
 `geometry_clearance_policy.py`, `geometry_clearance_readiness.py`,

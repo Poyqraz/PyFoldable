@@ -276,7 +276,16 @@ def _assert_diagnostic_shape(document):
     for gate_name in ("surface_path", "interblade"):
         gate = document[gate_name]
         assert gate["assessment"] in {"preconditions_satisfied", "blocked", "not_applicable"}
-        assert gate["dimensions"] == list(DIMENSIONS)
+        rows = gate["dimensions"]
+        assert [row["name"] for row in rows] == list(DIMENSIONS)
+        states = {row["state"] for row in rows}
+        assert states <= {"satisfied", "blocked", "not_assessed", "not_applicable"}
+        if gate["assessment"] == "preconditions_satisfied":
+            assert states <= {"satisfied", "not_applicable"}
+        if gate["assessment"] == "not_applicable":
+            assert states == {"not_applicable"}
+        if gate["assessment"] == "blocked":
+            assert "blocked" in states
         assert "value" not in gate
         assert gate["assessment"] not in {True, False}
 
@@ -400,7 +409,8 @@ def test_one_blade_interblade_is_not_applicable_before_evidence():
 def test_threshold_mismatch_either_direction_blocks_without_abort():
     report = _report(_ledger())
     low, _ = _assess(report, question=_question(required_clearance_m=0.02))
-    high_report = _report(_ledger())
+    # 0.03 is strictly above the producer threshold 0.02. Equality is not a mismatch.
+    high_report = _report(_ledger(result=_result("separated", lower=0.03)))
     high_report["request"]["inputs"]["required_clearance_m"] = 0.02
     high, _ = _assess(high_report, question=_question(required_clearance_m=_THRESHOLD))
     for result in (low, high):
@@ -1093,3 +1103,318 @@ def test_no_readiness_document_assigns_true():
     assert document["interblade"]["assessment"] == "preconditions_satisfied"
     assert True not in document["surface_path"].values()
     assert False not in document["interblade"].values()
+
+
+_PRODUCER_THRESHOLD = 0.0005
+_DIMENSION_STATE_NAMES = (
+    "satisfied", "blocked", "not_assessed", "not_applicable",
+)
+
+
+def _dimension_states(gate):
+    """Read the ordered per-dimension state map. Names alone are not a state."""
+    rows = gate["dimensions"]
+    assert isinstance(rows, list) and rows and isinstance(rows[0], dict)
+    assert [row["name"] for row in rows] == list(DIMENSIONS)
+    states = {row["name"]: row["state"] for row in rows}
+    assert set(states.values()) <= set(_DIMENSION_STATE_NAMES)
+    return states
+
+
+def _states(**changes):
+    values = {name: "satisfied" for name in DIMENSIONS}
+    values.update(changes)
+    return values
+
+
+def _interblade_states(**changes):
+    values = _states(
+        hub_suitability="not_applicable",
+        contact_domain="not_applicable",
+    )
+    values.update(changes)
+    return values
+
+
+def _surface_states(**changes):
+    values = _states(contact_domain="blocked")
+    values.update(changes)
+    return values
+
+
+def _unavailable_states():
+    return {name: ("blocked" if name == "candidate_binding" else "not_assessed") for name in DIMENSIONS}
+
+
+def _contained_question(**changes):
+    values = {"hub_containment": HUB_NOMINAL_CONTAINMENT}
+    values.update(changes)
+    return _question(**values)
+
+
+def _completed(facts=None, result=None, question=None, **report_changes):
+    facts = facts or _facts()
+    report = _report(_ledger(facts.blade_count, result or _result()), facts, **report_changes)
+    return _assess(report, facts, question or _contained_question())
+
+
+def _rehashed_separated_report(lower, *, query_lower=None, intervals=None):
+    """Return a PR #67 identity-bound artifact whose producer threshold stays on the request."""
+
+    def run(clearance_request):
+        model, _ = _load_geometry(clearance_request.draft)
+        blade = model.blade
+        radius = blade.diameter_m / 2.0
+        angle = clearance_request.inputs.end_angle_deg
+        start = math.radians(float(angle))
+        first = blade.stations[0].r_over_R * radius
+        last = blade.stations[-1].r_over_R * radius
+        hinge = model.hinge.radius_m
+        rows = intervals if intervals is not None else [
+            _interval("separated", lower=lower, lo=start, hi=0.0)]
+        result = _result("separated", intervals=rows)
+        if query_lower is not None:
+            result["lower_bound_m"] = query_lower
+        root_gap = first - blade.hub_radius_m
+        tip_gap = radius - last
+        root_ok = abs(root_gap) <= 8 * max(math.ulp(first), math.ulp(blade.hub_radius_m))
+        tip_ok = abs(tip_gap) <= 8 * max(math.ulp(last), math.ulp(radius))
+        hinge_ok = first < hinge < last
+        return _bound_report_artifact(
+            clearance_request,
+            queries=_ledger(blade.blade_count, result),
+            root_gap_m=root_gap,
+            tip_gap_m=tip_gap,
+            station_span_complete=bool(root_ok and tip_ok and hinge_ok),
+            modeled_surface_status="separated",
+        )
+
+    return run
+
+
+def _search_rehashed(monkeypatch, lower, question_threshold, **artifact):
+    monkeypatch.setattr(
+        "pyfoldable.application.surface_clearance.run_surface_clearance",
+        _rehashed_separated_report(lower, **artifact),
+    )
+    return prepare_geometry_search(
+        _complete_span_text(),
+        hinge_radii_m=(0.1,),
+        stowed_angles_deg=(-10.0,),
+        clearance_inputs=SurfaceClearanceInputs(
+            end_angle_deg=-10.0, required_clearance_m=_PRODUCER_THRESHOLD),
+        readiness_question=_question(required_clearance_m=question_threshold),
+    )
+
+
+@pytest.mark.parametrize("question_threshold,lower", [
+    (0.001, 0.0001),
+    (0.001, _PRODUCER_THRESHOLD),
+    (0.0001, 0.0001),
+])
+def test_producer_threshold_aborts_a_separated_claim_when_the_question_differs(
+        monkeypatch, question_threshold, lower):
+    prepared = _search_rehashed(monkeypatch, lower, question_threshold)
+    with pytest.raises(SearchError, match="readiness"):
+        run_geometry_search(prepared)
+
+
+@pytest.mark.parametrize("question_threshold", [0.001, 0.0001])
+def test_valid_producer_separation_with_a_different_question_is_only_a_mismatch(
+        monkeypatch, question_threshold):
+    prepared = _search_rehashed(monkeypatch, 0.0006, question_threshold)
+    document = json.loads(run_geometry_search(prepared).report_json)
+    row = document["candidates"][0]
+    readiness = row["details"]["geom04_positive_clearance_readiness"]
+    assert row["status"] != "failed"
+    assert document["best_candidate"] is None
+    for gate_name in ("surface_path", "interblade"):
+        codes = [blocker["code"] for blocker in readiness[gate_name]["blockers"]]
+        assert "threshold_mismatch" in codes
+        assert readiness[gate_name]["assessment"] == "blocked"
+    assert row["constraints"]["surface_path_clearance"] is None
+    assert row["constraints"]["interblade_clearance"] is None
+
+
+def test_matching_thresholds_keep_normal_readiness_for_a_rehashed_report(monkeypatch):
+    prepared = _search_rehashed(monkeypatch, 0.0006, _PRODUCER_THRESHOLD)
+    document = json.loads(run_geometry_search(prepared).report_json)
+    row = document["candidates"][0]
+    readiness = row["details"]["geom04_positive_clearance_readiness"]
+    assert "threshold_mismatch" not in [
+        blocker["code"] for blocker in readiness["interblade"]["blockers"]]
+    assert readiness["interblade"]["assessment"] == "preconditions_satisfied"
+    assert readiness["surface_path"]["assessment"] == "blocked"
+    assert any(
+        blocker["code"] == "shared_hinge_contact_domain_unresolved"
+        for blocker in readiness["surface_path"]["blockers"])
+    assert row["constraints"]["interblade_clearance"] is None
+    assert row["status"] != "failed"
+    assert document["best_candidate"] is None
+
+
+def test_missing_separated_lower_bound_still_aborts_a_rehashed_report(monkeypatch):
+    start = math.radians(-10.0)
+    prepared = _search_rehashed(
+        monkeypatch, None, 0.001,
+        intervals=[_interval("separated", lower=None, lo=start, hi=0.0)])
+    with pytest.raises(SearchError, match="readiness"):
+        run_geometry_search(prepared)
+
+
+def test_query_lower_bound_mismatch_still_aborts_a_rehashed_report(monkeypatch):
+    start = math.radians(-10.0)
+    mid = start / 2.0
+    prepared = _search_rehashed(
+        monkeypatch, 0.02, 0.001,
+        intervals=[
+            _interval("separated", lower=0.02, lo=start, hi=mid),
+            _interval("separated", lower=0.03, lo=mid, hi=0.0),
+        ],
+        query_lower=0.03,
+    )
+    with pytest.raises(SearchError, match="readiness"):
+        run_geometry_search(prepared)
+
+
+def test_dimension_states_for_complete_interblade_and_shared_hinge_surface():
+    result, document = _completed(result=_producer_pair())
+    assert result.interblade.assessment == "preconditions_satisfied"
+    assert _dimension_states(document["interblade"]) == _interblade_states()
+    assert result.surface_path.assessment == "blocked"
+    assert result.surface_path.primary_reason == "shared_hinge_contact_domain_unresolved"
+    assert _dimension_states(document["surface_path"]) == _surface_states()
+
+
+def test_dimension_states_for_root_and_tip_span_gaps():
+    root_facts = _facts(first_station_radius_m=0.025)
+    _, root = _completed(root_facts)
+    assert root["surface_path"]["primary_reason"] == "root_span_missing"
+    assert _dimension_states(root["interblade"]) == _interblade_states(radial_coverage="blocked")
+    assert _dimension_states(root["surface_path"]) == _surface_states(radial_coverage="blocked")
+    tip_facts = _facts(last_station_radius_m=0.12)
+    _, tip = _completed(tip_facts)
+    assert tip["surface_path"]["primary_reason"] == "tip_span_missing"
+    assert _dimension_states(tip["interblade"]) == _interblade_states(radial_coverage="blocked")
+    assert _dimension_states(tip["surface_path"]) == _surface_states(radial_coverage="blocked")
+
+
+def test_dimension_states_for_exclusions_threshold_and_motion():
+    excluded = _facts(root_exclusion_width_m=0.001)
+    _, exclusion = _completed(excluded)
+    assert exclusion["interblade"]["primary_reason"] == "excluded_region"
+    assert _dimension_states(exclusion["interblade"]) == _interblade_states(exclusions="blocked")
+    assert _dimension_states(exclusion["surface_path"]) == _surface_states(exclusions="blocked")
+
+    _, mismatch = _completed(question=_contained_question(required_clearance_m=0.001))
+    assert mismatch["interblade"]["primary_reason"] == "threshold_mismatch"
+    assert _dimension_states(mismatch["interblade"]) == _interblade_states(
+        question_compatibility="blocked")
+    assert _dimension_states(mismatch["surface_path"]) == _surface_states(
+        question_compatibility="blocked")
+
+    _, motion = _completed(question=_contained_question(), request={"motion": "asynchronous_tips"})
+    assert motion["interblade"]["primary_reason"] == "motion_scope_mismatch"
+    assert _dimension_states(motion["interblade"]) == _interblade_states(
+        question_compatibility="blocked")
+    assert _dimension_states(motion["surface_path"]) == _surface_states(
+        question_compatibility="blocked")
+
+
+def test_dimension_states_for_unknown_and_missing_relevant_pairs():
+    queries = _ledger(result=_result())
+    replaced = False
+    for query in queries:
+        if query["kind"] == "interblade":
+            query["result"] = _result(
+                "unknown", intervals=[_interval("unknown", lower=None)], contact="unknown")
+            replaced = True
+            break
+    assert replaced
+    _, unknown = _assess(_report(queries), question=_contained_question())
+    assert unknown["interblade"]["primary_reason"] == "relevant_query_unresolved"
+    assert _dimension_states(unknown["interblade"]) == _interblade_states(
+        numerical_resolution="blocked", separation_support="not_assessed")
+    assert _dimension_states(unknown["surface_path"]) == _surface_states()
+
+    retained = [query for query in _ledger(result=_result()) if query["kind"] != "interblade"]
+    retained.append(next(query for query in _ledger(result=_result()) if query["kind"] == "interblade"))
+    _, gap = _assess(_report(retained), question=_contained_question())
+    assert gap["interblade"]["primary_reason"] == "relevant_pair_missing"
+    assert _dimension_states(gap["interblade"]) == _interblade_states(
+        pair_coverage="blocked",
+        angular_coverage="not_assessed",
+        numerical_resolution="not_assessed",
+        separation_support="not_assessed",
+    )
+    assert _dimension_states(gap["surface_path"]) == _surface_states()
+
+
+def test_dimension_states_when_evidence_is_unavailable():
+    expected = _unavailable_states()
+    for status, detail in (
+            ("no_evidence", "absent"),
+            ("candidate_validation_failed", "candidate_validation_failed"),
+            ("evidence_unavailable_oversize", "oversize"),
+    ):
+        result, document = _assess(None, status=status)
+        assert result.surface_path.primary_reason == "evidence_unavailable"
+        assert result.surface_path.blockers[0].evidence_detail == detail
+        assert _dimension_states(document["surface_path"]) == expected
+        assert _dimension_states(document["interblade"]) == expected
+        assert "satisfied" not in _dimension_states(document["surface_path"]).values()
+
+
+def test_one_blade_interblade_dimensions_are_all_not_applicable():
+    """Applicability wins. Every interblade dimension is not_applicable.
+
+    Question and candidate fields stay on the parent result. They are not
+    copied into the inapplicable gate.
+    """
+    facts = _facts(blade_count=1)
+    queries = _hub_queries(1, _result()) + _own_queries(1, _result())
+    result, document = _assess(
+        _report(queries, facts), facts, _contained_question())
+    assert result.interblade.assessment == "not_applicable"
+    assert result.interblade.primary_reason is None
+    assert result.interblade.blockers == ()
+    assert _dimension_states(document["interblade"]) == {
+        name: "not_applicable" for name in DIMENSIONS}
+    assert _dimension_states(document["surface_path"]) == _surface_states()
+    absent, absent_document = _assess(None, facts=facts, status="no_evidence")
+    assert absent.interblade.assessment == "not_applicable"
+    assert _dimension_states(absent_document["interblade"]) == {
+        name: "not_applicable" for name in DIMENSIONS}
+    assert _dimension_states(absent_document["surface_path"]) == _unavailable_states()
+
+
+@pytest.mark.parametrize("error", [
+    ZeroDivisionError("readiness divide"),
+    OverflowError("readiness overflow"),
+])
+def test_readiness_arithmetic_error_aborts_before_a_failed_row(monkeypatch, error):
+    def fail(*_args, **_kwargs):
+        raise error
+
+    monkeypatch.setattr(
+        "pyfoldable.application.geometry_search.assess_positive_clearance_readiness", fail)
+    prepared = prepare_geometry_search(
+        draft(), hinge_radii_m=(0.1,), stowed_angles_deg=(-10.0,),
+        readiness_question=_question())
+    with pytest.raises(SearchError, match="readiness") as caught:
+        run_geometry_search(prepared)
+    assert caught.value.__cause__ is error
+
+
+def test_readiness_integrity_error_still_aborts_the_search(monkeypatch):
+    def fail(*_args, **_kwargs):
+        raise ClearanceReadinessError("injected contradiction")
+
+    monkeypatch.setattr(
+        "pyfoldable.application.geometry_search.assess_positive_clearance_readiness", fail)
+    prepared = prepare_geometry_search(
+        draft(), hinge_radii_m=(0.1,), stowed_angles_deg=(-10.0,),
+        readiness_question=_question())
+    with pytest.raises(SearchError, match="readiness") as caught:
+        run_geometry_search(prepared)
+    assert isinstance(caught.value.__cause__, ClearanceReadinessError)
