@@ -69,12 +69,20 @@ PR:
 https://github.com/Poyqraz/PyFoldable/pull/68
 Do not merge.
 
-Exact-head CI for `23e740649e7b3929e800e6d1ffac8e6828b6f74a`:
+Exact-head CI for behavior commit
+`23e740649e7b3929e800e6d1ffac8e6828b6f74a`:
 - push: https://github.com/Poyqraz/PyFoldable/actions/runs/35831205015
 - pull_request: https://github.com/Poyqraz/PyFoldable/actions/runs/35831208635
 - Python 3.10 and 3.11: 1595 passed, 9 skipped, 37 subtests passed
-- This handoff paragraph is documentation-only. It does not change runtime
-  behavior. Do not treat the `afe0bc4` runs as CI for `23e7406`.
+
+Exact-head CI for the documentation commit that first recorded those runs,
+`7d63180d5520904f58d820fe3f71ba802434a17d`:
+- push: https://github.com/Poyqraz/PyFoldable/actions/runs/35831850381
+- pull_request: https://github.com/Poyqraz/PyFoldable/actions/runs/35831854028
+- Python 3.10 and 3.11: 1595 passed, 9 skipped, 37 subtests passed
+
+Both commits are on this branch. The second commit does not change runtime
+behavior. Do not treat the `afe0bc4` runs as CI for either SHA.
 
 Remaining:
 - Independent human review
