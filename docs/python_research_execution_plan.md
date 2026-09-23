@@ -51,16 +51,33 @@ No aerodynamic dataset was fabricated from paper abstracts.
 | PY-04A / PR-11A — implemented first slice | Deterministic finite-grid engine + active chord/twist BEM UI | Canonical grid, strict budgets, failure ledger, analytic tests, explicit run; unknown constraints cannot select a candidate |
 | PY-05A/B — implemented in PR #53 | Prescribed-drive mechanism software workflow | Signed histories, within-step first contact, explicit regularized friction, source-bound active-draft mass/geometry binding, JSON and separate explicit-run UI paths; no static friction/impact continuation or BEM/motor feedback |
 | PY-06 — A/B1/C merged; D1 implemented | Calibration, uncertainty, comparison reports | Matched PR-10 comparisons, motor correlation, source-bound mechanism observations; D2 parameter fitting still awaits identifiable measured data |
-| GEOM-01 — implemented | Bounded 250/140 mm hinge/stowed-angle screening with explicit UI | Reuses audit/mesh/grid; 143 mm full180 necessary bound, separate partial path, failed station coverage and unknown surface/interblade gates |
+| GEOM-01 — implemented | Bounded 250/140 mm hinge/stowed-angle screening with explicit UI | Reuses audit/mesh/grid; 143 mm full-180 necessary bound and separate partial path. Surface/interblade gates are not only unknown; see the 2026-09-23 correction below |
 | GEOM-02 — merged, PR #59/#60 | Explicit source-bound station import/editing, coverage audit and one active draft for preview/analysis | Physical measurements are not rescaled; explicit apply/rebind; stale results cleared; complete span does not imply surface collision freedom |
 | GEOM-03 — implemented | Declared contact-band exclusions, continuous BVH bounds on retained surfaces, hub-envelope/sample witnesses and interval-ledger UI | Synchronous planar mesh screening; unresolved intervals remain unknown; no CAD/solid or full-propeller clearance claim |
-| [GEOM-04 — implemented](geom04_surface_hardware.md) | Exact triangle distance; continuous refinement; explicit finite hub/convex hardware, containment, source-bound reports and UI | A: PR #62; B/C/D integration: PR #63; TDD, independent review and Cursor Bugbot; bounded synchronous geometry screening, no full-propeller or physical qualification |
+| [GEOM-04 — implemented](geom04_surface_hardware.md) | Exact triangle distance; continuous refinement; explicit finite hub/convex hardware, containment, source-bound reports and UI | A: PR #62; B/C/D integration: PR #63. Evidence, negative policy and readiness are later layers, not part of this historical slice; see the correction below. No full-propeller or physical qualification |
 
 PR-11B physically supported Pareto recommendations, structural safety and passive
 deployment qualification still require real evidence. Keep 250/140 mm geometry
 requirements, 7100 RPM and 0.85 thrust-ratio target. The 254 mm UIUC benchmark is
 not the project's reference denominator. Print orientation is not an optimizer
 variable or a blocking prerequisite in this plan.
+
+## Current-state correction — 2026-09-23
+
+The ordered-slice table above remains the historical delivery record. It does
+not end the geometry evidence chain at GEOM-04, and it does not mean the
+GEOM-01 surface gates are always unknown.
+
+After GEOM-04, merged PR #67 attaches candidate-bound authenticated evidence,
+PR #68 may set `surface_path_clearance` or `interblade_clearance` to `False`
+only, and PR #69 adds a diagnostic readiness result. `preconditions_satisfied`
+is not gate `True`. Surface-path readiness stays blocked by
+`shared_hinge_contact_domain_unresolved`. No physical clearance qualification
+is claimed. Feature expansion of that chain is paused. The proposed next
+mathematical slice is a coupled aero–motor–mechanism contract, not an accepted
+ADR and not an implementation. PY-06D2 stays blocked without identifiable
+measured data. See [validation roadmap](validation_and_development_roadmap.md)
+and [current state](agent/current-state.md).
 
 PY-05 extends merged `52aada4`; its [original equation/evidence contract](py05_mechanism_transient_plan.md)
 and [completion/correction record](py05_completion.md) keep every output unqualified.

@@ -1,9 +1,11 @@
 # PyFoldable validation and development roadmap
 
-Bu belge, GEOM-04 sonrası teknik konumu ve katlanabilir pervane için
-**deneyle doğrulanmış, tasarım kararı vermeye elverişli** bir analiz zincirine giden
-yolu tanımlar. Yüzde cinsinden tek bir "tamamlanma" değeri verilmez: yazılım
-altyapısının olgunluğu ile fiziksel tahmin doğruluğu aynı şey değildir.
+Bu belge, birleşmiş GEOM-01–04 ve PR #67–#69 tarama/kanıt zinciri ile ayrı duran
+BEM, motor dengesi ve PY-05 alt modellerinden sonraki teknik konumu tanımlar.
+Hedef hâlâ katlanabilir pervane için **deneyle doğrulanmış, tasarım kararı
+vermeye elverişli** bir analiz zinciridir. Yüzde cinsinden tek bir "tamamlanma"
+değeri verilmez. Yazılım altyapısı, tanı çıktısı ve fiziksel tahmin doğruluğu
+aynı şey değildir. Matematiksel model tamamlanmış değildir.
 
 Kod/CI tabanlı tarihli durum, dokümantasyon farkları ve yeni ajan başlangıcı:
 [güncel repo hafızası](agent/current-state.md). Ayrıntılı özellik sözleşmeleri
@@ -23,8 +25,8 @@ fiziksel doğrulama tamamlanmadı.**
 | Polar sağlayıcı altyapısı | Gerçek XFOIL/NeuralFoil regresyonlarıyla nitelikli | Yeni airfoil ve çalışma zarfı büyüdükçe yeniden niteleme |
 | 2B kesit aerodinamiği | Reynolds/Mach enterpolasyonu ve izlenebilir kesit yükleri mevcut | 3B dönel akış ve stall düzeltmeleri |
 | Rotor aerodinamiği | QPROP-tabanlı indüksiyon/swirl, uç/kök kaybı, radyal integrasyon ve üretici-geometri taraması mevcut | Temsili Reynolds-duyarlı spanwise polarlara dayalı rotor seviyesi doğrulama |
-| Motor–pervane etkileşimi | PR-07 çözümü ve PY-06C bağımsız dinamometre karşılaştırma çekirdeği mevcut (PR #56) | Gerçek dinamometre/rotor ölçümleri ve fiziksel korelasyon |
-| Katlanır mekanizma | PY-05 kaynak-bağlı tek rijit uç, öngörülen devir ve ilk temas çözümü; PY-06D1 zaman–açı karşılaştırması | 250/140 mm topoloji fizibilitesi, gerçek geçiş ölçümleri, tanımlanabilir kalibrasyon ve yük–performans geri beslemesi |
+| Motor–pervane etkileşimi | PR-07 tork dengesi ve PY-06C bağımsız dinamometre karşılaştırma çekirdeği mevcut (PR #56). Bu, zaman domeninde mekanizma ile iki yönlü bağ değildir | Gerçek dinamometre/rotor ölçümleri ve fiziksel korelasyon |
+| Katlanır mekanizma | PY-05: tek düzlemsel rijit uç, öngörülen devir ve menteşe torku, RK45, ilk temas terminali. GEOM-01–04 + PR #67–#69 ayrı bir sayısal tarama/kanıt zinciridir | İki yönlü aero/motor geri beslemesi yok. Gerçek geçiş ölçümü, tanımlanabilir kalibrasyon ve fiziksel açıklık niteliği açık |
 | CFD korelasyonu | Seviye-1 hazırlık/çıktı sözleşmeleri | Ağ bağımsızlığı ve BEM–CFD korelasyonu |
 | Yapısal doğrulama | PR-09 CAD/malzeme/yük-vaka ve FEA sonuç sözleşmesi mevcut | Gerçek CAD, malzeme kartları ve ANSYS Mechanical kanıtı |
 | Deneysel doğrulama | PR-10 v2 provenance zinciri ve PY-06A eş-koşul karşılaştırma çekirdeği mevcut | Kalibre edilmiş standdan gerçek sabit ve katlanır ölçümleri |
@@ -32,6 +34,103 @@ fiziksel doğrulama tamamlanmadı.**
 
 Bu nedenle mevcut sonuçlar mimari ve karşılaştırmalı geliştirme için değerlidir;
 henüz nihai itki, verim, gerilme veya ömür garantisi olarak kullanılmamalıdır.
+CI, içerik hash'i, sayısal yakınsama, readiness tanısı ve sentetik fixture
+fiziksel doğruluk değildir. İlgili sözleşmelerde `physical_qualification=false`
+korunur.
+
+## Mevcut model konumu — 2026-09-23
+
+Bu bölüm beş soruyu ayırır: hangi sayısal yetenek vardır, ne yalnız tarama/tanıdır,
+ne fiziksel olarak nitelenmemiştir, sonraki matematiksel dilim nedir ve hangi
+işler veri gelmeden otomatik sonraki uygulama sayılmaz.
+
+### GEOM tarama ve kanıt zinciri
+
+GEOM-01–04 ile PR #67, #68 ve #69 birlikte sınırlı bir sayısal tarama/kanıt
+zinciri oluşturur. Geometri özelliği genişletmesi burada duraklatılacak kadar
+olgunlaşmıştır. Geometri kalıcı olarak bitmiş değildir. Zincir fiziksel açıklık
+niteliği vermez.
+
+Katmanlar birbirinin yerine geçmez:
+
+1. GEOM-04 adaya özel açıklık kanıtı üretir.
+2. PR #67 bu kanıtı adaya bağlı, kimliği doğrulanmış ve değiştirilmeden ekler.
+3. PR #68 isteğe bağlı ve yalnız negatiftir. Uygun bir ihlal tanığı
+   `surface_path_clearance=False` veya `interblade_clearance=False` yapabilir.
+   Hiçbir sonuç `True` olmaz.
+4. PR #69 isteğe bağlı pozitif-hazırlık tanısıdır. Sonuç
+   `preconditions_satisfied`, `blocked` veya `not_applicable` olur. Kısıt atamaz,
+   seçimi değiştirmez ve `True` yetkisi vermez.
+
+`preconditions_satisfied`, `clearance=True` değildir. Mevcut açık-yüzey modelinde
+yüzey-yolu hazırlığı `shared_hinge_contact_domain_unresolved` ile bloklu kalır.
+Uygun tam açıklıklı sentetik/sayısal kanıtta interblade hazırlığı gelecekteki
+pozitif önkoşulları karşılayabilir; GEOM-01 kapısı yine `None` kalır. Negatif
+politika bağımsız olarak `False` yazmışsa o değer durur.
+
+Politika veya tanı yokken iki yüzey kapısı bilinmez kalır. Bilinmezlik artık
+tek davranış değildir.
+
+Duraklatılan geometri işi, sonraki model dilimi değildir:
+
+- kapıların `True` yapılması
+- paylaşılan menteşe için izinli temas semantiği
+- keyfi CAD veya dışbükey olmayan katılar
+- asenkron hareket
+- ikili sıfır genişlik tekil yaprak için yapısal sıkılaştırma
+- tam pervane fiziksel açıklık niteliği
+
+Yinelenen ikili sıfır genişlik tekil, bilinen ve engellemeyen teknik borçtur.
+Sonraki kilometre taşı yapılmaz. `True` promosyonu ancak ayrı review sonrası
+ertelenmiş iştir. PR #69 onu hemen uygulama izni değildir.
+
+Ayrıntı [GEOM-01](geom01_feasibility_plan.md),
+[GEOM-03](geom03_surface_clearance.md) ve
+[GEOM-04](geom04_surface_hardware.md) sözleşmelerindedir.
+
+### Sayısal alt modeller
+
+PyFoldable'ın birkaç matematiksel alt modeli vardır. Bütünleşik sistem modeli
+yoktur.
+
+| Alt model | Durum | Sınır |
+| --- | --- | --- |
+| Geometri taraması | implemented, diagnostic | GEOM-01–04 + #67–#69. Olgun sınırlı tarama; fiziksel açıklık değil |
+| Rotor aerodinamiği | implemented | Sayısal BEM var. Proje rotoru fiziksel olarak eksik. PR-06C kapısı bloklu |
+| Motor–rotor dengesi | implemented | Ortak devirde tork dengesi. Zaman domeninde mekanizma bağlaşımı değil |
+| Mekanizma geçişi | implemented | PY-05 öngörülen tahrik. Tam bağlaşık açılma modeli değil |
+| Bütünleşik aero–motor–mekanizma | proposed next slice | Uygulanmadı. Kabul edilmiş ADR değil |
+| Deneyle doğrulanmış öngörü sistemi | blocked on evidence | Ulaşılmadı |
+
+PY-05 gerçek bir sayısal geçiş modelidir: tek düzlemsel rijit uç cismi,
+öngörülen devir geçmişi, öngörülen menteşe torku, RK45, ilk durdurucu temasında
+durma, yay, sönüm, isteğe bağlı düzgün kuru sürtünme, merkezkaç ve Euler tork
+terimleri. Çarpışma devamı, mandal, statik tutunma, iki yönlü BEM/motor geri
+beslemesi ve kalibre aerodinamik menteşe momenti yoktur. Ayrıntı
+[PY-05 tamamlanma sınırı](py05_completion.md).
+
+Motor ve BEM kodu rotor aerodinamik çözümünü, motor/rotor tork dengesini ve
+katlanır rotorun sayısal geometri yollarını destekler. Bu, zaman domeninde
+motor ile mekanizmanın birbirini sürmesi değildir. PR-06C fiziksel sınır
+görünür kalır: sayısal çalışma veya yakınsama, proje rotorunun fiziksel
+doğrulaması değildir. Başarısız ve bloklu benchmark durumu silinmez.
+
+### Üç olgunluk düzlemi
+
+Bu üç düzlem karıştırılmaz.
+
+**A. Sayısal model tamamlama.** Sonraki önerilen dilim, Coupled
+Aero–Motor–Mechanism modelinin önce davranış/matematik sözleşmesi, ancak
+ondan sonra sınırlı uygulamasıdır. Bu belge o sözleşmeyi yazmaz.
+
+**B. Parametre kestirimi.** PY-06D2, bağımsız ölçülmüş ve tanımlanabilir veri
+yokken blokludur. Kütle/atalet, yay, sönüm/sürtünme, devir/zaman, mekanizma
+açı geçmişi ve ilgili tork/yük bilgisi örnekleridir. Yalnız optimizasyon
+yakınsaması doğrulama değildir. Literatür değerleri proje kalibrasyonu yapılmaz.
+
+**C. Fiziksel yeterlilik.** Proje rotoru aerodinamik korelasyonu, motor/rotor
+ölçümü, yapısal CAD/malzeme/FEA ve deneysel mekanizma/açılma kanıtı ayrı
+kapılardır. Sentetik fixture, CI ve readiness bu kapıları açmaz.
 
 ## Paralel UI hattı — PyFoldable Engineering Workspace
 
@@ -79,9 +178,10 @@ Bu hat bilimsel aşamaların sırasını veya geçiş eşiklerini değiştirmez.
   PR-09 FEA ve PR-10 deney sözleşme raporları oturum içinde yüklenir; tür, şema,
   kimlik, birim, qualification ve SHA denetimleri uyuşmazlıkta fail-closed durur.
   Dosya repo'ya yazılmaz ve hiçbir yükleme fiziksel yeterlilik üretmez.
-- **UI-05B — sıradaki kontrollü dilim:** gerçek ANSYS sonuç vakaları ve kalibre
+- **UI-05B — sonraki UI dilimi:** gerçek ANSYS sonuç vakaları ve kalibre
   edilmiş ham deney run/sample bundle'ları typed sözleşmelere ayrıştırılıp mevcut
-  değerlendirme çekirdeklerine bağlanacaktır.
+  değerlendirme çekirdeklerine bağlanacaktır. Bu, arayüz hattındaki sonraki
+  kontrollü dilimdir. Sonraki sayısal model kilometre taşı değildir.
 - **UI-06–07 — sonraki artımlar:** rapor merkezi,
   uçtan uca/görsel regresyon ve paketleme.
 
@@ -103,6 +203,45 @@ zinciridir:
 
 Bir aşama yalnız kodu birleştiğinde değil; tanımlı kabul eşiği, tekrar üretilebilir
 kanıt paketi ve başarısızlığı görünür kılan regresyonu bulunduğunda tamamlanır.
+
+## Önerilen sonraki matematiksel dilim
+
+**Coupled Aero–Motor–Mechanism Model**, önerilen sonraki model dilimidir.
+Uygulanmış değildir ve kabul edilmiş bir ADR değildir. Bu PR yalnız yol
+haritasını hizalar. Davranış sözleşmesi ve denklemler ayrı review'den sonra
+yazılır. Bu belgede nihai denklem tanımlanmaz.
+
+Ayrı ayrı var olan parçalar: rotor BEM, katlanır geometri projeksiyonu/durumu,
+motor–rotor dengesi, öngörülen tahrikli PY-05 geçişi ve GEOM hareket/açıklık
+taraması.
+
+Eksik bağlaşım kabaca şudur. Mekanizma durumu açı ve açı hızını verir. Bu,
+o andaki katlanma durumunu ve aerodinamik geometriyi belirler. BEM aerodinamik
+yük üretir. Şaft/motor durumu devri belirler. Aerodinamik, merkezkaç, Euler ve
+mekanik menteşe torkları birlikte açı ivmesini belirler. Mekanizma durumu
+güncellenir. Bu çevrim bugün yoktur.
+
+<a id="sirali-teknik-fazlar"></a>
+
+## Sıralı teknik fazlar
+
+Her faz tek bir PR olmak zorunda değildir.
+
+| Faz | İçerik | Durum |
+| --- | --- | --- |
+| 0 | Birleşmiş taban. GEOM #67–#69 birleşti. BEM, motor dengesi ve PY-05 ayrı ayrı var | implemented |
+| 1 | Bu yol haritası hizalaması | docs reconciliation, bu PR |
+| 2 | Bağlaşık modelin davranış/matematik sözleşmesi. Yalnız mimari. Uygulama yok. Bağımsız review gerekir | proposed next slice |
+| 3 | En küçük sınırlı bağlaşım uygulaması. Yalnız Faz 2 onayından sonra | deferred |
+| 4 | Bağımsız sayısal doğrulama: analitik sınır halleri, kalıntı, yakınsama/duyarlılık ve ayrık modellerle regresyon | deferred |
+| 5 | PY-06D2 kalibrasyonu. Yalnız uygun ve tanımlanabilir ölçüm varken | blocked on evidence |
+| 6 | Fiziksel korelasyon, CFD, FEA ve deney | blocked on evidence |
+| 7 | Robust sistem optimizasyonu. Yalnız uygun biçimde doğrulanmış modeller üzerinde | deferred |
+
+Faz 5, ölçüm yokken Faz 2'nin önüne geçmez. Faz 7; model bağlaşımı, aerodinamik
+doğrulama, parametre kestirimi ve yapısal/deneysel kanıttan önce gelmez.
+PY-04 sonlu ızgara yararlı yazılım altyapısıdır, nihai tasarım optimizasyonu
+değildir.
 
 ## Sonraki aşamalar
 
@@ -171,16 +310,20 @@ yazılım hattının kapsamında değildir. Kaynak PDF SHA-256:
 | Öncelik | Şimdi yapılabilecek iş | Karar kapısı |
 | --- | --- | --- |
 | Bu artım: PY-06D1 | Ölçüm geçmişlerini mevcut PY-05 ile karşılaştır, kaynak ve bağımsız run ayrımını koru | Analitik/sentetik testler; fiziksel yeterlilik false; gerçek veri bekleniyor |
-| **GEOM-01 — uygulandı** | Mevcut UI-03C denetimi ve mesh ile sınırlı menteşe/katlı-açı taraması, açık UI butonu ve kaynak-bağlı JSON | Kanonik 100 mm menteşe başarısız; ayrıca herhangi bir menteşeyle tam 180° için 143 mm merkez-hat alt sınırı var. Kısmi yol ayrı; eksik station ve bilinmeyen yüzey/kanatlar arası temas aday seçtirmez |
+| **GEOM-01 — uygulandı; kanıt katmanları PR #67–#69** | Menteşe/katlı-açı taraması. PR #67 adaya bağlı GEOM-04 kanıtını doğrular. PR #68 uygun ihlalde kapıyı yalnız `False` yapabilir. PR #69 tanı üretir, kapı atamaz | Kanonik 100 mm menteşe başarısız; tam 180° için 143 mm merkez-hat alt sınırı durur. `preconditions_satisfied` seçim veya `True` değildir. Yüzey hazırlığı paylaşılan menteşe nedeniyle blokludur |
 | **GEOM-02 — birleştirildi, PR #59/#60** | Kaynak-bağlı istasyon JSON içe aktarma, tablo düzenleme, açık uygula/yeniden bağla ve ortak etkin taslak | Fiziksel ölçüler ölçeklenmez; eksik kapsam görünür; kaynak/hash ve sonuç geçerliliği korunur; tam kapsam yüzey teması doğrulaması değildir |
 | **GEOM-03 — uygulandı** | Açık bağlantı bantları, korunmuş üçgen yüzeylerde sürekli BVH açıklık sınırları, göbek zarfı/örnek ihlal kayıtları ve açı aralığı arayüzü | Senkron düzlemsel hareket; çözülemeyen aralıklar unknown; dışlanan bağlantı ve tam pervane/katı cisim çarpışmasızlığı doğrulanmaz |
-| **[GEOM-04 — uygulandı](geom04_surface_hardware.md)** | Kesin üçgen mesafesi, sürekli yol inceltmesi, kaynak-bağlı sonlu göbek/dışbükey bağlantı geometrisi, içeride kalma ve arayüz | 04A: PR #62; B/C/D entegrasyonu: PR #63; ayrı review, TDD ve Cursor Bugbot; tolerans/bütçe belirsizliği korunur; tam pervane veya fiziksel yeterlilik sonucu üretilmez |
+| **[GEOM-04 — uygulandı](geom04_surface_hardware.md); tüketim PR #67–#69** | Kesin üçgen mesafesi, sürekli yol inceltmesi, sonlu göbek/dışbükey donanım. Kanıt ekleme, negatif politika ve pozitif hazırlık tanısı ayrı katmanlardır | 04A: PR #62; B/C/D: PR #63; kanıt PR #67; negatif politika PR #68; readiness PR #69. Tam pervane veya fiziksel yeterlilik üretilmez. Özellik genişletmesi duraklatıldı |
 | Paralel aerodinamik bağımlılık | Beş profilin çalışma zarfında temsili polar/rotor nitelemesi ve mevcut chord–twist taramasının kanıtı | PR-06C başarısızlığı görünür; 254 mm referans 250 mm proje ölçümü yerine geçmez |
 | Veri gelince PY-06D2 | Önceden dondurulmuş fiziksel run ayrımıyla tanımlanabilir parametre/parametre bileşimi kestirimi | Bağımsız kütle/atalet ölçümü, sınırlar, uyarım yeterliliği, identifiability ve holdout; yalnız optimizasyon yakınsaması yetmez |
 | PY-06E/F ve UI-05B | Aynı tasarım revizyonunda itki/güç, geçiş ve PA-CF kanıtını birleştir; kararlı sözleşmeleri UI'da kullan | Birim/yük/koşul/revizyon eşliği, belirsizlik, kaynak kimliği ve stale-state kontrolü |
 
-PY-06D2 gerçek veri yokken otomatik bir sonraki iş değildir. Geometrik uyumsuzluk
-ve aerodinamik doğruluk, kalibrasyon veya arayüz tamamlanmasıyla çözülmüş sayılmaz.
+PY-06D2 gerçek ve tanımlanabilir veri yokken otomatik bir sonraki iş değildir.
+Geometri tarama zinciri de otomatik olarak `True` promosyonuna veya bağlaşık
+açılma modeline ilerlemiş sayılmaz. Geometrik uyumsuzluk ve aerodinamik doğruluk,
+kalibrasyon veya arayüz tamamlanmasıyla çözülmüş sayılmaz. Sonraki matematiksel
+dilim yukarıdaki bağlaşık model sözleşmesidir; o sözleşme bu tablonun tarihi
+değildir.
 [GEOM-01 uygulaması](geom01_feasibility_plan.md) fizik modelini büyütmeden mevcut
 denetim ve arama bütçelerini kullanır; yeni topoloji ancak açık geometri girdisi ve
 ayrı kabul testleriyle eklenir.
@@ -365,7 +508,11 @@ arşiv bütünlüğü sürüm kapısıdır.
 | 6 | PR-08/09 CFD ve FEA | PR-08 CFD gerçek ANSYS çıktısını bekliyor; PR-09 yazılım/hazırlık sözleşmesi tamamlandı, gerçek yapısal kanıt bekleniyor |
 | 7 | PR-10 deney | Yazılım/hazırlık ve kamuya açık aynı-pervane referans temeli tamamlandı; kalibrasyonlu gerçek sabit/katlanır ham ölçümler bekleniyor |
 | 8 | PY-06 karşılaştırma | A/B1/C sırasıyla PR #54/#55/#56 ile birleştirildi; D1 gözlem karşılaştırması uygulandı; D2 gerçek veri ve tanımlanabilirlik kapısını bekliyor |
-| 9 | PR-11/12 optimizasyon ve sürüm | Robust Pareto kararı ve temiz yeniden üretim |
+| 9 | PR-11/12 optimizasyon ve sürüm | Robust Pareto kararı ve temiz yeniden üretim. Doğrulanmış modelden önce nihai tasarım optimizasyonu değildir |
+
+Tarihli PR-06–PR-12 sırası korunur. Güncel bilimsel sıra bu tablonun yerine
+[sıralı teknik fazlar](#sirali-teknik-fazlar) bölümündedir. UI-05B arayüz
+sırasını değiştirmez.
 
 ## İşbirliği sınırları
 
@@ -388,3 +535,7 @@ Kritik yol artık **tested blade'i temsil eden E63→APC12 spanwise, Reynolds-du
 dondurulmuş UIUC fixture/politika üzerindeki tüm kapılar geçmeden PR-06D'nin fiziksel
 doğruluk iddiasına veya nitelikli açılma duyarlılığına ilerlenmez. Sabit-limit yazılım
 eşdeğerliği bu sınırı değiştirmeden PR-06D uygulama aşamasına giriş sağlamıştır.
+Bu aerodinamik fiziksel kapı açık kalır. Ondan ayrı olarak geometri tarama
+zinciri PR #67–#69 ile duraklatılmıştır ve sonraki model dilimi, henüz
+yazılmamış bağlaşık aero–motor–mekanizma sözleşmesidir. PY-06D2 ve robust
+optimizasyon veri ve doğrulama kapılarının önüne alınmaz.
