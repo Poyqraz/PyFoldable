@@ -22,6 +22,10 @@ from .design_search import (
 from .geometry_clearance_policy import (
     ClearancePolicyError, NegativeClearancePolicy, decide_negative_clearance,
 )
+from .geometry_clearance_readiness import (
+    CandidateClearanceFacts, ClearanceReadinessError, FuturePositiveQuestionV1,
+    assess_positive_clearance_readiness, readiness_document,
+)
 from .hardware_contract import load_hardware_json
 
 _CONSTRAINTS = ("centerline_target", "centerline_path_clearance", "station_span_complete",
@@ -61,6 +65,7 @@ class GeometrySearchRequest:
     clearance_inputs: object | None = None
     hardware_json: bytes | None = None
     clearance_policy: NegativeClearancePolicy | None = None
+    readiness_question: FuturePositiveQuestionV1 | None = None
 
 
 def _clearance_module():
@@ -443,6 +448,73 @@ def _record_negative_policy(policy, details, constraints, evidence, report):
         details["surface_path_clearance_status"] = _GEOM01_UNKNOWN
 
 
+def _json_contains_bool(value):
+    pending = [value]
+    while pending:
+        node = pending.pop()
+        if isinstance(node, dict):
+            pending.extend(node.values())
+        elif isinstance(node, list):
+            pending.extend(node)
+        elif isinstance(node, bool):
+            return True
+    return False
+
+
+def _attach_positive_readiness(request, details, constraints, blade, hinge_radius_m, end_angle_deg):
+    """Diagnose the final evidence state without changing constraints or reports."""
+    if request.readiness_question is None:
+        return
+    saved_constraints = dict(constraints)
+    evidence = details.get("geom04_clearance")
+    if evidence is None:
+        status, report = "no_evidence", None
+    else:
+        execution = evidence.get("execution_status")
+        if execution == "completed":
+            status, report = "completed", evidence.get("report")
+        elif execution == "candidate_validation_failed":
+            status, report = "candidate_validation_failed", None
+        elif execution == "evidence_attachment_exceeds_search_details_budget":
+            status, report = "evidence_unavailable_oversize", None
+        else:
+            raise SearchError("Candidate clearance readiness rejected the evidence state.")
+    radius = blade.diameter_m / 2.0
+    exclusions = request.clearance_inputs
+    report_token = None if report is None else _json(report)
+    try:
+        readiness = assess_positive_clearance_readiness(
+            request.readiness_question,
+            evidence_status=status,
+            report=report,
+            candidate=CandidateClearanceFacts(
+                blade_count=blade.blade_count,
+                end_angle_deg=end_angle_deg,
+                hub_radius_m=blade.hub_radius_m,
+                hinge_radius_m=hinge_radius_m,
+                tip_radius_m=radius,
+                first_station_radius_m=blade.stations[0].r_over_R * radius,
+                last_station_radius_m=blade.stations[-1].r_over_R * radius,
+                root_exclusion_width_m=None if exclusions is None else exclusions.root_attachment_m,
+                hinge_exclusion_width_m=None if exclusions is None else exclusions.hinge_attachment_m,
+            ),
+        )
+    except ClearanceReadinessError as exc:
+        raise SearchError("Candidate clearance readiness rejected the evidence.") from exc
+    except ArithmeticError as exc:
+        raise SearchError("Candidate clearance readiness rejected the evidence.") from exc
+    if report is not None and _json(report) != report_token:
+        raise SearchError("Candidate clearance readiness rejected the evidence.")
+    document = readiness_document(readiness)
+    if _json_contains_bool(document):
+        raise SearchError("Candidate clearance readiness rejected the evidence.")
+    details["geom04_positive_clearance_readiness"] = document
+    if _details_size(details) > _SEARCH_DETAILS_BUDGET:
+        del details["geom04_positive_clearance_readiness"]
+    if constraints != saved_constraints:
+        raise SearchError("Candidate clearance readiness rejected the evidence.")
+
+
 def _accept_bound_clearance_report(artifact, clearance_request, inputs, *, hinge_radius_m, end_angle_deg):
     """Identity, digest, schema, qualification and accounting, without mutating the report."""
     if artifact.request_sha256 != clearance_request.request_sha256:
@@ -490,6 +562,7 @@ def prepare_geometry_search(
     stowed_angles_deg: tuple[float, ...], max_evaluations: int = 25,
     clearance_inputs=None, hardware_json: bytes | None = None,
     clearance_policy: NegativeClearancePolicy | None = None,
+    readiness_question: FuturePositiveQuestionV1 | None = None,
 ) -> GeometrySearchRequest:
     """Validate budgets and source identity without generating candidate meshes."""
     model, target, foil = _inputs(draft)
@@ -548,6 +621,10 @@ def prepare_geometry_search(
         if not isinstance(clearance_policy, NegativeClearancePolicy):
             raise SearchError("Expected an explicit negative-clearance policy.")
         sources += ("application/geometry_clearance_policy.py",)
+    if readiness_question is not None:
+        if not isinstance(readiness_question, FuturePositiveQuestionV1):
+            raise SearchError("Expected an explicit positive-clearance readiness question.")
+        sources += ("application/geometry_clearance_readiness.py",)
     context = {
         "schema_version": 1, "classification": "geometry_feasibility_screening_only",
         "base_draft_toml": draft.toml, "base_draft_sha256": draft.draft_sha256,
@@ -567,9 +644,12 @@ def prepare_geometry_search(
         context["candidate_clearance"] = binding
     if clearance_policy is not None:
         context["negative_clearance_policy"] = clearance_policy.declaration()
+    if readiness_question is not None:
+        context["positive_clearance_readiness"] = readiness_question.declaration()
     text = _json(context)
     return GeometrySearchRequest(
-        draft, plan, _sha(text), text, clearance_inputs, hardware_json, clearance_policy)
+        draft, plan, _sha(text), text, clearance_inputs, hardware_json, clearance_policy,
+        readiness_question)
 
 
 def run_geometry_search(request: GeometrySearchRequest) -> analysis.DesignAnalysisArtifact:
@@ -578,6 +658,8 @@ def run_geometry_search(request: GeometrySearchRequest) -> analysis.DesignAnalys
     Optional GEOM-04 binding attaches candidate-specific evidence only. An
     explicit negative-clearance policy may then set either surface gate to
     False, or leave it None. This policy never sets either gate to True.
+    An optional readiness question is diagnostic only and does not assign
+    either gate.
     """
     if not isinstance(request, GeometrySearchRequest) or not isinstance(request.plan, GridSearchPlan):
         raise SearchError("Expected a prepared geometry grid.")
@@ -587,7 +669,7 @@ def run_geometry_search(request: GeometrySearchRequest) -> analysis.DesignAnalys
     fresh = prepare_geometry_search(request.draft, hinge_radii_m=axes["hinge_radius_m"],
         stowed_angles_deg=axes["stowed_angle_deg"], max_evaluations=request.plan.max_evaluations,
         clearance_inputs=request.clearance_inputs, hardware_json=request.hardware_json,
-        clearance_policy=request.clearance_policy)
+        clearance_policy=request.clearance_policy, readiness_question=request.readiness_question)
     if fresh != request:
         raise SearchError("Geometry request identity changed.")
     model, target, foil = _inputs(request.draft)
@@ -673,6 +755,7 @@ def run_geometry_search(request: GeometrySearchRequest) -> analysis.DesignAnalys
                     details["geom04_clearance"], None)
         elif request.clearance_policy is not None:
             _record_negative_policy(request.clearance_policy, details, constraints, None, None)
+        _attach_positive_readiness(request, details, constraints, blade, h, angle)
         return Evaluation(audit.centerline_envelope_diameter_m, constraints, details)
 
     return run_grid_search(request.plan, evaluate, evaluator_identity={

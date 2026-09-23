@@ -126,6 +126,45 @@ that namespace under a separate classification (`scoped_geom04_violation`,
 change
 `surface_path_clearance` or `interblade_clearance`. Only the separate
 negative-clearance policy may set those gates, and only to `False` or `None`.
+An optional `geom01_positive_readiness_v1` question may then read that final
+evidence state. It reports whether the proof prerequisites for a future,
+separately reviewed positive policy are met. `preconditions_satisfied` is not
+gate `True`. The diagnostic does not assign either clearance constraint, does
+not change the objective, candidate status, or `best_candidate`, and does not
+rerun GEOM-04. With no question, no readiness namespace is attached. The
+namespace is `details.geom04_positive_clearance_readiness`. If adding it would
+exceed the existing 256 KiB details budget, the namespace is omitted in full
+and the retained evidence and negative decision stay as they were. Absence of
+the namespace is not success. For a one-blade rotor the interblade gate is
+`not_applicable` before evidence availability. On a completed report the
+surface-path diagnostic always includes
+`shared_hinge_contact_domain_unresolved`: the current open-surface model
+duplicates the hinge station, and excluded or separated retained triangles do
+not make that shared boundary permitted contact. Interblade readiness does not
+inherit that blocker and can already be `preconditions_satisfied` for a
+full-span, zero-exclusion candidate whose relevant pairs are separated strictly
+above the question threshold. That still leaves `interblade_clearance` at
+`None` unless the negative policy has independently set `False`. Infinite-cylinder
+separation supports the hub component only when the question declares
+`infinite_envelope_under_nominal_containment`. A declared finite-cylinder hub
+uses its own guarded hardware rows. General hardware stays outside these two
+gates. A claimed `separated` query is checked against the producer threshold in the
+accepted report, `request.inputs.required_clearance_m`, before the question
+threshold is considered. A lower bound that is missing, non-finite, equal to
+that producer threshold, or below it aborts through `ClearanceReadinessError`
+and `SearchError`. It is not recorded as `threshold_mismatch`. Only after that
+producer claim is internally valid does an exact mismatch with
+`question.required_clearance_m` become the blocker `threshold_mismatch`.
+Each gate's `dimensions` field is an ordered list of `{name, state}` records.
+States are `satisfied`, `blocked`, `not_assessed`, and `not_applicable`.
+`preconditions_satisfied` requires every applicable dimension to be
+`satisfied`. Unavailable evidence blocks `candidate_binding` and leaves the
+other dimensions `not_assessed`. A one-blade interblade gate is
+`not_applicable` in every dimension. `ArithmeticError` raised while assessing
+readiness becomes `SearchError` and aborts the search; it does not become a
+failed grid row. `design_search.py` is unchanged. Contradictory separated
+evidence aborts through `ClearanceReadinessError` and `SearchError`;
+incomplete evidence blocks the diagnostic.
 `physical_qualification`
 stays false and `full_propeller_clearance` stays null. `best_candidate` remains
 absent unless every required constraint is True. Unknown surface gates keep the
@@ -156,10 +195,11 @@ sampled paths. Full regression, exact-head CI and final GitHub review precede me
 ## Next bounded work
 
 GEOM-02–04 remain the station, retained-surface and hardware screening path.
-This increment only attaches already-scoped GEOM-04 evidence to the GEOM-01
-candidate that produced it. It does not change GEOM-01 feasibility gates.
-A later reviewed slice would be required before any mapping into
-`surface_path_clearance` / `interblade_clearance`. The dashboard search action
-still runs unbound unless a later UI slice opts in. The raw literature-data
-acquisition/observable adapter remains a parallel task; PY-06D2 fitting still
-requires suitable independent measurements and identifiability.
+Candidate GEOM-04 evidence and the negative `False | None` policy are separate
+from the diagnostic readiness question. Readiness does not authorize a later
+`True` promotion. A separately reviewed slice would still be required before
+any mapping into `surface_path_clearance` / `interblade_clearance`. The
+dashboard search action still runs unbound unless a later UI slice opts in.
+The raw literature-data acquisition/observable adapter remains a parallel task;
+PY-06D2 fitting still requires suitable independent measurements and
+identifiability.
