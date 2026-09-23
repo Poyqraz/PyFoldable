@@ -33,6 +33,7 @@ _CLEARANCE_SOURCES = (
     "application/hardware_clearance.py", "geometry/hardware.py",
 )
 _GEOM01_UNKNOWN = "unknown_no_swept_surface_collision_model"
+_POLICY_SURFACE_FAILURE = "negative_clearance_policy_relevant_violation"
 _SEARCH_DETAILS_BUDGET = 256 * 1024
 _PAIR_STATUSES = frozenset({"violation", "unknown", "separated"})
 _CLASSIFICATIONS = frozenset({"failed", "blocked", "screening-only"})
@@ -436,6 +437,10 @@ def _record_negative_policy(policy, details, constraints, evidence, report):
     }
     constraints["surface_path_clearance"] = decision.surface_path_clearance.value
     constraints["interblade_clearance"] = decision.interblade_clearance.value
+    if constraints["surface_path_clearance"] is False:
+        details["surface_path_clearance_status"] = _POLICY_SURFACE_FAILURE
+    else:
+        details["surface_path_clearance_status"] = _GEOM01_UNKNOWN
 
 
 def _accept_bound_clearance_report(artifact, clearance_request, inputs, *, hinge_radius_m, end_angle_deg):
@@ -520,7 +525,11 @@ def prepare_geometry_search(
             "full_propeller_clearance": None,
             "reuse_policy": "rebuild_draft_and_request_per_candidate_never_reuse_foreign_geometry",
             "end_angle_policy": "candidate_stowed_angle_within_declared_travel",
-            "selection_effect": "evidence_only_does_not_alter_geom01_constraints",
+            "selection_effect": (
+                "negative_policy_may_set_clearance_constraints_false_never_true"
+                if isinstance(clearance_policy, NegativeClearancePolicy) and clearance_policy.enabled
+                else "evidence_only_does_not_alter_geom01_constraints"
+            ),
             "budget_policy": "per_candidate_configured_limits_not_shared_grid_remainder",
             "per_candidate_max_node_comparisons": clearance_inputs.max_node_comparisons,
             "per_candidate_max_feature_tests": clearance_inputs.max_feature_tests,

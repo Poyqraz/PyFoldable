@@ -125,7 +125,7 @@ def _classify(query, bodies):
         raise ClearancePolicyError("Candidate clearance policy rejected a query.")
     kind, a, b = query.get("kind"), query.get("a"), query.get("b")
     left, right = _part(a), _part(b)
-    names = {body["name"] for body in bodies}
+    by_name = {body["name"]: body for body in bodies}
     if kind == "own_root_tip":
         if (left is None or right is None or left[0] != right[0]
                 or {left[1], right[1]} != {"root", "tip"}):
@@ -136,25 +136,20 @@ def _classify(query, bodies):
             raise ClearancePolicyError("Candidate clearance query identity contradicts interblade.")
         return "interblade"
     if kind == "hub":
-        if left is not None and right is None and b == "hub_envelope":
-            return "infinite_hub"
-        if right is not None and left is None and a == "hub_envelope":
+        if left is not None and b == "hub_envelope":
             return "infinite_hub"
         raise ClearancePolicyError("Candidate clearance query identity contradicts hub.")
     if kind == "hardware_surface":
-        if any(name in names and _part(name) is not None for name in (a, b)):
+        # Producer role, not name shape: a is the retained surface, b is the hardware body.
+        body = by_name.get(b) if isinstance(b, str) else None
+        if left is None or body is None:
             raise ClearancePolicyError("Candidate clearance query identity contradicts hardware_surface.")
-        part_names = [name for name, parsed in ((a, left), (b, right)) if parsed is not None]
-        hardware_names = [name for name in (a, b) if name in names]
-        if len(part_names) != 1 or len(hardware_names) != 1:
-            raise ClearancePolicyError("Candidate clearance query identity contradicts hardware_surface.")
-        body = next(item for item in bodies if item["name"] == hardware_names[0])
-        finite = [item["name"] for item in bodies if _is_finite_hub(item)]
-        if len(finite) == 1 and body["name"] == finite[0]:
+        if _is_finite_hub(body):
             return "finite_hub"
         return "irrelevant"
     if kind == "hardware_pair":
-        if (a in names and b in names and a != b and _part(a) is None and _part(b) is None):
+        if (isinstance(a, str) and isinstance(b, str) and a != b
+                and a in by_name and b in by_name):
             return "irrelevant"
         raise ClearancePolicyError("Candidate clearance query identity contradicts hardware_pair.")
     raise ClearancePolicyError("Candidate clearance policy rejected an unsupported query kind.")
@@ -178,31 +173,47 @@ def _path_radians(request):
     return math.radians(float(end)), 0.0
 
 
-def _usable_violation(interval, path_min, path_max):
-    if not isinstance(interval, dict) or interval.get("status") != "violation":
-        return False
+def _require_consistent_violation(result, path_min, path_max, threshold):
+    """Fail closed unless the producer violation proves the policy threshold.
+
+    Surface and hardware producers write one violation interval and copy that
+    same witness onto the query result. Equality of those two values is exact.
+    A witness equal to the threshold does not prove a violation.
+    """
+    if not isinstance(result, dict):
+        raise ClearancePolicyError("Candidate clearance policy rejected a query result.")
+    intervals = result.get("intervals")
+    if not isinstance(intervals, list):
+        raise ClearancePolicyError("A violation is missing its interval ledger.")
+    query_witness = result.get("witness_clearance_m")
+    if not _finite(query_witness) or not query_witness < threshold:
+        raise ClearancePolicyError("A violation witness does not prove the policy clearance threshold.")
+    found = None
+    for index, interval in enumerate(intervals):
+        if not isinstance(interval, dict) or interval.get("status") != "violation":
+            continue
+        if found is not None:
+            raise ClearancePolicyError("A violation has more than one producer violation interval.")
+        found = index
+    if found is None:
+        raise ClearancePolicyError("A violation has no producer violation interval.")
+    interval = intervals[found]
     clearance = interval.get("witness_clearance_m")
     angle = interval.get("witness_angle_rad")
     start = interval.get("angle_min_rad")
     stop = interval.get("angle_max_rad")
     if not all(_finite(value) for value in (clearance, angle, start, stop)):
-        return False
-    return start <= angle <= stop and path_min <= angle <= path_max
+        raise ClearancePolicyError("A violation witness is not finite.")
+    if clearance != query_witness or not clearance < threshold:
+        raise ClearancePolicyError("A violation witness does not prove the policy clearance threshold.")
+    if not (start <= angle <= stop and path_min <= angle <= path_max):
+        raise ClearancePolicyError("A violation has no usable witness inside the candidate path.")
+    return found
 
 
-def _witness_index(result, path_min, path_max):
-    intervals = result.get("intervals") if isinstance(result, dict) else None
-    if not isinstance(intervals, list):
-        raise ClearancePolicyError("A violation is missing its interval ledger.")
-    for index, interval in enumerate(intervals):
-        if _usable_violation(interval, path_min, path_max):
-            return index
-    raise ClearancePolicyError("A violation has no usable witness inside the candidate path.")
-
-
-def _gate(rows, relevant, path_min, path_max, *, infinite_hub_violation):
+def _gate(rows, relevant, *, infinite_hub_violation):
     saw_relevant = saw_unknown = saw_contact = saw_separated = False
-    for index, kind, query in rows:
+    for index, kind, query, interval_index in rows:
         if kind not in relevant:
             continue
         saw_relevant = True
@@ -211,9 +222,7 @@ def _gate(rows, relevant, path_min, path_max, *, infinite_hub_violation):
             raise ClearancePolicyError("Candidate clearance policy rejected a query result.")
         status = result.get("status")
         if status == "violation":
-            return GateDecision(
-                False, "relevant_violation_witness", index,
-                _witness_index(result, path_min, path_max))
+            return GateDecision(False, "relevant_violation_witness", index, interval_index)
         if status == "unknown":
             contact = result.get("contact_status")
             if isinstance(contact, str) and contact in _CONTACT:
@@ -269,12 +278,18 @@ def decide_negative_clearance(policy, report, *, evidence_status="completed"):
     infinite_hub_violation = False
     for index, query in enumerate(queries):
         kind = _classify(query, bodies)
-        rows.append((index, kind, query))
         result = query.get("result") if isinstance(query, dict) else None
-        if kind == "infinite_hub" and isinstance(result, dict) and result.get("status") == "violation":
+        if not isinstance(result, dict):
+            raise ClearancePolicyError("Candidate clearance policy rejected a query result.")
+        interval_index = None
+        if result.get("status") == "violation":
+            interval_index = _require_consistent_violation(
+                result, path_min, path_max, policy.required_clearance_m)
+        rows.append((index, kind, query, interval_index))
+        if kind == "infinite_hub" and result.get("status") == "violation":
             infinite_hub_violation = True
     return NegativeClearanceDecision(
         POLICY_ID,
-        _gate(rows, _SURFACE_KINDS, path_min, path_max, infinite_hub_violation=infinite_hub_violation),
-        _gate(rows, _INTERBLADE_KINDS, path_min, path_max, infinite_hub_violation=False),
+        _gate(rows, _SURFACE_KINDS, infinite_hub_violation=infinite_hub_violation),
+        _gate(rows, _INTERBLADE_KINDS, infinite_hub_violation=False),
     )

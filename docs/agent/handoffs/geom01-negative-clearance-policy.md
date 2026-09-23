@@ -14,35 +14,67 @@ GitHub `origin/main` at implementation start:
 Branch:
 `cursor/geom01-negative-clearance-policy-36c6`
 
+Previous reviewed HEAD:
+`afe0bc4dbee728f977a279b1a1baedf6f5ff07c1`
+Its Python 3.10/3.11 CI had already succeeded
+(push `35780566656`, pull_request `35780588558`). That record belongs to
+`afe0bc4`, not to the witness/role correction below.
+
 Tested commits:
 - RED `68e4c8c` (module absent; integration import failed)
 - GREEN policy `39601e7`
-- Docs `e9f0ff1` (this handoff update follows that commit)
+- Docs `e9f0ff1`
+- Local verification record `afe0bc4`
+- Witness, hardware-role, provenance and diagnostic correction: this commit
 
-Local verification on GREEN:
-- policy + geometry-search: 124 passed
-- surface/hardware: 56 passed
-- full suite: 1568 passed, 9 skipped, 37 subtests
-- `compileall` and `git diff --check` OK (unstaged CSV CRLF warning only)
+Local verification on the correction, Python 3.12 venv:
+- RED against `afe0bc4` before the production edit: 19 failed, 8 passed
+  among the new blocker tests. The 19 failures were the intended gaps
+  (threshold proof, query/interval disagreement, extra violation intervals,
+  blade-shaped hardware names, reversed producer roles, enabled
+  `selection_effect`, contradictory-witness search abort, and the surface
+  diagnostic). Already-closed cases stayed green: no violation interval,
+  witness outside the interval or path, zero-clearance negative penetration,
+  one unknown tail, a real `pair_clearance` violation, disabled provenance,
+  and interblade-only `False`.
+- Policy and geometry-search files: 151 passed
+- Surface and hardware modules: 111 passed
+- Full suite: 1595 passed, 9 skipped, 37 subtests passed
+- `compileall` OK
+- `git diff --check` OK except the unstaged CSV CRLF warning, which is not
+  part of this branch
 - Independent automated review: APPROVE
 - `design_search.py` and GEOM-04 numerical kernels unchanged
 
+Policy rules recorded by this correction:
+- A `violation` is usable only when the query witness and the single
+  violation-interval witness are exactly equal and strictly less than
+  `required_clearance_m`. Contradictory violation evidence raises
+  `ClearancePolicyError` and aborts through the existing `SearchError`
+  boundary. It is not stored as `None`.
+- `hardware_surface` is surface part then hardware body.
+  `hardware_pair` is two declared hardware bodies. Hub is surface part
+  then `hub_envelope`. Finite-hub `False` requires binding `hub` and
+  geometry kind `finite_cylinder` on that hardware-role body.
+- Enabled clearance binding uses
+  `selection_effect=negative_policy_may_set_clearance_constraints_false_never_true`.
+  No policy, or `enabled=False`, keeps
+  `evidence_only_does_not_alter_geom01_constraints`.
+- Final `surface_path_clearance=False` sets
+  `surface_path_clearance_status=negative_clearance_policy_relevant_violation`.
+  `None` keeps `unknown_no_swept_surface_collision_model`.
+
 PR:
+https://github.com/Poyqraz/PyFoldable/pull/68
 Do not merge.
 
-Completed:
-- `NegativeClearancePolicy` / `decide_negative_clearance` in
-  `pyfoldable/application/geometry_clearance_policy.py`
-- Policy id `geom01_negative_clearance_v1`
-- Motion domain
-  `synchronous_planar_rigid_tips_from_zero_to_declared_endpoint`
-- Declaration bound into `prepare_geometry_search` context and request SHA
-- Gates applied only after the existing PR #67 acceptance path
-- Oversized final attachment forces both gates back to `None`
-- `design_search.py` and GEOM-04 numerical kernels unchanged
+Exact-head CI:
+Not yet recorded for this correction commit. Fill this section only after
+the GitHub run for the pushed SHA finishes. Do not copy the `afe0bc4` runs
+forward.
 
 Remaining:
-- Exact-head Python 3.10/3.11 CI after push
+- Exact-head Python 3.10 and 3.11 CI for this correction
 - Independent human review
 - Do not merge from this agent
 - No UI binding and no `True` promotion in this slice

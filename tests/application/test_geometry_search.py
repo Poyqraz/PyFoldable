@@ -1452,6 +1452,7 @@ def test_policy_metadata_near_details_budget_does_not_fail_the_row(monkeypatch):
                 assert namespace["execution_status"] == "evidence_attachment_exceeds_search_details_budget"
                 assert namespace["report"] is None
                 assert surface is None and interblade is None
+                assert row["details"]["surface_path_clearance_status"] == _UNKNOWN_SURFACE_STATUS
                 assert row["details"]["geom04_negative_clearance_policy"]["surface_path_clearance"]["reason"] == (
                     "evidence_unavailable_oversize")
     assert failed_padding is None
@@ -1471,6 +1472,126 @@ def test_policy_without_geom04_inputs_records_no_evidence():
     assert recorded["surface_path_clearance"]["reason"] == "no_evidence"
     assert recorded["interblade_clearance"]["reason"] == "no_evidence"
     assert result["best_candidate"] is None
+
+
+_EVIDENCE_ONLY_EFFECT = "evidence_only_does_not_alter_geom01_constraints"
+_NEGATIVE_POLICY_EFFECT = "negative_policy_may_set_clearance_constraints_false_never_true"
+_POLICY_SURFACE_STATUS = "negative_clearance_policy_relevant_violation"
+_UNKNOWN_SURFACE_STATUS = "unknown_no_swept_surface_collision_model"
+
+
+def _selection_effect(request):
+    return json.loads(request.context_json)["candidate_clearance"]["selection_effect"]
+
+
+def test_selection_effect_matches_whether_policy_can_change_gates():
+    inputs = SurfaceClearanceInputs(end_angle_deg=-10.)
+    absent = prepare_geometry_search(
+        draft(), hinge_radii_m=(.06,), stowed_angles_deg=(-10.,), clearance_inputs=inputs)
+    disabled = prepare_geometry_search(
+        draft(), hinge_radii_m=(.06,), stowed_angles_deg=(-10.,), clearance_inputs=inputs,
+        clearance_policy=_negative_policy(inputs.required_clearance_m, enabled=False))
+    enabled = prepare_geometry_search(
+        draft(), hinge_radii_m=(.06,), stowed_angles_deg=(-10.,), clearance_inputs=inputs,
+        clearance_policy=_negative_policy(inputs.required_clearance_m, enabled=True))
+    policy_only = prepare_geometry_search(
+        draft(), hinge_radii_m=(.06,), stowed_angles_deg=(-10.,),
+        clearance_policy=_negative_policy(enabled=True))
+    assert _selection_effect(absent) == _EVIDENCE_ONLY_EFFECT
+    assert _selection_effect(disabled) == _EVIDENCE_ONLY_EFFECT
+    assert "negative_clearance_policy" not in json.loads(absent.context_json)
+    disabled_context = json.loads(disabled.context_json)
+    enabled_context = json.loads(enabled.context_json)
+    assert disabled_context["negative_clearance_policy"]["enabled"] is False
+    assert enabled_context["negative_clearance_policy"]["enabled"] is True
+    assert enabled_context["negative_clearance_policy"]["policy_id"] == "geom01_negative_clearance_v1"
+    assert "candidate_clearance" not in json.loads(policy_only.context_json)
+    assert absent.request_sha256 != enabled.request_sha256
+    assert disabled.request_sha256 != enabled.request_sha256
+    assert _selection_effect(enabled) == _NEGATIVE_POLICY_EFFECT
+
+
+def test_disabled_policy_provenance_does_not_change_gates(monkeypatch):
+    complete = _complete_span_draft()
+    queries = _policy_violation_queries("own_root_tip", "blade_1_root", "blade_1_tip")
+    monkeypatch.setattr(
+        "pyfoldable.application.surface_clearance.run_surface_clearance",
+        _clearance_artifact(queries),
+    )
+    prepared = prepare_geometry_search(
+        complete, hinge_radii_m=(.06,), stowed_angles_deg=(-150.,),
+        clearance_inputs=SurfaceClearanceInputs(end_angle_deg=-150.),
+        clearance_policy=_negative_policy(enabled=False),
+    )
+    assert _selection_effect(prepared) == _EVIDENCE_ONLY_EFFECT
+    result = json.loads(run_geometry_search(prepared).report_json)
+    row = result["candidates"][0]
+    assert row["constraints"]["surface_path_clearance"] is None
+    assert row["constraints"]["interblade_clearance"] is None
+    assert row["details"]["surface_path_clearance_status"] == _UNKNOWN_SURFACE_STATUS
+    assert row["details"]["geom04_negative_clearance_policy"]["surface_path_clearance"]["reason"] == (
+        "policy_not_enabled")
+
+
+def test_contradictory_violation_witness_aborts_geometry_search(monkeypatch):
+    complete = _complete_span_draft()
+    queries = _policy_violation_queries("own_root_tip", "blade_1_root", "blade_1_tip")
+    queries[0]["result"]["witness_clearance_m"] = 0.010
+    queries[0]["result"]["intervals"][0]["witness_clearance_m"] = 0.010
+    monkeypatch.setattr(
+        "pyfoldable.application.surface_clearance.run_surface_clearance",
+        _clearance_artifact(queries),
+    )
+    prepared = prepare_geometry_search(
+        complete, hinge_radii_m=(.06,), stowed_angles_deg=(-150.,),
+        clearance_inputs=SurfaceClearanceInputs(end_angle_deg=-150.),
+        clearance_policy=_negative_policy(),
+    )
+    with pytest.raises(SearchError, match="Candidate clearance policy rejected the evidence"):
+        run_geometry_search(prepared)
+
+
+def test_surface_false_diagnostic_matches_final_constraint(monkeypatch):
+    complete = _complete_span_draft()
+    queries = _policy_violation_queries("own_root_tip", "blade_1_root", "blade_1_tip")
+    monkeypatch.setattr(
+        "pyfoldable.application.surface_clearance.run_surface_clearance",
+        _clearance_artifact(queries),
+    )
+    prepared = prepare_geometry_search(
+        complete, hinge_radii_m=(.06,), stowed_angles_deg=(-150.,),
+        clearance_inputs=SurfaceClearanceInputs(end_angle_deg=-150.),
+        clearance_policy=_negative_policy(),
+    )
+    result = json.loads(run_geometry_search(prepared).report_json)
+    row = result["candidates"][0]
+    assert row["constraints"]["surface_path_clearance"] is False
+    assert row["constraints"]["interblade_clearance"] is None
+    assert row["details"]["surface_path_clearance_status"] == _POLICY_SURFACE_STATUS
+    recorded = row["details"]["geom04_negative_clearance_policy"]["surface_path_clearance"]
+    assert recorded["reason"] == "relevant_violation_witness"
+    assert recorded["query_index"] == 0
+    assert "witness_clearance_m" not in recorded
+    assert _selection_effect(prepared) == _NEGATIVE_POLICY_EFFECT
+
+
+def test_interblade_false_does_not_rewrite_surface_diagnostic(monkeypatch):
+    complete = _complete_span_draft()
+    queries = _policy_violation_queries("interblade", "blade_1_tip", "blade_2_root")
+    monkeypatch.setattr(
+        "pyfoldable.application.surface_clearance.run_surface_clearance",
+        _clearance_artifact(queries),
+    )
+    prepared = prepare_geometry_search(
+        complete, hinge_radii_m=(.06,), stowed_angles_deg=(-150.,),
+        clearance_inputs=SurfaceClearanceInputs(end_angle_deg=-150.),
+        clearance_policy=_negative_policy(),
+    )
+    result = json.loads(run_geometry_search(prepared).report_json)
+    row = result["candidates"][0]
+    assert row["constraints"]["interblade_clearance"] is False
+    assert row["constraints"]["surface_path_clearance"] is None
+    assert row["details"]["surface_path_clearance_status"] == _UNKNOWN_SURFACE_STATUS
 
 
 def test_policy_on_candidate_validation_failure_stays_none(monkeypatch):

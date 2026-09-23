@@ -1,4 +1,5 @@
 """GEOM-01 negative clearance policy v1: False or None, never True."""
+from dataclasses import asdict
 import json
 import math
 
@@ -11,6 +12,15 @@ from pyfoldable.application.geometry_clearance_policy import (
     NegativeClearancePolicy,
     decide_negative_clearance,
 )
+from pyfoldable.application.hardware_clearance import MotionShape, query_motion_pair
+from pyfoldable.application.surface_clearance import (
+    SurfaceClearanceInputs,
+    prepare_surface_clearance,
+    run_surface_clearance,
+)
+from pyfoldable.geometry.hardware import finite_cylinder
+from pyfoldable.geometry.surface_clearance import SurfacePart, pair_clearance
+from test_polar_upload import draft
 
 _PATH_MIN = math.radians(-10.0)
 
@@ -194,7 +204,7 @@ def test_finite_cylinder_hub_violation_sets_surface_false():
 
 def test_name_containing_hub_without_finite_cylinder_is_not_surface_proof():
     report = _report(
-        [_query("hardware_surface", "hub", "blade_1_root", "violation")],
+        [_query("hardware_surface", "blade_1_root", "hub", "violation")],
         request={"hardware": _hardware(_convex("hub", "hub"))},
     )
     decision = _values(_policy(), report)
@@ -205,8 +215,9 @@ def test_name_containing_hub_without_finite_cylinder_is_not_surface_proof():
 def test_finite_hub_penetration_at_zero_clearance_sets_surface_false():
     report = _report(
         [_query(
-            "hardware_surface", "sleeve", "blade_2_root", "violation",
+            "hardware_surface", "blade_2_root", "sleeve", "violation",
             intervals=[_interval(witness_clearance_m=-0.002, witness_angle_rad=0.0)],
+            witness_clearance_m=-0.002,
         )],
         request={
             "hardware": _hardware(_finite_hub("sleeve")),
@@ -401,3 +412,298 @@ def test_binding_hub_alone_is_not_finite_hub_proof():
     )
     decision = _values(_policy(), report)
     assert decision.surface_path_clearance.value is None
+
+
+def _threshold_report(witness, *, interval_witness=None, angle=-0.05, angle_min=None,
+                      angle_max=0.0, extra_intervals=None, threshold=0.0005,
+                      kind="own_root_tip", a="blade_1_root", b="blade_1_tip"):
+    interval_witness = witness if interval_witness is None else interval_witness
+    intervals = [_interval(
+        witness_clearance_m=interval_witness,
+        witness_angle_rad=angle,
+        angle_min_rad=_PATH_MIN if angle_min is None else angle_min,
+        angle_max_rad=angle_max,
+    )]
+    if extra_intervals:
+        intervals.extend(extra_intervals)
+    return _report(
+        [_query(kind, a, b, "violation", intervals=intervals, witness_clearance_m=witness)],
+        request={"inputs": {"required_clearance_m": threshold, "end_angle_deg": -10.0}},
+    )
+
+
+def test_witness_above_policy_threshold_aborts():
+    report = _threshold_report(0.010)
+    with pytest.raises(ClearancePolicyError):
+        decide_negative_clearance(_policy(required_clearance_m=0.0005), report)
+
+
+def test_witness_equal_to_policy_threshold_aborts():
+    report = _threshold_report(0.0005)
+    with pytest.raises(ClearancePolicyError):
+        decide_negative_clearance(_policy(required_clearance_m=0.0005), report)
+
+
+def test_query_below_threshold_but_interval_above_aborts():
+    report = _threshold_report(0.0001, interval_witness=0.010)
+    with pytest.raises(ClearancePolicyError):
+        decide_negative_clearance(_policy(required_clearance_m=0.0005), report)
+
+
+def test_interval_below_threshold_but_query_above_aborts():
+    report = _threshold_report(0.010, interval_witness=0.0001)
+    with pytest.raises(ClearancePolicyError):
+        decide_negative_clearance(_policy(required_clearance_m=0.0005), report)
+
+
+def test_query_interval_witness_disagreement_aborts():
+    report = _threshold_report(0.0001, interval_witness=0.0002)
+    with pytest.raises(ClearancePolicyError):
+        decide_negative_clearance(_policy(required_clearance_m=0.0005), report)
+
+
+def test_multiple_violation_intervals_abort():
+    extra = _interval(witness_clearance_m=0.0001, witness_angle_rad=-0.04)
+    report = _threshold_report(0.0001, extra_intervals=[extra])
+    with pytest.raises(ClearancePolicyError):
+        decide_negative_clearance(_policy(required_clearance_m=0.0005), report)
+
+
+def test_violation_status_without_violation_interval_aborts():
+    report = _report(
+        [_query(
+            "own_root_tip", "blade_1_root", "blade_1_tip", "violation",
+            intervals=[_interval("unknown")],
+            witness_clearance_m=0.0001,
+        )],
+        request={"inputs": {"required_clearance_m": 0.0005, "end_angle_deg": -10.0}},
+    )
+    with pytest.raises(ClearancePolicyError):
+        decide_negative_clearance(_policy(required_clearance_m=0.0005), report)
+
+
+def test_witness_angle_outside_its_interval_aborts():
+    report = _threshold_report(0.0001, angle=-0.05, angle_min=-0.02, angle_max=0.0)
+    with pytest.raises(ClearancePolicyError):
+        decide_negative_clearance(_policy(required_clearance_m=0.0005), report)
+
+
+def test_witness_angle_inside_interval_but_outside_path_aborts():
+    report = _threshold_report(0.0001, angle=0.2, angle_min=-0.3, angle_max=0.3)
+    with pytest.raises(ClearancePolicyError):
+        decide_negative_clearance(_policy(required_clearance_m=0.0005), report)
+
+
+def test_zero_clearance_hardware_penetration_with_negative_witness_stays_false():
+    witness = -0.002
+    report = _report(
+        [_query(
+            "hardware_surface", "blade_2_root", "sleeve", "violation",
+            intervals=[_interval(witness_clearance_m=witness, witness_angle_rad=0.0)],
+            witness_clearance_m=witness,
+        )],
+        request={
+            "hardware": _hardware(_finite_hub("sleeve")),
+            "inputs": {"required_clearance_m": 0.0, "end_angle_deg": -10.0},
+        },
+    )
+    before = json.dumps(report)
+    decision = _values(_policy(required_clearance_m=0.0), report)
+    assert decision.surface_path_clearance.value is False
+    assert decision.interblade_clearance.value is None
+    assert json.dumps(report) == before
+
+
+def test_unknown_tail_beside_one_proving_violation_stays_false():
+    report = _threshold_report(0.0001, extra_intervals=[_interval("unknown")])
+    decision = _values(_policy(required_clearance_m=0.0005), report)
+    assert decision.surface_path_clearance.value is False
+    assert decision.interblade_clearance.value is None
+
+
+def test_real_geom04_violation_artifact_stays_false_and_unmodified():
+    produced = pair_clearance(
+        SurfacePart("blade_1_root", (((0.0, 0.0, 0.0), (0.01, 0.0, 0.0), (0.0, 0.01, 0.0)),)),
+        SurfacePart("blade_1_tip", (((0.002, 0.0, 0.0), (0.012, 0.0, 0.0), (0.002, 0.01, 0.0)),)),
+        angle_min_rad=math.radians(-10.0),
+        angle_max_rad=0.0,
+        clearance_m=0.05,
+    )
+    result = json.loads(json.dumps(asdict(produced)))
+    violations = [row for row in result["intervals"] if row["status"] == "violation"]
+    assert produced.status == "violation"
+    assert len(violations) == 1
+    assert result["witness_clearance_m"] == violations[0]["witness_clearance_m"]
+    assert result["witness_clearance_m"] < 0.05
+    report = _report(
+        [{"kind": "own_root_tip", "a": "blade_1_root", "b": "blade_1_tip", "result": result}],
+        request={"inputs": {"required_clearance_m": 0.05, "end_angle_deg": -10.0}},
+    )
+    before = json.dumps(report)
+    decision = _values(_policy(required_clearance_m=0.05), report)
+    assert decision.surface_path_clearance.value is False
+    assert decision.interblade_clearance.value is None
+    assert decision.surface_path_clearance.value is not True
+    assert json.dumps(report) == before
+
+
+def _hardware_document(geometry):
+    return {
+        "schema_version": "pyfoldable.hardware.v1",
+        "units": "mm",
+        "provenance": {
+            "kind": "synthetic",
+            "source": "Analytical test fixture",
+            "revision": "v1",
+            "source_sha256": "a" * 64,
+        },
+        "bodies": [geometry] if isinstance(geometry, dict) and "name" in geometry else list(geometry),
+    }
+
+
+def _tetra_body(name, binding):
+    return {
+        "name": name,
+        "binding": binding,
+        "frame": "body_local",
+        "transform": {"rotation": [[1, 0, 0], [0, 1, 0], [0, 0, 1]], "translation": [0, 0, 0]},
+        "tolerance": 0.01,
+        "geometry": {
+            "kind": "convex_polyhedron",
+            "vertices": [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]],
+            "faces": [[0, 2, 1], [0, 1, 3], [0, 3, 2], [1, 2, 3]],
+        },
+    }
+
+
+def _cylinder_body(name):
+    return {
+        "name": name,
+        "binding": "hub",
+        "frame": "body_local",
+        "transform": {"rotation": [[1, 0, 0], [0, 1, 0], [0, 0, 1]], "translation": [0, 0, 0]},
+        "tolerance": 0.01,
+        "geometry": {
+            "kind": "finite_cylinder",
+            "radius": 18,
+            "height": 20,
+            "segments": 16,
+            "approximation_tolerance": 0.5,
+        },
+    }
+
+
+def _real_hardware_report(bodies, **input_changes):
+    payload = _hardware_document(bodies)
+    values = {
+        "end_angle_deg": 0.0,
+        "max_node_comparisons": 1,
+        "max_feature_tests": 0,
+        "max_hardware_queries": 0,
+        "max_depth": 0,
+        "max_intervals": 1,
+    }
+    values.update(input_changes)
+    request = prepare_surface_clearance(
+        draft(chord_scale=0.1),
+        SurfaceClearanceInputs(**values),
+        hardware_json=json.dumps(payload).encode(),
+    )
+    return json.loads(run_surface_clearance(request).report_json)
+
+
+def _decide_real(report):
+    threshold = report["request"]["inputs"]["required_clearance_m"]
+    before = json.dumps(report)
+    decision = _values(_policy(required_clearance_m=threshold), report)
+    assert json.dumps(report) == before
+    return decision
+
+
+@pytest.mark.parametrize("name", ["blade_1_root", "blade_1_tip", "blade_2_root"])
+def test_convex_hardware_with_blade_looking_name_stays_unresolved(name):
+    report = _real_hardware_report([_tetra_body(name, "blade_2_tip")])
+    rows = [query for query in report["queries"] if query["kind"] == "hardware_surface" and query["b"] == name]
+    assert rows
+    assert all(query["a"].startswith("blade_") for query in rows)
+    decision = _decide_real(report)
+    assert decision.surface_path_clearance.value is None
+    assert decision.interblade_clearance.value is None
+
+
+def test_hardware_surface_equal_strings_keep_producer_roles():
+    report = _real_hardware_report([_tetra_body("blade_1_root", "blade_2_tip")])
+    equal = [
+        query for query in report["queries"]
+        if query["kind"] == "hardware_surface" and query["a"] == query["b"] == "blade_1_root"
+    ]
+    assert len(equal) == 1
+    decision = _decide_real(report)
+    assert decision.surface_path_clearance.value is None
+    assert decision.interblade_clearance.value is None
+
+
+def test_hardware_pair_with_blade_looking_names_stays_unresolved():
+    report = _real_hardware_report([
+        _tetra_body("blade_1_root", "blade_1_root"),
+        _tetra_body("blade_1_tip", "blade_2_tip"),
+    ])
+    pairs = [query for query in report["queries"] if query["kind"] == "hardware_pair"]
+    assert len(pairs) == 1
+    assert {pairs[0]["a"], pairs[0]["b"]} == {"blade_1_root", "blade_1_tip"}
+    decision = _decide_real(report)
+    assert decision.surface_path_clearance.value is None
+    assert decision.interblade_clearance.value is None
+
+
+@pytest.mark.parametrize("hub_name,surface_name", [
+    ("blade_1_root", "blade_2_tip"),
+    ("blade_2_root", "blade_1_root"),
+    ("blade_1_root", "blade_1_root"),
+])
+def test_finite_hub_with_blade_looking_name_can_set_surface_false(hub_name, surface_name):
+    request = prepare_surface_clearance(
+        draft(chord_scale=0.1),
+        SurfaceClearanceInputs(end_angle_deg=-10.0, required_clearance_m=0.0, max_hardware_queries=0),
+        hardware_json=json.dumps(_hardware_document(_cylinder_body(hub_name))).encode(),
+    )
+    inside = MotionShape.from_part(SurfacePart(surface_name, (((0.0, 0.0, 0.0),) * 3,)))
+    hub = MotionShape(hub_name, solid=finite_cylinder(
+        radius_m=0.018, height_m=0.02, segments=8, approximation_tolerance_m=0.002))
+    produced = query_motion_pair(
+        inside, hub, angle_min_rad=math.radians(-10.0), angle_max_rad=0.0, clearance_m=0.0,
+        max_queries=40, max_depth=2, max_intervals=7)
+    assert produced["status"] == "violation"
+    assert produced["witness_clearance_m"] < 0
+    violations = [row for row in produced["intervals"] if row["status"] == "violation"]
+    assert len(violations) == 1
+    assert produced["witness_clearance_m"] == violations[0]["witness_clearance_m"]
+    report = {
+        "request": json.loads(request.context_json),
+        "queries": [{
+            "kind": "hardware_surface",
+            "a": surface_name,
+            "b": hub_name,
+            "result": produced,
+        }],
+    }
+    before = json.dumps(report)
+    decision = _values(_policy(required_clearance_m=0.0), report)
+    assert decision.surface_path_clearance.value is False
+    assert decision.interblade_clearance.value is None
+    assert json.dumps(report) == before
+
+
+def test_reversed_hardware_surface_roles_abort():
+    report = _report(
+        [_query("hardware_surface", "pod", "blade_1_tip", "violation")],
+        request={"hardware": _hardware(_convex("pod", "blade_1_root"))},
+    )
+    with pytest.raises(ClearancePolicyError):
+        decide_negative_clearance(_policy(), report)
+
+
+def test_reversed_hub_order_aborts():
+    report = _report([_query("hub", "hub_envelope", "blade_1_root", "violation")])
+    with pytest.raises(ClearancePolicyError):
+        decide_negative_clearance(_policy(), report)
