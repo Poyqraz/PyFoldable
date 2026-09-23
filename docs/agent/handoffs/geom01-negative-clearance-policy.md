@@ -25,7 +25,8 @@ Tested commits:
 - GREEN policy `39601e7`
 - Docs `e9f0ff1`
 - Local verification record `afe0bc4`
-- Witness, hardware-role, provenance and diagnostic correction: this commit
+- Witness, hardware-role, provenance and diagnostic correction:
+  `23e740649e7b3929e800e6d1ffac8e6828b6f74a`
 
 Local verification on the correction, Python 3.12 venv:
 - RED against `afe0bc4` before the production edit: 19 failed, 8 passed
@@ -68,13 +69,14 @@ PR:
 https://github.com/Poyqraz/PyFoldable/pull/68
 Do not merge.
 
-Exact-head CI:
-Not yet recorded for this correction commit. Fill this section only after
-the GitHub run for the pushed SHA finishes. Do not copy the `afe0bc4` runs
-forward.
+Exact-head CI for `23e740649e7b3929e800e6d1ffac8e6828b6f74a`:
+- push: https://github.com/Poyqraz/PyFoldable/actions/runs/35831205015
+- pull_request: https://github.com/Poyqraz/PyFoldable/actions/runs/35831208635
+- Python 3.10 and 3.11: 1595 passed, 9 skipped, 37 subtests passed
+- This handoff paragraph is documentation-only. It does not change runtime
+  behavior. Do not treat the `afe0bc4` runs as CI for `23e7406`.
 
 Remaining:
-- Exact-head Python 3.10 and 3.11 CI for this correction
 - Independent human review
 - Do not merge from this agent
 - No UI binding and no `True` promotion in this slice
