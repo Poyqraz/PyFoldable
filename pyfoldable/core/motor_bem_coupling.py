@@ -467,6 +467,21 @@ def _motor_state(
     )
 
 
+def algebraic_motor_state(
+    motor: MotorSpec,
+    battery: BatterySpec,
+    system: SystemSpec,
+    throttle: float,
+    rpm: float,
+) -> MotorState:
+    """Public adapter for the existing PR-07 algebraic motor state.
+
+    The equations are exactly ``_motor_state``. This adapter does not clip
+    current, add an inductance state, or change regeneration handling.
+    """
+    return _motor_state(motor, battery, system, throttle, rpm)
+
+
 def solve_coupled_operating_point(
     *,
     motor: MotorSpec,
