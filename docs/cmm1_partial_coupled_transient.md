@@ -116,15 +116,18 @@ then stops. There is no impact reaction, rebound, latch, static hold, or
 clamp-and-continue.
 
 Every accepted RK45 step is audited before it can enter a successful
-trajectory. The audit uses that step's quartic dense polynomial. It evaluates
-the interval endpoints and every real derivative root of `theta(t)` and
-`omega(t)` inside the normalized interval. Endpoints, stage values, and a
-fixed sample grid are not a substitute. The whole accepted step is audited
-when there is no contact. When first contact exists, only
-`[previous_time, contact_time]` is relevant: a later extrapolated excursion
-does not reject that contact, and an excursion before contact fails the run.
-v1 does not continue after a detected fold or shaft-speed excursion, and it
-still does not publish a fabricated `model_domain_exit` terminal point.
+trajectory. The audit uses that step's continuous quartic on the physically
+relevant interval. Extrema of `theta` and `omega` are isolated on the real
+axis from the represented polynomial, by a bounded Sturm chain and bisection.
+Companion-matrix eigenvalues are not classified as real or complex, and a
+fixed sample grid is not a substitute. If that isolation cannot prove the
+quartic stays inside the fold and shaft-speed domains, the run fails closed.
+The whole accepted step is audited when there is no contact. When first
+contact exists, only `[previous_time, contact_time]` is relevant: a later
+extrapolated excursion does not reject that contact, and an excursion before
+contact fails the run. v1 does not continue after a detected fold or
+shaft-speed excursion, and it does not publish a fabricated
+`model_domain_exit` terminal point.
 
 Hard failures, including BEM nonconvergence, polar-domain failure, nonfinite
 arithmetic, a singular or unresolved mass matrix, motor failure, a dense

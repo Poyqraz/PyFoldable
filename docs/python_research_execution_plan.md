@@ -81,8 +81,8 @@ and [current state](agent/current-state.md).
 
 **2026-09-24.** The sentence above is the PR #70 record. CMM-1 now implements
 the partial coupled screening transient under ADR-005. Accepted RK45 dense
-intervals are domain-audited, represented mass pivots must resolve, and a
-standalone report carries the sealed request. It does not finish the coupled
+intervals are domain-audited by real-axis isolation, represented mass pivots
+must resolve, and a standalone report carries the sealed request. It does not finish the coupled
 model, add aerodynamic hinge torque, or unblock PY-06D2. See
 [CMM-1](cmm1_partial_coupled_transient.md).
 

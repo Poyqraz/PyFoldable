@@ -50,6 +50,21 @@ Do not merge from this handoff. Exact-head Python 3.10 and 3.11 CI and the
 later independent closure review are still required. CLA and third-party
 source/license checkboxes stay manual.
 
+## 2026-09-24 dense-root correction
+
+The remaining blocker at `7d1cc584ca0cb26a808abf044c37855adbd64f60` was
+companion-root classification of the RK45 derivative. Imaginary-part
+tolerances are not an authorization rule. The audit now isolates real extrema
+with an exact rational Sturm chain and a bounded bisection enclosure. A proven
+domain exit is `CoupledDomainExit`. An unresolved bracket or an exhausted
+isolation budget is `CoupledTransientFailure`. Neither returns a CMM-1
+artifact. First contact still truncates the audited interval. No
+`model_domain_exit` sample is emitted.
+
+Represented mass pivots, standalone request provenance, and battery discharge
+efficiency stay as closed at that previous head. PY-05 contact reconstruction
+is unchanged.
+
 ## Next action
 
 Keep PR #71 draft. PY-06D2 remains blocked without identifiable measurements.

@@ -17,9 +17,9 @@ change application behavior.
 implemented. States are hinge angle, hinge rate, and shaft speed. PR-07 motor
 algebra and foldable BEM are reused; PY-05, PR-07, and GEOM #67–#69 behavior
 stay in place. Aerodynamic hinge torque is omitted, not reported as a physical
-zero. Each accepted RK45 dense interval is audited for the fold and
-shaft-speed domains; v1 fails closed without publishing a
-`model_domain_exit` point. Represented mass pivots, not analytical positivity
+zero. Each accepted RK45 dense interval is audited on its continuous
+quartic by real-axis extremum isolation; unresolved classification fails
+closed, and v1 does not publish a `model_domain_exit` point. Represented mass pivots, not analytical positivity
 alone, authorize the solve. A standalone report contains the exact sealed
 request. `physical_qualification` remains false and `full_propeller_clearance`
 remains null. Contract: [CMM-1](../cmm1_partial_coupled_transient.md).
