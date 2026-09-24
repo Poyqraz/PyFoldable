@@ -740,17 +740,17 @@ def test_dense_domain_audit_uses_only_the_rk45_quartic() -> None:
         audit(cubic, 0.0, 1.0)
 
 
-# Represented RK45 row whose derivative cubic has three real roots. NumPy's
-# companion solver returns the close pair as complex with an imaginary part
-# far above 512 eps, so the old audit never evaluates that stationary point.
+# Represented RK45 row whose derivative cubic has three real roots. NumPy
+# 2.2.6, 2.4.6, and 2.5.3 all return the close pair as complex with an
+# imaginary part far above 512 eps, so the old audit never evaluates it.
 _ILL_CONDITIONED_Q = (
-    -1.1520000826779448,
-    3.5200001492796225,
-    -4.5333334098869855,
-    2.0,
+    -17.424000031680002,
+    41.3600000464,
+    -42.666666688,
+    16.0,
 )
-_ILL_CONDITIONED_Y = 10.608508859385182
-_ILL_CONDITIONED_X_END = 0.4000000287076197
+_ILL_CONDITIONED_Y = 13.178342185569976
+_ILL_CONDITIONED_X_END = 0.5500000076596405
 
 
 def _represented_derivative(q):
@@ -839,9 +839,9 @@ def _float_quartic_value(y: float, q, x: float) -> float:
 def test_ill_conditioned_cubic_minimum_is_a_dense_domain_exit() -> None:
     """Three real derivative roots, one skipped by companion eigenvalues.
 
-    The float power sum at the audited endpoint rounds to the legal speed
-    floor. High-precision evaluation of the represented polynomial is below
-    that floor by a fraction of an ulp. The old imaginary-part test misses it.
+    The float power sum at the audited endpoint stays on the legal side of the
+    speed floor. High-precision evaluation of the represented interior minimum
+    is below that floor by about one ulp. The old imaginary-part test misses it.
     """
     getcontext().prec = 80
     deriv = _represented_derivative(_ILL_CONDITIONED_Q)
@@ -857,13 +857,20 @@ def test_ill_conditioned_cubic_minimum_is_a_dense_domain_exit() -> None:
         ]
     )
     imag_tol = 512.0 * float(np.finfo(float).eps)
-    assert max(abs(float(np.imag(root))) for root in numpy_roots) > 1.0e-9
+    assert sum(abs(float(np.imag(root))) > 1.0e-9 for root in numpy_roots) == 2
     accepted = [
         float(np.real(root))
         for root in numpy_roots
         if abs(float(np.imag(root))) <= imag_tol and 0.0 < float(np.real(root)) < _ILL_CONDITIONED_X_END
     ]
     assert accepted == []
+    distant = [
+        float(np.real(root))
+        for root in numpy_roots
+        if abs(float(np.imag(root))) <= imag_tol
+    ]
+    assert distant
+    assert all(real <= 0.0 or real >= _ILL_CONDITIONED_X_END for real in distant)
     x_end = Decimal.from_float(_ILL_CONDITIONED_X_END)
     interior = [root for root in roots if Decimal(0) < root < x_end]
     assert interior
@@ -950,11 +957,29 @@ def test_interior_fold_peak_and_trough_use_the_same_real_audit() -> None:
         audit(_quartic((1.2, 0.0, OMEGA_MIN + 1.0), ((2.0, -2.0), (0.0,), (0.0,))), 0.0, 1.0)
     with pytest.raises(CoupledDomainExit):
         audit(_quartic((-1.2, 0.0, OMEGA_MIN + 1.0), ((-2.0, 2.0), (0.0,), (0.0,))), 0.0, 1.0)
-    inside = _quartic((0.2, 0.0, OMEGA_MIN + 1.0), (_ILL_CONDITIONED_Q, (0.0,), (0.0,)))
-    audit(inside, 0.399, _ILL_CONDITIONED_X_END)
-    on_limit = _quartic((1.707329674214102, 0.0, OMEGA_MIN + 1.0), (_ILL_CONDITIONED_Q, (0.0,), (0.0,)))
+    near = _ILL_CONDITIONED_Q
+    audit(_quartic((1.35, 0.0, OMEGA_MIN + 1.0), (near, (0.0,), (0.0,))), 0.0, _ILL_CONDITIONED_X_END)
+    trough = 1.1355703468091034
+    assert abs(_float_quartic_value(trough, near, 0.0)) < FOLD_LIMIT_RAD
+    assert abs(_float_quartic_value(trough, near, _ILL_CONDITIONED_X_END)) < FOLD_LIMIT_RAD
+    getcontext().prec = 80
+    fold_roots = _isolate_represented_real_roots(
+        _represented_derivative(near),
+        Decimal(0),
+        Decimal.from_float(_ILL_CONDITIONED_X_END),
+    )
+    assert fold_roots
+    fold_floor = Decimal.from_float(FOLD_LIMIT_RAD)
+    assert min(Decimal.from_float(trough) + _increment(near, root) for root in fold_roots) < -fold_floor
     with pytest.raises(CoupledDomainExit):
-        audit(on_limit, 0.0, _ILL_CONDITIONED_X_END)
+        audit(_quartic((trough, 0.0, OMEGA_MIN + 1.0), (near, (0.0,), (0.0,))), 0.0, _ILL_CONDITIONED_X_END)
+    peaked = tuple(-term for term in near)
+    audit(_quartic((-1.35, 0.0, OMEGA_MIN + 1.0), (peaked, (0.0,), (0.0,))), 0.0, _ILL_CONDITIONED_X_END)
+    peak = -trough
+    assert abs(_float_quartic_value(peak, peaked, 0.0)) < FOLD_LIMIT_RAD
+    assert abs(_float_quartic_value(peak, peaked, _ILL_CONDITIONED_X_END)) < FOLD_LIMIT_RAD
+    with pytest.raises(CoupledDomainExit):
+        audit(_quartic((peak, 0.0, OMEGA_MIN + 1.0), (peaked, (0.0,), (0.0,))), 0.0, _ILL_CONDITIONED_X_END)
 
 
 def test_multiple_and_lower_degree_derivative_roots_stay_fail_closed() -> None:
