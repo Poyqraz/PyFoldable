@@ -987,6 +987,81 @@ def _value_enclosure(
     return center - variation, center + variation
 
 
+def _polynomial_gcd(
+    left: tuple[Fraction, ...],
+    right: tuple[Fraction, ...],
+) -> tuple[Fraction, ...]:
+    left = _trim_polynomial(left)
+    right = _trim_polynomial(right)
+    while right != (Fraction(0),):
+        _quotient, remainder = _divide_polynomial(left, right)
+        left, right = right, remainder
+    return _trim_polynomial(left)
+
+
+def _bracket_contains_real_root(
+    polynomial: tuple[Fraction, ...],
+    left: Fraction,
+    right: Fraction,
+) -> bool:
+    polynomial = _trim_polynomial(polynomial)
+    if len(polynomial) <= 1:
+        return False
+    if _evaluate_polynomial(polynomial, left) == 0 or _evaluate_polynomial(polynomial, right) == 0:
+        return True
+    chain = _sturm_chain(polynomial)
+    if chain is None:
+        return False
+    return _sign_variations(chain, left) - _sign_variations(chain, right) > 0
+
+
+def _critical_increment_matches(
+    origin: Fraction,
+    step: Fraction,
+    coefficients: tuple[Fraction, ...],
+    derivative: tuple[Fraction, ...],
+    left: Fraction,
+    right: Fraction,
+    boundary: float,
+) -> bool:
+    if step == 0:
+        return False
+    target = (Fraction(boundary) - origin) / step
+    difference = _trim_polynomial((-target, *coefficients))
+    common = _polynomial_gcd(derivative, difference)
+    return _bracket_contains_real_root(common, left, right)
+
+
+def _resolve_boundary_straddle(
+    kind: str,
+    origin: Fraction,
+    step: Fraction,
+    coefficients: tuple[Fraction, ...],
+    derivative: tuple[Fraction, ...],
+    left: Fraction,
+    right: Fraction,
+) -> str:
+    """Classify an enclosure that touches a domain boundary.
+
+    A positive-width remainder cannot prove that an irrational stationary value
+    is exactly on the boundary. The gcd of the derivative and the boundary
+    level polynomial can. Speed equality is inside the domain. Fold equality is
+    not.
+    """
+    if kind == "speed":
+        if _critical_increment_matches(
+            origin, step, coefficients, derivative, left, right, OMEGA_MIN
+        ):
+            return "safe"
+        return "unknown"
+    for boundary in (FOLD_LIMIT_RAD, -FOLD_LIMIT_RAD):
+        if _critical_increment_matches(
+            origin, step, coefficients, derivative, left, right, boundary
+        ):
+            return "exit"
+    return "unknown"
+
+
 def _component_domain_decision(kind: str, lower: Fraction, upper: Fraction) -> str:
     if kind == "fold":
         if lower >= FOLD_LIMIT_RAD or upper <= -FOLD_LIMIT_RAD:
@@ -1035,6 +1110,10 @@ def _audit_polynomial_component(
     for bracket in brackets:
         lower, upper = _value_enclosure(origin, step, coefficients, derivative, bracket[0], bracket[1])
         decision = _component_domain_decision(kind, lower, upper)
+        if decision == "unknown":
+            decision = _resolve_boundary_straddle(
+                kind, origin, step, coefficients, derivative, bracket[0], bracket[1]
+            )
         if decision == "exit":
             _raise_for_domain(kind)
         if decision == "unknown":
@@ -1048,7 +1127,9 @@ def _audit_dense_model_domain(dense, t_start: float, t_end: float) -> None:
 
     Real extrema come from exact rational Sturm isolation of the represented
     derivative, followed by bounded bisection. Companion-matrix eigenvalues and
-    imaginary-part tolerances are not used. An unresolved bracket or an
+    imaginary-part tolerances are not used. A stationary value exactly on a
+    domain boundary is recognized by a polynomial gcd: shaft-speed equality
+    stays inside, and fold equality does not. An unresolved bracket or an
     exhausted work budget fails closed. An unexpected polynomial representation
     fails closed instead of falling back to sampling.
     """

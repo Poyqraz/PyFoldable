@@ -993,6 +993,31 @@ def test_interior_speed_floor_and_one_real_derivative_root() -> None:
         audit(_quartic((0.0, 0.0, OMEGA_MIN + 0.05), ((0.0,), (0.0,), simple)), 0.0, 1.0)
 
 
+def test_irrational_interior_speed_floor_is_allowed() -> None:
+    """x^4 - x^2 is minimized at 1/sqrt(2) with increment exactly -1/4."""
+    audit = coupled_transient._audit_dense_model_domain
+    coefficients = (0.0, -1.0, 0.0, 1.0)
+    level = float(Fraction(OMEGA_MIN) + Fraction(1, 4))
+    assert Fraction(level) == Fraction(OMEGA_MIN) + Fraction(1, 4)
+    audit(_quartic((0.0, 0.0, level), ((0.0,), (0.0,), coefficients)), 0.0, 1.0)
+    with pytest.raises(CoupledDomainExit):
+        audit(
+            _quartic((0.0, 0.0, math.nextafter(level, 0.0)), ((0.0,), (0.0,), coefficients)),
+            0.0,
+            1.0,
+        )
+    peak = (0.0, 1.0, 0.0, -1.0)
+    fold_level = float(Fraction(FOLD_LIMIT_RAD) - Fraction(1, 4))
+    assert Fraction(fold_level) == Fraction(FOLD_LIMIT_RAD) - Fraction(1, 4)
+    with pytest.raises(CoupledDomainExit):
+        audit(_quartic((fold_level, 0.0, OMEGA_MIN + 1.0), (peak, (0.0,), (0.0,))), 0.0, 1.0)
+    audit(
+        _quartic((math.nextafter(fold_level, 0.0), 0.0, OMEGA_MIN + 1.0), (peak, (0.0,), (0.0,))),
+        0.0,
+        1.0,
+    )
+
+
 def test_root_isolation_budget_exhaustion_fails_closed() -> None:
     derivative = coupled_transient._trim_polynomial(
         tuple(Fraction(value) for value in (-0.125, 0.75, -1.5, 1.0))
