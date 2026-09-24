@@ -108,7 +108,8 @@ class CoupledEnvironment:
     def __post_init__(self) -> None:
         if not isinstance(self.id, str) or not self.id.strip() or len(self.id) > 200:
             raise CoupledBindingError("CoupledEnvironment.id must be a nonempty bounded string.")
-        _finite("forward_speed_m_s", self.forward_speed_m_s)
+        if _finite("forward_speed_m_s", self.forward_speed_m_s) < 0.0:
+            raise CoupledBindingError("forward_speed_m_s must be greater than or equal to zero.")
         for name in (
             "air_density_kg_m3",
             "dynamic_viscosity_pa_s",
@@ -117,6 +118,17 @@ class CoupledEnvironment:
         ):
             if _finite(name, getattr(self, name)) <= 0.0:
                 raise CoupledBindingError(f"{name} must be greater than zero.")
+
+
+def _metadata_identity(metadata: object) -> object:
+    if not isinstance(metadata, Mapping):
+        raise CoupledBindingError("Polar metadata must be a JSON object.")
+    try:
+        return json.loads(_json(dict(metadata)))
+    except CoupledBindingError:
+        raise
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise CoupledBindingError("Polar metadata must be finite canonical JSON.") from exc
 
 
 def _table_identity(table) -> dict[str, object]:
@@ -130,6 +142,7 @@ def _table_identity(table) -> dict[str, object]:
         "cd": list(table.cd),
         "cm": list(table.cm),
         "source": table.source,
+        "metadata": _metadata_identity(table.metadata),
     }
 
 
@@ -173,6 +186,7 @@ def _validate_electrical(motor: MotorSpec, battery: BatterySpec, system: SystemS
         ("motor.current_max_a", motor.current_max_a),
         ("motor.torque_constant_kv_ratio", motor.torque_constant_kv_ratio),
         ("battery.voltage_v", battery.voltage_v),
+        ("battery.discharge_efficiency", battery.discharge_efficiency),
         ("system.resistance_ohm", system.resistance_ohm),
     ):
         _finite(name, value)
@@ -182,6 +196,10 @@ def _validate_electrical(motor: MotorSpec, battery: BatterySpec, system: SystemS
         raise CoupledBindingError("Motor currents violate the declared domain.")
     if motor.torque_constant_kv_ratio <= 0.0 or battery.voltage_v <= 0.0:
         raise CoupledBindingError("Torque-constant ratio and battery voltage must be positive.")
+    if not 0.0 < battery.discharge_efficiency <= 1.0:
+        raise CoupledBindingError(
+            "battery.discharge_efficiency must satisfy 0 < discharge_efficiency <= 1."
+        )
     if system.resistance_ohm < 0.0:
         raise CoupledBindingError("System resistance must not be negative.")
     throttle_value = _finite("throttle", throttle)
@@ -646,6 +664,7 @@ def run_coupled_transient(
         "surface_path_clearance": None,
         "interblade_clearance": None,
         "input_sha256": binding.input_sha256,
+        "request": json.loads(binding.context_json),
         "draft_sha256": binding.draft.draft_sha256,
         "source_sha256": binding.draft.source_sha256,
         "source_identity_scope": "declared_source_hash_not_external_authentication",

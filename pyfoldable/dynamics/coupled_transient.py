@@ -12,6 +12,7 @@ import math
 from dataclasses import dataclass
 from typing import Callable, Mapping
 
+import numpy as np
 from scipy.integrate import RK45
 
 from pyfoldable.dynamics.mechanism_contracts import ContactPolicy, DryFriction
@@ -27,7 +28,8 @@ RPM_MIN = 100.0
 OMEGA_MIN = RPM_MIN * 2.0 * math.pi / 60.0
 FOLD_LIMIT_RAD = 0.5 * math.pi
 _RESIDUAL_REL = 1.0e-8
-_RESIDUAL_ABS = 1.0e-12
+_RESIDUAL_ROUND_ULPS = 64
+_PIVOT_RESOLUTION_ULPS = 32
 CMM1_LIMITATIONS = (
     "PR-06C physical aerodynamic gate is unresolved.",
     "Aerodynamic hinge load is omitted from the CMM-1 model.",
@@ -333,6 +335,8 @@ class CoupledMassMatrix:
     m11: float
     determinant: float
     schur_kg_m2: float
+    analytical_schur_kg_m2: float
+    represented_pivot: float
 
 
 @dataclass(frozen=True)
@@ -508,8 +512,59 @@ def _friction_nm(parameters: MechanismParameters, theta_dot: float) -> float:
     return _number("friction", value)
 
 
+def _represented_factor(m00: float, m01: float, m11: float) -> tuple[float, float]:
+    """Scale-aware Schur pivot of the represented symmetric matrix.
+
+    The analytical determinant is not used. A mathematically positive matrix
+    that is not distinguishable from singular in floating point fails closed.
+    """
+    if not all(math.isfinite(value) for value in (m00, m01, m11)):
+        raise CoupledTransientFailure("Mass matrix is not finite.")
+    if m00 <= 0.0 or m11 <= 0.0:
+        raise CoupledTransientFailure("Mass matrix is singular or unresolved.")
+    try:
+        scale_0 = math.sqrt(m00)
+        scale_1 = math.sqrt(m11)
+        coupling = m01 / (scale_0 * scale_1)
+        product = coupling * coupling
+        pivot = 1.0 - product
+        schur = pivot * m00
+    except (ArithmeticError, OverflowError, ZeroDivisionError) as exc:
+        raise CoupledTransientFailure("Mass-matrix scaling overflowed.") from exc
+    if not all(math.isfinite(value) for value in (coupling, product, pivot, schur)):
+        raise CoupledTransientFailure("Mass matrix is not finite.")
+    resolution = _PIVOT_RESOLUTION_ULPS * math.ulp(max(1.0, abs(product)))
+    if pivot <= resolution or schur <= 0.0:
+        raise CoupledTransientFailure("Represented mass matrix is numerically unresolved.")
+    return schur, pivot
+
+
+def _row_backward_error(residual: float, rhs: float, products: tuple[float, ...]) -> float:
+    """Relative residual against |b| + sum |M x|, with a zero-denominator rule."""
+    if not all(math.isfinite(value) for value in (residual, rhs, *products)):
+        raise CoupledTransientFailure("Mass-matrix residual is not finite.")
+    magnitude = abs(rhs)
+    for product in products:
+        magnitude += abs(product)
+    if not math.isfinite(magnitude):
+        raise CoupledTransientFailure("Mass-matrix residual scale overflowed.")
+    if magnitude == 0.0:
+        if residual != 0.0:
+            raise CoupledTransientFailure(
+                "Mass-matrix residual exceeds the backward-error tolerance."
+            )
+        return 0.0
+    relative = abs(residual) / magnitude
+    roundoff = _RESIDUAL_ROUND_ULPS * math.ulp(magnitude) / magnitude
+    if relative > max(_RESIDUAL_REL, roundoff):
+        raise CoupledTransientFailure(
+            "Mass-matrix residual exceeds the backward-error tolerance."
+        )
+    return relative
+
+
 def coupled_mass_matrix(system: CoupledSystem, theta_rad: float) -> CoupledMassMatrix:
-    """Return M(theta) and the analytical Schur complement."""
+    """Return M(theta), the analytical determinant, and the represented pivot."""
     if not isinstance(system, CoupledSystem):
         raise CoupledTransientError("system must be a CoupledSystem.")
     theta = _finite("theta_rad", theta_rad)
@@ -530,15 +585,25 @@ def coupled_mass_matrix(system: CoupledSystem, theta_rad: float) -> CoupledMassM
         m00 = system.base_inertia.inertia_kg_m2 + count * one_a
         m01 = count * one_b
         m11 = count * inertia
-        schur = determinant / m11
+        analytical_schur = determinant / m11
     except (ArithmeticError, OverflowError, ZeroDivisionError) as exc:
         raise CoupledTransientFailure("Mass-matrix evaluation overflowed.") from exc
-    values = (one_a, one_b, coupling, m00, m01, m11, determinant, schur)
+    values = (one_a, one_b, coupling, m00, m01, m11, determinant, analytical_schur)
     if not all(math.isfinite(value) for value in values):
         raise CoupledTransientFailure("Mass matrix is not finite.")
-    if m11 <= 0.0 or m00 <= 0.0 or schur <= 0.0:
-        raise CoupledTransientFailure("Mass matrix is singular or unresolved.")
-    return CoupledMassMatrix(one_a, one_b, coupling, m00, m01, m11, determinant, schur)
+    schur, pivot = _represented_factor(m00, m01, m11)
+    return CoupledMassMatrix(
+        one_a,
+        one_b,
+        coupling,
+        m00,
+        m01,
+        m11,
+        determinant,
+        schur,
+        analytical_schur,
+        pivot,
+    )
 
 
 def prescribed_shaft_hinge_acceleration(
@@ -627,20 +692,9 @@ def coupled_accelerations(
         raise CoupledTransientFailure("Coupled acceleration is not finite.")
     residual_shaft = mass.m00 * omega_dot + mass.m01 * theta_ddot - rhs_shaft
     residual_hinge = mass.m01 * omega_dot + mass.m11 * theta_ddot - rhs_hinge
-    if not all(math.isfinite(value) for value in (residual_shaft, residual_hinge)):
-        raise CoupledTransientFailure("Mass-matrix residual is not finite.")
-    scale = max(
-        1.0,
-        abs(rhs_shaft),
-        abs(rhs_hinge),
-        abs(mass.m00 * omega_dot),
-        abs(mass.m01 * omega_dot),
-        abs(mass.m01 * theta_ddot),
-        abs(mass.m11 * theta_ddot),
-    )
+    _row_backward_error(residual_shaft, rhs_shaft, (mass.m00 * omega_dot, mass.m01 * theta_ddot))
+    _row_backward_error(residual_hinge, rhs_hinge, (mass.m01 * omega_dot, mass.m11 * theta_ddot))
     residual = math.hypot(residual_shaft, residual_hinge)
-    if residual > _RESIDUAL_ABS + _RESIDUAL_REL * scale:
-        raise CoupledTransientFailure("Mass-matrix residual exceeds the scaled tolerance.")
     terms = prescribed_shaft_hinge_acceleration(
         parameters, angle, rate, speed, omega_dot, hinge_torque
     )
@@ -716,6 +770,78 @@ def _call_evaluator(kind: str, evaluator: Callable, time_s: float, state: tuple[
     if not isinstance(value, expected):
         raise CoupledTransientFailure(f"CMM-1 {kind} evaluator returned an unexpected type.")
     return value
+
+
+def _audit_dense_model_domain(dense, t_start: float, t_end: float) -> None:
+    """Require the RK45 quartic to stay inside the fold and shaft-speed domains.
+
+    Extrema come from the derivative of the continuous extension, not from
+    endpoints, RK stages, or a fixed sample grid. An unexpected polynomial
+    representation fails closed instead of falling back to sampling.
+    """
+    if type(dense).__name__ != "RkDenseOutput":
+        raise CoupledTransientFailure(
+            "CMM-1 dense output representation is not the expected RK45 polynomial."
+        )
+    q_matrix = getattr(dense, "Q", None)
+    y_old = getattr(dense, "y_old", None)
+    step = getattr(dense, "h", None)
+    if q_matrix is None or y_old is None or step is None:
+        raise CoupledTransientFailure(
+            "CMM-1 dense output representation is not the expected RK45 polynomial."
+        )
+    q_matrix = np.asarray(q_matrix, dtype=float)
+    y_old = np.asarray(y_old, dtype=float)
+    if q_matrix.shape != (3, 4) or y_old.shape != (3,) or getattr(dense, "order", None) != 3:
+        raise CoupledTransientFailure("CMM-1 dense polynomial degree is not the RK45 quartic.")
+    if (
+        not math.isfinite(step)
+        or step == 0.0
+        or not np.isfinite(q_matrix).all()
+        or not np.isfinite(y_old).all()
+    ):
+        raise CoupledTransientFailure("CMM-1 dense polynomial is not finite.")
+    try:
+        x_start = (float(t_start) - float(dense.t_old)) / float(step)
+        x_end = (float(t_end) - float(dense.t_old)) / float(step)
+    except (ArithmeticError, OverflowError, TypeError, ValueError) as exc:
+        raise CoupledTransientFailure("CMM-1 dense interval is not representable.") from exc
+    if not math.isfinite(x_start) or not math.isfinite(x_end) or x_end < x_start:
+        raise CoupledTransientFailure("CMM-1 dense interval is not representable.")
+    if x_start < -1.0e-9 or x_end > 1.0 + 1.0e-9:
+        raise CoupledTransientFailure("CMM-1 dense interval is outside the accepted step.")
+    x_start = min(1.0, max(0.0, x_start))
+    x_end = min(1.0, max(0.0, x_end))
+    imag_tol = 512.0 * float(np.finfo(float).eps)
+    for index, kind in ((0, "fold"), (2, "speed")):
+        coeff = [float(q_matrix[index, column]) for column in range(4)]
+        deriv = [coeff[0], 2.0 * coeff[1], 3.0 * coeff[2], 4.0 * coeff[3]]
+        while len(deriv) > 1 and deriv[-1] == 0.0:
+            deriv.pop()
+        roots = () if len(deriv) == 1 else np.polynomial.polynomial.polyroots(deriv)
+        positions = [x_start, x_end]
+        for root in roots:
+            real = float(np.real(root))
+            imag = float(np.imag(root))
+            if abs(imag) <= imag_tol and x_start < real < x_end:
+                positions.append(real)
+        for position in positions:
+            power = position
+            accumulated = 0.0
+            for term in coeff:
+                accumulated += term * power
+                power *= position
+            value = float(y_old[index]) + float(step) * accumulated
+            if not math.isfinite(value):
+                raise CoupledTransientFailure("CMM-1 dense polynomial is not finite.")
+            if kind == "fold" and abs(value) >= FOLD_LIMIT_RAD:
+                raise CoupledDomainExit(
+                    "CMM-1 dense fold domain was left; v1 does not continue or publish a terminal point."
+                )
+            if kind == "speed" and value < OMEGA_MIN:
+                raise CoupledDomainExit(
+                    "CMM-1 dense shaft-speed domain was left; v1 does not continue or publish a terminal point."
+                )
 
 
 def solve_coupled_transient(request: CoupledTransientRequest) -> CoupledTransientResult:
@@ -879,6 +1005,10 @@ def solve_coupled_transient(request: CoupledTransientRequest) -> CoupledTransien
                     system.parameters,
                     contact_controls,
                 )
+                if hit:
+                    _audit_dense_model_domain(dense, previous_time, hit[1])
+                else:
+                    _audit_dense_model_domain(dense, previous_time, current_time)
                 if hit:
                     name, event_time, event_state = hit
                     event_omega = _number("contact shaft speed", dense(event_time)[2])

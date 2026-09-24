@@ -5,20 +5,26 @@ from __future__ import annotations
 import dataclasses
 import math
 
+import numpy as np
 import pytest
+from scipy.integrate import RK45
+from scipy.integrate._ivp.rk import RkDenseOutput
 
 from pyfoldable.core.motor_bem_coupling import (
     AeroLoadSample,
     algebraic_motor_state,
     solve_coupled_operating_point,
 )
+import pyfoldable.dynamics.coupled_transient as coupled_transient
 from pyfoldable.dynamics.coupled_transient import (
     AERO_HINGE_STATUS,
+    FOLD_LIMIT_RAD,
     MODEL_CLASS,
     OMEGA_MIN,
     AeroEvaluation,
     BaseRotatingAssemblyInertia,
     CoupledDomainExit,
+    CoupledSolverControls,
     CoupledSystem,
     CoupledTransientError,
     CoupledTransientFailure,
@@ -507,8 +513,449 @@ def test_mechanical_energy_uses_the_coupled_quadratic_form() -> None:
 
 
 def _controls(**overrides):
-    from pyfoldable.dynamics.coupled_transient import CoupledSolverControls
-
     values = dict(max_duration_s=0.05, max_samples=500, max_rhs_evaluations=4000)
     values.update(overrides)
     return CoupledSolverControls(**values)
+
+
+def _one_step_controls() -> CoupledSolverControls:
+    return CoupledSolverControls(
+        rtol=1.0e-3,
+        angle_atol_rad=1.0e-4,
+        hinge_velocity_atol_rad_s=1.0e-3,
+        shaft_speed_atol_rad_s=1.0e-2,
+        max_step_s=0.002,
+        max_duration_s=0.002,
+        max_samples=20,
+        max_rhs_evaluations=200,
+    )
+
+
+def _dense_extrema(dense) -> tuple[float, float, float, float]:
+    """Endpoints plus real derivative roots of the RK45 quartic."""
+    q_matrix = np.asarray(dense.Q, dtype=float)
+    y_old = np.asarray(dense.y_old, dtype=float)
+    step = float(dense.h)
+
+    def component(index: int) -> tuple[float, float]:
+        coeff = q_matrix[index]
+        deriv = [coeff[0], 2.0 * coeff[1], 3.0 * coeff[2], 4.0 * coeff[3]]
+        while len(deriv) > 1 and deriv[-1] == 0.0:
+            deriv.pop()
+        roots = [] if len(deriv) == 1 else np.polynomial.polynomial.polyroots(deriv)
+        xs = [0.0, 1.0]
+        for root in roots:
+            real = float(np.real(root))
+            imag = float(np.imag(root))
+            if abs(imag) <= 512.0 * np.finfo(float).eps and 0.0 < real < 1.0:
+                xs.append(real)
+        values = []
+        for x in xs:
+            power = x
+            acc = 0.0
+            for term in coeff:
+                acc += float(term) * power
+                power *= x
+            values.append(float(y_old[index]) + step * acc)
+        return min(values), max(values)
+
+    theta_min, theta_max = component(0)
+    omega_min, _omega_max = component(2)
+    return theta_min, theta_max, omega_min, float(y_old[0] + step * np.dot(q_matrix[0], [1, 1, 1, 1]))
+
+
+def _quartic(y_old, q_rows, t_old=0.0, step=1.0) -> RkDenseOutput:
+    q_matrix = np.zeros((3, 4), dtype=float)
+    for index, row in enumerate(q_rows):
+        q_matrix[index, : len(row)] = row
+    return RkDenseOutput(t_old, t_old + step, np.asarray(y_old, dtype=float), q_matrix)
+
+
+def test_hidden_dense_fold_excursion_aborts_without_a_result() -> None:
+    """Accepted endpoints stay inside while the RK45 quartic crosses ±pi/2."""
+    theta0 = 1.5653333333333335
+    speed = OMEGA_MIN * 5.0
+    calls = []
+
+    def motor(time_s, theta, theta_dot, omega):
+        del time_s, theta_dot
+        calls.append(omega)
+        assert abs(theta) < FOLD_LIMIT_RAD
+        assert omega >= OMEGA_MIN
+        return MotorEvaluation(0.0)
+
+    def aero(time_s, theta, theta_dot, omega):
+        del time_s, theta_dot
+        assert abs(theta) < FOLD_LIMIT_RAD
+        assert omega >= OMEGA_MIN
+        return AeroEvaluation(0.0, 0.0, "analytic", "software_fixture")
+
+    for sign, torque in ((1.0, -0.8), (-1.0, 0.8)):
+        calls.clear()
+        system = _system(
+            _parameters(lower_stop_rad=-1.65, upper_stop_rad=1.65),
+            blade_count=1,
+            inertia=_inertia(1.0e-2),
+        )
+        request = _request(
+            system,
+            actuation=_history(torque, 0.002),
+            initial_angle_rad=sign * theta0,
+            initial_angular_velocity_rad_s=sign * 10.0,
+            initial_omega_rad_s=speed,
+            motor_evaluator=motor,
+            aero_evaluator=aero,
+            controls=_one_step_controls(),
+        )
+        def rhs(time_s, y, hinge=torque, plant=system):
+            del time_s
+            solved = coupled_accelerations(plant, y[0], y[1], y[2], 0.0, 0.0, hinge)
+            return (y[1], solved.theta_ddot_rad_s2, solved.omega_dot_rad_s2)
+
+        solver = RK45(
+            rhs,
+            0.0,
+            (sign * theta0, sign * 10.0, speed),
+            0.002,
+            max_step=0.002,
+            rtol=1.0e-3,
+            atol=(1.0e-4, 1.0e-3, 1.0e-2),
+        )
+        solver.step()
+        dense = solver.dense_output()
+        theta_min, theta_max, omega_min, _endpoint = _dense_extrema(dense)
+        assert abs(float(solver.y[0])) < FOLD_LIMIT_RAD
+        assert float(solver.y[2]) >= OMEGA_MIN
+        assert omega_min >= OMEGA_MIN
+        assert theta_max > FOLD_LIMIT_RAD or theta_min < -FOLD_LIMIT_RAD
+        with pytest.raises(CoupledDomainExit):
+            solve_coupled_transient(request)
+        assert calls
+
+
+def test_hidden_dense_omega_excursion_aborts_without_a_result() -> None:
+    """Endpoints stay at or above 100 rpm while the RK45 quartic dips below it."""
+    parameters = _parameters(
+        mass_kg=0.001,
+        cg_distance_m=0.001,
+        hinge_inertia_kg_m2=1.0e-3,
+        hinge_radius_m=0.05,
+    )
+    system = _system(parameters, blade_count=1, inertia=_inertia(1.0e-3))
+    schur = coupled_mass_matrix(system, 0.0).schur_kg_m2
+    slope = 20000.0
+    peak = 0.0011
+    omega0 = OMEGA_MIN + 0.01
+    seen = []
+
+    def motor(time_s, theta, theta_dot, omega):
+        del theta_dot
+        seen.append((theta, omega))
+        assert abs(theta) < FOLD_LIMIT_RAD
+        assert omega >= OMEGA_MIN
+        return MotorEvaluation(schur * slope * (time_s - peak))
+
+    def aero(time_s, theta, theta_dot, omega):
+        del time_s, theta_dot
+        assert abs(theta) < FOLD_LIMIT_RAD
+        assert omega >= OMEGA_MIN
+        return AeroEvaluation(0.0, 0.0, "analytic", "software_fixture")
+
+    request = _request(
+        system,
+        actuation=_history(0.0, 0.002),
+        initial_angle_rad=0.0,
+        initial_angular_velocity_rad_s=0.0,
+        initial_omega_rad_s=omega0,
+        motor_evaluator=motor,
+        aero_evaluator=aero,
+        controls=_one_step_controls(),
+    )
+    def rhs(time_s, y):
+        solved = coupled_accelerations(
+            system, y[0], y[1], y[2], schur * slope * (time_s - peak), 0.0, 0.0
+        )
+        return (y[1], solved.theta_ddot_rad_s2, solved.omega_dot_rad_s2)
+
+    solver = RK45(
+        rhs,
+        0.0,
+        (0.0, 0.0, omega0),
+        0.002,
+        max_step=0.002,
+        rtol=1.0e-3,
+        atol=(1.0e-4, 1.0e-3, 1.0e-2),
+    )
+    solver.step()
+    _theta_min, theta_max, omega_min, _endpoint = _dense_extrema(solver.dense_output())
+    assert abs(float(solver.y[0])) < FOLD_LIMIT_RAD
+    assert abs(theta_max) < FOLD_LIMIT_RAD
+    assert float(solver.y[2]) >= OMEGA_MIN
+    assert omega_min < OMEGA_MIN
+    with pytest.raises(CoupledDomainExit):
+        solve_coupled_transient(request)
+    assert seen
+    assert min(omega for _theta, omega in seen) >= OMEGA_MIN
+
+
+def test_dense_domain_audit_uses_only_the_rk45_quartic() -> None:
+    audit = coupled_transient._audit_dense_model_domain
+    inside = _quartic((0.2, 0.0, OMEGA_MIN + 1.0), ((0.0, 0.0), (0.0,), (0.0,)))
+    audit(inside, 0.0, 1.0)
+
+    margin = 0.015625
+    below = math.nextafter(FOLD_LIMIT_RAD, 0.0)
+    infinitesimal = _quartic((below - margin, 0.0, OMEGA_MIN + 1.0), ((4.0 * margin, -4.0 * margin), (0.0,), (0.0,)))
+    audit(infinitesimal, 0.0, 1.0)
+    negative_inside = _quartic((-below + margin, 0.0, OMEGA_MIN + 1.0), ((-4.0 * margin, 4.0 * margin), (0.0,), (0.0,)))
+    audit(negative_inside, 0.0, 1.0)
+    speed_inside = _quartic((0.0, 0.0, OMEGA_MIN), ((0.0,), (0.0,), (0.0,)))
+    audit(speed_inside, 0.0, 1.0)
+
+    on_fold = _quartic((FOLD_LIMIT_RAD, 0.0, OMEGA_MIN + 1.0), ((0.0,), (0.0,), (0.0,)))
+    with pytest.raises(CoupledDomainExit):
+        audit(on_fold, 0.0, 1.0)
+    on_negative = _quartic((-FOLD_LIMIT_RAD, 0.0, OMEGA_MIN + 1.0), ((0.0,), (0.0,), (0.0,)))
+    with pytest.raises(CoupledDomainExit):
+        audit(on_negative, 0.0, 1.0)
+    with pytest.raises(CoupledDomainExit):
+        audit(
+            _quartic((0.0, 0.0, math.nextafter(OMEGA_MIN, 0.0)), ((0.0,), (0.0,), (0.0,))),
+            0.0,
+            1.0,
+        )
+
+    # Interior fold peak is after the early audit window.
+    late_peak = _quartic((1.0, 0.0, OMEGA_MIN + 1.0), ((2.4, -2.4), (0.0,), (0.0,)))
+    audit(late_peak, 0.0, 0.05)
+    with pytest.raises(CoupledDomainExit):
+        audit(late_peak, 0.0, 1.0)
+
+    with pytest.raises(CoupledTransientFailure, match="dense output"):
+        audit(lambda time_s: (0.0, 0.0, OMEGA_MIN), 0.0, 1.0)
+    cubic = RkDenseOutput(0.0, 1.0, np.zeros(3), np.zeros((3, 3)))
+    with pytest.raises(CoupledTransientFailure, match="quartic"):
+        audit(cubic, 0.0, 1.0)
+
+
+def test_contact_before_a_later_dense_excursion_stays_terminal() -> None:
+    theta0 = 1.5653333333333335
+    speed = OMEGA_MIN * 5.0
+
+    def motor(time_s, theta, theta_dot, omega):
+        del time_s, theta_dot
+        assert abs(theta) < FOLD_LIMIT_RAD and omega >= OMEGA_MIN
+        return MotorEvaluation(0.0)
+
+    def aero(time_s, theta, theta_dot, omega):
+        del time_s, theta_dot
+        assert abs(theta) < FOLD_LIMIT_RAD and omega >= OMEGA_MIN
+        return AeroEvaluation(0.0, 0.0, "analytic", "software_fixture")
+
+    upper = solve_coupled_transient(
+        _request(
+            _system(
+                _parameters(lower_stop_rad=-1.65, upper_stop_rad=1.569),
+                blade_count=1,
+                inertia=_inertia(1.0e-2),
+            ),
+            actuation=_history(-0.8, 0.002),
+            initial_angle_rad=theta0,
+            initial_angular_velocity_rad_s=10.0,
+            initial_omega_rad_s=speed,
+            motor_evaluator=motor,
+            aero_evaluator=aero,
+            controls=_one_step_controls(),
+        )
+    )
+    assert upper.status == "first_contact_terminal"
+    assert upper.contact is not None and upper.contact.stop == "upper"
+    assert abs(upper.contact.angle_rad) < FOLD_LIMIT_RAD
+
+    lower = solve_coupled_transient(
+        _request(
+            _system(
+                _parameters(lower_stop_rad=-1.569, upper_stop_rad=1.65),
+                blade_count=1,
+                inertia=_inertia(1.0e-2),
+            ),
+            actuation=_history(0.8, 0.002),
+            initial_angle_rad=-theta0,
+            initial_angular_velocity_rad_s=-10.0,
+            initial_omega_rad_s=speed,
+            motor_evaluator=motor,
+            aero_evaluator=aero,
+            controls=_one_step_controls(),
+        )
+    )
+    assert lower.status == "first_contact_terminal"
+    assert lower.contact is not None and lower.contact.stop == "lower"
+    assert abs(lower.contact.angle_rad) < FOLD_LIMIT_RAD
+
+
+def test_dense_excursion_before_contact_aborts() -> None:
+    parameters = _parameters(
+        mass_kg=0.001,
+        cg_distance_m=0.001,
+        hinge_inertia_kg_m2=1.0e-3,
+        hinge_radius_m=0.05,
+        upper_stop_rad=0.00085,
+    )
+    system = _system(parameters, blade_count=1, inertia=_inertia(1.0e-3))
+    schur = coupled_mass_matrix(system, 0.0).schur_kg_m2
+    slope = 20000.0
+    peak = 0.0011
+    omega0 = OMEGA_MIN + 0.01
+
+    def motor(time_s, theta, theta_dot, omega):
+        del theta_dot
+        assert abs(theta) < FOLD_LIMIT_RAD and omega >= OMEGA_MIN
+        return MotorEvaluation(schur * slope * (time_s - peak))
+
+    def aero(time_s, theta, theta_dot, omega):
+        del time_s, theta_dot
+        assert abs(theta) < FOLD_LIMIT_RAD and omega >= OMEGA_MIN
+        return AeroEvaluation(0.0, 0.0, "analytic", "software_fixture")
+
+    with pytest.raises(CoupledDomainExit):
+        solve_coupled_transient(
+            _request(
+                system,
+                actuation=_history(0.0, 0.002),
+                initial_angle_rad=0.0,
+                initial_angular_velocity_rad_s=0.5,
+                initial_omega_rad_s=omega0,
+                motor_evaluator=motor,
+                aero_evaluator=aero,
+                controls=_one_step_controls(),
+            )
+        )
+
+
+def test_interior_run_without_a_dense_excursion_still_completes() -> None:
+    result = solve_coupled_transient(_request())
+    assert result.status == "completed"
+    assert all(abs(sample.theta_rad) < FOLD_LIMIT_RAD for sample in result.samples)
+    assert all(sample.omega_rad_s >= OMEGA_MIN for sample in result.samples)
+
+
+def _point_mass_system(i0: float, mass_kg: float = 0.02, cg_m: float = 0.01, radius_m: float = 0.08):
+    inertia = mass_kg * cg_m**2
+    return _system(
+        _parameters(
+            mass_kg=mass_kg,
+            cg_distance_m=cg_m,
+            hinge_inertia_kg_m2=inertia,
+            hinge_radius_m=radius_m,
+        ),
+        blade_count=2,
+        inertia=_inertia(i0, source="point-mass"),
+    )
+
+
+def test_unresolved_represented_mass_matrix_fails_closed() -> None:
+    """Astra case: analytical Schur stays positive while the float matrix does not."""
+    system = _point_mass_system(1.0e-20)
+    mass_value = 0.02
+    cg = 0.01
+    radius = 0.08
+    inertia = mass_value * cg**2
+    count = 2
+    cosine = 1.0
+    coupling = mass_value * radius * cg
+    gap = inertia - mass_value * cg**2 * cosine**2
+    determinant = (
+        count * inertia * 1.0e-20
+        + (count**2) * mass_value * radius**2 * gap
+    )
+    assert determinant > 0.0
+    with pytest.raises(CoupledTransientFailure, match="unresolved"):
+        coupled_mass_matrix(system, 0.0)
+    with pytest.raises(CoupledTransientFailure, match="unresolved"):
+        coupled_accelerations(
+            system,
+            theta=0.0,
+            theta_dot=0.0,
+            omega=OMEGA_MIN,
+            motor_torque_nm=1.0e-12,
+            aero_shaft_torque_nm=0.0,
+            hinge_torque_nm=0.0,
+        )
+
+
+def test_resolved_small_inertia_and_point_mass_still_solve() -> None:
+    resolved = coupled_mass_matrix(_point_mass_system(1.0e-8), 0.0)
+    assert resolved.determinant > 0.0
+    assert resolved.analytical_schur_kg_m2 > 0.0
+    assert resolved.represented_pivot > 0.0
+    assert resolved.schur_kg_m2 > 0.0
+    solved = coupled_accelerations(
+        _point_mass_system(1.0e-8),
+        theta=0.0,
+        theta_dot=0.0,
+        omega=OMEGA_MIN,
+        motor_torque_nm=1.0e-12,
+        aero_shaft_torque_nm=0.0,
+        hinge_torque_nm=0.0,
+    )
+    assert math.isfinite(solved.omega_dot_rad_s2)
+    assert solved.mass_residual >= 0.0
+
+    ordinary = coupled_accelerations(
+        _point_mass_system(1.0e-4),
+        theta=0.2,
+        theta_dot=0.0,
+        omega=OMEGA_MIN,
+        motor_torque_nm=1.0e-4,
+        aero_shaft_torque_nm=0.0,
+        hinge_torque_nm=0.0,
+    )
+    assert math.isfinite(ordinary.theta_ddot_rad_s2)
+    reference = coupled_accelerations(
+        _system(),
+        theta=-0.2,
+        theta_dot=0.1,
+        omega=30.0,
+        motor_torque_nm=0.01,
+        aero_shaft_torque_nm=0.002,
+        hinge_torque_nm=0.001,
+    )
+    for scale in (1.0e-6, 1.0e-3, 1.0, 1.0e3, 1.0e6):
+        scaled = coupled_accelerations(
+            _system(
+                _parameters(mass_kg=0.02 * scale, hinge_inertia_kg_m2=1.0e-4 * scale),
+                inertia=_inertia(1.0e-3 * scale),
+            ),
+            theta=-0.2,
+            theta_dot=0.1,
+            omega=30.0,
+            motor_torque_nm=0.01 * scale,
+            aero_shaft_torque_nm=0.002 * scale,
+            hinge_torque_nm=0.001 * scale,
+        )
+        assert scaled.omega_dot_rad_s2 == pytest.approx(reference.omega_dot_rad_s2, rel=1.0e-8, abs=1.0e-8)
+        assert scaled.theta_ddot_rad_s2 == pytest.approx(reference.theta_ddot_rad_s2, rel=1.0e-8, abs=1.0e-8)
+
+
+def test_mass_residual_has_no_one_newton_meter_floor() -> None:
+    row_backward_error = coupled_transient._row_backward_error
+    with pytest.raises(CoupledTransientFailure, match="backward-error"):
+        row_backward_error(4.64e-12, 1.0e-12, (1.0e-12,))
+    assert row_backward_error(0.0, 0.0, (0.0, 0.0)) == 0.0
+    with pytest.raises(CoupledTransientFailure, match="backward-error"):
+        row_backward_error(1.0e-12, 0.0, (0.0,))
+    with pytest.raises((CoupledTransientError, CoupledTransientFailure)):
+        coupled_mass_matrix(_system(), float("nan"))
+    with pytest.raises(CoupledTransientFailure):
+        coupled_mass_matrix(
+            _system(
+                _parameters(
+                    mass_kg=1.0e20,
+                    cg_distance_m=1.0e50,
+                    hinge_inertia_kg_m2=1.0e200,
+                    hinge_radius_m=1.0e20,
+                ),
+                inertia=_inertia(1.0e200),
+            ),
+            0.0,
+        )

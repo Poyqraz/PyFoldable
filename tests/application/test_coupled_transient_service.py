@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import inspect
 import json
 import math
@@ -18,7 +19,10 @@ from pyfoldable.application.coupled_transient_service import (
     assert_cmm1_production_evaluators,
     prepare_coupled_transient,
     run_coupled_transient,
+    validate_coupled_binding,
 )
+from pyfoldable.core.motor_bem_coupling import solve_coupled_operating_point
+from pyfoldable.dynamics.coupled_transient import CoupledSolverControls
 from pyfoldable.application.design_draft import (
     DesignDraftInputs,
     build_design_draft,
@@ -84,7 +88,7 @@ def _mass(distance: float = 0.01, mass: float = 0.01) -> TipMassDistribution:
     )
 
 
-def _family(cl: float) -> PolarFamily:
+def _family(cl: float, source: str = "cmm1-fixture", metadata: dict | None = None) -> PolarFamily:
     return PolarFamily(
         (
             PolarTable(
@@ -96,7 +100,8 @@ def _family(cl: float) -> PolarFamily:
                 cl=(cl, cl),
                 cd=(0.02, 0.02),
                 cm=(0.0, 0.0),
-                source="cmm1-fixture",
+                source=source,
+                metadata={} if metadata is None else metadata,
             ),
         )
     )
@@ -299,6 +304,126 @@ def test_report_keeps_screening_limits_and_does_not_promote_geom(monkeypatch) ->
     assert artifact.result.samples[0].aerodynamic_hinge_torque_status == "unavailable_omitted_by_cmm1"
     with pytest.raises(dataclasses.FrozenInstanceError):
         artifact.result.physical_qualification = True  # type: ignore[misc]
+
+
+def _canonical(value: object) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
+
+
+def test_standalone_report_contains_the_sealed_request(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "pyfoldable.application.coupled_transient_service.solve_foldable_bem_rotor",
+        _constant_bem(),
+    )
+    binding = _binding()
+    artifact = run_coupled_transient(binding)
+    report = json.loads(artifact.report_json)
+    assert report["input_sha256"] == binding.input_sha256
+    assert report["request"] == json.loads(binding.context_json)
+    assert _canonical(report["request"]) == binding.context_json
+    assert hashlib.sha256(_canonical(report["request"]).encode("utf-8")).hexdigest() == report["input_sha256"]
+    request = report["request"]
+    for key in (
+        "draft_sha256",
+        "source_sha256",
+        "blade_count",
+        "hinge_radius_m",
+        "derived_mass_kg",
+        "mass_distribution",
+        "mechanical_source",
+        "base_rotating_inertia",
+        "motor",
+        "battery",
+        "system",
+        "throttle",
+        "environment",
+        "polars",
+        "bem_settings",
+        "bounds",
+        "controls",
+        "initial_angle_rad",
+        "initial_omega_rad_s",
+        "actuation",
+    ):
+        assert key in request
+    assert request["physical_qualification"] is False
+    assert request["source_identity_scope"] == "declared_source_hash_not_external_authentication"
+    assert "aerodynamic_hinge_torque_nm" not in artifact.report_json
+    json.loads(artifact.report_json)
+
+
+def test_resealed_inputs_change_or_reject_identity() -> None:
+    baseline = _binding()
+    variants = [
+        _binding(motor=MotorSpec(1100.0, 0.05, 1.0, 80.0)),
+        _binding(battery=BatterySpec(12.0, 0.97)),
+        _binding(throttle=0.2),
+        _binding(environment=CoupledEnvironment("screen", 5.0, 1.18, 1.79e-5, 293.15, 100000.0)),
+        _binding(polars=_schedule(0.7)),
+        _binding(polars=_schedule_with(source="other-polar-source")),
+        _binding(polars=_schedule_with(metadata={"license": "fixture-a", "provenance": "synthetic"})),
+        _binding(distribution=_mass(mass=0.012)),
+        _binding(base_inertia=BaseRotatingAssemblyInertia(2.0e-4, "fixture inertia", ("motor rotor", "shaft", "hub", "fixed blade roots"))),
+        _binding(base_inertia=BaseRotatingAssemblyInertia(1.0e-4, "other inertia source", ("motor rotor", "shaft", "hub", "fixed blade roots"))),
+        _binding(base_inertia=BaseRotatingAssemblyInertia(1.0e-4, "fixture inertia", ("motor rotor", "shaft", "hub", "fasteners"))),
+        _binding(spring_stiffness_nm_rad=0.001),
+        _binding(mechanical_source="other mechanical source"),
+        _binding(actuation=HingeActuationHistory((0.0, 0.004), (0.001, 0.001), "with actuation")),
+        _binding(initial_angular_velocity_rad_s=0.01),
+        _binding(bem_settings=_settings("signed_nonreversed")),
+        _binding(controls=CoupledSolverControls(rtol=1.0e-5)),
+    ]
+    hashes = {item.input_sha256 for item in variants}
+    assert len(hashes) == len(variants)
+    assert baseline.input_sha256 not in hashes
+
+    mutable = _schedule_with(metadata={"license": "fixture-a"})
+    sealed = _binding(polars=mutable)
+    mutable.anchors[0].family.tables[0].metadata["license"] = "mutated-after-seal"
+    with pytest.raises(CoupledBindingError, match="identity"):
+        validate_coupled_binding(sealed)
+    resealed = _binding(polars=_schedule_with(metadata={"license": "mutated-after-seal"}))
+    assert resealed.input_sha256 != sealed.input_sha256
+
+    with pytest.raises(CoupledBindingError):
+        _binding(polars=_schedule_with(metadata={"note": float("nan")}))
+    with pytest.raises(CoupledBindingError):
+        _binding(polars=_schedule_with(metadata={"note": object()}))
+
+
+def _schedule_with(cl: float = 0.6, source: str = "cmm1-fixture", metadata: dict | None = None):
+    family = _family(cl, source=source, metadata=metadata)
+    return SpanwisePolarSchedule(
+        "cmm1-span",
+        (
+            SpanwisePolarAnchor(0.2, family),
+            SpanwisePolarAnchor(1.0, family),
+        ),
+    )
+
+
+def test_invalid_battery_discharge_efficiency_is_rejected() -> None:
+    for efficiency in (0.0, -1.0, 2.0, float("nan"), float("inf")):
+        with pytest.raises(CoupledBindingError):
+            _binding(battery=BatterySpec(12.0, efficiency))
+    _binding(battery=BatterySpec(12.0, 1.0))
+    _binding(battery=BatterySpec(12.0, 0.98))
+    _binding(battery=BatterySpec(12.0, math.nextafter(0.0, 1.0)))
+    for efficiency in (0.0, -1.0, 2.0):
+        with pytest.raises(ValueError, match="Battery"):
+            solve_coupled_operating_point(
+                motor=MOTOR,
+                battery=BatterySpec(12.0, efficiency),
+                system=SYSTEM,
+                throttle=0.5,
+                aero_load=lambda _rpm: None,
+            )
+
+
+def test_negative_forward_speed_is_rejected_at_preflight() -> None:
+    with pytest.raises(CoupledBindingError, match="forward_speed"):
+        CoupledEnvironment("screen", -0.1, 1.18, 1.79e-5, 293.15, 100000.0)
+    assert CoupledEnvironment("screen", 0.0, 1.18, 1.79e-5, 293.15, 100000.0).forward_speed_m_s == 0.0
 
 
 def test_deployed_evaluator_matches_fixed_and_foldable_bem() -> None:
