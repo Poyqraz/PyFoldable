@@ -142,9 +142,15 @@ the PR-07 motor law without equation changes. Whole-rotor foldable BEM torque
 enters the shaft equation once. Aerodynamic hinge torque is omitted
 (`unavailable_omitted_by_cmm1`), not published as a physical zero. The mass
 matrix uses caller-sourced base inertia `I0` that excludes the N movable tips.
-Integration stops at the first mechanism-stop contact. Domain exit below
-100 rpm or outside the radial-cosine fold limit fails closed. Every artifact
-keeps `physical_qualification=false` and `full_propeller_clearance=null`.
+Integration stops at the first mechanism-stop contact. Every accepted RK45
+dense interval is audited for the fold and shaft-speed domains; only the
+pre-contact portion of a contacting step is relevant. Domain exit below
+100 rpm or outside the radial-cosine fold limit fails closed and v1 does not
+publish a fabricated `model_domain_exit` point. Analytical mass positivity is
+not enough: the represented scaled pivot and the backward residual must pass.
+A standalone report contains the exact canonical sealed request, so its hash
+can be recomputed from the report. Every artifact keeps
+`physical_qualification=false` and `full_propeller_clearance=null`.
 
 This ADR does not approve CMM-2. A later aerodynamic hinge-load model needs its
 own reviewed local-load contract. CMM-1 does not replace PY-05, PR-07, or the

@@ -221,7 +221,9 @@ Ayrı ayrı duran parçalar korunur: rotor BEM, katlanır geometri projeksiyonu,
 PR-07 motor dengesi, öngörülen tahrikli PY-05 ve GEOM tarama/kanıt zinciri.
 CMM-1 bunları değiştirmez. Ortak çevrim yalnız CMM-1'in ilan ettiği ekran
 sınırları içindedir: donmuş katlanma aerodinamiği, sabit gaz, senkron palalar,
-100 rpm yazılım tabanı ve ilk temas terminali.
+100 rpm yazılım tabanı ve ilk temas terminali. Kabul edilen her RK45 yoğun
+aralığı katlanma ve mil-hızı domeni için denetlenir. v1, domen çıkışından
+sonra devam etmez ve uydurma bir `model_domain_exit` noktası yayımlamaz.
 
 <a id="sirali-teknik-fazlar"></a>
 

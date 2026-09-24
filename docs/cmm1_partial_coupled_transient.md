@@ -62,10 +62,16 @@ det M = N J I0 + N^2 m R^2 (J - m c^2 cos^2(theta))
 ```
 
 The existing mechanism binding still requires `J >= m c^2`. CMM-1 also
-requires `I0 > 0`. Regularity uses the analytical positive Schur complement
-`det M / (N J)` and a scaled residual of `M x - rhs`. There is no absolute
-determinant epsilon. The point-mass boundary `J = m c^2` with `I0 > 0` stays
-regular. Singular, unresolved, or nonfinite systems fail closed.
+requires `I0 > 0`. The analytical determinant above is a diagnostic. It does
+not authorize the solve. The represented entries `m00`, `m01`, and `m11` are
+scaled to unit diagonal and accepted only when the symmetric pivot is positive
+and distinguishable from zero by a floating-point ulp test. A matrix that is
+positive in exact arithmetic but unresolved in the current float representation
+fails closed. The solved residual is a per-row backward error,
+`|r_i| / (|b_i| + sum_j |M_ij x_j|)`, with an explicit zero-denominator rule
+and no fixed 1 Nm floor. The point-mass boundary `J = m c^2` with an
+adequately resolved `I0 > 0` stays regular. Singular, unresolved, or nonfinite
+systems fail closed.
 
 ## Motor, BEM, and domains
 
@@ -97,7 +103,10 @@ evaluation runs below that floor, at zero rpm, or in reverse.
 
 Initial angle, hinge rate, and shaft speed are explicit. The angle must lie
 strictly inside the mechanism stops and inside the fold domain. The solver
-does not project or clamp the initial state.
+does not project or clamp the initial state. `forward_speed_m_s` must be
+finite and greater than or equal to zero. Zero forward speed remains in the
+model; reversed flow is not added. Battery discharge efficiency uses the PR-07
+rule `0 < discharge_efficiency <= 1`.
 
 ## Contact, failure, and budgets
 
@@ -106,12 +115,22 @@ hit records the stop, time, angle, pre-impact hinge rate, and shaft speed,
 then stops. There is no impact reaction, rebound, latch, static hold, or
 clamp-and-continue.
 
+Every accepted RK45 step is audited before it can enter a successful
+trajectory. The audit uses that step's quartic dense polynomial. It evaluates
+the interval endpoints and every real derivative root of `theta(t)` and
+`omega(t)` inside the normalized interval. Endpoints, stage values, and a
+fixed sample grid are not a substitute. The whole accepted step is audited
+when there is no contact. When first contact exists, only
+`[previous_time, contact_time]` is relevant: a later extrapolated excursion
+does not reject that contact, and an excursion before contact fails the run.
+v1 does not continue after a detected fold or shaft-speed excursion, and it
+still does not publish a fabricated `model_domain_exit` terminal point.
+
 Hard failures, including BEM nonconvergence, polar-domain failure, nonfinite
-arithmetic, a singular mass matrix, motor failure, and work-budget exhaustion,
-raise and do not return a shortened success. v1 does not locate a
-`model_domain_exit` terminal inside a step. Leaving the fold or speed domain
-fails closed instead of inventing a terminal point. No zero, frozen, clamped,
-or extrapolated aerodynamic load is substituted.
+arithmetic, a singular or unresolved mass matrix, motor failure, a dense
+domain excursion, and work-budget exhaustion, raise and do not return a
+shortened success. No zero, frozen, clamped, or extrapolated aerodynamic load
+is substituted.
 
 The integrator is adaptive RK45, restarted at each hinge-actuation knot.
 Ceilings are software limits, not accuracy claims: `max_duration_s <= 2`,
@@ -136,12 +155,17 @@ conservation. Electrical diagnostics stay on the PR-07 sample.
 
 The sealed input hash covers the draft and source hashes, one-tip mass
 distribution, derived mass properties, `I0` value, source and inventory,
-motor, battery, system, throttle, fixed environment, polar identity, BEM
-settings, bounds, solver controls, initial state, and hinge-actuation history.
-Hash identity is not source authentication or physical qualification. A
-tampered binding is rejected. The report repeats the limitations above,
-including unresolved PR-06C, omitted hinge load, no dynamic clearance, and
-unqualified inertia unless a separate measurement exists.
+motor, battery, system, throttle, fixed environment, polar identity including
+provenance metadata, BEM settings, bounds, solver controls, initial state, and
+hinge-actuation history. Non-finite or non-JSON polar metadata is rejected at
+sealing rather than omitted. Hash identity is not source authentication or
+physical qualification. A tampered binding is rejected.
+
+A successful report is self-contained. `report_json` stores the exact sealed
+request object and `input_sha256`. Re-encoding that request with the canonical
+JSON serializer reproduces `input_sha256`. The report also repeats the
+limitations above, including unresolved PR-06C, omitted hinge load, no dynamic
+clearance, and unqualified inertia unless a separate measurement exists.
 
 Code: `pyfoldable/dynamics/coupled_transient.py`,
 `pyfoldable/application/coupled_transient_service.py`. Decision: ADR-005.
