@@ -132,6 +132,28 @@ Evidence: `pyfoldable/dynamics/mechanism_transient.py`,
 `pyfoldable/application/mechanism_binding.py`, `pyfoldable/core/mechanism_observation.py`;
 [PY-05 completion](../py05_completion.md), [PY-06 plan](../py06_calibration_uncertainty_plan.md).
 
+## ADR-005 — CMM-1 is partial coupled screening, not hinge-load coupling
+
+**Status: accepted for the CMM-1 software boundary.**
+
+Decision: add a separate synchronous screening transient. Its states are hinge
+angle, hinge rate, and shaft speed. Motor current stays algebraic and reuses
+the PR-07 motor law without equation changes. Whole-rotor foldable BEM torque
+enters the shaft equation once. Aerodynamic hinge torque is omitted
+(`unavailable_omitted_by_cmm1`), not published as a physical zero. The mass
+matrix uses caller-sourced base inertia `I0` that excludes the N movable tips.
+Integration stops at the first mechanism-stop contact. Domain exit below
+100 rpm or outside the radial-cosine fold limit fails closed. Every artifact
+keeps `physical_qualification=false` and `full_propeller_clearance=null`.
+
+This ADR does not approve CMM-2. A later aerodynamic hinge-load model needs its
+own reviewed local-load contract. CMM-1 does not replace PY-05, PR-07, or the
+GEOM #67–#69 evidence, negative-policy, and readiness layers.
+
+Evidence: `pyfoldable/dynamics/coupled_transient.py`,
+`pyfoldable/application/coupled_transient_service.py`,
+[CMM-1 contract](../cmm1_partial_coupled_transient.md).
+
 ## Future records
 
 An unproven architectural interpretation must say **inferred — requires

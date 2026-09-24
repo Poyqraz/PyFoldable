@@ -25,8 +25,8 @@ fiziksel doğrulama tamamlanmadı.**
 | Polar sağlayıcı altyapısı | Gerçek XFOIL/NeuralFoil regresyonlarıyla nitelikli | Yeni airfoil ve çalışma zarfı büyüdükçe yeniden niteleme |
 | 2B kesit aerodinamiği | Reynolds/Mach enterpolasyonu ve izlenebilir kesit yükleri mevcut | 3B dönel akış ve stall düzeltmeleri |
 | Rotor aerodinamiği | QPROP-tabanlı indüksiyon/swirl, uç/kök kaybı, radyal integrasyon ve üretici-geometri taraması mevcut | Temsili Reynolds-duyarlı spanwise polarlara dayalı rotor seviyesi doğrulama |
-| Motor–pervane etkileşimi | PR-07 tork dengesi ve PY-06C bağımsız dinamometre karşılaştırma çekirdeği mevcut (PR #56). Bu, zaman domeninde mekanizma ile iki yönlü bağ değildir | Gerçek dinamometre/rotor ölçümleri ve fiziksel korelasyon |
-| Katlanır mekanizma | PY-05: tek düzlemsel rijit uç, öngörülen devir ve menteşe torku, RK45, ilk temas terminali. GEOM-01–04 + PR #67–#69 ayrı bir sayısal tarama/kanıt zinciridir | İki yönlü aero/motor geri beslemesi yok. Gerçek geçiş ölçümü, tanımlanabilir kalibrasyon ve fiziksel açıklık niteliği açık |
+| Motor–pervane etkileşimi | PR-07 cebirsel tork dengesi duruyor. CMM-1 bunu zaman domeninde, sabit gaz ve bütün rotor BEM şaft torku ile kullanır. Bu, fiziksel motor doğrulaması değildir | Gerçek dinamometre/rotor ölçümleri ve fiziksel korelasyon |
+| Katlanır mekanizma | PY-05 öngörülen tahrikli modeli duruyor. CMM-1 ayrı bir kısmi bağlaşık tarama geçişidir: ortak `theta`, dinamik `omega`, aerodinamik menteşe momenti yok. GEOM-01–04 + PR #67–#69 ayrı bir sayısal tarama/kanıt zinciridir | Derin katlanma, sıfır devirden kalkış, çarpışma/kilit, kalibrasyon ve fiziksel açıklık niteliği açık |
 | CFD korelasyonu | Seviye-1 hazırlık/çıktı sözleşmeleri | Ağ bağımsızlığı ve BEM–CFD korelasyonu |
 | Yapısal doğrulama | PR-09 CAD/malzeme/yük-vaka ve FEA sonuç sözleşmesi mevcut | Gerçek CAD, malzeme kartları ve ANSYS Mechanical kanıtı |
 | Deneysel doğrulama | PR-10 v2 provenance zinciri ve PY-06A eş-koşul karşılaştırma çekirdeği mevcut | Kalibre edilmiş standdan gerçek sabit ve katlanır ölçümleri |
@@ -206,20 +206,22 @@ kanıt paketi ve başarısızlığı görünür kılan regresyonu bulunduğunda 
 
 ## Önerilen sonraki matematiksel dilim
 
-**Coupled Aero–Motor–Mechanism Model**, önerilen sonraki model dilimidir.
-Uygulanmış değildir ve kabul edilmiş bir ADR değildir. Bu PR yalnız yol
-haritasını hizalar. Davranış sözleşmesi ve denklemler ayrı review'den sonra
-yazılır. Bu belgede nihai denklem tanımlanmaz.
+**2026-09-24 düzeltmesi.** PR #70 bu dilimi henüz uygulanmamış bir öneri olarak
+kaydetmişti. CMM-1 artık ayrı bir kısmi tarama geçişi olarak uygulanmıştır.
+Bu, modelin tamamlandığı veya fiziksel olarak doğrulandığı anlamına gelmez.
+Aerodinamik menteşe momenti hâlâ yoktur; o iş CMM-2 için ayrı bir sözleşmedir
+ve onaylı değildir. Ayrıntı:
+[CMM-1 sözleşmesi](cmm1_partial_coupled_transient.md) ve ADR-005.
 
-Ayrı ayrı var olan parçalar: rotor BEM, katlanır geometri projeksiyonu/durumu,
-motor–rotor dengesi, öngörülen tahrikli PY-05 geçişi ve GEOM hareket/açıklık
-taraması.
+**Coupled Aero–Motor–Mechanism Model**, PR #70 sırasında önerilen sonraki model
+dilimiydi. O belgede nihai denklem yazılmadı. CMM-1, review edilmiş kısmi
+tarama sözleşmesinin sınırlı uygulamasıdır.
 
-Eksik bağlaşım kabaca şudur. Mekanizma durumu açı ve açı hızını verir. Bu,
-o andaki katlanma durumunu ve aerodinamik geometriyi belirler. BEM aerodinamik
-yük üretir. Şaft/motor durumu devri belirler. Aerodinamik, merkezkaç, Euler ve
-mekanik menteşe torkları birlikte açı ivmesini belirler. Mekanizma durumu
-güncellenir. Bu çevrim bugün yoktur.
+Ayrı ayrı duran parçalar korunur: rotor BEM, katlanır geometri projeksiyonu,
+PR-07 motor dengesi, öngörülen tahrikli PY-05 ve GEOM tarama/kanıt zinciri.
+CMM-1 bunları değiştirmez. Ortak çevrim yalnız CMM-1'in ilan ettiği ekran
+sınırları içindedir: donmuş katlanma aerodinamiği, sabit gaz, senkron palalar,
+100 rpm yazılım tabanı ve ilk temas terminali.
 
 <a id="sirali-teknik-fazlar"></a>
 
@@ -231,8 +233,8 @@ Her faz tek bir PR olmak zorunda değildir.
 | --- | --- | --- |
 | 0 | Birleşmiş taban. GEOM #67–#69 birleşti. BEM, motor dengesi ve PY-05 ayrı ayrı var | implemented |
 | 1 | Bu yol haritası hizalaması | docs reconciliation, bu PR |
-| 2 | Bağlaşık modelin davranış/matematik sözleşmesi. Yalnız mimari. Uygulama yok. Bağımsız review gerekir | proposed next slice |
-| 3 | En küçük sınırlı bağlaşım uygulaması. Yalnız Faz 2 onayından sonra | deferred |
+| 2 | Kısmi bağlaşık tarama sözleşmesi. Uygulama bu fazın kendisi değildir | reviewed; ADR-005 records the accepted CMM-1 scope |
+| 3 | CMM-1 kısmi bağlaşık tarama geçişi. Aerodinamik menteşe momenti, fiziksel yeterlilik, GEOM `True` ve kalibrasyon yoktur | implemented screening boundary |
 | 4 | Bağımsız sayısal doğrulama: analitik sınır halleri, kalıntı, yakınsama/duyarlılık ve ayrık modellerle regresyon | deferred |
 | 5 | PY-06D2 kalibrasyonu. Yalnız uygun ve tanımlanabilir ölçüm varken | blocked on evidence |
 | 6 | Fiziksel korelasyon, CFD, FEA ve deney | blocked on evidence |
