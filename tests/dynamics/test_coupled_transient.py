@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import dataclasses
 import math
+from decimal import Decimal, getcontext
+from fractions import Fraction
 
 import numpy as np
 import pytest
@@ -736,6 +738,268 @@ def test_dense_domain_audit_uses_only_the_rk45_quartic() -> None:
     cubic = RkDenseOutput(0.0, 1.0, np.zeros(3), np.zeros((3, 3)))
     with pytest.raises(CoupledTransientFailure, match="quartic"):
         audit(cubic, 0.0, 1.0)
+
+
+# Represented RK45 row whose derivative cubic has three real roots. NumPy's
+# companion solver returns the close pair as complex with an imaginary part
+# far above 512 eps, so the old audit never evaluates that stationary point.
+_ILL_CONDITIONED_Q = (
+    -1.1520000826779448,
+    3.5200001492796225,
+    -4.5333334098869855,
+    2.0,
+)
+_ILL_CONDITIONED_Y = 10.608508859385182
+_ILL_CONDITIONED_X_END = 0.4000000287076197
+
+
+def _represented_derivative(q):
+    coeff = [Decimal.from_float(float(term)) for term in q]
+    return (coeff[0], Decimal(2) * coeff[1], Decimal(3) * coeff[2], Decimal(4) * coeff[3])
+
+
+def _cubic_discriminant(deriv) -> Decimal:
+    constant, linear, quadratic, cubic = deriv
+    return (
+        Decimal(18) * cubic * quadratic * linear * constant
+        - Decimal(4) * quadratic**3 * constant
+        + quadratic**2 * linear**2
+        - Decimal(4) * cubic * linear**3
+        - Decimal(27) * cubic**2 * constant**2
+    )
+
+
+def _decimal_horner(coeffs, x: Decimal) -> Decimal:
+    value = Decimal(0)
+    for coeff in reversed(coeffs):
+        value = value * x + coeff
+    return value
+
+
+def _isolate_represented_real_roots(deriv, lo: Decimal, hi: Decimal) -> list[Decimal]:
+    """Sign-change isolation on the represented cubic. Not a NumPy root query."""
+    constant, linear, quadratic, cubic = deriv
+    turning = [lo, hi]
+    second_lead = Decimal(3) * cubic
+    second_linear = Decimal(2) * quadratic
+    if second_lead == 0 and second_linear != 0:
+        root = -linear / second_linear
+        if lo < root < hi:
+            turning.append(root)
+    elif second_lead != 0:
+        disc = second_linear**2 - Decimal(4) * second_lead * linear
+        if disc > 0:
+            root_gap = disc.sqrt()
+            for root in (
+                (-second_linear + root_gap) / (Decimal(2) * second_lead),
+                (-second_linear - root_gap) / (Decimal(2) * second_lead),
+            ):
+                if lo < root < hi:
+                    turning.append(root)
+    turning = sorted(turning)
+    roots = []
+    for left, right in zip(turning, turning[1:]):
+        left_value = _decimal_horner(deriv, left)
+        right_value = _decimal_horner(deriv, right)
+        if left_value == 0:
+            roots.append(left)
+        if left_value * right_value < 0:
+            low, high = left, right
+            low_value = left_value
+            for _ in range(200):
+                mid = (low + high) / 2
+                mid_value = _decimal_horner(deriv, mid)
+                if mid_value == 0:
+                    low = high = mid
+                    break
+                if (low_value > 0) == (mid_value > 0):
+                    low, low_value = mid, mid_value
+                else:
+                    high = mid
+            roots.append((low + high) / 2)
+        if right_value == 0:
+            roots.append(right)
+    return roots
+
+
+def _increment(q, x: Decimal) -> Decimal:
+    coeff = [Decimal.from_float(float(term)) for term in q]
+    return _decimal_horner((Decimal(0), *coeff), x)
+
+
+def _float_quartic_value(y: float, q, x: float) -> float:
+    accumulated = 0.0
+    power = x
+    for term in q:
+        accumulated += float(term) * power
+        power *= x
+    return y + accumulated
+
+
+def test_ill_conditioned_cubic_minimum_is_a_dense_domain_exit() -> None:
+    """Three real derivative roots, one skipped by companion eigenvalues.
+
+    The float power sum at the audited endpoint rounds to the legal speed
+    floor. High-precision evaluation of the represented polynomial is below
+    that floor by a fraction of an ulp. The old imaginary-part test misses it.
+    """
+    getcontext().prec = 80
+    deriv = _represented_derivative(_ILL_CONDITIONED_Q)
+    assert _cubic_discriminant(deriv) > 0
+    roots = _isolate_represented_real_roots(deriv, Decimal(0), Decimal(1))
+    assert len(roots) == 3
+    numpy_roots = np.polynomial.polynomial.polyroots(
+        [
+            _ILL_CONDITIONED_Q[0],
+            2 * _ILL_CONDITIONED_Q[1],
+            3 * _ILL_CONDITIONED_Q[2],
+            4 * _ILL_CONDITIONED_Q[3],
+        ]
+    )
+    imag_tol = 512.0 * float(np.finfo(float).eps)
+    assert max(abs(float(np.imag(root))) for root in numpy_roots) > 1.0e-9
+    accepted = [
+        float(np.real(root))
+        for root in numpy_roots
+        if abs(float(np.imag(root))) <= imag_tol and 0.0 < float(np.real(root)) < _ILL_CONDITIONED_X_END
+    ]
+    assert accepted == []
+    x_end = Decimal.from_float(_ILL_CONDITIONED_X_END)
+    interior = [root for root in roots if Decimal(0) < root < x_end]
+    assert interior
+    omega = Decimal.from_float(OMEGA_MIN)
+    y = Decimal.from_float(_ILL_CONDITIONED_Y)
+    deficits = [y + _increment(_ILL_CONDITIONED_Q, root) - omega for root in interior]
+    worst = min(deficits)
+    assert -Decimal("1e-12") < worst < 0
+    assert _float_quartic_value(_ILL_CONDITIONED_Y, _ILL_CONDITIONED_Q, 0.0) >= OMEGA_MIN
+    assert _float_quartic_value(_ILL_CONDITIONED_Y, _ILL_CONDITIONED_Q, _ILL_CONDITIONED_X_END) >= OMEGA_MIN
+    dense = _quartic((0.2, 0.0, _ILL_CONDITIONED_Y), ((0.0,), (0.0,), _ILL_CONDITIONED_Q))
+    with pytest.raises(CoupledDomainExit):
+        coupled_transient._audit_dense_model_domain(dense, 0.0, _ILL_CONDITIONED_X_END)
+
+
+def test_ill_conditioned_speed_root_before_contact_aborts() -> None:
+    """A pre-contact stationary minimum is not excused by a legal contact state."""
+    q = np.asarray(_ILL_CONDITIONED_Q, dtype=float)
+    system = _system(
+        _parameters(lower_stop_rad=-1.2, upper_stop_rad=1.2),
+        blade_count=1,
+        inertia=_inertia(1.0e-2),
+    )
+
+    def rhs(time_s, state):
+        del time_s
+        solved = coupled_accelerations(system, state[0], state[1], state[2], 0.0, 0.0, 0.0)
+        return (state[1], solved.theta_ddot_rad_s2, solved.omega_dot_rad_s2)
+
+    preview = RK45(
+        rhs,
+        0.0,
+        (0.0, 2.0, OMEGA_MIN * 2.0),
+        0.002,
+        max_step=0.002,
+        rtol=1.0e-3,
+        atol=(1.0e-4, 1.0e-3, 1.0e-2),
+    )
+    preview.step()
+    dense = preview.dense_output()
+    contact_time = _ILL_CONDITIONED_X_END * float(dense.h)
+    contact_angle = float(dense(contact_time)[0])
+    assert abs(contact_angle) < FOLD_LIMIT_RAD
+    original = coupled_transient.RK45.dense_output
+
+    def patched(self, *args, **kwargs):
+        output = original(self, *args, **kwargs)
+        output.y_old = np.array(output.y_old, dtype=float, copy=True)
+        output.Q = np.array(output.Q, dtype=float, copy=True)
+        output.y_old[2] = _ILL_CONDITIONED_Y
+        output.Q[2] = q / float(output.h)
+        return output
+
+    coupled_transient.RK45.dense_output = patched
+    try:
+        stopped = _system(
+            _parameters(lower_stop_rad=-1.2, upper_stop_rad=contact_angle),
+            blade_count=1,
+            inertia=_inertia(1.0e-2),
+        )
+        normalized = (contact_time - float(dense.t_old)) / float(dense.h)
+        contact_omega = _float_quartic_value(_ILL_CONDITIONED_Y, q, normalized)
+        assert contact_omega >= OMEGA_MIN
+        with pytest.raises(CoupledDomainExit):
+            solve_coupled_transient(
+                _request(
+                    stopped,
+                    actuation=_history(0.0, 0.002),
+                    initial_angle_rad=0.0,
+                    initial_angular_velocity_rad_s=2.0,
+                    initial_omega_rad_s=OMEGA_MIN * 2.0,
+                    motor_evaluator=_motor(0.0),
+                    aero_evaluator=_aero(0.0),
+                    controls=_one_step_controls(),
+                )
+            )
+    finally:
+        coupled_transient.RK45.dense_output = original
+
+
+def test_interior_fold_peak_and_trough_use_the_same_real_audit() -> None:
+    audit = coupled_transient._audit_dense_model_domain
+    with pytest.raises(CoupledDomainExit):
+        audit(_quartic((1.2, 0.0, OMEGA_MIN + 1.0), ((2.0, -2.0), (0.0,), (0.0,))), 0.0, 1.0)
+    with pytest.raises(CoupledDomainExit):
+        audit(_quartic((-1.2, 0.0, OMEGA_MIN + 1.0), ((-2.0, 2.0), (0.0,), (0.0,))), 0.0, 1.0)
+    inside = _quartic((0.2, 0.0, OMEGA_MIN + 1.0), (_ILL_CONDITIONED_Q, (0.0,), (0.0,)))
+    audit(inside, 0.399, _ILL_CONDITIONED_X_END)
+    on_limit = _quartic((1.707329674214102, 0.0, OMEGA_MIN + 1.0), (_ILL_CONDITIONED_Q, (0.0,), (0.0,)))
+    with pytest.raises(CoupledDomainExit):
+        audit(on_limit, 0.0, _ILL_CONDITIONED_X_END)
+
+
+def test_multiple_and_lower_degree_derivative_roots_stay_fail_closed() -> None:
+    audit = coupled_transient._audit_dense_model_domain
+    # Triple real root: endpoints stay above the floor, the flat minimum does not.
+    lead = Fraction(1)
+    d0, d1, d2, d3 = [lead * value for value in (Fraction(-1, 8), Fraction(3, 4), Fraction(-3, 2), Fraction(1))]
+    triple = tuple(float(value) for value in (d0, d1 / 2, d2 / 3, d3 / 4))
+    with pytest.raises(CoupledDomainExit):
+        audit(_quartic((0.0, 0.0, OMEGA_MIN + 0.01), ((0.0,), (0.0,), triple)), 0.0, 1.0)
+    audit(_quartic((0.0, 0.0, OMEGA_MIN + 1.0), ((0.0,), (0.0,), triple)), 0.0, 1.0)
+
+    # Double root is a stationary inflection. A monotone safe segment stays inside.
+    inflection = tuple(float(value) for value in (Fraction(1, 4), Fraction(-1, 2), Fraction(1, 3), Fraction(0)))
+    audit(_quartic((0.0, 0.0, OMEGA_MIN + 1.0), ((0.0,), (0.0,), inflection)), 0.0, 1.0)
+
+    # Identically linear derivative, then a quadratic derivative after a zero leading coeff.
+    audit(_quartic((0.0, 0.0, OMEGA_MIN + 1.0), ((0.0,), (0.0,), (1.0,))), 0.0, 1.0)
+    with pytest.raises(CoupledDomainExit):
+        audit(_quartic((0.0, 0.0, OMEGA_MIN - 0.5), ((0.0,), (0.0,), (1.0,))), 0.0, 1.0)
+    audit(_quartic((0.2, 0.0, OMEGA_MIN + 1.0), ((0.0,), (0.0,), (0.0, 0.1, -0.1))), 0.0, 1.0)
+
+
+def test_interior_speed_floor_and_one_real_derivative_root() -> None:
+    """Equality at an interior speed minimum is legal; a simple real minimum is not."""
+    audit = coupled_transient._audit_dense_model_domain
+    flat_min = (-0.125, 0.375, -0.5, 0.25)
+    level = float(Fraction(OMEGA_MIN) + Fraction(1, 64))
+    audit(_quartic((0.0, 0.0, level), ((0.0,), (0.0,), flat_min)), 0.0, 1.0)
+    with pytest.raises(CoupledDomainExit):
+        audit(_quartic((0.0, 0.0, level - 1.0e-6), ((0.0,), (0.0,), flat_min)), 0.0, 1.0)
+
+    # d(x) = (x - 0.4)(x^2 + 1): one real root and a complex pair.
+    simple = (-0.4, 0.5, -0.4 / 3.0, 0.25)
+    with pytest.raises(CoupledDomainExit):
+        audit(_quartic((0.0, 0.0, OMEGA_MIN + 0.05), ((0.0,), (0.0,), simple)), 0.0, 1.0)
+
+
+def test_root_isolation_budget_exhaustion_fails_closed() -> None:
+    derivative = coupled_transient._trim_polynomial(
+        tuple(Fraction(value) for value in (-0.125, 0.75, -1.5, 1.0))
+    )
+    with pytest.raises(CoupledTransientFailure, match="unresolved") as caught:
+        coupled_transient._isolate_real_roots(derivative, Fraction(0), Fraction(1), [0])
+    assert type(caught.value) is CoupledTransientFailure
 
 
 def test_contact_before_a_later_dense_excursion_stays_terminal() -> None:

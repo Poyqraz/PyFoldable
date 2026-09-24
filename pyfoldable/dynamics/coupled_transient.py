@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import math
 from dataclasses import dataclass
+from fractions import Fraction
 from typing import Callable, Mapping
 
 import numpy as np
@@ -772,12 +773,284 @@ def _call_evaluator(kind: str, evaluator: Callable, time_s: float, state: tuple[
     return value
 
 
-def _audit_dense_model_domain(dense, t_start: float, t_end: float) -> None:
-    """Require the RK45 quartic to stay inside the fold and shaft-speed domains.
+_ROOT_BISECTION_LIMIT = 80
+_ROOT_WORK_BUDGET = 800
 
-    Extrema come from the derivative of the continuous extension, not from
-    endpoints, RK stages, or a fixed sample grid. An unexpected polynomial
-    representation fails closed instead of falling back to sampling.
+
+def _trim_polynomial(coeffs: tuple[Fraction, ...]) -> tuple[Fraction, ...]:
+    items = list(coeffs)
+    while len(items) > 1 and items[-1] == 0:
+        items.pop()
+    return tuple(items)
+
+
+def _evaluate_polynomial(coeffs: tuple[Fraction, ...], x: Fraction) -> Fraction:
+    value = Fraction(0)
+    for coeff in reversed(coeffs):
+        value = value * x + coeff
+    return value
+
+
+def _differentiate(coeffs: tuple[Fraction, ...]) -> tuple[Fraction, ...]:
+    derived = tuple(coeff * index for index, coeff in enumerate(coeffs) if index)
+    if not derived:
+        return (Fraction(0),)
+    return _trim_polynomial(derived)
+
+
+def _divide_polynomial(
+    numerator: tuple[Fraction, ...],
+    denominator: tuple[Fraction, ...],
+) -> tuple[tuple[Fraction, ...], tuple[Fraction, ...]]:
+    working = list(numerator)
+    degree_gap = len(working) - len(denominator)
+    if degree_gap < 0:
+        return (Fraction(0),), _trim_polynomial(tuple(working))
+    quotient = [Fraction(0)] * (degree_gap + 1)
+    lead = denominator[-1]
+    if lead == 0:
+        raise CoupledTransientFailure("CMM-1 dense root isolation is unresolved.")
+    for power in range(degree_gap, -1, -1):
+        factor = working[power + len(denominator) - 1] / lead
+        quotient[power] = factor
+        for index, coeff in enumerate(denominator):
+            working[power + index] -= factor * coeff
+    return _trim_polynomial(tuple(quotient)), _trim_polynomial(tuple(working))
+
+
+def _sturm_chain(polynomial: tuple[Fraction, ...]) -> tuple[tuple[Fraction, ...], ...] | None:
+    polynomial = _trim_polynomial(polynomial)
+    if polynomial == (Fraction(0),):
+        return None
+    chain = [polynomial]
+    derivative = _differentiate(polynomial)
+    if derivative != (Fraction(0),):
+        chain.append(derivative)
+    while len(chain[-1]) > 1:
+        _quotient, remainder = _divide_polynomial(chain[-2], chain[-1])
+        remainder = _trim_polynomial(tuple(-coeff for coeff in remainder))
+        if remainder == (Fraction(0),):
+            break
+        chain.append(remainder)
+        if len(chain) > 6:
+            raise CoupledTransientFailure("CMM-1 dense root isolation is unresolved.")
+    return tuple(chain)
+
+
+def _sign_variations(chain: tuple[tuple[Fraction, ...], ...], x: Fraction) -> int:
+    previous = 0
+    changes = 0
+    for polynomial in chain:
+        value = _evaluate_polynomial(polynomial, x)
+        if value == 0:
+            continue
+        sign = 1 if value > 0 else -1
+        if previous and sign != previous:
+            changes += 1
+        previous = sign
+    return changes
+
+
+def _consume_root_work(budget: list[int]) -> None:
+    if budget[0] <= 0:
+        raise CoupledTransientFailure("CMM-1 dense root isolation is unresolved.")
+    budget[0] -= 1
+
+
+def _deflate_root(polynomial: tuple[Fraction, ...], root: Fraction) -> tuple[Fraction, ...]:
+    """Exact synthetic division by ``(x - root)``."""
+    quotient: list[Fraction] = []
+    accumulator = Fraction(0)
+    for coeff in reversed(polynomial):
+        accumulator = accumulator * root + coeff
+        quotient.append(accumulator)
+    remainder = quotient.pop()
+    if remainder != 0:
+        raise CoupledTransientFailure("CMM-1 dense root isolation is unresolved.")
+    return _trim_polynomial(tuple(reversed(quotient)))
+
+
+def _remove_endpoint_roots(polynomial: tuple[Fraction, ...], root: Fraction) -> tuple[Fraction, ...]:
+    while len(polynomial) > 1 and _evaluate_polynomial(polynomial, root) == 0:
+        polynomial = _deflate_root(polynomial, root)
+    return polynomial
+
+
+def _isolate_real_roots(
+    polynomial: tuple[Fraction, ...],
+    left: Fraction,
+    right: Fraction,
+    budget: list[int],
+    depth: int = 0,
+) -> list[tuple[Fraction, Fraction]]:
+    if depth > 32:
+        raise CoupledTransientFailure("CMM-1 dense root isolation is unresolved.")
+    polynomial = _remove_endpoint_roots(_trim_polynomial(polynomial), left)
+    polynomial = _remove_endpoint_roots(polynomial, right)
+    if len(polynomial) <= 1:
+        return []
+    chain = _sturm_chain(polynomial)
+    if chain is None:
+        return []
+    count = _sign_variations(chain, left) - _sign_variations(chain, right)
+    if count < 0:
+        raise CoupledTransientFailure("CMM-1 dense root isolation is unresolved.")
+    if count == 0:
+        return []
+    if right - left <= Fraction(1, 2**_ROOT_BISECTION_LIMIT) and count > 1:
+        raise CoupledTransientFailure("CMM-1 dense root isolation is unresolved.")
+    _consume_root_work(budget)
+    middle = (left + right) / 2
+    if middle == left or middle == right:
+        raise CoupledTransientFailure("CMM-1 dense root isolation is unresolved.")
+    if _evaluate_polynomial(polynomial, middle) == 0:
+        return [
+            (middle, middle),
+            *_isolate_real_roots(_remove_endpoint_roots(polynomial, middle), left, right, budget, depth + 1),
+        ]
+    if count == 1:
+        return _refine_real_root(chain, left, right, budget)
+    return [
+        *_isolate_real_roots(polynomial, left, middle, budget, depth + 1),
+        *_isolate_real_roots(polynomial, middle, right, budget, depth + 1),
+    ]
+
+
+def _refine_real_root(
+    chain: tuple[tuple[Fraction, ...], ...],
+    left: Fraction,
+    right: Fraction,
+    budget: list[int],
+) -> list[tuple[Fraction, Fraction]]:
+    polynomial = chain[0]
+    for _step in range(_ROOT_BISECTION_LIMIT):
+        if right - left <= Fraction(1, 2**_ROOT_BISECTION_LIMIT):
+            break
+        _consume_root_work(budget)
+        middle = (left + right) / 2
+        if middle == left or middle == right:
+            break
+        if _evaluate_polynomial(polynomial, middle) == 0:
+            return [(middle, middle)]
+        if _sign_variations(chain, left) - _sign_variations(chain, middle) >= 1:
+            right = middle
+        else:
+            left = middle
+    return [(left, right)]
+
+
+def _dense_component_value(
+    origin: Fraction,
+    step: Fraction,
+    coefficients: tuple[Fraction, ...],
+    x: Fraction,
+) -> Fraction:
+    accumulated = Fraction(0)
+    power = x
+    for coeff in coefficients:
+        accumulated += coeff * power
+        power *= x
+    return origin + step * accumulated
+
+
+def _magnitude_bound(coeffs: tuple[Fraction, ...], left: Fraction, right: Fraction) -> Fraction:
+    span = max(abs(left), abs(right), Fraction(1))
+    bound = Fraction(0)
+    power = Fraction(1)
+    for coeff in coeffs:
+        bound += abs(coeff) * power
+        power *= span
+    return bound
+
+
+def _value_enclosure(
+    origin: Fraction,
+    step: Fraction,
+    coefficients: tuple[Fraction, ...],
+    derivative: tuple[Fraction, ...],
+    left: Fraction,
+    right: Fraction,
+) -> tuple[Fraction, Fraction]:
+    if left == right:
+        value = _dense_component_value(origin, step, coefficients, left)
+        return value, value
+    middle = (left + right) / 2
+    center = _dense_component_value(origin, step, coefficients, middle)
+    width = right - left
+    endpoint_slope = max(
+        abs(_evaluate_polynomial(derivative, left)),
+        abs(_evaluate_polynomial(derivative, right)),
+    )
+    slope_bound = _magnitude_bound(_differentiate(derivative), left, right)
+    derivative_bound = endpoint_slope + slope_bound * width
+    variation = abs(step) * derivative_bound * width / 2
+    return center - variation, center + variation
+
+
+def _component_domain_decision(kind: str, lower: Fraction, upper: Fraction) -> str:
+    if kind == "fold":
+        if lower >= FOLD_LIMIT_RAD or upper <= -FOLD_LIMIT_RAD:
+            return "exit"
+        if upper < FOLD_LIMIT_RAD and lower > -FOLD_LIMIT_RAD:
+            return "safe"
+        return "unknown"
+    if upper < OMEGA_MIN:
+        return "exit"
+    if lower >= OMEGA_MIN:
+        return "safe"
+    return "unknown"
+
+
+def _raise_for_domain(kind: str) -> None:
+    if kind == "fold":
+        raise CoupledDomainExit(
+            "CMM-1 dense fold domain was left; v1 does not continue or publish a terminal point."
+        )
+    raise CoupledDomainExit(
+        "CMM-1 dense shaft-speed domain was left; v1 does not continue or publish a terminal point."
+    )
+
+
+def _audit_polynomial_component(
+    origin: Fraction,
+    step: Fraction,
+    coefficients: tuple[Fraction, ...],
+    left: Fraction,
+    right: Fraction,
+    kind: str,
+    budget: list[int],
+) -> None:
+    derivative = _trim_polynomial(
+        (
+            coefficients[0],
+            2 * coefficients[1],
+            3 * coefficients[2],
+            4 * coefficients[3],
+        )
+    )
+    brackets = [(left, left), (right, right)]
+    if derivative != (Fraction(0),):
+        brackets.extend(_isolate_real_roots(derivative, left, right, budget))
+    unresolved = False
+    for bracket in brackets:
+        lower, upper = _value_enclosure(origin, step, coefficients, derivative, bracket[0], bracket[1])
+        decision = _component_domain_decision(kind, lower, upper)
+        if decision == "exit":
+            _raise_for_domain(kind)
+        if decision == "unknown":
+            unresolved = True
+    if unresolved:
+        raise CoupledTransientFailure("CMM-1 dense root isolation is unresolved.")
+
+
+def _audit_dense_model_domain(dense, t_start: float, t_end: float) -> None:
+    """Require one RK45 quartic to stay inside the fold and shaft-speed domains.
+
+    Real extrema come from exact rational Sturm isolation of the represented
+    derivative, followed by bounded bisection. Companion-matrix eigenvalues and
+    imaginary-part tolerances are not used. An unresolved bracket or an
+    exhausted work budget fails closed. An unexpected polynomial representation
+    fails closed instead of falling back to sampling.
     """
     if type(dense).__name__ != "RkDenseOutput":
         raise CoupledTransientFailure(
@@ -812,36 +1085,21 @@ def _audit_dense_model_domain(dense, t_start: float, t_end: float) -> None:
         raise CoupledTransientFailure("CMM-1 dense interval is outside the accepted step.")
     x_start = min(1.0, max(0.0, x_start))
     x_end = min(1.0, max(0.0, x_end))
-    imag_tol = 512.0 * float(np.finfo(float).eps)
+    budget = [_ROOT_WORK_BUDGET]
+    step_fraction = Fraction(float(step))
+    left = Fraction(float(x_start))
+    right = Fraction(float(x_end))
     for index, kind in ((0, "fold"), (2, "speed")):
-        coeff = [float(q_matrix[index, column]) for column in range(4)]
-        deriv = [coeff[0], 2.0 * coeff[1], 3.0 * coeff[2], 4.0 * coeff[3]]
-        while len(deriv) > 1 and deriv[-1] == 0.0:
-            deriv.pop()
-        roots = () if len(deriv) == 1 else np.polynomial.polynomial.polyroots(deriv)
-        positions = [x_start, x_end]
-        for root in roots:
-            real = float(np.real(root))
-            imag = float(np.imag(root))
-            if abs(imag) <= imag_tol and x_start < real < x_end:
-                positions.append(real)
-        for position in positions:
-            power = position
-            accumulated = 0.0
-            for term in coeff:
-                accumulated += term * power
-                power *= position
-            value = float(y_old[index]) + float(step) * accumulated
-            if not math.isfinite(value):
-                raise CoupledTransientFailure("CMM-1 dense polynomial is not finite.")
-            if kind == "fold" and abs(value) >= FOLD_LIMIT_RAD:
-                raise CoupledDomainExit(
-                    "CMM-1 dense fold domain was left; v1 does not continue or publish a terminal point."
-                )
-            if kind == "speed" and value < OMEGA_MIN:
-                raise CoupledDomainExit(
-                    "CMM-1 dense shaft-speed domain was left; v1 does not continue or publish a terminal point."
-                )
+        coefficients = tuple(Fraction(float(q_matrix[index, column])) for column in range(4))
+        _audit_polynomial_component(
+            Fraction(float(y_old[index])),
+            step_fraction,
+            coefficients,
+            left,
+            right,
+            kind,
+            budget,
+        )
 
 
 def solve_coupled_transient(request: CoupledTransientRequest) -> CoupledTransientResult:
