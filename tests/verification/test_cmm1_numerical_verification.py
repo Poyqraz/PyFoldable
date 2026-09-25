@@ -106,10 +106,13 @@ _service_spec.loader.exec_module(_service_tests)
 
 
 @pytest.fixture(scope="session", autouse=True)
-def _dump_phase4_evidence():
+def _dump_phase4_evidence(tmp_path_factory):
     yield
-    path = Path("/tmp/cmm1_phase4_evidence.json")
-    path.write_text(json.dumps(EVIDENCE, indent=2, sort_keys=True, allow_nan=False))
+    path = tmp_path_factory.getbasetemp() / "cmm1_phase4_evidence.json"
+    path.write_text(
+        json.dumps(EVIDENCE, indent=2, sort_keys=True, allow_nan=False),
+        encoding="utf-8",
+    )
 
 
 def _record(identifier: str, payload: dict[str, object]) -> None:
@@ -1006,18 +1009,6 @@ def test_05_roundoff_fallback_gate() -> None:
     assert _require_order_or_roundoff([1.0e-4, 1.0e-6, 1.0e-8], 0.0) == "resolved_order"
     zero_orders = _orders([1.0e-4, 1.0e-6, 1.0e-8], 0.0)
     assert zero_orders["resolvable"] == [True, True]
-    payload = EVIDENCE["05"]
-    payload["roundoff_floor_theta"] = floor
-    payload["roundoff_gate"] = {
-        "bad_flat_then_floor": "FAIL",
-        "strong_then_floor": "order_unresolvable_at_roundoff",
-        "leaves_floor": "FAIL",
-        "stays_at_floor": "order_unresolvable_at_roundoff",
-        "invalid_floor": "FAIL",
-        "zero_floor_positive_errors": "resolved_order",
-        "case_d": "resolved_order",
-    }
-    _record("05", payload)
 
 
 def test_06_manufactured_forcing() -> None:
