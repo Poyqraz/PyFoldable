@@ -212,6 +212,12 @@ Bu, modelin tamamlandığı veya fiziksel olarak doğrulandığı anlamına gelm
 Aerodinamik menteşe momenti hâlâ yoktur; o iş CMM-2 için ayrı bir sözleşmedir
 ve onaylı değildir. Ayrıntı:
 [CMM-1 sözleşmesi](cmm1_partial_coupled_transient.md) ve ADR-005.
+Faz 4 sayısal kanıtı
+[CMM-1 numerical verification](cmm1_numerical_verification.md)
+belgesindedir. Sonuç yalnız şudur: Numerical verification complete for the
+CMM-1 screening model. Fiziksel yeterlilik false kalır. PR-06C çözülmemiştir.
+Aerodinamik menteşe yükü yoktur. GEOM kapısı yükseltilmez. Kalibrasyon ve
+deneysel doğrulama yoktur. CMM-2 onaylı değildir.
 
 **Coupled Aero–Motor–Mechanism Model**, PR #70 sırasında önerilen sonraki model
 dilimiydi. O belgede nihai denklem yazılmadı. CMM-1, review edilmiş kısmi
@@ -240,7 +246,7 @@ Her faz tek bir PR olmak zorunda değildir.
 | 1 | Bu yol haritası hizalaması | docs reconciliation, bu PR |
 | 2 | Kısmi bağlaşık tarama sözleşmesi. Uygulama bu fazın kendisi değildir | reviewed; ADR-005 records the accepted CMM-1 scope |
 | 3 | CMM-1 kısmi bağlaşık tarama geçişi. Aerodinamik menteşe momenti, fiziksel yeterlilik, GEOM `True` ve kalibrasyon yoktur | implemented screening boundary |
-| 4 | Bağımsız sayısal doğrulama: analitik sınır halleri, kalıntı, yakınsama/duyarlılık ve ayrık modellerle regresyon | deferred |
+| 4 | Bağımsız sayısal doğrulama: analitik sınır halleri, kalıntı, yakınsama/duyarlılık ve ayrık modellerle regresyon | implemented numerical verification |
 | 5 | PY-06D2 kalibrasyonu. Yalnız uygun ve tanımlanabilir ölçüm varken | blocked on evidence |
 | 6 | Fiziksel korelasyon, CFD, FEA ve deney | blocked on evidence |
 | 7 | Robust sistem optimizasyonu. Yalnız uygun biçimde doğrulanmış modeller üzerinde | deferred |

@@ -36,6 +36,7 @@ from pathlib import Path
 
 import pytest
 from scipy.integrate import quad, solve_ivp
+from scipy.optimize import brentq
 
 from pyfoldable.application.coupled_transient_service import (
     CoupledBindingError,
@@ -1093,6 +1094,11 @@ def test_08_rtol_atol_sensitivity() -> None:
     interpretation = {
         "rtol_max_step_dominates": len(set(rtol_steps)) == 1,
         "atol_max_step_dominates": len(set(atol_steps)) == 1,
+        "note": (
+            "Accepted step counts do not change, so tolerance sensitivity is not claimed. "
+            "Normalized errors can exceed 1 when a tighter rtol or atol shrinks the scale "
+            "while max_step still sets the trajectory. Case D acceptance is the step-limited run."
+        ),
     }
     _record(
         "08",
@@ -1429,6 +1435,10 @@ def test_13_production_source_bound_ode_convergence() -> None:
             }
         )
     _accept_normalized(reports[-1]["errors"])
+    for index in range(3):
+        endpoint_abs = [level["errors"]["endpoint_abs"][index] for level in reports]
+        assert endpoint_abs[1] < endpoint_abs[0]
+        assert endpoint_abs[2] < endpoint_abs[1]
     _record(
         "13",
         {
@@ -1603,16 +1613,18 @@ def test_15_knot_restart_manual_split() -> None:
                 "split_gap_e": split_gap,
             }
         )
-    for index in range(3):
+    disposition = {}
+    for index, name in enumerate(("theta", "theta_dot", "omega")):
         errors = [level["errors"]["max_abs"][index] for level in levels]
         floor = 256.0 * math.ulp(1.0)
-        _require_order_or_roundoff(errors, floor)
+        disposition[name] = _require_order_or_roundoff(errors, floor)
     _record(
         "15",
         {
             "reference": "analytic",
             "fixture": "continuous-slope-change",
             "levels": levels,
+            "order_disposition": disposition,
             "threshold": 1.0,
             "threshold_basis": "numerical-policy",
             "result": "PASS",
@@ -1700,19 +1712,34 @@ def test_17_nonlinear_motor_algebra() -> None:
         kt = 30.0 / (math.pi * motor.kv_rpm_per_v * motor.torque_constant_kv_ratio)
         torque = kt * (current - motor.get_no_load_current(rpm))
         scale = max(1.0, abs(voltage_head))
-        assert abs(residual) <= 64.0 * math.ulp(scale)
+        gain = abs(
+            motor.resistance_ohm
+            + electrical.resistance_ohm
+            + 3.0 * motor.resistance_quadratic * current ** 2
+        )
+        xtol = float(inspect.signature(brentq).parameters["xtol"].default)
+        limit = max(64.0 * math.ulp(scale), xtol * max(gain, 1.0))
+        assert abs(residual) <= limit
         assert sample.current_a == pytest.approx(state.current_a, abs=0.0)
         assert torque == pytest.approx(state.torque_nm, rel=0.0, abs=8.0 * math.ulp(max(1.0, abs(torque))))
         assert sample.torque_nm == pytest.approx(state.torque_nm, abs=0.0)
-        rows.append({"rpm": rpm, "current_a": current, "cubic_residual_v": residual, "torque_nm": torque})
+        rows.append(
+            {
+                "rpm": rpm,
+                "current_a": current,
+                "cubic_residual_v": residual,
+                "residual_limit_v": limit,
+                "torque_nm": torque,
+            }
+        )
     _record(
         "17",
         {
             "reference": "analytic",
             "fixture": "quadratic-resistance-cubic",
             "rows": rows,
-            "threshold": "64 ulp of the voltage head",
-            "threshold_basis": "mathematical",
+            "threshold": "max(64 ulp of voltage head, brentq default xtol times local voltage gain)",
+            "threshold_basis": "numerical-policy",
             "result": "PASS",
         },
     )
