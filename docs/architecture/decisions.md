@@ -163,6 +163,27 @@ Evidence: `pyfoldable/dynamics/coupled_transient.py`,
 `pyfoldable/application/coupled_transient_service.py`,
 [CMM-1 contract](../cmm1_partial_coupled_transient.md).
 
+## ADR-006 — Planar projected material load is a screening prerequisite, not CMM-2
+
+**Status: proposed — pending independent review. Not accepted.**
+
+Decision under review: add `planar_projected_material_load_v1` beside the
+unchanged BEM core. It transports existing `radial_cosine_v1` whole-rotor
+projected thrust and shaft-torque densities onto one blade with the material
+Jacobian `cos(theta)`, then forms planar `+z` generalized loads by virtual
+work. Root stations at or inboard of the hinge contribute shaft load only.
+A midpoint cell that straddles the hinge is split without a new BEM solve.
+Sectional `Cm` is excluded. A supplied hinge rate is recorded and ignored by
+the force law. Incomplete movable-span coverage fails closed rather than
+returning zero hinge load. `physical_qualification` stays false.
+
+This record does not approve CMM-2, does not change CMM-1 or ADR-005, and
+does not promote GEOM, PR-06C, calibration, or experiment.
+
+Evidence: `pyfoldable/core/foldable_aero_load.py`,
+`tests/core/test_foldable_aero_load.py`,
+[planar aero-load prerequisite](../cmm2_planar_aero_load_prerequisite.md).
+
 ## Future records
 
 An unproven architectural interpretation must say **inferred — requires
