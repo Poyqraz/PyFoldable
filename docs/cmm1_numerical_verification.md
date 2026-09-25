@@ -157,8 +157,9 @@ and 3.11 are not required to share report hashes.
   `omega* = 26 + 1.5 t - t^2`, viscous `b = 0.002`.
 - Affine `Qh*` is stored at the two history endpoints. The shaft difference
   is supplied by a synthetic motor evaluator.
-- Maximum absolute errors are at most `5.55e-16`. Normalized errors are at
-  most `3.97e-9`.
+- Maximum absolute errors are `2.08e-17`, `5.55e-16`, and `3.55e-15`.
+  The shaft-speed figure is one unit in the last place of a value near
+  `26 rad/s`. Normalized errors are at most `3.97e-9`.
 - Observed order is not required: the trajectory is already at the
   floating-point floor.
 - `run_coupled_transient` still has no synthetic evaluator argument, and
