@@ -92,11 +92,17 @@ PLANAR_PROJECTED_MATERIAL_LOAD_SCHEMA_VERSION = 1
 
 _MIN_PROJECTION_FACTOR = 1.0e-12
 _SERIES_Z_LIMIT = 0.5
-# BEM builds the last boundary as inner + n * ((outer - inner) / n).
-# Four elementary roundings accumulate at most two ulps of the larger
-# endpoint for an exactly representable annulus count. Annulus counts
-# 1..256 on representative spans stayed within one ulp. A broader sample
-# of finite spans reached two ulps and did not exceed two.
+# BEM builds the final boundary as:
+# inner + n * ((outer - inner) / n)
+#
+# Native repository fixtures can differ from the declared effective tip by
+# floating-point construction roundoff. The adapter intentionally permits only
+# a two-ULP source-bound normalization envelope. Representative annulus-count
+# sweeps (1..256) observed at most one ULP, and a broader normal-range finite
+# sample observed two ULPs.
+#
+# This is a guarded repository policy, not a universal IEEE-754 error bound.
+# Differences outside the envelope fail closed.
 _NATIVE_TERMINAL_BOUNDARY_ULPS = 2
 _FIXED_ROOT = "fixed_root"
 _MOVABLE_TIP = "movable_tip"

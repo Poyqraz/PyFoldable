@@ -226,17 +226,32 @@ result is not a zero hinge load.
 
 The native `map_foldable_bem_aero_loads` binding may normalize only the final
 BEM element boundary. BEM forms that boundary as
-`inner + n * ((outer - inner) / n)` and does not snap it to the declared
-effective tip. Four elementary roundings of that recurrence, for an exactly
-representable annulus count, accumulate at most two units in the last place
-of the larger endpoint. Annulus counts 1 through 256 on representative spans
-stayed within one ulp. A broader sample of finite spans reached two ulps and
-did not exceed two. The native envelope is therefore
+
+```text
+inner + n * ((outer - inner) / n)
+```
+
+and does not snap it to the declared effective tip. Valid native repository
+results have been observed to differ from that tip by representational
+roundoff. A representative annulus-count sweep from 1 through 256 observed at
+most one ulp. A broader normal-range finite sweep observed a maximum of two
+ulps. Those observations are not a universal IEEE-754 proof. Subnormal and
+other extreme floating-point constructions of the same expression can exceed
+two ulps. That abstract excess does not make two ulps a universal binary64
+bound, and it is not evidence from a completed native BEM solve. The
+implementation chooses a conservative, source-bound two-ulp normalization
+envelope for the reviewed repository operating regime:
 
 ```text
 abs(source_terminal - declared_tip)
     <= 2 * max(ulp(source_terminal), ulp(declared_tip))
 ```
+
+The two-ULP envelope is a guarded native-adapter policy supported by the
+reviewed repository-scale endpoint observations, not a universal upper bound on
+all binary64 evaluations of the terminal-boundary expression. Differences
+outside that envelope fail closed. The generic mapper remains exact and does
+not use this envelope.
 
 Only that terminal boundary moves, and only onto `effective.radius_m`. A
 larger difference is left unchanged and the generic exact check fails closed.
