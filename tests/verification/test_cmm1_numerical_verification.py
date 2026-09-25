@@ -278,18 +278,66 @@ def _orders(errors: list[float], floor: float) -> dict[str, object]:
 
 
 def _require_order_or_roundoff(errors: list[float], floor: float) -> str:
-    assert len(errors) >= 3
-    summary = _orders(errors, floor)
-    successive = [
-        value
-        for value, flag in zip(summary["p"], summary["resolvable"])
-        if flag
-    ]
-    if len(successive) >= 2 and all(value >= 2.0 for value in successive):
+    """Accept observed order, or roundoff only after every resolvable step passed.
+
+    Refinement levels are read from coarse to fine. A pair with both errors
+    strictly above ``floor`` is resolvable and must decrease with
+    ``p = log2(coarse / fine) >= 2``. Reaching the floor later cannot erase an
+    earlier failed pair. After a sample is at or below the floor, a later sample
+    must not rise above it. Roundoff fallback requires that every resolvable
+    pair already passed and that fewer than two such pairs remain.
+    """
+    if len(errors) < 3:
+        raise AssertionError("at least three refinement levels are required")
+    if any(error < 0.0 or not math.isfinite(error) for error in errors):
+        raise AssertionError("refinement errors must be finite and nonnegative")
+    resolvable: list[float] = []
+    at_floor = errors[0] <= floor
+    for coarse, fine in zip(errors, errors[1:]):
+        if at_floor and fine > floor:
+            raise AssertionError(
+                {
+                    "reason": "sequence left the roundoff floor",
+                    "errors": errors,
+                    "floor": floor,
+                }
+            )
+        if coarse > floor and fine > floor:
+            if not fine < coarse:
+                raise AssertionError(
+                    {
+                        "reason": "resolvable refinement did not decrease",
+                        "coarse": coarse,
+                        "fine": fine,
+                        "floor": floor,
+                    }
+                )
+            order = math.log2(coarse / fine)
+            if order < 2.0:
+                raise AssertionError(
+                    {
+                        "reason": "resolvable refinement order below 2",
+                        "p": order,
+                        "coarse": coarse,
+                        "fine": fine,
+                        "floor": floor,
+                    }
+                )
+            resolvable.append(order)
+        if fine <= floor:
+            at_floor = True
+    if len(resolvable) >= 2:
         return "resolved_order"
-    if min(errors) <= floor:
+    if any(error <= floor for error in errors):
         return "order_unresolvable_at_roundoff"
-    raise AssertionError({"errors": errors, "orders": summary})
+    raise AssertionError(
+        {
+            "reason": "fewer than two resolvable reductions and the roundoff floor was not reached",
+            "errors": errors,
+            "floor": floor,
+            "resolvable_orders": resolvable,
+        }
+    )
 
 
 def _tip_blocks(parameters: MechanismParameters, theta: float):
@@ -896,6 +944,9 @@ def test_05_coupled_oscillator_and_conservative_energy() -> None:
         disposition[name] = _require_order_or_roundoff(errors, floor)
         order_rows[name] = _orders(errors, floor)
         order_rows[name]["abs"] = errors
+        assert disposition[name] == "resolved_order"
+        assert order_rows[name]["resolvable"] == [True, True]
+        assert all(order >= 2.0 for order in order_rows[name]["p"])
     drifts = [level["energy_drift_normalized"] for level in levels]
     energy_floor = 256.0 * math.ulp(1.0)
     if min(drifts) > energy_floor:
@@ -913,8 +964,41 @@ def test_05_coupled_oscillator_and_conservative_energy() -> None:
             "threshold": 1.0,
             "threshold_basis": "numerical-policy",
             "result": "PASS",
+            "roundoff_policy": (
+                "Roundoff fallback cannot override a failed resolvable refinement."
+            ),
         },
     )
+
+
+def test_05_roundoff_fallback_gate() -> None:
+    """The order gate itself. A late floor sample cannot excuse an earlier bad step."""
+    _system_d, reference, *_rest = _case_d()
+    floor = 256.0 * math.ulp(
+        max(1.0, abs(reference(0.0)[0]), abs(reference(0.02)[0]))
+    )
+    with pytest.raises(AssertionError):
+        _require_order_or_roundoff([1.0e-6, 1.0e-6, 1.0e-14], floor)
+    assert (
+        _require_order_or_roundoff([1.0e-6, 1.0e-8, 1.0e-14], floor)
+        == "order_unresolvable_at_roundoff"
+    )
+    with pytest.raises(AssertionError):
+        _require_order_or_roundoff([1.0e-14, 1.0e-6, 1.0e-8], floor)
+    assert (
+        _require_order_or_roundoff([floor, 0.5 * floor, floor], floor)
+        == "order_unresolvable_at_roundoff"
+    )
+    payload = EVIDENCE["05"]
+    payload["roundoff_floor_theta"] = floor
+    payload["roundoff_gate"] = {
+        "bad_flat_then_floor": "FAIL",
+        "strong_then_floor": "order_unresolvable_at_roundoff",
+        "leaves_floor": "FAIL",
+        "stays_at_floor": "order_unresolvable_at_roundoff",
+        "case_d": "resolved_order",
+    }
+    _record("05", payload)
 
 
 def test_06_manufactured_forcing() -> None:
@@ -1095,9 +1179,10 @@ def test_08_rtol_atol_sensitivity() -> None:
         "rtol_max_step_dominates": len(set(rtol_steps)) == 1,
         "atol_max_step_dominates": len(set(atol_steps)) == 1,
         "note": (
-            "Accepted step counts do not change, so tolerance sensitivity is not claimed. "
-            "Normalized errors can exceed 1 when a tighter rtol or atol shrinks the scale "
-            "while max_step still sets the trajectory. Case D acceptance is the step-limited run."
+            "rtol/atol sensitivity was not demonstrated in this fixture because "
+            "max_step controlled the accepted steps. Normalized errors can exceed 1 "
+            "when a tighter rtol or atol shrinks the scale. The rtol 1e-5 hinge-rate "
+            "error remains visible in the sweep. Case D acceptance is ID 05."
         ),
     }
     _record(
@@ -1109,7 +1194,11 @@ def test_08_rtol_atol_sensitivity() -> None:
             "atol_sweep": atol_rows,
             "interpretation": interpretation,
             "threshold_basis": "empirical-regression",
-            "result": "PASS",
+            "result": "CHARACTERIZATION ONLY",
+            "classification": (
+                "rtol/atol sensitivity was not demonstrated in this fixture because "
+                "max_step controlled the accepted steps."
+            ),
         },
     )
 
@@ -1496,7 +1585,11 @@ def test_14_embedded_bem_annulus_sensitivity() -> None:
             "changes": changes,
             "threshold": "change(8 to 16) < change(4 to 8) for each declared quantity",
             "threshold_basis": "empirical-regression",
-            "result": "PASS" if monotone else "UNRESOLVED",
+            "result": "CHARACTERIZATION ONLY",
+            "classification": (
+                "Decreasing 4/8/16 change on this synthetic fixture is not general "
+                "BEM verification. Physical and BEM qualification remain unresolved."
+            ),
         },
     )
     assert monotone
@@ -1691,44 +1784,145 @@ def test_16_analytic_first_contact() -> None:
     )
 
 
+def _brentq_public_tolerances() -> tuple[float, float]:
+    """Defaults production inherits by calling root_scalar(..., method='brentq') with no xtol or rtol."""
+    parameters = inspect.signature(brentq).parameters
+    return float(parameters["xtol"].default), float(parameters["rtol"].default)
+
+
+def _decimal_positive_cubic_root(
+    resistance_quadratic: float,
+    linear_resistance: float,
+    voltage_head: float,
+) -> tuple[Decimal, Decimal]:
+    """High-precision bisection of the monotone positive cubic. SciPy is not the oracle."""
+    with localcontext() as ctx:
+        ctx.prec = 80
+        cubic = Decimal.from_float(resistance_quadratic)
+        linear = Decimal.from_float(linear_resistance)
+        head = Decimal.from_float(voltage_head)
+
+        def residual(current: Decimal) -> Decimal:
+            return ((cubic * current * current) + linear) * current - head
+
+        low = Decimal(0)
+        high = head / linear
+        if not (residual(low) < 0 < residual(high)):
+            raise AssertionError("positive cubic bracket is not sign-changing")
+        width_limit = Decimal("1e-40")
+        while high - low > width_limit:
+            mid = (low + high) / 2
+            if residual(mid) <= 0:
+                low = mid
+            else:
+                high = mid
+        root = (low + high) / 2
+        return root, (high - low) / 2
+
+
+def _cubic_voltage_residual(
+    current: float,
+    resistance_quadratic: float,
+    linear_resistance: float,
+    voltage_head: float,
+) -> float:
+    return current * (linear_resistance + resistance_quadratic * current * current) - voltage_head
+
+
+def _cubic_evaluation_roundoff(
+    current: float,
+    resistance_quadratic: float,
+    linear_resistance: float,
+    voltage_head: float,
+) -> float:
+    """ULP allowance for evaluating the cubic, separate from the Brent root tolerance."""
+    cubic_term = resistance_quadratic * current * current * current
+    linear_term = linear_resistance * current
+    magnitude = max(abs(voltage_head), abs(cubic_term), abs(linear_term), 1.0)
+    return 8.0 * math.ulp(magnitude)
+
+
 def test_17_nonlinear_motor_algebra() -> None:
-    """Layer 1. Independent cubic voltage residual for resistance_quadratic > 0."""
+    """Layer 1. Decimal cubic root versus the production Brent current."""
     motor = MotorSpec(1200.0, 0.08, 0.2, 40.0, resistance_quadratic=0.001)
     battery = BatterySpec(16.0, 1.0)
     electrical = SystemSpec(0.02)
     throttle = 0.6
     evaluator = Pr07MotorEvaluator(motor, battery, electrical, throttle)
+    xtol, rtol = _brentq_public_tolerances()
+    linear_resistance = motor.resistance_ohm + electrical.resistance_ohm
     rows = []
-    for rpm in (5000.0, 8500.0, 10500.0):
+    for rpm in (1000.0, 5000.0, 8500.0, 10500.0):
         state = algebraic_motor_state(motor, battery, electrical, throttle, rpm)
         sample = evaluator(0.0, 0.0, 0.0, rpm * math.pi / 30.0)
-        applied = throttle * battery.voltage_v
-        back_emf = (rpm / motor.kv_rpm_per_v) * (1.0 + motor.magnetic_lag_tau * rpm * math.pi / 30.0)
-        voltage_head = applied - back_emf
+        voltage_head = state.applied_voltage_v - state.back_emf_v
         current = state.current_a
-        residual = current * (
-            motor.resistance_ohm + motor.resistance_quadratic * current ** 2 + electrical.resistance_ohm
-        ) - voltage_head
+        assert voltage_head > 0.0
+        assert 0.0 < current < motor.current_max_a
+        reference, half_width = _decimal_positive_cubic_root(
+            motor.resistance_quadratic,
+            linear_resistance,
+            voltage_head,
+        )
+        # SciPy 1.18 brentq notes: abs(exact - computed) <= xtol + rtol * abs(computed).
+        current_gap = abs(Decimal.from_float(current) - reference)
+        root_limit = (
+            Decimal.from_float(xtol)
+            + Decimal.from_float(rtol) * abs(Decimal.from_float(current))
+            + half_width
+        )
+        assert current_gap <= root_limit
+        delta = float(root_limit)
+        current_max = max(current, float(reference)) + delta
+        gain_max = linear_resistance + 3.0 * motor.resistance_quadratic * current_max ** 2
+        residual = _cubic_voltage_residual(
+            current,
+            motor.resistance_quadratic,
+            linear_resistance,
+            voltage_head,
+        )
+        roundoff = _cubic_evaluation_roundoff(
+            current,
+            motor.resistance_quadratic,
+            linear_resistance,
+            voltage_head,
+        )
+        residual_limit = gain_max * delta + roundoff
+        assert abs(residual) <= residual_limit
+        if rpm == 1000.0:
+            boundary = (reference + Decimal.from_float(xtol)) / (
+                Decimal(1) - Decimal.from_float(rtol)
+            )
+            boundary_residual = _cubic_voltage_residual(
+                float(boundary),
+                motor.resistance_quadratic,
+                linear_resistance,
+                voltage_head,
+            )
+            gain_at_current = linear_resistance + 3.0 * motor.resistance_quadratic * current ** 2
+            xtol_only_limit = max(
+                64.0 * math.ulp(max(1.0, abs(voltage_head))),
+                xtol * max(gain_at_current, 1.0),
+            )
+            assert abs(boundary_residual) > xtol_only_limit
+            assert abs(boundary_residual) <= residual_limit
         kt = 30.0 / (math.pi * motor.kv_rpm_per_v * motor.torque_constant_kv_ratio)
         torque = kt * (current - motor.get_no_load_current(rpm))
-        scale = max(1.0, abs(voltage_head))
-        gain = abs(
-            motor.resistance_ohm
-            + electrical.resistance_ohm
-            + 3.0 * motor.resistance_quadratic * current ** 2
-        )
-        xtol = float(inspect.signature(brentq).parameters["xtol"].default)
-        limit = max(64.0 * math.ulp(scale), xtol * max(gain, 1.0))
-        assert abs(residual) <= limit
         assert sample.current_a == pytest.approx(state.current_a, abs=0.0)
         assert torque == pytest.approx(state.torque_nm, rel=0.0, abs=8.0 * math.ulp(max(1.0, abs(torque))))
         assert sample.torque_nm == pytest.approx(state.torque_nm, abs=0.0)
         rows.append(
             {
                 "rpm": rpm,
-                "current_a": current,
+                "production_current_a": current,
+                "reference_current_a": float(reference),
+                "current_error_a": float(current_gap),
+                "xtol": xtol,
+                "rtol": rtol,
+                "root_limit_a": float(root_limit),
+                "reference_half_width_a": float(half_width),
                 "cubic_residual_v": residual,
-                "residual_limit_v": limit,
+                "residual_limit_v": residual_limit,
                 "torque_nm": torque,
             }
         )
@@ -1737,10 +1931,15 @@ def test_17_nonlinear_motor_algebra() -> None:
         {
             "reference": "analytic",
             "fixture": "quadratic-resistance-cubic",
+            "solver_contract": (
+                "scipy.optimize.brentq abs(exact - computed) <= xtol + rtol * abs(computed); "
+                "reference uncertainty is the Decimal bisection half-width"
+            ),
             "rows": rows,
-            "threshold": "max(64 ulp of voltage head, brentq default xtol times local voltage gain)",
-            "threshold_basis": "numerical-policy",
+            "threshold": "Brent xtol + rtol root tolerance and the mean-value residual bound",
+            "threshold_basis": "mathematical",
             "result": "PASS",
+            "physical_motor_validation": False,
         },
     )
 

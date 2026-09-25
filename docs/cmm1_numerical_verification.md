@@ -1,6 +1,9 @@
 # CMM-1 Phase 4 numerical verification
 
-Numerical verification complete for the CMM-1 screening model.
+This evidence package is intended to establish numerical verification of the
+CMM-1 screening model. Merge requires independent closure of PR #72.
+
+Phase-4 evidence is implemented. Independent review is required before merge.
 
 `physical_qualification` remains false. PR-06C remains unresolved. No
 aerodynamic hinge load exists. No GEOM gate is promoted. There is no
@@ -30,8 +33,9 @@ raw norm.
 
 IDs 01 and 17. The mass solve is checked by an independent 2x2 solution of
 the represented entries, in 80-digit test arithmetic when the forward gap is
-reported. The motor cubic is checked by evaluating the voltage polynomial at
-the PR-07 current. `_motor_state` is not compared with itself.
+reported. The motor cubic root is a standard-library `Decimal` bisection of
+the represented coefficients. The PR-07 current is the value under test.
+`_motor_state` is not the oracle.
 
 ## Layer 2 — exact analytic dynamics
 
@@ -142,9 +146,16 @@ and 3.11 are not required to share report hashes.
 
 - Observed `p = log2(error_h / error_h/2)`: theta `5.078`, `5.035`;
   theta_dot `4.947`, `4.985`; omega `4.947`, `4.985`.
-- Both reductions are above the roundoff floor. The gate is `p >= 2`, two
-  successive resolvable reductions. The measured values are near 5 on this
-  smooth fixture only.
+- Both reductions are above the roundoff floor. The gate is `p >= 2` for every
+  resolvable reduction, read from coarse to fine. The measured values are near
+  5 on this smooth fixture only. They are not a global RK45 fifth-order claim.
+- Roundoff fallback cannot override a failed resolvable refinement. A later
+  sample at the floor does not excuse an earlier pair whose order is below 2,
+  and a sequence that leaves the floor is rejected. The Case D theta floor is
+  `5.684e-14`. On that floor, `[1e-6, 1e-6, 1e-14]` and
+  `[1e-14, 1e-6, 1e-8]` fail. `[1e-6, 1e-8, 1e-14]` and a sequence that stays
+  at or below the floor return `order_unresolvable_at_roundoff`. The measured
+  Case D histories return `resolved_order`.
 - Final maximum normalized errors: `(7.39e-8, 2.74e-7, 3.71e-9)`.
 - Conservative energy drift `/ E0`: `7.56e-10`, `2.44e-11`, `7.67e-13`.
   `E0` is the positive exact initial energy.
@@ -191,8 +202,9 @@ and 3.11 are not required to share report hashes.
   absolute trajectory is the step-limited one; the tighter scale makes `e`
   larger. That run is not the Case D acceptance run.
 - Threshold basis: empirical-regression of step counts.
-- Result: **PASS** as a characterization. `max_step` dominates both sweeps.
-  Tolerance sensitivity is not claimed.
+- Result: **CHARACTERIZATION ONLY**. rtol/atol sensitivity was not
+  demonstrated in this fixture because max_step controlled the accepted steps.
+  The `e ≈ 2.04` hinge-rate observation at `rtol = 1e-5` remains visible.
 
 ### 09 Forced / dissipative energy-work
 
@@ -287,11 +299,12 @@ and 3.11 are not required to share report hashes.
 | omega | 2.18e-5 | 4.32e-6 |
 | rotor torque, N·m | 2.55e-6 | 2.53e-7 |
 
-- Threshold: each `8 → 16` change is smaller than the `4 → 8` change.
-  Basis: empirical-regression.
-- Result: **PASS** for this synthetic fixture. The comparison is not ODE
-  error and is not physical rotor accuracy. The existing standalone
-  midpoint-annulus test remains a separate prerequisite.
+- Threshold: each `8 → 16` change is smaller than the `4 → 8` change, for
+  `theta`, `theta_dot`, `omega`, and rotor torque. Basis: empirical-regression.
+- Result: **CHARACTERIZATION ONLY**. The decreasing changes are for this
+  synthetic fixture. This is not general BEM verification and not physical
+  rotor accuracy. Physical and BEM qualification remain unresolved. The
+  existing standalone midpoint-annulus test remains a separate prerequisite.
 
 ### 15 Knot restart / manual split
 
@@ -325,19 +338,42 @@ and 3.11 are not required to share report hashes.
 
 ### 17 Nonlinear motor algebra
 
-- Reference: analytic cubic
-  `R2 I^3 + (R0 + Rline) I - Vhead = 0` with `R2 = 0.001 ohm/A^2`.
-- Interior shaft speeds `5000`, `8500`, and `10500` rpm.
-- Currents `15.692`, `11.183`, and `6.161` A.
-- Cubic residuals `-2.79e-13`, `-4.44e-16`, and `0` V.
-- Limit used: `2e-12` V, the SciPy `brentq` default `xtol` times the local
-  voltage gain, because PR-07 calls `brentq` without a tighter override.
-  A 64-ulp voltage-head test is included and is smaller than that root
-  tolerance at `5000` rpm.
-- Torque from `kt (I - I0)` matches the PR-07 torque at a few ulps, and the
-  CMM-1 evaluator returns that same current and torque.
-- Threshold basis: numerical-policy of the represented root solver.
-- Result: **PASS**. PR-07 is unchanged.
+- Reference: analytic. Independent `Decimal` bisection, precision 80, of
+  `R2 I^3 + (R0 + Rline) I - Vhead = 0` with `R2 = 0.001 ohm/A^2`. The
+  positive branch is strictly monotone. SciPy is not the oracle. The bisection
+  half-width is about `3.14e-41` A.
+- Production calls `root_scalar(..., method="brentq")` with no explicit `xtol`
+  or `rtol`, so the public SciPy 1.18.1 `brentq` defaults apply:
+  `xtol = 2e-12`, `rtol = 8.881784197001252e-16`.
+- Documented root-location contract, from the `brentq` notes:
+  `abs(exact - computed) <= xtol + rtol * abs(computed)`. The `rtol` factor
+  multiplies the computed root. The reference half-width is added to that
+  allowance and is negligible beside `xtol`.
+- Interior shaft speeds `1000`, `5000`, `8500`, and `10500` rpm. `1000` rpm is
+  the low-speed region near `19 A`.
+
+| rpm | production I, A | reference I, A | current error, A | root limit, A | cubic residual, V | residual bound, V |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1000 | 19.006478676179 | 19.006478676179 | 2.72e-13 | 2.02e-12 | 3.23e-13 | 2.40e-12 |
+| 5000 | 15.692182514425 | 15.692182514426 | 3.32e-13 | 2.01e-12 | -2.79e-13 | 1.70e-12 |
+| 8500 | 11.182634656639 | 11.182634656639 | 8.41e-16 | 2.01e-12 | -4.44e-16 | 9.59e-13 |
+| 10500 | 6.161192861578 | 6.161192861578 | 2.97e-16 | 2.01e-12 | 0 | 4.31e-13 |
+
+- The residual bound is the mean-value bound
+  `gain_max * delta_I + evaluation roundoff`, with
+  `delta_I` the root-location allowance and
+  `gain_max = R0 + Rline + 3 R2 I_max^2` over that allowance. The 8-ulp term
+  covers float evaluation only.
+- A current placed on the documented Brent boundary at `1000` rpm has a cubic
+  residual above the previous `xtol`-only verification limit and inside this
+  bound. An `xtol`-only residual statement does not follow from the solver
+  contract.
+- Torque from `kt (I - I0)` matches the PR-07 torque at a few ulps. The
+  evaluator returns the same current and torque. That match is consistency,
+  not the root oracle.
+- Threshold basis: mathematical, the documented Brent contract plus the cubic
+  derivative. Result: **PASS**. PR-07 is unchanged. This is not physical motor
+  validation.
 
 ### 18 Numerical boundary classification
 
@@ -378,7 +414,9 @@ and 3.11 are not required to share report hashes.
   They are not a general RK45 order certificate.
 - When `max_step` binds, tightening `rtol` or `atol` does not move the
   accepted steps. Normalized `e` can then exceed 1 because the scale
-  shrinks. ID 05 is the acceptance run for Case D.
+  shrinks. ID 08 is characterization only. ID 05 is the acceptance run for
+  Case D.
+- Roundoff fallback cannot override a failed resolvable refinement.
 - Near the point-mass pivot, ID 01 shows a forward gap of about `1.7e-5`
   while the backward error stays near roundoff.
 - The source-bound sample-maximum for `theta` is not monotone on the last
@@ -386,7 +424,8 @@ and 3.11 are not required to share report hashes.
   are far below 1.
 - Contact-time error is already at a few ulps, so further step refinement
   does not produce a smaller monotone sequence.
-- The annulus result is a synthetic midpoint comparison. It is not a mesh
-  certificate for a real propeller.
+- ID 14 is characterization only. The annulus result is a synthetic midpoint
+  comparison. It is not a mesh certificate for a real propeller and not
+  general BEM verification.
 - DOP853 checks time integration of the declared right-hand side. It does
   not create aerodynamic hinge loads, calibration, or experimental validity.
