@@ -7,7 +7,10 @@ signed RPM/hinge-torque histories, finite SI mass/CG/hinge inertia, optional
 explicit regularized kinetic friction, terminal first contact, source-bound
 reports, active-draft mass binding and two explicit-run UI paths. It does not
 claim a validated passive deployment mechanism or a fully coupled rotor model.
-Every result remains `physical_qualification=false`.
+Every result remains `physical_qualification=false`. CMM-1 is a separate
+partial coupled screening workflow and does not change this PY-05 boundary,
+its prescribed-drive API, or its contact equations. CMM-1 audits its own RK45
+dense interval and reuses `_first_contact` unchanged.
 
 Still outside this boundary are measured PA-CF mass/friction calibration, static
 stiction/breakaway, contact reaction/impact/restitution/latching, arbitrary hinge

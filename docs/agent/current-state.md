@@ -13,6 +13,18 @@ reviewed against AGENTS.md, this file, architecture overview and the commands
 guide, then **not** added; they duplicated those pages. This increment does not
 change application behavior.
 
+**2026-09-24 CMM-1.** A separate partial coupled screening transient is
+implemented. States are hinge angle, hinge rate, and shaft speed. PR-07 motor
+algebra and foldable BEM are reused; PY-05, PR-07, and GEOM #67–#69 behavior
+stay in place. Aerodynamic hinge torque is omitted, not reported as a physical
+zero. Each accepted RK45 dense interval is audited on its continuous
+quartic by real-axis extremum isolation. Boundary equality requires the same
+isolated stationary root; unresolved root identity fails closed, and v1 does
+not publish a `model_domain_exit` point. Represented mass pivots, not analytical positivity
+alone, authorize the solve. A standalone report contains the exact sealed
+request. `physical_qualification` remains false and `full_propeller_clearance`
+remains null. Contract: [CMM-1](../cmm1_partial_coupled_transient.md).
+
 ## Reality summary
 
 The project is a Python scientific library plus one Streamlit engineering app,

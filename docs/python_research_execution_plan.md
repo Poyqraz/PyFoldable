@@ -79,6 +79,13 @@ ADR and not an implementation. PY-06D2 stays blocked without identifiable
 measured data. See [validation roadmap](validation_and_development_roadmap.md)
 and [current state](agent/current-state.md).
 
+**2026-09-24.** The sentence above is the PR #70 record. CMM-1 now implements
+the partial coupled screening transient under ADR-005. Accepted RK45 dense
+intervals are domain-audited by real-axis isolation, represented mass pivots
+must resolve, and a standalone report carries the sealed request. It does not finish the coupled
+model, add aerodynamic hinge torque, or unblock PY-06D2. See
+[CMM-1](cmm1_partial_coupled_transient.md).
+
 PY-05 extends merged `52aada4`; its [original equation/evidence contract](py05_mechanism_transient_plan.md)
 and [completion/correction record](py05_completion.md) keep every output unqualified.
 PY-05B binds explicit tip mass samples to the exact active draft and supports an
