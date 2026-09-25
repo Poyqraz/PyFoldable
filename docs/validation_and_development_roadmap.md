@@ -210,20 +210,21 @@ kanıt paketi ve başarısızlığı görünür kılan regresyonu bulunduğunda 
 kaydetmişti. CMM-1 artık ayrı bir kısmi tarama geçişi olarak uygulanmıştır.
 Bu, modelin tamamlandığı veya fiziksel olarak doğrulandığı anlamına gelmez.
 CMM-1 aerodinamik menteşe momentini hâlâ yayınlamaz. Düzlemsel izdüşüm yük
-önkoşulu uygulanmıştır ve bağımsız inceleme bekler:
+önkoşulu uygulanmış, bağımsız olarak incelenmiş ve PR #74 ile birleşmiştir:
 [CMM-2 planar aero-load prerequisite](cmm2_planar_aero_load_prerequisite.md).
-Bu tarama adaptörüdür. CMM-2 geçici bağlaşımı uygulanmamıştır ve CMM-2 onaylı
-değildir. Ayrıntı:
+Bu tarama adaptörüdür. Kabul edilen parça, mevcut izdüşüm katlanır-BEM kuvvet
+alanının eşlenik tarama genelleştirilmiş yüklerine yazılım sözleşmesidir.
+CMM-2 geçici bağlaşımı sonraki aday dilimdir. Uygulanmamıştır, onaylı değildir
+ve fiziksel olarak doğrulanmamıştır. Ayrıntı:
 [CMM-1 sözleşmesi](cmm1_partial_coupled_transient.md) ve ADR-005.
 Faz 4 sayısal kanıtı
 [CMM-1 numerical verification](cmm1_numerical_verification.md)
 belgesindedir. İlan edilen CMM-1 tarama modeli için sayısal doğrulama
 tamamdır ve PR #72 ile birleşmiştir. Bu, fiziksel doğrulama değildir.
 Fiziksel yeterlilik false kalır. PR-06C çözülmemiştir. GEOM kapısı
-yükseltilmez. Kalibrasyon ve deneysel doğrulama yoktur. CMM-2 onaylı değildir
-ve uygulanmamıştır. Düzlemsel aerodinamik yük önkoşulu uygulanmıştır; bağımsız
-inceleme bekler. Bu, CMM-2 bağlaşımı değildir. PY-06D2 uygun ölçüm olmadan
-kapalı kalır. Robust optimizasyon erken kalır.
+yükseltilmez. Kalibrasyon ve deneysel doğrulama yoktur. CMM-2 geçici bağlaşımı
+uygulanmamıştır. PY-06D2 uygun ölçüm olmadan kapalı kalır. Robust optimizasyon
+erken kalır. Faz 5, Faz 6 ve Faz 7 uygulanmış değildir.
 
 **Coupled Aero–Motor–Mechanism Model**, PR #70 sırasında önerilen sonraki model
 dilimiydi. O belgede nihai denklem yazılmadı. CMM-1, review edilmiş kısmi
