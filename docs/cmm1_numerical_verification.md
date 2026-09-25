@@ -151,7 +151,9 @@ and 3.11 are not required to share report hashes.
   5 on this smooth fixture only. They are not a global RK45 fifth-order claim.
 - Roundoff fallback cannot override a failed resolvable refinement. A later
   sample at the floor does not excuse an earlier pair whose order is below 2,
-  and a sequence that leaves the floor is rejected. The Case D theta floor is
+  and a sequence that leaves the floor is rejected. The floor itself must be
+  finite and nonnegative; nonfinite and negative floors are rejected rather
+  than normalized. The Case D theta floor is
   `5.684e-14`. On that floor, `[1e-6, 1e-6, 1e-14]` and
   `[1e-14, 1e-6, 1e-8]` fail. `[1e-6, 1e-8, 1e-14]` and a sequence that stays
   at or below the floor return `order_unresolvable_at_roundoff`. The measured
@@ -342,9 +344,13 @@ and 3.11 are not required to share report hashes.
   `R2 I^3 + (R0 + Rline) I - Vhead = 0` with `R2 = 0.001 ohm/A^2`. The
   positive branch is strictly monotone. SciPy is not the oracle. The bisection
   half-width is about `3.14e-41` A.
-- Production calls `root_scalar(..., method="brentq")` with no explicit `xtol`
-  or `rtol`, so the public SciPy 1.18.1 `brentq` defaults apply:
-  `xtol = 2e-12`, `rtol = 8.881784197001252e-16`.
+- The verification reads the installed `scipy.optimize.brentq` public `xtol`
+  and `rtol` defaults at runtime because production calls
+  `root_scalar(..., method="brentq")` without explicit tolerance overrides.
+  In the local evidence-generation environment, SciPy 1.18.1 reported
+  `xtol = 2e-12` and `rtol = 8.881784197001252e-16`. CI jobs independently
+  exercise the same runtime-introspection rule under their installed SciPy
+  versions. SciPy 1.18.1 is not a pinned repository dependency.
 - Documented root-location contract, from the `brentq` notes:
   `abs(exact - computed) <= xtol + rtol * abs(computed)`. The `rtol` factor
   multiplies the computed root. The reference half-width is added to that

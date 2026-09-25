@@ -264,7 +264,14 @@ def _screening(result) -> None:
     )
 
 
+def _valid_roundoff_floor(floor: float) -> float:
+    if not math.isfinite(floor) or floor < 0.0:
+        raise AssertionError("roundoff floor must be finite and nonnegative")
+    return floor
+
+
 def _orders(errors: list[float], floor: float) -> dict[str, object]:
+    floor = _valid_roundoff_floor(floor)
     observed = []
     resolvable = []
     for coarse, fine in zip(errors, errors[1:]):
@@ -287,6 +294,7 @@ def _require_order_or_roundoff(errors: list[float], floor: float) -> str:
     must not rise above it. Roundoff fallback requires that every resolvable
     pair already passed and that fewer than two such pairs remain.
     """
+    floor = _valid_roundoff_floor(floor)
     if len(errors) < 3:
         raise AssertionError("at least three refinement levels are required")
     if any(error < 0.0 or not math.isfinite(error) for error in errors):
@@ -977,8 +985,9 @@ def test_05_roundoff_fallback_gate() -> None:
     floor = 256.0 * math.ulp(
         max(1.0, abs(reference(0.0)[0]), abs(reference(0.02)[0]))
     )
+    bad = [1.0e-6, 1.0e-6, 1.0e-14]
     with pytest.raises(AssertionError):
-        _require_order_or_roundoff([1.0e-6, 1.0e-6, 1.0e-14], floor)
+        _require_order_or_roundoff(bad, floor)
     assert (
         _require_order_or_roundoff([1.0e-6, 1.0e-8, 1.0e-14], floor)
         == "order_unresolvable_at_roundoff"
@@ -989,6 +998,14 @@ def test_05_roundoff_fallback_gate() -> None:
         _require_order_or_roundoff([floor, 0.5 * floor, floor], floor)
         == "order_unresolvable_at_roundoff"
     )
+    for invalid in (math.inf, -math.inf, math.nan, -1.0e-12):
+        with pytest.raises(AssertionError, match="roundoff floor must be finite and nonnegative"):
+            _require_order_or_roundoff(bad, invalid)
+        with pytest.raises(AssertionError, match="roundoff floor must be finite and nonnegative"):
+            _orders(bad, invalid)
+    assert _require_order_or_roundoff([1.0e-4, 1.0e-6, 1.0e-8], 0.0) == "resolved_order"
+    zero_orders = _orders([1.0e-4, 1.0e-6, 1.0e-8], 0.0)
+    assert zero_orders["resolvable"] == [True, True]
     payload = EVIDENCE["05"]
     payload["roundoff_floor_theta"] = floor
     payload["roundoff_gate"] = {
@@ -996,6 +1013,8 @@ def test_05_roundoff_fallback_gate() -> None:
         "strong_then_floor": "order_unresolvable_at_roundoff",
         "leaves_floor": "FAIL",
         "stays_at_floor": "order_unresolvable_at_roundoff",
+        "invalid_floor": "FAIL",
+        "zero_floor_positive_errors": "resolved_order",
         "case_d": "resolved_order",
     }
     _record("05", payload)
@@ -1864,7 +1883,7 @@ def test_17_nonlinear_motor_algebra() -> None:
             linear_resistance,
             voltage_head,
         )
-        # SciPy 1.18 brentq notes: abs(exact - computed) <= xtol + rtol * abs(computed).
+        # Public brentq notes: abs(exact - computed) <= xtol + rtol * abs(computed).
         current_gap = abs(Decimal.from_float(current) - reference)
         root_limit = (
             Decimal.from_float(xtol)
