@@ -65,6 +65,16 @@ Represented mass pivots, standalone request provenance, and battery discharge
 efficiency stay as closed at that previous head. PY-05 contact reconstruction
 is unchanged.
 
+## 2026-09-25 root-identity correction
+
+The remaining blocker at `5de10863921001498a1a2d3488ad97e7046d79b0` was
+closed-bracket gcd existence. A boundary-equal root at a bracket endpoint
+authorized a different interior stationary root. Equality now requires that
+unique interior root to be a root of the boundary-level polynomial. A
+singleton is checked by exact evaluation. Unresolved identity is
+`CoupledTransientFailure`. Proven exit remains `CoupledDomainExit`. Sturm
+isolation and the value enclosure are unchanged.
+
 ## Next action
 
 Keep PR #71 draft. PY-06D2 remains blocked without identifiable measurements.

@@ -145,7 +145,9 @@ matrix uses caller-sourced base inertia `I0` that excludes the N movable tips.
 Integration stops at the first mechanism-stop contact. Every accepted RK45
 dense interval is audited on its continuous quartic; only the pre-contact
 portion of a contacting step is relevant. Extrema are isolated on the real
-axis. Unresolved root or range classification fails closed, as does a proven
+axis. Exact boundary equality counts only when that common root is the same
+isolated stationary root. Unresolved root identity or range classification
+fails closed, as does a proven
 exit below 100 rpm or outside the radial-cosine fold limit. v1 does not
 publish a fabricated `model_domain_exit` point. Analytical mass positivity is
 not enough: the represented scaled pivot and the backward residual must pass.

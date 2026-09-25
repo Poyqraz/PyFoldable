@@ -1041,6 +1041,217 @@ def test_irrational_interior_speed_floor_is_allowed() -> None:
         0.0,
         1.0,
     )
+    trough = (0.0, -1.0, 0.0, 1.0)
+    fold_trough = float(-Fraction(FOLD_LIMIT_RAD) + Fraction(1, 4))
+    assert Fraction(fold_trough) == -Fraction(FOLD_LIMIT_RAD) + Fraction(1, 4)
+    with pytest.raises(CoupledDomainExit):
+        audit(_quartic((fold_trough, 0.0, OMEGA_MIN + 1.0), (trough, (0.0,), (0.0,))), 0.0, 1.0)
+    audit(
+        _quartic((math.nextafter(fold_trough, 0.0), 0.0, OMEGA_MIN + 1.0), (trough, (0.0,), (0.0,))),
+        0.0,
+        1.0,
+    )
+
+
+_ASTRA_STEP = 0.002
+_ASTRA_Q = (0.0, -(2.0**-90) / 2.0, 0.25, -0.25)
+
+
+def _represented_speed(q, step: Fraction, origin: Fraction, x: Fraction) -> Fraction:
+    coeffs = tuple(Fraction(float(term)) for term in q)
+    increment = coeffs[0] * x + coeffs[1] * x**2 + coeffs[2] * x**3 + coeffs[3] * x**4
+    return origin + step * increment
+
+
+def _dyadic(value: Fraction) -> float:
+    boundary = float(value)
+    assert Fraction(boundary) == value
+    return boundary
+
+
+def _q_derivative(coefficients: tuple[Fraction, ...]):
+    return coupled_transient._trim_polynomial(
+        (
+            coefficients[0],
+            2 * coefficients[1],
+            3 * coefficients[2],
+            4 * coefficients[3],
+        )
+    )
+
+
+def _boundary_match(coefficients: tuple[Fraction, ...], left: Fraction, right: Fraction, boundary: Fraction, origin: Fraction = Fraction(0)):
+    return coupled_transient._critical_increment_matches(
+        origin,
+        Fraction(1),
+        coefficients,
+        _q_derivative(coefficients),
+        left,
+        right,
+        _dyadic(boundary),
+    )
+
+
+def test_astra_endpoint_equality_does_not_authorize_the_interior_root() -> None:
+    """A boundary root at x=0 must not clear a different interior stationary root.
+
+    The represented speed at x=2^-90 is below OMEGA_MIN by h*(A^3+A^4)/4.
+    Endpoints x=0 and x=1/2 stay legal. The old closed-bracket gcd treated the
+    endpoint root as proof that the interior bracket was on the floor.
+    """
+    dense = _quartic((0.2, 0.0, OMEGA_MIN), ((0.0,), (0.0,), _ASTRA_Q), step=_ASTRA_STEP)
+    step = Fraction(float(dense.h))
+    origin = Fraction(OMEGA_MIN)
+    amplitude = Fraction(2) ** -90
+    deficit = _represented_speed(_ASTRA_Q, step, origin, amplitude) - origin
+    assert deficit == -step * (amplitude**3 + amplitude**4) / 4
+    assert deficit < 0
+    assert _represented_speed(_ASTRA_Q, step, origin, Fraction(0)) == origin
+    assert _represented_speed(_ASTRA_Q, step, origin, Fraction(1, 2)) > origin
+    with pytest.raises(CoupledTransientFailure) as caught:
+        coupled_transient._audit_dense_model_domain(dense, 0.0, 0.5 * float(dense.h))
+    assert type(caught.value) in (CoupledTransientFailure, CoupledDomainExit)
+
+
+def test_astra_speed_root_before_contact_does_not_return_a_result() -> None:
+    """A pre-contact unresolved speed bracket is not a first-contact success."""
+    q = np.asarray(_ASTRA_Q, dtype=float)
+    system = _system(
+        _parameters(lower_stop_rad=-1.2, upper_stop_rad=1.2),
+        blade_count=1,
+        inertia=_inertia(1.0e-2),
+    )
+
+    def rhs(time_s, state):
+        del time_s
+        solved = coupled_accelerations(system, state[0], state[1], state[2], 0.0, 0.0, 0.0)
+        return (state[1], solved.theta_ddot_rad_s2, solved.omega_dot_rad_s2)
+
+    preview = RK45(
+        rhs,
+        0.0,
+        (0.0, 2.0, OMEGA_MIN * 2.0),
+        _ASTRA_STEP,
+        max_step=_ASTRA_STEP,
+        rtol=1.0e-3,
+        atol=(1.0e-4, 1.0e-3, 1.0e-2),
+    )
+    preview.step()
+    dense = preview.dense_output()
+    contact_time = float(dense.t_old) + 0.5 * float(dense.h)
+    contact_angle = float(dense(contact_time)[0])
+    assert 0.0 < contact_angle < FOLD_LIMIT_RAD
+    original = coupled_transient.RK45.dense_output
+
+    def patched(self, *args, **kwargs):
+        output = original(self, *args, **kwargs)
+        output.y_old = np.array(output.y_old, dtype=float, copy=True)
+        output.Q = np.array(output.Q, dtype=float, copy=True)
+        output.y_old[2] = OMEGA_MIN
+        output.Q[2] = q
+        return output
+
+    coupled_transient.RK45.dense_output = patched
+    try:
+        stopped = _system(
+            _parameters(lower_stop_rad=-1.2, upper_stop_rad=contact_angle),
+            blade_count=1,
+            inertia=_inertia(1.0e-2),
+        )
+        normalized = Fraction((contact_time - float(dense.t_old)) / float(dense.h))
+        contact_speed = _represented_speed(_ASTRA_Q, Fraction(float(dense.h)), Fraction(OMEGA_MIN), normalized)
+        assert contact_speed > Fraction(OMEGA_MIN)
+        with pytest.raises(CoupledTransientFailure) as caught:
+            solve_coupled_transient(
+                _request(
+                    stopped,
+                    actuation=_history(0.0, _ASTRA_STEP),
+                    initial_angle_rad=0.0,
+                    initial_angular_velocity_rad_s=2.0,
+                    initial_omega_rad_s=OMEGA_MIN * 2.0,
+                    motor_evaluator=_motor(0.0),
+                    aero_evaluator=_aero(0.0),
+                    controls=_one_step_controls(),
+                )
+            )
+        assert type(caught.value) in (CoupledTransientFailure, CoupledDomainExit)
+    finally:
+        coupled_transient.RK45.dense_output = original
+
+
+def test_boundary_equality_is_root_local() -> None:
+    """Only the bracket's own interior stationary root can prove boundary equality."""
+    zero = Fraction(0)
+    one = Fraction(1)
+    half = Fraction(1, 2)
+    count = coupled_transient._strict_interior_root_count
+
+    left_only = (zero, Fraction(-1, 4), Fraction(1, 3), zero)
+    assert count(_q_derivative(left_only), zero, one) == 1
+    assert _boundary_match(left_only, zero, one, zero) is False
+    assert coupled_transient._resolve_boundary_straddle(
+        "speed",
+        Fraction(OMEGA_MIN),
+        one,
+        left_only,
+        _q_derivative(left_only),
+        zero,
+        one,
+    ) == "unknown"
+    assert coupled_transient._resolve_boundary_straddle(
+        "fold",
+        Fraction(FOLD_LIMIT_RAD),
+        one,
+        left_only,
+        _q_derivative(left_only),
+        zero,
+        one,
+    ) == "unknown"
+
+    right_only = (Fraction(6), Fraction(-9), Fraction(4), zero)
+    assert _boundary_match(right_only, zero, one, one) is False
+
+    both_ends = (zero, Fraction(1, 4), Fraction(-1, 2), Fraction(1, 4))
+    assert count(_q_derivative(both_ends), zero, one) == 1
+    assert _boundary_match(both_ends, zero, one, zero) is False
+
+    interior = (Fraction(-1, 2), half, zero, zero)
+    speed_origin = Fraction(OMEGA_MIN) + Fraction(1, 8)
+    assert _boundary_match(interior, zero, one, Fraction(OMEGA_MIN), speed_origin) is True
+    assert coupled_transient._resolve_boundary_straddle(
+        "speed", speed_origin, one, interior, _q_derivative(interior), zero, one
+    ) == "safe"
+    positive_fold = Fraction(FOLD_LIMIT_RAD) + Fraction(1, 8)
+    negative_fold = -Fraction(FOLD_LIMIT_RAD) + Fraction(1, 8)
+    assert coupled_transient._resolve_boundary_straddle(
+        "fold", positive_fold, one, interior, _q_derivative(interior), zero, one
+    ) == "exit"
+    assert coupled_transient._resolve_boundary_straddle(
+        "fold", negative_fold, one, interior, _q_derivative(interior), zero, one
+    ) == "exit"
+
+    two_roots = (Fraction(9), Fraction(-24), Fraction(16), zero)
+    with pytest.raises(CoupledTransientFailure, match="unresolved") as caught:
+        _boundary_match(two_roots, zero, one, one)
+    assert type(caught.value) is CoupledTransientFailure
+
+    assert _boundary_match(interior, half, half, Fraction(-1, 8)) is True
+    assert _boundary_match(interior, half, half, zero) is False
+    assert _boundary_match(interior, zero, zero, zero) is False
+
+    repeated_end = (zero, zero, Fraction(-1, 6), Fraction(1, 4))
+    assert count(_q_derivative(repeated_end), zero, one) == 1
+    assert _boundary_match(repeated_end, zero, one, zero) is False
+
+    repeated_interior = (Fraction(6), Fraction(-12), Fraction(8), zero)
+    assert count(_q_derivative(repeated_interior), zero, one) == 1
+    assert _boundary_match(repeated_interior, zero, one, one) is True
+
+    close = tuple(Fraction(float(term)) for term in _ASTRA_Q)
+    close_derivative = _q_derivative(close)
+    assert count(close_derivative, zero, half) == 1
+    assert count(coupled_transient._polynomial_gcd(close_derivative, (zero, *close)), zero, half) == 0
+    assert _boundary_match(close, zero, half, zero) is False
 
 
 def test_root_isolation_budget_exhaustion_fails_closed() -> None:

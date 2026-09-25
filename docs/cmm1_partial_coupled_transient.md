@@ -120,7 +120,10 @@ trajectory. The audit uses that step's continuous quartic on the physically
 relevant interval. Extrema of `theta` and `omega` are isolated on the real
 axis from the represented polynomial, by a bounded Sturm chain and bisection.
 Companion-matrix eigenvalues are not classified as real or complex, and a
-fixed sample grid is not a substitute. If that isolation cannot prove the
+fixed sample grid is not a substitute. Exact boundary equality is accepted
+only when the boundary-level common root is the same isolated stationary root;
+a common root only at a bracket endpoint does not authorize a different root.
+Unresolved root identity fails closed. If that isolation cannot prove the
 quartic stays inside the fold and shaft-speed domains, the run fails closed.
 The whole accepted step is audited when there is no contact. When first
 contact exists, only `[previous_time, contact_time]` is relevant: a later

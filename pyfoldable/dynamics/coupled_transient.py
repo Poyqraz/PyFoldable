@@ -999,20 +999,31 @@ def _polynomial_gcd(
     return _trim_polynomial(left)
 
 
-def _bracket_contains_real_root(
+def _strict_interior_root_count(
     polynomial: tuple[Fraction, ...],
     left: Fraction,
     right: Fraction,
-) -> bool:
-    polynomial = _trim_polynomial(polynomial)
+) -> int:
+    """Count distinct real roots in the open interval ``(left, right)``.
+
+    Exact endpoint roots are deflated before the Sturm count, so a closed
+    bracket endpoint is not an interior root. There is no floating tolerance.
+    """
+    if left > right:
+        raise CoupledTransientFailure("CMM-1 dense root isolation is unresolved.")
+    if left == right:
+        return 0
+    polynomial = _remove_endpoint_roots(_trim_polynomial(polynomial), left)
+    polynomial = _remove_endpoint_roots(polynomial, right)
     if len(polynomial) <= 1:
-        return False
-    if _evaluate_polynomial(polynomial, left) == 0 or _evaluate_polynomial(polynomial, right) == 0:
-        return True
+        return 0
     chain = _sturm_chain(polynomial)
     if chain is None:
-        return False
-    return _sign_variations(chain, left) - _sign_variations(chain, right) > 0
+        return 0
+    count = _sign_variations(chain, left) - _sign_variations(chain, right)
+    if count < 0:
+        raise CoupledTransientFailure("CMM-1 dense root isolation is unresolved.")
+    return count
 
 
 def _critical_increment_matches(
@@ -1024,12 +1035,22 @@ def _critical_increment_matches(
     right: Fraction,
     boundary: float,
 ) -> bool:
+    """Whether this bracket's own stationary root lies on ``boundary``.
+
+    A common root at another endpoint or at a different stationary root does
+    not authorize the bracket. An open bracket that does not contain exactly
+    one derivative root is unresolved.
+    """
     if step == 0:
         return False
     target = (Fraction(boundary) - origin) / step
     difference = _trim_polynomial((-target, *coefficients))
+    if left == right:
+        return _evaluate_polynomial(derivative, left) == 0 and _evaluate_polynomial(difference, left) == 0
+    if _strict_interior_root_count(derivative, left, right) != 1:
+        raise CoupledTransientFailure("CMM-1 dense root isolation is unresolved.")
     common = _polynomial_gcd(derivative, difference)
-    return _bracket_contains_real_root(common, left, right)
+    return _strict_interior_root_count(common, left, right) == 1
 
 
 def _resolve_boundary_straddle(
@@ -1044,9 +1065,11 @@ def _resolve_boundary_straddle(
     """Classify an enclosure that touches a domain boundary.
 
     A positive-width remainder cannot prove that an irrational stationary value
-    is exactly on the boundary. The gcd of the derivative and the boundary
-    level polynomial can. Speed equality is inside the domain. Fold equality is
-    not.
+    is exactly on the boundary. Equality holds only when the unique interior
+    stationary root of this bracket is also a root of the boundary-level
+    polynomial. A common root only at an endpoint does not authorize it.
+    Speed equality is inside the domain. Fold equality is not. Unresolved root
+    identity fails closed.
     """
     if kind == "speed":
         if _critical_increment_matches(
@@ -1128,10 +1151,12 @@ def _audit_dense_model_domain(dense, t_start: float, t_end: float) -> None:
     Real extrema come from exact rational Sturm isolation of the represented
     derivative, followed by bounded bisection. Companion-matrix eigenvalues and
     imaginary-part tolerances are not used. A stationary value exactly on a
-    domain boundary is recognized by a polynomial gcd: shaft-speed equality
-    stays inside, and fold equality does not. An unresolved bracket or an
-    exhausted work budget fails closed. An unexpected polynomial representation
-    fails closed instead of falling back to sampling.
+    domain boundary is recognized only when that same isolated root is a root
+    of the boundary-level polynomial. Shaft-speed equality stays inside, and
+    fold equality does not. A different endpoint root does not authorize the
+    bracket. An unresolved bracket, root identity, or exhausted work budget
+    fails closed. An unexpected polynomial representation fails closed instead
+    of falling back to sampling.
     """
     if type(dense).__name__ != "RkDenseOutput":
         raise CoupledTransientFailure(

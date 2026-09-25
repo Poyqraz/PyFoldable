@@ -222,7 +222,8 @@ PR-07 motor dengesi, öngörülen tahrikli PY-05 ve GEOM tarama/kanıt zinciri.
 CMM-1 bunları değiştirmez. Ortak çevrim yalnız CMM-1'in ilan ettiği ekran
 sınırları içindedir: donmuş katlanma aerodinamiği, sabit gaz, senkron palalar,
 100 rpm yazılım tabanı ve ilk temas terminali. Kabul edilen her RK45 yoğun
-aralığı, sürekli kuartiği üzerinde gerçek eksende denetlenir. Kök veya aralık
+aralığı, sürekli kuartiği üzerinde gerçek eksende denetlenir. Sınır eşitliği
+yalnız aynı izole durağan kökle kabul edilir. Kök kimliği, kök veya aralık
 sınıflaması kanıtlanamazsa denetim kapalı başarısız olur. v1, domen
 çıkışından sonra devam etmez ve uydurma bir `model_domain_exit` noktası
 yayımlamaz.
