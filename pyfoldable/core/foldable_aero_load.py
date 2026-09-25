@@ -44,12 +44,18 @@ give
 
     q_theta,1 = -(D / N) [(b - a) - R ln(b / a)]
 
+That factor is unchanged. It is evaluated without forming ``b / a``, and the
+near-hinge cancellation is guarded. A positive-width integral that cannot be
+resolved as a positive finite value fails closed.
+
 Positive resisting ``D`` makes both generalized loads negative: shaft load
 opposes ``+z``, and the deployed movable tip is driven toward negative
 ``theta``. Stations with ``r_p <= R`` are fixed to the shaft. They add to
 ``q_phi`` and add exactly zero to the one-tip hinge load. A midpoint cell
 that straddles ``R`` is split into ``[a, R]`` and ``[R, b]`` with the same
-``T`` and ``D``; no BEM re-solve is performed.
+``T`` and ``D``; no BEM re-solve is performed. A complete map requires the
+source domain to end at the declared projected tip. Under-coverage and
+over-coverage both fail closed.
 
 Whole-rotor shaft load is the negation of the partitioned cell resisting
 torques, summed in source order with ``math.fsum``. It is not
@@ -83,8 +89,12 @@ SECTIONAL_AERODYNAMIC_COUPLE = "excluded_in_v1"
 PLANAR_PROJECTED_MATERIAL_LOAD_SCHEMA_VERSION = 1
 
 _MIN_PROJECTION_FACTOR = 1.0e-12
+_SERIES_Z_LIMIT = 0.5
 _FIXED_ROOT = "fixed_root"
 _MOVABLE_TIP = "movable_tip"
+_UNRESOLVED_HINGE_INTEGRAL = (
+    "movable hinge integral is unresolved for this positive-width interval."
+)
 
 
 class PlanarProjectedMaterialLoadError(ValueError):
@@ -107,6 +117,15 @@ def _blade_count(value: int) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < 1:
         raise PlanarProjectedMaterialLoadError(
             "blade_count must be an integer greater than or equal to 1."
+        )
+    return value
+
+
+def _stored_projection_factor(factor: float) -> float:
+    value = _real("projection_factor", factor)
+    if value <= _MIN_PROJECTION_FACTOR or value > 1.0 + 1.0e-12:
+        raise PlanarProjectedMaterialLoadError(
+            "projection factor is invalid for radial_cosine_v1."
         )
     return value
 
@@ -216,7 +235,17 @@ def aerodynamic_generalized_power_w(
     count = _blade_count(blade_count)
     omega = _real("omega_rad_s", omega_rad_s)
     hinge_rate = _real("hinge_rate_rad_s", hinge_rate_rad_s)
-    return shaft_load * omega + count * hinge_load * hinge_rate
+    try:
+        power = shaft_load * omega + count * hinge_load * hinge_rate
+    except OverflowError as exc:
+        raise PlanarProjectedMaterialLoadError(
+            "aerodynamic generalized power is nonfinite."
+        ) from exc
+    if not math.isfinite(power):
+        raise PlanarProjectedMaterialLoadError(
+            "aerodynamic generalized power is nonfinite."
+        )
+    return power
 
 
 @dataclass(frozen=True)
@@ -246,6 +275,27 @@ class MappedRadialContribution:
     one_blade_shaft_generalized_load_nm: float
     one_tip_hinge_generalized_torque_nm: float
     geometry_extrapolated: bool
+
+    def __post_init__(self) -> None:
+        if self.role not in {_FIXED_ROOT, _MOVABLE_TIP}:
+            raise PlanarProjectedMaterialLoadError("mapped interval role is invalid.")
+        if isinstance(self.source_index, bool) or not isinstance(self.source_index, int):
+            raise PlanarProjectedMaterialLoadError("source_index must be an integer.")
+        if not isinstance(self.geometry_extrapolated, bool):
+            raise PlanarProjectedMaterialLoadError(
+                "geometry_extrapolated must be boolean."
+            )
+        for name in (
+            "inner_projected_radius_m",
+            "outer_projected_radius_m",
+            "source_differential_thrust_n_m",
+            "source_differential_torque_nm_m",
+            "whole_rotor_thrust_n",
+            "whole_rotor_resisting_torque_nm",
+            "one_blade_shaft_generalized_load_nm",
+            "one_tip_hinge_generalized_torque_nm",
+        ):
+            _real(name, getattr(self, name))
 
     def as_mapping(self) -> Mapping[str, Any]:
         return {
@@ -346,6 +396,29 @@ class PlanarProjectedMaterialLoadResult:
             raise PlanarProjectedMaterialLoadError(
                 "mapped load requires at least one interval."
             )
+        _blade_count(self.blade_count)
+        _stored_projection_factor(self.projection_factor)
+        for name in (
+            "hinge_radius_m",
+            "theta_rad",
+            "hinge_rate_rad_s",
+            "projected_tip_radius_m",
+            "source_inner_projected_radius_m",
+            "source_outer_projected_radius_m",
+            "source_whole_rotor_projected_thrust_n",
+            "source_whole_rotor_resisting_torque_nm",
+            "whole_rotor_aerodynamic_shaft_generalized_load_nm",
+            "resisting_shaft_torque_nm",
+            "one_tip_hinge_generalized_torque_nm",
+            "synchronous_n_times_one_tip_hinge_generalized_torque_nm",
+        ):
+            _real(name, getattr(self, name))
+        if not all(
+            isinstance(interval, MappedRadialContribution) for interval in self.intervals
+        ):
+            raise PlanarProjectedMaterialLoadError(
+                "intervals must be mapped radial contributions."
+            )
 
     def aerodynamic_generalized_power_w(self, omega_rad_s: float) -> float:
         """Screening power at ``omega`` using the recorded hinge rate."""
@@ -434,6 +507,124 @@ def _spans(
     )
 
 
+def _finite_positive_ratio(numerator: float, denominator: float) -> float | None:
+    """Return ``numerator / denominator`` without producing an infinite ratio."""
+    if (
+        not math.isfinite(numerator)
+        or not math.isfinite(denominator)
+        or denominator <= 0.0
+        or numerator < 0.0
+    ):
+        return None
+    if numerator == 0.0:
+        return 0.0
+    number_mantissa, number_exponent = math.frexp(numerator)
+    denominator_mantissa, denominator_exponent = math.frexp(denominator)
+    exponent = number_exponent - denominator_exponent
+    mantissa = number_mantissa / denominator_mantissa
+    if mantissa >= 1.0:
+        exponent += 1
+    if exponent > 1024:
+        return None
+    return numerator / denominator
+
+
+def _z_minus_log1p(z: float) -> float:
+    """Return ``z - log(1 + z)`` for finite ``z > 0``.
+
+    Small ``z`` uses the series ``z^2/2 - z^3/3 + ...`` so the subtraction
+    does not erase the positive value. Larger ``z`` uses ``z - log1p(z)``.
+    """
+    if not math.isfinite(z) or z <= 0.0:
+        raise PlanarProjectedMaterialLoadError(_UNRESOLVED_HINGE_INTEGRAL)
+    if z < _SERIES_Z_LIMIT:
+        term = (z * z) * 0.5
+        total = term
+        k = 2
+        for _ in range(128):
+            term *= -z * k / (k + 1)
+            k += 1
+            updated = total + term
+            if updated == total:
+                total = updated
+                break
+            total = updated
+        else:
+            raise PlanarProjectedMaterialLoadError(_UNRESOLVED_HINGE_INTEGRAL)
+    else:
+        total = z - math.log1p(z)
+    if not math.isfinite(total) or total <= 0.0:
+        raise PlanarProjectedMaterialLoadError(_UNRESOLVED_HINGE_INTEGRAL)
+    return total
+
+
+def _stable_movable_hinge_integral(
+    inner: float, outer: float, hinge_radius: float
+) -> float:
+    """Evaluate ``(b - a) - R ln(b / a)`` for ``b > a >= R > 0``.
+
+    The quantity is the movable-tip factor in ``q_theta,1``. With
+    ``w = b - a`` and ``z = w / a`` it is
+
+        w (a - R) / a + R (z - log(1 + z))
+
+    which is the same factor, split into nonnegative pieces. ``b / a`` is
+    never formed: a huge finite ratio uses ``log(b) - log(a)`` instead.
+    """
+    if (
+        hinge_radius <= 0.0
+        or inner <= 0.0
+        or outer <= inner
+        or inner < hinge_radius
+    ):
+        raise PlanarProjectedMaterialLoadError(_UNRESOLVED_HINGE_INTEGRAL)
+    width = outer - inner
+    if not math.isfinite(width) or width <= 0.0:
+        raise PlanarProjectedMaterialLoadError(_UNRESOLVED_HINGE_INTEGRAL)
+    hinge_gap = inner - hinge_radius
+    ratio = _finite_positive_ratio(width, inner)
+    if ratio is not None:
+        integral = ratio * hinge_gap + hinge_radius * _z_minus_log1p(ratio)
+    else:
+        # log(b) - log(a) stays finite when b / a overflows.
+        log_ratio = math.log(outer) - math.log(inner)
+        integral = width - hinge_radius * log_ratio
+    if not math.isfinite(integral) or integral <= 0.0:
+        raise PlanarProjectedMaterialLoadError(_UNRESOLVED_HINGE_INTEGRAL)
+    return integral
+
+
+def _finite_fsum(name: str, values: Sequence[float]) -> float:
+    try:
+        total = math.fsum(values)
+    except OverflowError as exc:
+        raise PlanarProjectedMaterialLoadError(f"{name} is nonfinite.") from exc
+    if not math.isfinite(total):
+        raise PlanarProjectedMaterialLoadError(f"{name} is nonfinite.")
+    return total
+
+
+def _finite_product(name: str, left: float, right: float) -> float:
+    try:
+        value = left * right
+    except OverflowError as exc:
+        raise PlanarProjectedMaterialLoadError(f"{name} is nonfinite.") from exc
+    if not math.isfinite(value):
+        raise PlanarProjectedMaterialLoadError(f"{name} is nonfinite.")
+    return value
+
+
+def _per_blade_density(name: str, density: float, blade_count: int) -> float:
+    """Divide a whole-rotor density by ``N`` without leaking ``OverflowError``."""
+    try:
+        share = density / blade_count
+    except OverflowError as exc:
+        raise PlanarProjectedMaterialLoadError(f"{name} is nonfinite.") from exc
+    if not math.isfinite(share):
+        raise PlanarProjectedMaterialLoadError(f"{name} is nonfinite.")
+    return share
+
+
 def _generalized_loads(
     *,
     role: str,
@@ -444,16 +635,32 @@ def _generalized_loads(
     blade_count: int,
 ) -> tuple[float, float]:
     width = outer - inner
-    q_phi = -(torque_density / blade_count) * width
+    per_blade = _per_blade_density(
+        "one-blade shaft generalized load", torque_density, blade_count
+    )
+    q_phi = -_finite_product(
+        "one-blade shaft generalized load",
+        per_blade,
+        width,
+    )
     if role == _FIXED_ROOT:
         return q_phi, 0.0
     if inner <= 0.0 or outer <= 0.0:
         raise PlanarProjectedMaterialLoadError(
             "non-positive projected radius in a mapped movable interval."
         )
-    q_theta = -(torque_density / blade_count) * (
-        width - hinge_radius * math.log(outer / inner)
+    if torque_density == 0.0:
+        return q_phi, 0.0
+    integral = _stable_movable_hinge_integral(inner, outer, hinge_radius)
+    q_theta = -_finite_product(
+        "one-tip hinge generalized torque",
+        per_blade,
+        integral,
     )
+    if torque_density > 0.0 and not q_theta < 0.0:
+        raise PlanarProjectedMaterialLoadError(_UNRESOLVED_HINGE_INTEGRAL)
+    if torque_density < 0.0 and not q_theta > 0.0:
+        raise PlanarProjectedMaterialLoadError(_UNRESOLVED_HINGE_INTEGRAL)
     return q_phi, q_theta
 
 
@@ -640,10 +847,17 @@ def map_projected_material_loads(
             "movable-span coverage is incomplete: integration starts outboard "
             "of the hinge radius."
         )
-    if cells[-1].outer_radius_m < projected_tip:
+    source_outer = _real(
+        "source_outer_projected_radius_m", cells[-1].outer_radius_m
+    )
+    if source_outer < projected_tip:
         raise PlanarProjectedMaterialLoadError(
             "movable-span coverage is incomplete: integration ends inboard "
             "of the projected tip."
+        )
+    if source_outer != projected_tip:
+        raise PlanarProjectedMaterialLoadError(
+            "source domain extends beyond declared projected tip."
         )
     pieces: list[MappedRadialContribution] = []
     for cell in cells:
@@ -655,14 +869,24 @@ def map_projected_material_loads(
                 blade_count=count,
             )
         )
-    resisting = math.fsum(
-        piece.whole_rotor_resisting_torque_nm for piece in pieces
+    resisting = _finite_fsum(
+        "source resisting torque",
+        tuple(piece.whole_rotor_resisting_torque_nm for piece in pieces),
     )
-    thrust = math.fsum(piece.whole_rotor_thrust_n for piece in pieces)
-    one_tip = math.fsum(
-        piece.one_tip_hinge_generalized_torque_nm for piece in pieces
+    thrust = _finite_fsum(
+        "source thrust",
+        tuple(piece.whole_rotor_thrust_n for piece in pieces),
+    )
+    one_tip = _finite_fsum(
+        "one-tip hinge generalized torque",
+        tuple(piece.one_tip_hinge_generalized_torque_nm for piece in pieces),
     )
     shaft_generalized = -resisting
+    if not math.isfinite(shaft_generalized):
+        raise PlanarProjectedMaterialLoadError(
+            "whole-rotor shaft generalized load is nonfinite."
+        )
+    scaled_hinge = _finite_product("synchronous hinge load", count, one_tip)
     return PlanarProjectedMaterialLoadResult(
         schema_version=PLANAR_PROJECTED_MATERIAL_LOAD_SCHEMA_VERSION,
         load_mapping_model=LOAD_MAPPING_MODEL,
@@ -694,7 +918,7 @@ def map_projected_material_loads(
         whole_rotor_aerodynamic_shaft_generalized_load_nm=shaft_generalized,
         resisting_shaft_torque_nm=-shaft_generalized,
         one_tip_hinge_generalized_torque_nm=one_tip,
-        synchronous_n_times_one_tip_hinge_generalized_torque_nm=count * one_tip,
+        synchronous_n_times_one_tip_hinge_generalized_torque_nm=scaled_hinge,
     )
 
 

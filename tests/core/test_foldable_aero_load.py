@@ -8,6 +8,9 @@ from __future__ import annotations
 
 import json
 import math
+import sys
+from dataclasses import replace
+from decimal import Context, Decimal, localcontext
 from pathlib import Path
 
 import numpy as np
@@ -45,6 +48,7 @@ from pyfoldable.core.foldable_aero_load import (
     one_blade_material_force_density_n_per_m,
     projected_radius_m,
 )
+from pyfoldable.core.foldable_aero_load import _stable_movable_hinge_integral
 
 
 def _annulus(
@@ -900,6 +904,237 @@ def test_adapter_module_does_not_reference_cmm_or_shaft_axis_radius():
     assert "CMM1_LIMITATIONS" not in source
     assert "sqrt(" not in source
     assert "PolarQueryResult" not in source
+
+
+def _decimal_hinge_integral(inner: float, outer: float, hinge: float) -> Decimal:
+    with localcontext(Context(prec=80)):
+        start = Decimal.from_float(inner)
+        end = Decimal.from_float(outer)
+        radius = Decimal.from_float(hinge)
+        return (end - start) - radius * (end / start).ln()
+
+
+def _matches_decimal_integral(produced: float, reference: Decimal) -> bool:
+    if not math.isfinite(produced) or produced <= 0.0:
+        return False
+    difference = abs(Decimal.from_float(produced) - reference)
+    allowance = Decimal.from_float(math.ulp(produced)) * 8
+    return difference <= allowance
+
+
+def test_projected_tip_over_coverage_fails_closed():
+    hinge = 0.05
+    tip = 0.20
+    over = (_annulus(hinge, 0.25, thrust=0.0, torque=2.0),)
+    with pytest.raises(
+        PlanarProjectedMaterialLoadError,
+        match="source domain extends beyond declared projected tip",
+    ):
+        map_projected_material_loads(
+            over,
+            hinge_radius_m=hinge,
+            theta_rad=0.0,
+            blade_count=2,
+            hinge_rate_rad_s=0.0,
+            projected_tip_radius_m=tip,
+            operating_condition_id="over-coverage",
+        )
+
+    exact = map_projected_material_loads(
+        (_annulus(hinge, tip, thrust=0.0, torque=2.0),),
+        hinge_radius_m=hinge,
+        theta_rad=0.0,
+        blade_count=2,
+        hinge_rate_rad_s=0.0,
+        projected_tip_radius_m=tip,
+        operating_condition_id="exact-tip",
+    )
+    assert exact.source_outer_projected_radius_m == tip
+    assert exact.one_tip_hinge_generalized_torque_nm < 0.0
+
+    with pytest.raises(PlanarProjectedMaterialLoadError, match="coverage"):
+        map_projected_material_loads(
+            (_annulus(hinge, 0.15, thrust=0.0, torque=2.0),),
+            hinge_radius_m=hinge,
+            theta_rad=0.0,
+            blade_count=2,
+            hinge_rate_rad_s=0.0,
+            projected_tip_radius_m=tip,
+            operating_condition_id="under-coverage",
+        )
+
+
+def test_nextafter_hinge_load_matches_decimal_and_stays_negative():
+    hinge = 0.075
+    outer = math.nextafter(hinge, math.inf)
+    mapped = map_projected_material_loads(
+        (_annulus(hinge, outer, thrust=0.0, torque=1.0),),
+        hinge_radius_m=hinge,
+        theta_rad=0.0,
+        blade_count=1,
+        hinge_rate_rad_s=0.0,
+        projected_tip_radius_m=outer,
+        operating_condition_id="nextafter",
+    )
+    reference = -_decimal_hinge_integral(hinge, outer, hinge)
+    produced = mapped.one_tip_hinge_generalized_torque_nm
+
+    assert produced < 0.0
+    assert math.isfinite(produced)
+    assert _matches_decimal_integral(-produced, -reference)
+
+
+def test_stable_hinge_integral_matches_independent_decimal_grid():
+    hinge = 0.075
+    slightly_outboard = math.nextafter(hinge, math.inf)
+    cases = (
+        (hinge, math.nextafter(hinge, math.inf), hinge),
+        (hinge, hinge * (1.0 + 1.0e-12), hinge),
+        (slightly_outboard, hinge + 1.0e-6, hinge),
+        (0.2, 0.5, 0.1),
+        (1.0e-8, 1.0e6, 1.0e-8),
+        (1.0e-15, 1.0e300, 1.0e-15),
+        (1.0, 1.5, 0.25),
+        (2.0, 2.0 * (1.0 + 1.0e-10), 1.0),
+    )
+    for inner, outer, radius in cases:
+        assert outer > inner >= radius > 0.0
+        produced = _stable_movable_hinge_integral(inner, outer, radius)
+        reference = _decimal_hinge_integral(inner, outer, radius)
+        assert _matches_decimal_integral(produced, reference), (
+            inner,
+            outer,
+            radius,
+            produced,
+            reference,
+        )
+
+
+def test_positive_density_keeps_negative_movable_hinge_load():
+    hinge = 0.2
+    for outer, density in (
+        (math.nextafter(hinge, math.inf), 1.0),
+        (hinge * (1.0 + 1.0e-8), 3.0),
+        (0.8, 1.0e-4),
+        (1.5, 2.0),
+    ):
+        positive = _map_cell(
+            hinge,
+            outer,
+            thrust=1.0,
+            torque=density,
+            hinge=hinge,
+            theta=0.2,
+            blades=2,
+        )
+        negative = _map_cell(
+            hinge,
+            outer,
+            thrust=1.0,
+            torque=-density,
+            hinge=hinge,
+            theta=0.2,
+            blades=2,
+        )
+        zero = _map_cell(
+            hinge,
+            outer,
+            thrust=1.0,
+            torque=0.0,
+            hinge=hinge,
+            theta=0.2,
+            blades=2,
+        )
+        assert positive[0].one_tip_hinge_generalized_torque_nm < 0.0
+        assert negative[0].one_tip_hinge_generalized_torque_nm > 0.0
+        assert zero[0].one_tip_hinge_generalized_torque_nm == 0.0
+
+
+def test_extreme_radius_ratio_stays_finite_and_serializes():
+    inner = 1.0e-15
+    outer = 1.0e300
+    mapped = map_projected_material_loads(
+        (_annulus(inner, outer, thrust=0.0, torque=1.0e-300),),
+        hinge_radius_m=inner,
+        theta_rad=0.0,
+        blade_count=1,
+        hinge_rate_rad_s=0.0,
+        projected_tip_radius_m=outer,
+        operating_condition_id="extreme-ratio",
+    )
+    encoded = json.dumps(mapped.as_mapping(), allow_nan=False)
+
+    assert math.isfinite(mapped.whole_rotor_aerodynamic_shaft_generalized_load_nm)
+    assert math.isfinite(mapped.one_tip_hinge_generalized_torque_nm)
+    assert mapped.one_tip_hinge_generalized_torque_nm < 0.0
+    assert "Infinity" not in encoded
+    assert "NaN" not in encoded
+
+
+def test_nonfinite_evidence_envelope_is_rejected():
+    mapped = map_projected_material_loads(
+        (_annulus(0.1, 0.2, thrust=1.0, torque=1.0),),
+        hinge_radius_m=0.1,
+        theta_rad=0.0,
+        blade_count=1,
+        hinge_rate_rad_s=0.0,
+        projected_tip_radius_m=0.2,
+        operating_condition_id="envelope",
+    )
+    with pytest.raises(PlanarProjectedMaterialLoadError):
+        replace(mapped, one_tip_hinge_generalized_torque_nm=math.nan)
+    with pytest.raises(PlanarProjectedMaterialLoadError):
+        replace(mapped, whole_rotor_aerodynamic_shaft_generalized_load_nm=math.inf)
+    with pytest.raises(PlanarProjectedMaterialLoadError):
+        replace(mapped, projection_factor=math.nan)
+    with pytest.raises(PlanarProjectedMaterialLoadError):
+        replace(mapped, blade_count=0)
+    with pytest.raises(PlanarProjectedMaterialLoadError):
+        replace(
+            mapped.intervals[0],
+            one_tip_hinge_generalized_torque_nm=math.inf,
+        )
+
+
+def test_aggregate_overflow_fails_closed():
+    huge = sys.float_info.max
+    with pytest.raises(PlanarProjectedMaterialLoadError, match="nonfinite"):
+        map_projected_material_loads(
+            (
+                _annulus(0.5, 1.5, thrust=0.0, torque=huge, index=0),
+                _annulus(1.5, 2.5, thrust=0.0, torque=huge, index=1),
+            ),
+            hinge_radius_m=0.5,
+            theta_rad=0.0,
+            blade_count=1,
+            hinge_rate_rad_s=0.0,
+            projected_tip_radius_m=2.5,
+            operating_condition_id="aggregate-overflow",
+        )
+
+
+def test_unrepresentable_blade_count_fails_closed():
+    with pytest.raises(PlanarProjectedMaterialLoadError, match="nonfinite"):
+        map_projected_material_loads(
+            (_annulus(0.1, 0.2, thrust=1.0, torque=1.0),),
+            hinge_radius_m=0.1,
+            theta_rad=0.0,
+            blade_count=10**1000,
+            hinge_rate_rad_s=0.0,
+            projected_tip_radius_m=0.2,
+            operating_condition_id="huge-blade-count",
+        )
+
+
+def test_overflowing_power_fails_closed():
+    with pytest.raises(PlanarProjectedMaterialLoadError, match="power"):
+        aerodynamic_generalized_power_w(
+            whole_rotor_shaft_generalized_load_nm=1.0e308,
+            one_tip_hinge_generalized_torque_nm=0.0,
+            blade_count=1,
+            omega_rad_s=-1.0e308,
+            hinge_rate_rad_s=0.0,
+        )
 
 
 def _mapping_keys(payload: object) -> set[str]:

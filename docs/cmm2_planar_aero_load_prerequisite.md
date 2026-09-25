@@ -116,6 +116,14 @@ For movable material `a >= R > 0`, substitute
 q_theta,1 = -(D / N) [(b - a) - R ln(b / a)]
 ```
 
+That equation is the mathematical contract. The implementation evaluates
+`(b - a) - R ln(b / a)` in a numerically stable, overflow-safe form. It does
+not form the ratio `b / a` before the logarithm, and the near-hinge
+cancellation is explicitly guarded. A positive-width movable integral that
+cannot be resolved as a positive finite value fails closed instead of
+changing sign or becoming zero. The rearrangement is not a different physical
+model.
+
 `D` positive is resisting shaft torque in the current BEM sign. Then
 `q_phi,1 < 0` and, on a deployed movable tip, `q_theta,1 < 0`. The
 aerodynamic hinge load tends toward negative, folded `theta`. Hinge load is
@@ -202,15 +210,25 @@ There is no hidden `Cm q c^2` hinge term.
 
 ## Coverage and failure
 
-A usable one-tip hinge load requires the BEM radial domain to cover the hinge
-radius through the projected effective tip. A gap, an overlap, a hinge outside
-that domain, or an uncovered movable interval raises
-`PlanarProjectedMaterialLoadError`. The result is not a zero hinge load.
+A complete one-tip mapped result requires the continuous source domain to
+cover the hinge and to terminate at the declared projected effective tip:
 
-The same error is raised for nonfinite radii, densities, `theta`, or hinge
-rate; `blade_count < 1`; `R <= 0`; an invalid projection factor; `|theta| >=
-pi/2`; a non-positive radius; or a non-positive interval width. Invalid
-geometry is not clamped.
+```text
+source_outer_projected_radius_m == projected_tip_radius_m
+```
+
+Under-coverage fails closed. Over-coverage fails closed. No load outside the
+declared tip is included, and a long source interval is not clipped back to
+the tip. A gap, an overlap, a hinge outside that domain, or an uncovered
+movable interval raises `PlanarProjectedMaterialLoadError`. The result is not
+a zero hinge load.
+
+The same error is raised for nonfinite radii, densities, `theta`, hinge rate,
+or any derived shaft, hinge, thrust, or power value; `blade_count < 1`;
+`R <= 0`; an invalid projection factor; `|theta| >= pi/2`; a non-positive
+radius; or a non-positive interval width. Invalid geometry is not clamped.
+Direct construction of a result or interval envelope with a nonfinite
+evidence field fails closed before that envelope can be serialized.
 
 `hub_to_tip` remains an allowed existing BEM screening choice. Its
 `geometry_extended` flag and any per-element extrapolation flag are copied
