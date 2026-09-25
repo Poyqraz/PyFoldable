@@ -53,9 +53,11 @@ opposes ``+z``, and the deployed movable tip is driven toward negative
 ``theta``. Stations with ``r_p <= R`` are fixed to the shaft. They add to
 ``q_phi`` and add exactly zero to the one-tip hinge load. A midpoint cell
 that straddles ``R`` is split into ``[a, R]`` and ``[R, b]`` with the same
-``T`` and ``D``; no BEM re-solve is performed. A complete map requires the
-source domain to end at the declared projected tip. Under-coverage and
-over-coverage both fail closed.
+``T`` and ``D``; no BEM re-solve is performed. A complete generic map requires the source domain to end at the declared
+projected tip. Under-coverage and over-coverage both fail closed. The native
+foldable-BEM adapter may move only a terminal boundary that differs from the
+declared effective tip by at most two units in the last place, and it records
+that representation adjustment.
 
 Whole-rotor shaft load is the negation of the partitioned cell resisting
 torques, summed in source order with ``math.fsum``. It is not
@@ -90,6 +92,12 @@ PLANAR_PROJECTED_MATERIAL_LOAD_SCHEMA_VERSION = 1
 
 _MIN_PROJECTION_FACTOR = 1.0e-12
 _SERIES_Z_LIMIT = 0.5
+# BEM builds the last boundary as inner + n * ((outer - inner) / n).
+# Four elementary roundings accumulate at most two ulps of the larger
+# endpoint for an exactly representable annulus count. Annulus counts
+# 1..256 on representative spans stayed within one ulp. A broader sample
+# of finite spans reached two ulps and did not exceed two.
+_NATIVE_TERMINAL_BOUNDARY_ULPS = 2
 _FIXED_ROOT = "fixed_root"
 _MOVABLE_TIP = "movable_tip"
 _UNRESOLVED_HINGE_INTEGRAL = (
@@ -355,6 +363,9 @@ class PlanarProjectedMaterialLoadResult:
     geometry_extended: bool
     source_inner_projected_radius_m: float
     source_outer_projected_radius_m: float
+    source_terminal_radius_m: float
+    terminal_boundary_normalized: bool
+    terminal_boundary_delta_m: float
     intervals: tuple[MappedRadialContribution, ...]
     source_whole_rotor_projected_thrust_n: float
     source_whole_rotor_resisting_torque_nm: float
@@ -411,8 +422,17 @@ class PlanarProjectedMaterialLoadResult:
             "resisting_shaft_torque_nm",
             "one_tip_hinge_generalized_torque_nm",
             "synchronous_n_times_one_tip_hinge_generalized_torque_nm",
+            "source_terminal_radius_m",
+            "terminal_boundary_delta_m",
         ):
             _real(name, getattr(self, name))
+        _check_terminal_provenance(
+            projected_tip_radius_m=self.projected_tip_radius_m,
+            source_outer_projected_radius_m=self.source_outer_projected_radius_m,
+            source_terminal_radius_m=self.source_terminal_radius_m,
+            terminal_boundary_normalized=self.terminal_boundary_normalized,
+            terminal_boundary_delta_m=self.terminal_boundary_delta_m,
+        )
         if not all(
             isinstance(interval, MappedRadialContribution) for interval in self.intervals
         ):
@@ -464,6 +484,9 @@ class PlanarProjectedMaterialLoadResult:
             "source_outer_projected_radius_m": (
                 self.source_outer_projected_radius_m
             ),
+            "source_terminal_radius_m": self.source_terminal_radius_m,
+            "terminal_boundary_normalized": self.terminal_boundary_normalized,
+            "terminal_boundary_delta_m": self.terminal_boundary_delta_m,
             "thrust_density_measure": (
                 "whole_rotor_newton_per_projected_radial_metre"
             ),
@@ -772,6 +795,88 @@ def _contiguous(annuli: Sequence[ProjectedAnnulusLoad]) -> None:
             )
 
 
+def _check_terminal_provenance(
+    *,
+    projected_tip_radius_m: float,
+    source_outer_projected_radius_m: float,
+    source_terminal_radius_m: float,
+    terminal_boundary_normalized: bool,
+    terminal_boundary_delta_m: float,
+) -> None:
+    """Require native-tip provenance to match the published endpoint."""
+    if not isinstance(terminal_boundary_normalized, bool):
+        raise PlanarProjectedMaterialLoadError(
+            "terminal_boundary_normalized must be boolean."
+        )
+    if source_outer_projected_radius_m != projected_tip_radius_m:
+        raise PlanarProjectedMaterialLoadError(
+            "published source domain must end at the declared projected tip."
+        )
+    if terminal_boundary_normalized:
+        expected = projected_tip_radius_m - source_terminal_radius_m
+        allowance = _NATIVE_TERMINAL_BOUNDARY_ULPS * max(
+            math.ulp(source_terminal_radius_m),
+            math.ulp(projected_tip_radius_m),
+        )
+        if (
+            terminal_boundary_delta_m != expected
+            or terminal_boundary_delta_m == 0.0
+            or abs(terminal_boundary_delta_m) > allowance
+        ):
+            raise PlanarProjectedMaterialLoadError(
+                "terminal boundary provenance is outside the native ULP envelope."
+            )
+        return
+    if (
+        terminal_boundary_delta_m != 0.0
+        or source_terminal_radius_m != source_outer_projected_radius_m
+    ):
+        raise PlanarProjectedMaterialLoadError(
+            "terminal boundary provenance is inconsistent."
+        )
+
+
+def _native_terminal_annuli(
+    annuli: tuple[ProjectedAnnulusLoad, ...],
+    declared_tip: float,
+) -> tuple[tuple[ProjectedAnnulusLoad, ...], float, bool, float]:
+    """Snap only a BEM terminal boundary that is a few ulps from the tip.
+
+    The generic mapper stays exact. This helper is for the native foldable
+    BEM binding. A difference outside ``_NATIVE_TERMINAL_BOUNDARY_ULPS`` is
+    left unchanged so that mapping fails closed.
+    """
+    source_terminal = annuli[-1].outer_radius_m
+    if not math.isfinite(source_terminal):
+        raise PlanarProjectedMaterialLoadError(
+            "source terminal radius must be finite."
+        )
+    if source_terminal == declared_tip:
+        return annuli, source_terminal, False, 0.0
+    delta = declared_tip - source_terminal
+    allowance = _NATIVE_TERMINAL_BOUNDARY_ULPS * max(
+        math.ulp(source_terminal), math.ulp(declared_tip)
+    )
+    if not math.isfinite(delta) or abs(delta) > allowance:
+        return annuli, source_terminal, False, 0.0
+    if declared_tip <= annuli[-1].inner_radius_m:
+        raise PlanarProjectedMaterialLoadError(
+            "native terminal boundary cannot be normalized onto the declared tip."
+        )
+    last = annuli[-1]
+    normalized = annuli[:-1] + (
+        ProjectedAnnulusLoad(
+            last.inner_radius_m,
+            declared_tip,
+            last.differential_thrust_n_m,
+            last.differential_torque_nm_m,
+            last.geometry_extrapolated,
+            last.source_index,
+        ),
+    )
+    return normalized, source_terminal, True, delta
+
+
 def map_projected_material_loads(
     annuli: Sequence[ProjectedAnnulusLoad],
     *,
@@ -788,6 +893,9 @@ def map_projected_material_loads(
     polar_sources: Sequence[str] = (),
     radial_domain: str = "declared_intervals",
     geometry_extended: bool = False,
+    source_terminal_radius_m: float | None = None,
+    terminal_boundary_normalized: bool = False,
+    terminal_boundary_delta_m: float = 0.0,
 ) -> PlanarProjectedMaterialLoadResult:
     """Map a continuous projected field and fail closed on partial tip coverage."""
     factor = _projection_factor(theta_rad)
@@ -912,6 +1020,13 @@ def map_projected_material_loads(
         geometry_extended=geometry_extended,
         source_inner_projected_radius_m=cells[0].inner_radius_m,
         source_outer_projected_radius_m=cells[-1].outer_radius_m,
+        source_terminal_radius_m=(
+            source_outer
+            if source_terminal_radius_m is None
+            else source_terminal_radius_m
+        ),
+        terminal_boundary_normalized=terminal_boundary_normalized,
+        terminal_boundary_delta_m=terminal_boundary_delta_m,
         intervals=tuple(pieces),
         source_whole_rotor_projected_thrust_n=thrust,
         source_whole_rotor_resisting_torque_nm=resisting,
@@ -958,6 +1073,9 @@ def map_foldable_bem_aero_loads(
         )
         for element in rotor.elements
     )
+    annuli, source_terminal, normalized, delta = _native_terminal_annuli(
+        annuli, effective.radius_m
+    )
     return map_projected_material_loads(
         annuli,
         hinge_radius_m=state.hinge_radius_m,
@@ -973,4 +1091,7 @@ def map_foldable_bem_aero_loads(
         polar_sources=rotor.polar_sources,
         radial_domain=rotor.radial_domain,
         geometry_extended=rotor.geometry_extended,
+        source_terminal_radius_m=source_terminal,
+        terminal_boundary_normalized=normalized,
+        terminal_boundary_delta_m=delta,
     )

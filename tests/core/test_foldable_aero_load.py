@@ -1126,6 +1126,201 @@ def test_unrepresentable_blade_count_fails_closed():
         )
 
 
+def _endpoint_roundoff_bound(
+    density: float,
+    old_width: float,
+    new_width: float,
+    original_total: float,
+    mapped_total: float,
+) -> float:
+    """Half-ulp model of the width, product, and fsum steps."""
+    width_error = 0.5 * (math.ulp(old_width) + math.ulp(new_width))
+    product_error = 0.5 * (
+        math.ulp(abs(density) * abs(old_width))
+        + math.ulp(abs(density) * abs(new_width))
+    )
+    reduction_error = 0.5 * (math.ulp(original_total) + math.ulp(mapped_total))
+    return abs(density) * width_error + product_error + reduction_error
+
+
+def _shift_terminal_outer(foldable, outer_radius_m: float):
+    rotor = foldable.rotor_result
+    last = rotor.elements[-1]
+    elements = rotor.elements[:-1] + (
+        replace(last, outer_radius_m=outer_radius_m),
+    )
+    return replace(foldable, rotor_result=replace(rotor, elements=elements))
+
+
+def _tip_plus_ulps(tip: float, steps: int) -> float:
+    direction = math.inf if steps > 0 else -math.inf
+    radius = tip
+    for _ in range(abs(steps)):
+        radius = math.nextafter(radius, direction)
+    return radius
+
+
+def test_native_outboard_tip_roundoff_normalizes_to_declared_tip():
+    foldable = solve_foldable_bem_rotor(
+        _blade(),
+        _state(0.0),
+        _condition(),
+        _schedule(),
+        settings=_settings(7, "station_span"),
+    )
+    tip = foldable.geometry.effective_blade.radius_m
+    last = foldable.rotor_result.elements[-1]
+    delta_r = tip - last.outer_radius_m
+    ulp_distance = abs(delta_r) / max(math.ulp(tip), math.ulp(last.outer_radius_m))
+
+    assert last.outer_radius_m != tip
+    assert ulp_distance == 1.0
+    assert delta_r < 0.0
+    assert last.inner_radius_m > _state(0.0).hinge_radius_m
+
+    mapped = map_foldable_bem_aero_loads(foldable, hinge_rate_rad_s=0.0)
+    payload = mapped.as_mapping()
+    torque_delta = mapped.resisting_shaft_torque_nm - foldable.rotor_result.torque_nm
+    thrust_delta = (
+        mapped.source_whole_rotor_projected_thrust_n
+        - foldable.rotor_result.thrust_n
+    )
+    old_width = last.outer_radius_m - last.inner_radius_m
+    new_width = tip - last.inner_radius_m
+
+    assert mapped.intervals[-1].outer_projected_radius_m == tip
+    assert mapped.intervals[-1].inner_projected_radius_m == last.inner_radius_m
+    assert mapped.source_outer_projected_radius_m == tip
+    assert mapped.terminal_boundary_normalized is True
+    assert mapped.source_terminal_radius_m == last.outer_radius_m
+    assert mapped.terminal_boundary_delta_m == delta_r
+    assert payload["terminal_boundary_normalized"] is True
+    assert mapped.physical_qualification is False
+    assert mapped.qualification == QUALIFICATION
+    assert abs(
+        torque_delta - last.solution.differential_torque_nm_m * delta_r
+    ) <= _endpoint_roundoff_bound(
+        last.solution.differential_torque_nm_m,
+        old_width,
+        new_width,
+        foldable.rotor_result.torque_nm,
+        mapped.resisting_shaft_torque_nm,
+    )
+    assert abs(
+        thrust_delta - last.solution.differential_thrust_n_m * delta_r
+    ) <= _endpoint_roundoff_bound(
+        last.solution.differential_thrust_n_m,
+        old_width,
+        new_width,
+        foldable.rotor_result.thrust_n,
+        mapped.source_whole_rotor_projected_thrust_n,
+    )
+    json.dumps(payload, allow_nan=False)
+
+
+def test_native_inboard_tip_roundoff_normalizes_to_declared_tip():
+    theta = math.radians(-30.0)
+    foldable = solve_foldable_bem_rotor(
+        _blade(),
+        _state(theta),
+        _condition(),
+        _schedule(),
+        settings=_settings(3, "hub_to_tip"),
+    )
+    tip = foldable.geometry.effective_blade.radius_m
+    last = foldable.rotor_result.elements[-1]
+    delta_r = tip - last.outer_radius_m
+
+    assert last.outer_radius_m < tip
+    assert abs(delta_r) / max(math.ulp(tip), math.ulp(last.outer_radius_m)) == 1.0
+
+    mapped = map_foldable_bem_aero_loads(foldable, hinge_rate_rad_s=0.0)
+
+    assert mapped.terminal_boundary_normalized is True
+    assert mapped.terminal_boundary_delta_m == delta_r
+    assert mapped.intervals[-1].outer_projected_radius_m == tip
+    assert mapped.physical_qualification is False
+
+
+def test_exact_native_boundary_reports_no_normalization():
+    foldable = solve_foldable_bem_rotor(
+        _blade(),
+        _state(0.0),
+        _condition(),
+        _schedule(),
+        settings=_settings(12),
+    )
+    tip = foldable.geometry.effective_blade.radius_m
+    mapped = map_foldable_bem_aero_loads(foldable, hinge_rate_rad_s=0.0)
+
+    assert foldable.rotor_result.elements[-1].outer_radius_m == tip
+    assert mapped.terminal_boundary_normalized is False
+    assert mapped.terminal_boundary_delta_m == 0.0
+    assert mapped.source_terminal_radius_m == tip
+    assert mapped.resisting_shaft_torque_nm == foldable.rotor_result.torque_nm
+
+
+def test_native_terminal_at_two_ulps_stays_inside_the_envelope():
+    foldable = solve_foldable_bem_rotor(
+        _blade(),
+        _state(0.0),
+        _condition(),
+        _schedule(),
+        settings=_settings(12),
+    )
+    tip = foldable.geometry.effective_blade.radius_m
+    preserved = foldable.rotor_result.elements[0]
+    for steps in (2, -2):
+        shifted = _shift_terminal_outer(foldable, _tip_plus_ulps(tip, steps))
+        mapped = map_foldable_bem_aero_loads(shifted, hinge_rate_rad_s=0.0)
+        allowance = 2.0 * max(
+            math.ulp(tip), math.ulp(mapped.source_terminal_radius_m)
+        )
+
+        assert mapped.terminal_boundary_normalized is True
+        assert mapped.intervals[-1].outer_projected_radius_m == tip
+        assert abs(mapped.terminal_boundary_delta_m) <= allowance
+        assert any(
+            interval.inner_projected_radius_m == preserved.inner_radius_m
+            and interval.outer_projected_radius_m == preserved.outer_radius_m
+            for interval in mapped.intervals
+        )
+
+
+def test_native_terminal_outside_ulp_bound_fails_closed():
+    foldable = solve_foldable_bem_rotor(
+        _blade(),
+        _state(0.0),
+        _condition(),
+        _schedule(),
+        settings=_settings(7, "station_span"),
+    )
+    tip = foldable.geometry.effective_blade.radius_m
+    for steps in (3, -3):
+        shifted = _shift_terminal_outer(foldable, _tip_plus_ulps(tip, steps))
+        with pytest.raises(PlanarProjectedMaterialLoadError):
+            map_foldable_bem_aero_loads(shifted, hinge_rate_rad_s=0.0)
+
+
+def test_generic_over_coverage_ignores_terminal_provenance_flag():
+    with pytest.raises(
+        PlanarProjectedMaterialLoadError,
+        match="source domain extends beyond declared projected tip",
+    ):
+        map_projected_material_loads(
+            (_annulus(0.05, 0.25, thrust=0.0, torque=2.0),),
+            hinge_radius_m=0.05,
+            theta_rad=0.0,
+            blade_count=2,
+            hinge_rate_rad_s=0.0,
+            projected_tip_radius_m=0.20,
+            operating_condition_id="astra-over-coverage",
+            source_terminal_radius_m=0.25,
+            terminal_boundary_normalized=True,
+            terminal_boundary_delta_m=-0.05,
+        )
+
+
 def test_overflowing_power_fails_closed():
     with pytest.raises(PlanarProjectedMaterialLoadError, match="power"):
         aerodynamic_generalized_power_w(

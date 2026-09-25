@@ -210,8 +210,8 @@ There is no hidden `Cm q c^2` hinge term.
 
 ## Coverage and failure
 
-A complete one-tip mapped result requires the continuous source domain to
-cover the hinge and to terminate at the declared projected effective tip:
+A complete generic one-tip mapped result requires the continuous source domain
+to cover the hinge and to terminate at the declared projected effective tip:
 
 ```text
 source_outer_projected_radius_m == projected_tip_radius_m
@@ -219,9 +219,35 @@ source_outer_projected_radius_m == projected_tip_radius_m
 
 Under-coverage fails closed. Over-coverage fails closed. No load outside the
 declared tip is included, and a long source interval is not clipped back to
-the tip. A gap, an overlap, a hinge outside that domain, or an uncovered
-movable interval raises `PlanarProjectedMaterialLoadError`. The result is not
-a zero hinge load.
+the tip. The generic mapper does not apply an engineering tolerance or
+`math.isclose`. A gap, an overlap, a hinge outside that domain, or an
+uncovered movable interval raises `PlanarProjectedMaterialLoadError`. The
+result is not a zero hinge load.
+
+The native `map_foldable_bem_aero_loads` binding may normalize only the final
+BEM element boundary. BEM forms that boundary as
+`inner + n * ((outer - inner) / n)` and does not snap it to the declared
+effective tip. Four elementary roundings of that recurrence, for an exactly
+representable annulus count, accumulate at most two units in the last place
+of the larger endpoint. Annulus counts 1 through 256 on representative spans
+stayed within one ulp. A broader sample of finite spans reached two ulps and
+did not exceed two. The native envelope is therefore
+
+```text
+abs(source_terminal - declared_tip)
+    <= 2 * max(ulp(source_terminal), ulp(declared_tip))
+```
+
+Only that terminal boundary moves, and only onto `effective.radius_m`. A
+larger difference is left unchanged and the generic exact check fails closed.
+The result records `source_terminal_radius_m`, `terminal_boundary_delta_m`,
+and `terminal_boundary_normalized`. An exact native boundary records
+`terminal_boundary_normalized = false` and a zero delta. This is source-bound
+representation bookkeeping. It does not authorize generic clipping and it
+does not establish physical accuracy. The mapped shaft and hinge loads stay
+integrals of the normalized force field, so a normalized tip can differ from
+`BEMRotorResult.torque_nm` by the terminal density times that endpoint
+correction, plus reduction roundoff.
 
 The same error is raised for nonfinite radii, densities, `theta`, hinge rate,
 or any derived shaft, hinge, thrust, or power value; `blade_count < 1`;
