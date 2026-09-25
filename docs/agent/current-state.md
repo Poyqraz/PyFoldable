@@ -27,13 +27,14 @@ remains null. Contract: [CMM-1](../cmm1_partial_coupled_transient.md).
 
 **2026-09-25 CMM-1 numerical verification.** Phase 4 evidence is
 [numerical verification](../cmm1_numerical_verification.md). Phase-4 evidence
-implemented; independent review required before merge. This package is
-intended to establish numerical verification of the CMM-1 screening model.
-Merge requires independent closure of PR #72. `physical_qualification`
-remains false. PR-06C remains unresolved. No aerodynamic hinge load exists.
-No GEOM gate is promoted. There is no calibration and no experimental
-validation. CMM-2 is not approved. The production screening code is unchanged
-by that evidence.
+was merged in PR #72. Final PR head
+`7494ffa7c2ba9f676152b02eebe54b794d7a8f52`. Merge commit
+`b99c3f9f109e034380edfd6120c144bc9f66f030`. Numerical verification is complete
+for the declared CMM-1 screening model. The production screening code was
+unchanged by that evidence PR. `physical_qualification` remains false.
+PR-06C remains unresolved. No aerodynamic hinge load exists. No GEOM gate is
+promoted. There is no calibration and no experimental validation. CMM-2 is
+not approved.
 
 ## Reality summary
 

@@ -214,11 +214,13 @@ ve onaylı değildir. Ayrıntı:
 [CMM-1 sözleşmesi](cmm1_partial_coupled_transient.md) ve ADR-005.
 Faz 4 sayısal kanıtı
 [CMM-1 numerical verification](cmm1_numerical_verification.md)
-belgesindedir. Phase-4 evidence implemented; independent review required
-before merge. Bu paket, CMM-1 tarama modelinin sayısal doğrulamasını kurmayı
-amaçlar. PR #72 kapanmadan birleşmez. Fiziksel yeterlilik false kalır.
-PR-06C çözülmemiştir. Aerodinamik menteşe yükü yoktur. GEOM kapısı
-yükseltilmez. Kalibrasyon ve deneysel doğrulama yoktur. CMM-2 onaylı değildir.
+belgesindedir. İlan edilen CMM-1 tarama modeli için sayısal doğrulama
+tamamdır ve PR #72 ile birleşmiştir. Bu, fiziksel doğrulama değildir.
+Fiziksel yeterlilik false kalır. PR-06C çözülmemiştir. Aerodinamik menteşe
+yükü yoktur. GEOM kapısı yükseltilmez. Kalibrasyon ve deneysel doğrulama
+yoktur. CMM-2 onaylı değildir. Sonraki aday, ayrı bir CMM-2 aerodinamik
+menteşe yükü davranış ve matematik sözleşmesi kararıdır; kabul edilmiş
+uygulama işi değildir.
 
 **Coupled Aero–Motor–Mechanism Model**, PR #70 sırasında önerilen sonraki model
 dilimiydi. O belgede nihai denklem yazılmadı. CMM-1, review edilmiş kısmi
@@ -247,7 +249,7 @@ Her faz tek bir PR olmak zorunda değildir.
 | 1 | Bu yol haritası hizalaması | docs reconciliation, bu PR |
 | 2 | Kısmi bağlaşık tarama sözleşmesi. Uygulama bu fazın kendisi değildir | reviewed; ADR-005 records the accepted CMM-1 scope |
 | 3 | CMM-1 kısmi bağlaşık tarama geçişi. Aerodinamik menteşe momenti, fiziksel yeterlilik, GEOM `True` ve kalibrasyon yoktur | implemented screening boundary |
-| 4 | Bağımsız sayısal doğrulama: analitik sınır halleri, kalıntı, yakınsama/duyarlılık ve ayrık modellerle regresyon | evidence implemented; independent review required before merge |
+| 4 | Bağımsız sayısal doğrulama: analitik sınır halleri, kalıntı, yakınsama/duyarlılık ve ayrık modellerle regresyon | numerical verification complete for the declared CMM-1 screening model; merged in PR #72 |
 | 5 | PY-06D2 kalibrasyonu. Yalnız uygun ve tanımlanabilir ölçüm varken | blocked on evidence |
 | 6 | Fiziksel korelasyon, CFD, FEA ve deney | blocked on evidence |
 | 7 | Robust sistem optimizasyonu. Yalnız uygun biçimde doğrulanmış modeller üzerinde | deferred |
