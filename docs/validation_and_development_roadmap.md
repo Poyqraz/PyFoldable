@@ -214,16 +214,18 @@ CMM-1 aerodinamik menteşe momentini hâlâ yayınlamaz. Düzlemsel izdüşüm y
 [CMM-2 planar aero-load prerequisite](cmm2_planar_aero_load_prerequisite.md).
 Bu tarama adaptörüdür. Kabul edilen parça, mevcut izdüşüm katlanır-BEM kuvvet
 alanının eşlenik tarama genelleştirilmiş yüklerine yazılım sözleşmesidir.
-CMM-2 geçici bağlaşımı sonraki aday dilimdir. Uygulanmamıştır, onaylı değildir
-ve fiziksel olarak doğrulanmamıştır. Ayrıntı:
+CMM-2'nin izole eşlenik yük dinamiği kodlanmıştır ve bağımsız inceleme altındadır.
+Kabul edilmiş değildir. Üretim FoldableBEM kaynak bağlaması, mühürlü istek ve
+pano yoktur. CMM-2 fiziksel olarak doğrulanmamıştır. Sözleşme:
+[CMM-2 PR-A](cmm2_coupled_transient_contract.md). Ayrıntı:
 [CMM-1 sözleşmesi](cmm1_partial_coupled_transient.md) ve ADR-005.
 Faz 4 sayısal kanıtı
 [CMM-1 numerical verification](cmm1_numerical_verification.md)
 belgesindedir. İlan edilen CMM-1 tarama modeli için sayısal doğrulama
 tamamdır ve PR #72 ile birleşmiştir. Bu, fiziksel doğrulama değildir.
 Fiziksel yeterlilik false kalır. PR-06C çözülmemiştir. GEOM kapısı
-yükseltilmez. Kalibrasyon ve deneysel doğrulama yoktur. CMM-2 geçici bağlaşımı
-uygulanmamıştır. PY-06D2 uygun ölçüm olmadan kapalı kalır. Robust optimizasyon
+yükseltilmez. Kalibrasyon ve deneysel doğrulama yoktur. CMM-2 kabul edilmiş
+değildir; üretim aerodinamik kaynak bağlaması yoktur. PY-06D2 uygun ölçüm olmadan kapalı kalır. Robust optimizasyon
 erken kalır. Faz 5, Faz 6 ve Faz 7 uygulanmış değildir.
 
 **Coupled Aero–Motor–Mechanism Model**, PR #70 sırasında önerilen sonraki model
