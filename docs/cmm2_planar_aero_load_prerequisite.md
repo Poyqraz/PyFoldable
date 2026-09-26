@@ -5,7 +5,10 @@ This document is the screening contract for
 not implemented. CMM-1 is unchanged, including
 `aerodynamic_hinge_torque_status = unavailable_omitted_by_cmm1`.
 
-The adapter is pending independent review.
+The adapter was independently reviewed and merged in PR #74. Final reviewed
+head `d6624ba3e61f8dbb48001d784d8cd51d321c0e10`. Merge commit
+`f6fe71912060a26f2dbd8d0665db5f2bda09b48f`. ADR-006 records this accepted
+screening prerequisite.
 
 `physical_qualification` is false.
 `qualification` is `screening_only_projected_rate_independent`.

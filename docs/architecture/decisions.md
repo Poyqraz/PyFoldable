@@ -165,9 +165,9 @@ Evidence: `pyfoldable/dynamics/coupled_transient.py`,
 
 ## ADR-006 — Planar projected material load is a screening prerequisite, not CMM-2
 
-**Status: proposed — pending independent review. Not accepted.**
+**Status: accepted after independent review and merge in PR #74.**
 
-Decision under review: add `planar_projected_material_load_v1` beside the
+Decision: add `planar_projected_material_load_v1` beside the
 unchanged BEM core. It transports existing `radial_cosine_v1` whole-rotor
 projected thrust and shaft-torque densities onto one blade with the material
 Jacobian `cos(theta)`, then forms planar `+z` generalized loads by virtual
@@ -178,7 +178,16 @@ the force law. Incomplete movable-span coverage fails closed rather than
 returning zero hinge load. `physical_qualification` stays false.
 
 This record does not approve CMM-2, does not change CMM-1 or ADR-005, and
-does not promote GEOM, PR-06C, calibration, or experiment.
+does not promote GEOM, PR-06C, calibration, or experiment. Acceptance covers
+the screening software contract only. It does not establish a physical
+folded-tip force field, a validated hinge torque, or finite-rate hinge
+aerodynamics. The native FoldableBEM adapter uses a guarded two-ULP
+source-bound terminal policy supported by the reviewed repository-scale
+observations. That policy is not a universal IEEE-754 theorem. The generic
+projected-tip mapper stays exact and fail-closed.
+
+Final reviewed head `d6624ba3e61f8dbb48001d784d8cd51d321c0e10`. Merge commit
+`f6fe71912060a26f2dbd8d0665db5f2bda09b48f`.
 
 Evidence: `pyfoldable/core/foldable_aero_load.py`,
 `tests/core/test_foldable_aero_load.py`,

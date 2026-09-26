@@ -40,13 +40,17 @@ not approved.
 the existing projected foldable-BEM field to a whole-rotor shaft generalized
 aerodynamic load and one one-tip planar hinge generalized load. Model id
 `planar_projected_material_load_v1`. Qualification
-`screening_only_projected_rate_independent`. It is pending independent review.
-`physical_qualification` remains false. The adapter does not implement CMM-2
-transient coupling, does not change CMM-1 or its Phase-4 evidence, and does
-not establish folded-tip aerodynamics or a validated hinge torque. CMM-1 still
-omits aerodynamic hinge torque (`unavailable_omitted_by_cmm1`). PR-06C remains
-unresolved. No GEOM gate is promoted. There is no calibration and no
-experimental validation. CMM-2 is not approved and not implemented. Contract:
+`screening_only_projected_rate_independent`. The prerequisite was independently
+reviewed and merged in PR #74. ADR-006 is accepted. Final reviewed head
+`d6624ba3e61f8dbb48001d784d8cd51d321c0e10`. Merge commit
+`f6fe71912060a26f2dbd8d0665db5f2bda09b48f`. The production model remains
+screening-only. This does not implement CMM-2 transient coupling, does not
+change CMM-1 or its Phase-4 evidence, and does not establish folded-tip
+aerodynamics or a validated hinge torque. `physical_qualification` remains
+false. CMM-1 still omits aerodynamic hinge torque
+(`unavailable_omitted_by_cmm1`). PR-06C remains unresolved. No GEOM gate is
+promoted. There is no calibration and no experimental validation. CMM-2 is
+not approved and not implemented. Contract:
 [planar aero-load prerequisite](../cmm2_planar_aero_load_prerequisite.md).
 
 ## Reality summary
