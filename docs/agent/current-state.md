@@ -53,6 +53,19 @@ promoted. There is no calibration and no experimental validation. CMM-2 is
 not approved and not implemented. Contract:
 [planar aero-load prerequisite](../cmm2_planar_aero_load_prerequisite.md).
 
+**Independent re-audit 2026-09-18** at main `d7afc391d5f41b15259826b99a5ed7560153439e`
+(documentation PR #64). `git diff --stat ca81d2d..d7afc39` is documentation only;
+application code still matches the GEOM-04 tree. Full 20-section verification,
+drift ledger, and task→file map:
+[onboarding-audit-2026-09-18](onboarding-audit-2026-09-18.md),
+[navigation-map](navigation-map.md). Local pytest on Python 3.12.3:
+1464 passed, 9 skipped, 37 subtests passed (same counts as the GEOM-04 3.11 CI
+record below). New observations: UI AppTest extras were missing from this
+environment's pre-existing `venv/` until `pip install -e ".[dev,plot,ui]"`; generic
+dashboard `PAGES` in `tests/ui/test_streamlit_dashboard.py` still omits
+`Mekanizma Geçişi`; historical `docs/foldable_conventions.md` still names
+`pythrust/foldable/`.
+
 ## Reality summary
 
 The project is a Python scientific library plus one Streamlit engineering app,
@@ -241,7 +254,8 @@ setup or completed measurements are inferred from conversation.
 | L AGENTS structure / Done | [Root contract](../../AGENTS.md): orientation → map → commands → invariants → change protocol |
 | M Cursor rules; N skills; P handoff | [Handoff and Cursor readiness](handoff-protocol.md) |
 | O documentation changes | This drift ledger; architecture/decision/command/handoff docs; pointers from README and roadmaps |
+| Independent 20-section verification at a later HEAD | Dated [2026-09-18 audit](onboarding-audit-2026-09-18.md); [task → file map](navigation-map.md) |
 
-No repository dump, application refactor, database or vendor-specific automation
-was added to satisfy the documentation structure. Update only affected canonical
-pages as capabilities evolve; keep detailed numeric contracts in their existing files.
+Keep living memory on the short canonical pages. The dated audit records a
+re-verification; it is not a second always-loaded dump and does not replace
+feature contracts. Update only affected canonical pages as capabilities evolve.
