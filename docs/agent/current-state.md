@@ -57,13 +57,24 @@ not approved and not implemented. Contract:
 uses the accepted planar load identifiers with analytic paired loads. Model
 class `coupled_aero_hinge_screening_only`. Implementation id
 `cmm2_planar_projected_rate_independent_coupling_v1`. Whole-rotor shaft load
-is not multiplied by `N`; one-tip hinge load is multiplied once. The code is
-under independent review and is not accepted. It does not bind production
-FoldableBEM, does not change CMM-1, and does not implement a dashboard.
+is not multiplied by `N`; one-tip hinge load is multiplied once. The isolated
+slice was independently reviewed and merged in PR #76. ADR-007 is accepted for
+that screening dynamics contract only. Final reviewed head
+`da4dcb2589c1a58f1cb97ceb285968a66036e97f`. Merge commit
+`63c75346c09280ed4572784aca1a6f1014463744`. The accepted slice includes the
+reviewed centrifugal compatibility correction: CMM-2 uses the same `speed**2`
+expression as CMM-1. The reviewed 21,062-state zero-hinge characterization
+included square-equal and square-divergent shaft speeds and observed 0 ULP on
+the compatibility quantities. That observation is not a universal IEEE-754
+theorem. Production FoldableBEM source binding is absent. A source-bound
+sealed CMM-2 production report is absent. Independent CMM-2 numerical
+verification is not complete. The next CMM-2 implementation slice is that
+production binding. There is no dashboard. The slice does not change CMM-1.
 `physical_qualification` remains false. CMM-1 still reports
 `aerodynamic_hinge_torque_status = unavailable_omitted_by_cmm1`. PR-06C
 remains unresolved. No GEOM gate is promoted. There is no calibration and no
-experimental validation. Contract:
+experimental validation. This does not state that CMM-2 is complete or
+physically validated. Contract:
 [CMM-2 PR-A](../cmm2_coupled_transient_contract.md).
 
 ## Reality summary
@@ -91,7 +102,8 @@ ranges: [pyproject.toml](../../pyproject.toml); UI routing:
 | Current | GEOM-01–04: feasibility scan, explicit station import/edit, continuous retained-surface bounds, triangle refinement, finite/convex hardware and UI | [GEOM-02](../geom02_station_contract.md), [GEOM-03](../geom03_surface_clearance.md), [GEOM-04](../geom04_surface_hardware.md), `pyfoldable/application/surface_clearance.py`, `tests/geometry/` |
 | Partial | Default GEOM-01 surface gates stay unknown. Opt-in `geom01_negative_clearance_v1` may set either gate to False from accepted GEOM-04 witnesses; it cannot set True or select a candidate. Optional `geom01_positive_readiness_v1` only diagnoses proof prerequisites and does not assign either gate | `pyfoldable/application/geometry_clearance_policy.py`, `geometry_clearance_readiness.py`, `geometry_search.py`; [GEOM-01](../geom01_feasibility_plan.md) |
 | Partial | CFD/FEA/experiment UI inspects specific existing canonical contracts in session; not arbitrary ANSYS or raw experimental import, not evidence promotion | `pyfoldable/application/evidence_import.py::_CANONICAL_IDENTITIES`, `inspect_evidence_upload`; `tests/application/test_evidence_import.py` |
-| Partial | CMM-2 PR-A isolated paired-load dynamics are implemented and under review. Production FoldableBEM binding, sealed replay, and dashboard are absent. This is not accepted CMM-2 qualification | `pyfoldable/dynamics/cmm2_coupled_transient.py`, [CMM-2 PR-A](../cmm2_coupled_transient_contract.md) |
+| Current | Isolated CMM-2 paired-load screening dynamics are implemented, independently reviewed, and merged in PR #76. ADR-007 accepts that slice only | `pyfoldable/dynamics/cmm2_coupled_transient.py`, [CMM-2 PR-A](../cmm2_coupled_transient_contract.md) |
+| Partial | Production FoldableBEM source binding, sealed CMM-2 reporting, and independent CMM-2 numerical verification are still absent. This is not physical qualification | `pyfoldable/dynamics/cmm2_coupled_transient.py`, [CMM-2 PR-A](../cmm2_coupled_transient_contract.md) |
 | Partial | Full workspace coverage: Motor–Pervane, Doğrulama ve Kanıtlar, Raporlar are placeholder pages despite lower-layer APIs | `apps/pyfoldable_dashboard.py::main`, `_render_planned_page` |
 | Planned / evidence-dependent | PY-06D2 identifiable parameter fitting, E structural correlation, F consolidated comparison UI, physically supported Pareto recommendations | [PY-06 plan](../py06_calibration_uncertainty_plan.md), [Python roadmap](../python_research_execution_plan.md) |
 | Not delivered | Qualified project rotor/structure/deployment; general CAD solids, asynchronous folding, impact/bounce/latch and full BEM–motor–hinge feedback | [validation roadmap](../validation_and_development_roadmap.md), [PY-05 limits](../py05_completion.md), [GEOM-04 limits](../geom04_surface_hardware.md) |

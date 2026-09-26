@@ -27,6 +27,7 @@ from pyfoldable.dynamics.coupled_transient import (
 )
 from pyfoldable.dynamics.cmm2_coupled_transient import (
     AERO_LOAD_QUALIFICATION,
+    CMM2_LIMITATIONS,
     FOLD_LIMIT_RAD,
     HINGE_RATE_AERO_MODEL,
     IMPLEMENTATION_ID,
@@ -248,6 +249,17 @@ def test_model_identifiers_are_the_screening_contract() -> None:
     assert AERO_LOAD_QUALIFICATION == "screening_only_projected_rate_independent"
     assert HINGE_RATE_AERO_MODEL == "ignored_rate_independent_quasi_steady"
     assert PROJECTION_MODEL == "radial_cosine_v1"
+    assert CMM2_LIMITATIONS == (
+        "PR-A isolated paired-load dynamics were independently reviewed and merged in PR #76.",
+        "Production aerodynamic source binding is not implemented.",
+        "Aerodynamic loads are a rate-independent quasi-steady screen.",
+        "No physical hinge-rate validity range is claimed.",
+        "CMM-1 Phase-4 numerical verification does not transfer to this solver.",
+        "PR-06C physical aerodynamic gate is unresolved.",
+        "physical_qualification is false.",
+        "No GEOM clearance, calibration, or experimental validation is claimed.",
+        "CMM-2 is not an accepted physical model.",
+    )
     source = Path("pyfoldable/dynamics/cmm2_coupled_transient.py").read_text(encoding="utf-8")
     for forbidden in (
         "solve_foldable_bem_rotor",

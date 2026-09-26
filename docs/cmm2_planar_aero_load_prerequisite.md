@@ -1,8 +1,8 @@
 # CMM-2 planar aerodynamic load prerequisite
 
 This document is the screening contract for
-`planar_projected_material_load_v1`. It is not CMM-2. Transient coupling is
-not implemented. CMM-1 is unchanged, including
+`planar_projected_material_load_v1`. It is not the CMM-2 dynamics solver.
+This adapter does not implement transient coupling. CMM-1 is unchanged, including
 `aerodynamic_hinge_torque_status = unavailable_omitted_by_cmm1`.
 
 The adapter was independently reviewed and merged in PR #74. Final reviewed
@@ -297,7 +297,9 @@ service would seal the complete request.
 
 ## What remains unapproved
 
-CMM-2 transient coupling is not accepted implementation work. PY-06D2 remains
+Isolated CMM-2 PR-A screening dynamics were later reviewed and merged in
+PR #76. This load-map record does not accept production FoldableBEM binding,
+independent CMM-2 numerical verification, or physical validity. PY-06D2 remains
 blocked without suitable identifiable measurements. Robust optimization remains
 premature. Phase 5, Phase 6, and Phase 7 of the validation roadmap are not
 advanced.

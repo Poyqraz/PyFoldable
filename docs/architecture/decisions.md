@@ -193,20 +193,27 @@ Evidence: `pyfoldable/core/foldable_aero_load.py`,
 `tests/core/test_foldable_aero_load.py`,
 [planar aero-load prerequisite](../cmm2_planar_aero_load_prerequisite.md).
 
-## ADR-007 — Isolated CMM-2 paired-load dynamics are under review
+## ADR-007 — Isolated CMM-2 paired-load screening dynamics
 
-**Status: proposed — implementation under independent review. Not accepted.**
+**Status: accepted after independent review and merge in PR #76.**
 
-Decision under review: add a separate screening transient,
+Decision: add a separate screening transient,
 `coupled_aero_hinge_screening_only`, beside frozen CMM-1. PR-A integrates
 analytic signed loads `Q_phi_aero` (whole rotor, not multiplied by `N`) and
 `q_theta_aero` (one tip, multiplied by `N` once) on the existing mass matrix.
 The aerodynamic law is rate-independent and quasi-steady.
 `physical_qualification` stays false. Production FoldableBEM binding, sealed
-requests, and the dashboard are outside this slice.
+requests, independent CMM-2 numerical verification, and the dashboard are
+outside this accepted slice.
 
-This record does not accept CMM-2, does not change ADR-005 or ADR-006, and
-does not promote GEOM, PR-06C, calibration, or experiment.
+Acceptance covers the isolated PR-A screening dynamics software contract only.
+It does not accept production FoldableBEM binding, a source-bound CMM-2
+report or replay, independent CMM-2 numerical verification, physical CMM-2
+validity, PR-06C, GEOM qualification, calibration, or experimental validation.
+This record does not change ADR-005 or ADR-006.
+
+Final reviewed head `da4dcb2589c1a58f1cb97ceb285968a66036e97f`. Merge commit
+`63c75346c09280ed4572784aca1a6f1014463744`.
 
 Evidence: `pyfoldable/dynamics/cmm2_coupled_transient.py`,
 `tests/dynamics/test_cmm2_coupled_transient.py`,
