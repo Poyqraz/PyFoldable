@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import dataclasses
 import math
+import struct
+from decimal import Decimal, localcontext
 from pathlib import Path
 
 import pytest
@@ -129,12 +131,52 @@ def _request(system=None, **overrides) -> Cmm2TransientRequest:
     return Cmm2TransientRequest(**values)
 
 
-def _within_ulps(actual: float, expected: float, ulps: int = 64) -> bool:
+# The helper rejects a 64-ULP allowance. Callers must pass a fixture-specific
+# bound. That bound is not a claim that every CMM-2 evaluation lies within it.
+_MAX_STATED_ULPS = 16
+
+
+def _ordered_binary64(value: float) -> int:
+    """Map a finite binary64 value onto an integer that follows numeric order.
+
+    Negative encodings are reflected so increasing integers track increasing
+    values, including across zero. Positive and negative zero remain distinct
+    here; ``_ulp_distance`` treats them as equal before using this map.
+    """
+    bits = struct.unpack(">Q", struct.pack(">d", value))[0]
+    if bits & (1 << 63):
+        return (~bits) & ((1 << 64) - 1)
+    return bits | (1 << 63)
+
+
+def _ulp_distance(actual: float, expected: float) -> int:
+    """Exact count of binary64 steps between two finite values."""
+    if (
+        isinstance(actual, bool)
+        or isinstance(expected, bool)
+        or not isinstance(actual, float)
+        or not isinstance(expected, float)
+    ):
+        raise AssertionError("ULP distance requires binary64 floats.")
+    if not math.isfinite(actual) or not math.isfinite(expected):
+        raise AssertionError("ULP distance rejects nonfinite values.")
     if actual == expected:
-        return True
-    gap = abs(actual - expected)
-    allowance = ulps * max(math.ulp(actual), math.ulp(expected))
-    return gap <= allowance
+        return 0
+    return abs(_ordered_binary64(actual) - _ordered_binary64(expected))
+
+
+def _within_ulps(actual: float, expected: float, *, ulps: int) -> bool:
+    if isinstance(ulps, bool) or not isinstance(ulps, int) or not 0 <= ulps <= _MAX_STATED_ULPS:
+        raise AssertionError(f"ulps must be an integer from 0 through {_MAX_STATED_ULPS}.")
+    return _ulp_distance(actual, expected) <= ulps
+
+
+def _shift_ulps(value: float, steps: int) -> float:
+    direction = math.inf if steps > 0 else -math.inf
+    shifted = value
+    for _step in range(abs(steps)):
+        shifted = math.nextafter(shifted, direction)
+    return shifted
 
 
 def _mechanical_one_tip(system, theta, theta_dot, omega, hinge_nm):
@@ -157,6 +199,46 @@ def _mechanical_one_tip(system, theta, theta_dot, omega, hinge_nm):
         * (2.0 * omega * theta_dot + theta_dot**2)
     )
     return mass, spring, damping, friction_nm, centrifugal, gyro
+
+
+def test_ulp_distance_orders_finite_binary64_values() -> None:
+    assert _ulp_distance(0.0, -0.0) == 0
+    assert _ulp_distance(1.0, math.nextafter(1.0, math.inf)) == 1
+    assert _ulp_distance(1.0, math.nextafter(1.0, -math.inf)) == 1
+    assert _ulp_distance(-1.0, math.nextafter(-1.0, -math.inf)) == 1
+    assert _ulp_distance(-1.0, math.nextafter(-1.0, math.inf)) == 1
+    below = math.nextafter(2.0, 0.0)
+    above = math.nextafter(2.0, 4.0)
+    assert _ulp_distance(below, above) == 2
+    with pytest.raises(AssertionError):
+        _ulp_distance(float("nan"), 1.0)
+    with pytest.raises(AssertionError):
+        _ulp_distance(1.0, float("inf"))
+    with pytest.raises(AssertionError):
+        _within_ulps(1.0, 1.0, ulps=64)
+    with pytest.raises(AssertionError):
+        _within_ulps(1.0, 1.0, ulps=True)  # type: ignore[arg-type]
+
+
+def test_acceptance_rejects_a_63_ulp_perturbation() -> None:
+    parameters = _parameters()
+    system = _system(parameters, blade_count=2)
+    reference = coupled_accelerations(
+        system,
+        theta=-0.2,
+        theta_dot=0.1,
+        omega=40.0,
+        motor_torque_nm=0.01,
+        aero_shaft_torque_nm=0.004,
+        hinge_torque_nm=0.0,
+    )
+    expected = reference.omega_dot_rad_s2
+    shifted = _shift_ulps(expected, 63)
+    assert _ulp_distance(shifted, expected) == 63
+    assert not _within_ulps(shifted, expected, ulps=1)
+    assert not _within_ulps(shifted, expected, ulps=3)
+    assert _within_ulps(_shift_ulps(expected, 1), expected, ulps=1)
+    assert not _within_ulps(_shift_ulps(expected, -2), expected, ulps=1)
 
 
 def test_model_identifiers_are_the_screening_contract() -> None:
@@ -207,6 +289,20 @@ def test_hand_derived_acceleration_matches_the_paired_load_equations() -> None:
     determinant = mass.m00 * mass.m11 - mass.m01 * mass.m01
     omega_dot = (rhs_shaft * mass.m11 - mass.m01 * rhs_hinge) / determinant
     theta_ddot = (mass.m00 * rhs_hinge - mass.m01 * rhs_shaft) / determinant
+    with localcontext() as ctx:
+        ctx.prec = 80
+        precise_shaft = Decimal.from_float(rhs_shaft)
+        precise_hinge = Decimal.from_float(rhs_hinge)
+        precise_m00 = Decimal.from_float(mass.m00)
+        precise_m01 = Decimal.from_float(mass.m01)
+        precise_m11 = Decimal.from_float(mass.m11)
+        precise_det = precise_m00 * precise_m11 - precise_m01 * precise_m01
+        precise_omega_dot = float(
+            (precise_shaft * precise_m11 - precise_m01 * precise_hinge) / precise_det
+        )
+        precise_theta_ddot = float(
+            (precise_m00 * precise_hinge - precise_m01 * precise_shaft) / precise_det
+        )
     assert solved.rhs_shaft_nm == rhs_shaft
     assert solved.rhs_hinge_nm == rhs_hinge
     assert solved.aero_shaft_generalized_load_nm == shaft
@@ -214,8 +310,13 @@ def test_hand_derived_acceleration_matches_the_paired_load_equations() -> None:
     assert solved.aero_collective_hinge_generalized_load_nm == (
         system.blade_count * hinge_aero
     )
-    assert _within_ulps(solved.omega_dot_rad_s2, omega_dot)
-    assert _within_ulps(solved.theta_ddot_rad_s2, theta_ddot)
+    # Schur evaluation versus this fixture's Cramer's rule: 2 and 1 ULP.
+    # The same RHS against an 80-digit solve, then rounded back to binary64:
+    # 1 and 0 ULP. The gates sit one ULP above those observed gaps.
+    assert _ulp_distance(solved.omega_dot_rad_s2, precise_omega_dot) <= 1
+    assert _ulp_distance(solved.theta_ddot_rad_s2, precise_theta_ddot) <= 1
+    assert _within_ulps(solved.omega_dot_rad_s2, omega_dot, ulps=3)
+    assert _within_ulps(solved.theta_ddot_rad_s2, theta_ddot, ulps=2)
     assert solved.mass_schur > 0.0
     assert math.isfinite(solved.mass_residual)
 
@@ -234,7 +335,16 @@ def test_zero_hinge_load_reduces_to_cmm1_accelerations() -> None:
         (-0.2, -0.5, 80.0, 4, -0.03, 0.01, -0.002),
         (0.3, 1.0, 50.0, 3, 0.02, -0.004, 0.008),
     )
+    # These four speeds make ``omega * omega == omega ** 2``, so CMM-1's
+    # centrifugal square and CMM-2's product are the same binary64 value.
+    # Shaft load uses ``Qm - Qa`` versus ``Qm + (-Qa)``, which is the IEEE
+    # subtraction, and the gyro term is the same product. A separate ordinary
+    # grid of 103680 states on explicit speeds also stayed at 0 ULP. Speeds
+    # where the square and the product differ by 1 ULP can move the Schur
+    # result by more than that; those speeds are outside this fixture class
+    # and are not covered by a 1 ULP gate.
     for theta, theta_dot, omega, count, motor, hinge, resisting in states:
+        assert omega * omega == omega**2
         system = _system(parameters, blade_count=count)
         cmm1 = coupled_accelerations(
             system, theta, theta_dot, omega, motor, resisting, hinge
@@ -243,10 +353,10 @@ def test_zero_hinge_load_reduces_to_cmm1_accelerations() -> None:
         cmm2 = cmm2_coupled_accelerations(
             system, theta, theta_dot, omega, motor, aero, hinge
         )
-        assert _within_ulps(cmm2.omega_dot_rad_s2, cmm1.omega_dot_rad_s2)
-        assert _within_ulps(cmm2.theta_ddot_rad_s2, cmm1.theta_ddot_rad_s2)
-        assert _within_ulps(cmm2.rhs_shaft_nm, cmm1.rhs_shaft_nm)
-        assert _within_ulps(cmm2.rhs_hinge_nm, cmm1.rhs_hinge_nm)
+        assert _within_ulps(cmm2.omega_dot_rad_s2, cmm1.omega_dot_rad_s2, ulps=1)
+        assert _within_ulps(cmm2.theta_ddot_rad_s2, cmm1.theta_ddot_rad_s2, ulps=1)
+        assert _within_ulps(cmm2.rhs_shaft_nm, cmm1.rhs_shaft_nm, ulps=1)
+        assert _within_ulps(cmm2.rhs_hinge_nm, cmm1.rhs_hinge_nm, ulps=1)
 
 
 def test_zero_aerodynamic_field_keeps_coupled_motor_mechanism_motion() -> None:
@@ -382,6 +492,8 @@ def test_aerodynamic_power_changes_with_hinge_rate_while_loads_stay_fixed() -> N
     fast_power = fast.generalized_power_w(omega)
     independent_slow = shaft * omega + system.blade_count * hinge_aero * 0.1
     independent_fast = shaft * omega + system.blade_count * hinge_aero * 0.4
+    # Same product association as generalized_power_w. Measured distance is 0.
+    # Four ULP remains the explicit gate and still rejects a 63-ULP shift.
     assert _within_ulps(slow_power, independent_slow, ulps=4)
     assert _within_ulps(fast_power, independent_fast, ulps=4)
     assert fast_power != slow_power
@@ -424,7 +536,11 @@ def test_instantaneous_energy_identity_omits_spring_and_gyroscopic_power() -> No
     )
     spring_power = system.blade_count * spring * theta_dot
     assert spring_power != 0.0
-    assert _within_ulps(cmm2_instantaneous_power_w(solved, theta_dot, omega), expected)
+    # Same six-term left-associated sum. ``(N * q) * rate`` matches
+    # ``N * q * rate``. The fixture distance is 0 ULP; one ULP is the gate.
+    assert _within_ulps(
+        cmm2_instantaneous_power_w(solved, theta_dot, omega), expected, ulps=1
+    )
     assert cmm2_instantaneous_power_w(solved, theta_dot, omega) != expected + spring_power
     result = solve_cmm2_transient(
         _request(
@@ -446,6 +562,7 @@ def test_instantaneous_energy_identity_omits_spring_and_gyroscopic_power() -> No
             + sample.damping_power_w
             + sample.dry_friction_power_w
         )
+        # Same five stored addends, same order. Eight ULP is the explicit gate.
         assert _within_ulps(sample.power_identity_w, reconstructed, ulps=8)
         assert math.isfinite(sample.energy_residual_j)
         assert math.isfinite(sample.mechanical_energy_j)
