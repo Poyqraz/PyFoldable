@@ -205,7 +205,7 @@ sequence, until the production model and the verification chain are reviewed.
 
 Code: `pyfoldable/dynamics/cmm2_coupled_transient.py`.
 Tests: `tests/dynamics/test_cmm2_coupled_transient.py`.
-Prerequisite load map, already accepted and unchanged here:
+Prerequisite load map, already accepted. Its mapping mathematics are unchanged:
 [planar aero-load prerequisite](cmm2_planar_aero_load_prerequisite.md).
 CMM-1 boundary: [CMM-1](cmm1_partial_coupled_transient.md) and ADR-005.
 Decision record for this slice: ADR-007, accepted for the isolated PR-A
