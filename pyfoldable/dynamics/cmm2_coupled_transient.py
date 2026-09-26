@@ -462,7 +462,7 @@ def cmm2_coupled_accelerations(
         aero_power = q_phi * speed + collective_hinge_aero * rate
         if not math.isfinite(collective_hinge_aero) or not math.isfinite(aero_power):
             raise Cmm2TransientFailure("CMM-2 aerodynamic power is not finite.")
-        centrifugal = -mass.c_kg_m2 * (speed * speed) * math.sin(angle)
+        centrifugal = -mass.c_kg_m2 * speed**2 * math.sin(angle)
         shaft_gyro = (
             count
             * mass.c_kg_m2

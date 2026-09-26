@@ -321,6 +321,22 @@ def test_hand_derived_acceleration_matches_the_paired_load_equations() -> None:
     assert math.isfinite(solved.mass_residual)
 
 
+# Ordinary screening speeds whose product and power spellings match.
+_SQUARE_EQUAL_SPEEDS = (OMEGA_MIN, 25.0, 50.0, 80.0, 250.0, 2000.0)
+# Finite screening speeds where ``omega * omega`` and ``omega ** 2`` differ by
+# one binary64 step under glibc pow. They are inside the model domain. The
+# reduction contract is not limited to the equal-square class.
+_SQUARE_DIVERGENT_SPEEDS = (
+    33.90732844909357,
+    225.71509830861453,
+    958.4853309341062,
+    2445.735500288802,
+    3045.810593931427,
+    3093.6126751256925,
+    4156.009016068761,
+)
+
+
 def test_zero_hinge_load_reduces_to_cmm1_accelerations() -> None:
     friction = DryFriction("regularized_coulomb", 0.001, 0.04, source="cmm2-reduce")
     parameters = _parameters(
@@ -329,23 +345,44 @@ def test_zero_hinge_load_reduces_to_cmm1_accelerations() -> None:
         viscous_damping_nm_s_rad=0.001,
         dry_friction=friction,
     )
-    states = (
+    # CMM-2's centrifugal term uses the same ``speed**2`` expression as CMM-1.
+    # With zero hinge aero load and ``Q_phi = -Qa``, the reduction applies on
+    # the ordinary valid screening domain, including speeds whose two square
+    # spellings differ. The 1 ULP gate is the compatibility bound for this
+    # characterized set. It is not a bitwise-identity theorem.
+    for speed in _SQUARE_EQUAL_SPEEDS:
+        assert speed * speed == speed**2
+    for speed in _SQUARE_DIVERGENT_SPEEDS:
+        assert speed >= OMEGA_MIN and math.isfinite(speed**2)
+        assert speed * speed != speed**2
+    near_positive = math.nextafter(FOLD_LIMIT_RAD, 0.0)
+    near_negative = math.nextafter(-FOLD_LIMIT_RAD, 0.0)
+    legacy = (
         (-0.4, 0.2, 25.0, 1, 0.01, 0.002, 0.004),
         (0.0, 0.0, OMEGA_MIN, 2, 0.0, 0.0, 0.0),
         (-0.2, -0.5, 80.0, 4, -0.03, 0.01, -0.002),
         (0.3, 1.0, 50.0, 3, 0.02, -0.004, 0.008),
     )
-    # These four speeds make ``omega * omega == omega ** 2``, so CMM-1's
-    # centrifugal square and CMM-2's product are the same binary64 value.
-    # Shaft load uses ``Qm - Qa`` versus ``Qm + (-Qa)``, which is the IEEE
-    # subtraction, and the gyro term is the same product. A separate ordinary
-    # grid of 103680 states on explicit speeds also stayed at 0 ULP. Speeds
-    # where the square and the product differ by 1 ULP can move the Schur
-    # result by more than that; those speeds are outside this fixture class
-    # and are not covered by a 1 ULP gate.
+    states = set(legacy)
+    for count in (1, 2, 3, 4):
+        for theta in (0.0, 0.3, -0.4, near_positive, near_negative):
+            for theta_dot in (0.0, 1.0, -0.5):
+                for omega in _SQUARE_EQUAL_SPEEDS + _SQUARE_DIVERGENT_SPEEDS:
+                    for motor in (0.0, 0.02, -0.03):
+                        for hinge in (0.0, 0.01, -0.004):
+                            for resisting in (0.0, 0.008, -0.002):
+                                states.add(
+                                    (theta, theta_dot, omega, count, motor, hinge, resisting)
+                                )
+    systems = {count: _system(parameters, blade_count=count) for count in (1, 2, 3, 4)}
+    saw_equal = False
+    saw_divergent = False
     for theta, theta_dot, omega, count, motor, hinge, resisting in states:
-        assert omega * omega == omega**2
-        system = _system(parameters, blade_count=count)
+        if omega * omega == omega**2:
+            saw_equal = True
+        else:
+            saw_divergent = True
+        system = systems[count]
         cmm1 = coupled_accelerations(
             system, theta, theta_dot, omega, motor, resisting, hinge
         )
@@ -353,10 +390,17 @@ def test_zero_hinge_load_reduces_to_cmm1_accelerations() -> None:
         cmm2 = cmm2_coupled_accelerations(
             system, theta, theta_dot, omega, motor, aero, hinge
         )
-        assert _within_ulps(cmm2.omega_dot_rad_s2, cmm1.omega_dot_rad_s2, ulps=1)
-        assert _within_ulps(cmm2.theta_ddot_rad_s2, cmm1.theta_ddot_rad_s2, ulps=1)
-        assert _within_ulps(cmm2.rhs_shaft_nm, cmm1.rhs_shaft_nm, ulps=1)
-        assert _within_ulps(cmm2.rhs_hinge_nm, cmm1.rhs_hinge_nm, ulps=1)
+        assert cmm2.spring_nm == cmm1.terms.spring_nm
+        assert cmm2.damping_nm == cmm1.terms.damping_nm
+        assert cmm2.friction_nm == cmm1.terms.friction_nm
+        assert cmm2.centrifugal_torque_nm == cmm1.terms.centrifugal_nm
+        state = (theta, theta_dot, omega, count, motor, hinge, resisting)
+        assert _within_ulps(cmm2.rhs_shaft_nm, cmm1.rhs_shaft_nm, ulps=1), state
+        assert _within_ulps(cmm2.rhs_hinge_nm, cmm1.rhs_hinge_nm, ulps=1), state
+        assert _within_ulps(cmm2.omega_dot_rad_s2, cmm1.omega_dot_rad_s2, ulps=1), state
+        assert _within_ulps(cmm2.theta_ddot_rad_s2, cmm1.theta_ddot_rad_s2, ulps=1), state
+    assert saw_equal
+    assert saw_divergent
 
 
 def test_zero_aerodynamic_field_keeps_coupled_motor_mechanism_motion() -> None:
