@@ -41,6 +41,7 @@ from .hinge_moment_geometry import (
     initial_theta_deg,
 )
 from .hinge_moments import HingeMomentComponents, compute_hinge_moments
+from ..aero_closing import closing_moment_nm
 from ..kinematics import classify_physics_hinge_state
 from .integrator import euler_step
 from .motor import algebraic_motor_current, applied_voltage_v, motor_torque_nm
@@ -258,6 +259,7 @@ __all__ = [
     "build_throttle_schedule",
     "centrifugal_moment_nm_for_model",
     "classify_physics_hinge_state",
+    "closing_moment_nm",
     "compute_hinge_moments",
     "compute_fixed_calibration_factors",
     "compute_calibrated_thrust_split_diagnostics",

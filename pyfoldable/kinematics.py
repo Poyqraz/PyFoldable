@@ -4,6 +4,8 @@ Desteklenen modlar (``KinematicsConfig.kinematics_mode``):
 
 - ``rpm_only``: doğrusal doygunluk (RPM eşikleri, geometriden bağımsız)
 - ``moment_based``: merkezkaç açılma momenti ile mafsal yay/sürtünme dengesi
+  (opsiyonel aero kapanma momenti dahil; bkz. ``aero_closing``)
+- ``nonlinear_saturation``: eşik civarı keskin/eksponansiyel açılma (kapalı-form)
 
 Moment V1 modeli::
 
@@ -23,6 +25,8 @@ from __future__ import annotations
 import math
 from typing import Protocol
 
+from .aero_closing import closing_moment_nm
+from .geometry_helpers import effective_tip_cg_from_hinge_m
 from .models import FoldableGeometry, FoldablePropellerConfig, HingeConfig, KinematicsConfig
 
 OPENING_MOMENT_V1_MODEL_NOTE = (
@@ -46,20 +50,6 @@ class HingeKinematicsModel(Protocol):
 
 def _clamp(value: float, lower: float, upper: float) -> float:
     return max(lower, min(upper, value))
-
-
-def effective_tip_cg_from_hinge_m(geometry: FoldableGeometry) -> float:
-    """Uç segment ağırlık merkezinin mafsaldan uzaklığı (m)."""
-    if geometry.tip_segment_cg_from_hinge_m > 0.0:
-        return geometry.tip_segment_cg_from_hinge_m
-    return geometry.tip_segment_length_m / 2.0
-
-
-def effective_hinge_radius_m(hinge: HingeConfig, geometry: FoldableGeometry) -> float:
-    """Mafsalın dönüş ekseninden radyal mesafesi (m)."""
-    if hinge.hinge_radius_m > 0.0:
-        return hinge.hinge_radius_m
-    return geometry.hinge_position_m
 
 
 def opening_moment_nm(
@@ -191,11 +181,51 @@ def theta_deg_from_hinge(
     return _clamp(theta_deg, hinge.theta_min_deg, hinge.theta_max_deg)
 
 
+def theta_deg_nonlinear_saturation(
+    rpm: float,
+    hinge: HingeConfig,
+    kinematics: KinematicsConfig,
+) -> float:
+    """RPM'e bağlı açılma açısını eksponansiyel-yaklaşım eğrisiyle hesapla (derece).
+
+    Eşik civarı doğrusaldan daha keskin (front-loaded) açılmayı modelleyen kapalı-form:
+
+        x = (rpm - rpm_threshold) / (rpm_full_open - rpm_threshold)   # [0, 1]
+        k = curve_sharpness
+        f = x                                  (k ~ 0  -> doğrusala iner)
+        f = (1 - exp(-k*x)) / (1 - exp(-k))    (k != 0)
+        theta = theta_min + f * (theta_max - theta_min)
+
+    ``k = 0`` iken ``theta_deg_from_hinge`` (k_open=1) ile aynı doğrusal doygunluğu
+    verir; ``k > 0`` eşik civarında daha hızlı açılma sağlar.
+    """
+    if rpm <= hinge.rpm_threshold:
+        return hinge.theta_min_deg
+
+    if rpm >= hinge.rpm_full_open:
+        return hinge.theta_max_deg
+
+    span = hinge.rpm_full_open - hinge.rpm_threshold
+    if span <= 0.0:
+        return hinge.theta_max_deg
+
+    x = _clamp((rpm - hinge.rpm_threshold) / span, 0.0, 1.0)
+    k = kinematics.curve_sharpness
+    if abs(k) < 1e-9:
+        fraction = x
+    else:
+        fraction = (1.0 - math.exp(-k * x)) / (1.0 - math.exp(-k))
+    fraction = _clamp(fraction, 0.0, 1.0)
+    theta_deg = hinge.theta_min_deg + fraction * (hinge.theta_max_deg - hinge.theta_min_deg)
+    return _clamp(theta_deg, hinge.theta_min_deg, hinge.theta_max_deg)
+
+
 def theta_deg_moment_based(rpm: float, config: FoldablePropellerConfig) -> float:
     """Geometriye bağlı moment dengesi ile açılma açısı (derece).
 
-  Denge: ``M_open(rpm, geometry) = M_resist(theta)``; çözüm ``[theta_min, theta_max]``
-  aralığına kısıtlanır.
+  Denge: ``M_open(rpm, geometry) - M_close(V_axial) = M_resist(theta)``; çözüm
+  ``[theta_min, theta_max]`` aralığına kısıtlanır. ``M_close`` opsiyonel aero
+  kapanma momentidir (``aero_closing`` kapalıyken 0; bkz. ``aero_closing`` modülü).
     """
     hinge = config.hinge
     geometry = config.geometry
@@ -204,21 +234,28 @@ def theta_deg_moment_based(rpm: float, config: FoldablePropellerConfig) -> float
         raise ValueError("hinge_stiffness_nm_per_rad must be positive for moment_based mode.")
 
     m_open = opening_moment_nm(rpm, geometry, hinge)
-    if m_open <= hinge.hinge_friction_nm:
+    m_close = closing_moment_nm(rpm, hinge.theta_max_deg, config)
+    m_drive = m_open - m_close
+    if m_drive <= hinge.hinge_friction_nm:
         return hinge.theta_min_deg
 
     theta_min_rad = math.radians(hinge.theta_min_deg)
     theta_max_rad = math.radians(hinge.theta_max_deg)
-    theta_rad = theta_min_rad + (m_open - hinge.hinge_friction_nm) / hinge.hinge_stiffness_nm_per_rad
+    theta_rad = theta_min_rad + (m_drive - hinge.hinge_friction_nm) / hinge.hinge_stiffness_nm_per_rad
     theta_rad = _clamp(theta_rad, theta_min_rad, theta_max_rad)
     return math.degrees(theta_rad)
 
 
 def theta_deg_from_rpm(rpm: float, config: FoldablePropellerConfig) -> float:
-    """Konfigürasyondan açılma açısını hesapla."""
-    if config.kinematics.kinematics_mode == "moment_based":
+    """Konfigürasyondan açılma açısını hesapla (mod dağıtımı exhaustive)."""
+    mode = config.kinematics.kinematics_mode
+    if mode == "rpm_only":
+        return theta_deg_from_hinge(rpm, config.hinge, config.kinematics)
+    if mode == "moment_based":
         return theta_deg_moment_based(rpm, config)
-    return theta_deg_from_hinge(rpm, config.hinge, config.kinematics)
+    if mode == "nonlinear_saturation":
+        return theta_deg_nonlinear_saturation(rpm, config.hinge, config.kinematics)
+    raise ValueError(f"Unknown kinematics_mode: {mode!r}")
 
 
 def theta_rad_from_rpm(rpm: float, config: FoldablePropellerConfig) -> float:
