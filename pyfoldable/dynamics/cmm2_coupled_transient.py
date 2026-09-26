@@ -2,8 +2,8 @@
 
 PR-A solves the signed shaft and one-tip hinge generalized loads on the
 existing CMM-1 mass matrix. It does not bind a production aerodynamic source,
-change CMM-1, or claim physical qualification. The implementation is under
-review.
+change CMM-1, or claim physical qualification. The isolated PR-A slice was
+independently reviewed and merged in PR #76.
 """
 
 from __future__ import annotations
@@ -45,7 +45,7 @@ PROJECTION_MODEL = "radial_cosine_v1"
 AERO_LOAD_STATUS = "signed_paired_generalized_loads"
 
 CMM2_LIMITATIONS = (
-    "PR-A is isolated paired-load dynamics under independent review.",
+    "PR-A isolated paired-load dynamics were independently reviewed and merged in PR #76.",
     "Production aerodynamic source binding is not implemented.",
     "Aerodynamic loads are a rate-independent quasi-steady screen.",
     "No physical hinge-rate validity range is claimed.",

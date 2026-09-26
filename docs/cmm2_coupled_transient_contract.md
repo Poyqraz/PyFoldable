@@ -1,8 +1,9 @@
 # CMM-2 PR-A — isolated paired-load screening dynamics
 
 This document is the software contract for the isolated CMM-2 dynamics path.
-It is under independent review. It is not an accepted physical model, not
-physical qualification, and not the production aerodynamic source binding.
+The isolated PR-A software dynamics contract was independently reviewed and
+merged in PR #76. It is not an accepted physical model, not physical
+qualification, and not the production aerodynamic source binding.
 
 `model_class` is `coupled_aero_hinge_screening_only`.
 `implementation_id` is `cmm2_planar_projected_rate_independent_coupling_v1`.
@@ -88,7 +89,13 @@ factor `N` multiplies it once. The already-collective quantity
 
 At `theta = 0` a nonzero `q_theta_aero` remains in the hinge row. It is not
 forced to zero. With `q_theta_aero = 0` and `Q_phi_aero = -Qa`, the right-hand
-side matches CMM-1. With both aerodynamic loads zero, the motor and mechanism
+side matches CMM-1. The accepted implementation evaluates the one-tip
+centrifugal term with the same `speed**2` expression as CMM-1. The reviewed
+characterization of 21,062 ordinary screening states included shaft speeds
+where `omega * omega` equals `omega ** 2` and speeds where those spellings
+differ by one binary64 step. The observed distance on the zero-hinge
+compatibility quantities was 0 ULP. That observation is not a universal
+IEEE-754 theorem. With both aerodynamic loads zero, the motor and mechanism
 terms remain and `omega` is still dynamic; that is not a PY-05 prescribed-drive
 identity.
 
@@ -140,14 +147,67 @@ No result assigns clearance, calibration, PR-06C, or design readiness.
 
 ## Later slices
 
-- PR-A, this contract: isolated dynamics and analytic evaluators.
-- PR-B: one production FoldableBEM solve and one planar-load map per accepted
-  right-hand side, plus PR-07 motor binding.
-- PR-C: sealed request, report hash, and any dashboard surface.
+PR-A, this contract: isolated paired-load dynamics and analytic evaluators.
+Complete, independently reviewed, and merged in PR #76.
+
+PR-B is the next implementation slice: source-bound production integration.
+It is not implemented here. It must include:
+
+- PR-07 motor binding.
+- Exactly one `solve_foldable_bem_rotor` call per aerodynamic evaluation.
+- Exactly one `map_foldable_bem_aero_loads` call on that same returned
+  `FoldableBEMRotorResult`.
+- Construction of `Cmm2AeroEvaluation` from the mapped result.
+- Complete source-bound request sealing.
+- Request and input SHA identity.
+- A standalone production report and its report SHA.
+- Load-map, BEM, and provenance reporting.
+- Fail-closed source identity checks.
+
+The intended binding evaluates
+
+```text
+result = solve_foldable_bem_rotor(...)
+mapped = map_foldable_bem_aero_loads(result, hinge_rate_rad_s=theta_dot)
+```
+
+and then constructs `Cmm2AeroEvaluation` with
+
+```text
+whole_rotor_shaft_generalized_load_nm =
+    mapped.whole_rotor_aerodynamic_shaft_generalized_load_nm
+one_tip_hinge_generalized_load_nm =
+    mapped.one_tip_hinge_generalized_torque_nm
+thrust_n = mapped.source_whole_rotor_projected_thrust_n
+```
+
+Both generalized loads come from that same mapped result. Raw
+`result.rotor_result.torque_nm` is not the CMM-2 shaft generalized load.
+Whole-rotor `Q_phi` is not multiplied by `N`.
+`synchronous_n_times_one_tip_hinge_generalized_torque_nm` is not fed into the
+one-tip CMM-2 field.
+
+PR-B will reuse the existing source-bound ingredients: `DesignDraftArtifact`,
+`TipMassDistribution`, `BaseRotatingAssemblyInertia`, `CoupledEnvironment`,
+`MotorSpec`, `BatterySpec`, `SystemSpec`, `HingeActuationHistory`,
+`BEMRotorSettings`, `PolarFamily` / `SpanwisePolarSchedule`, `bounds = "error"`,
+and `CoupledSolverControls`. This reconciliation does not add
+`cmm2_coupled_transient_service.py` or any application implementation.
+
+A future sealed request hash identifies content. It does not authenticate the
+source, prove numerical correctness, or establish physical validation. The
+seal must include the CMM-2 load-mapping contract identity and version. The
+seal is not implemented here.
+
+PR-C is independent CMM-2 numerical verification. It is not implemented.
+PR-C is not dashboard work. The dashboard stays later, and outside this
+sequence, until the production model and the verification chain are reviewed.
 
 Code: `pyfoldable/dynamics/cmm2_coupled_transient.py`.
 Tests: `tests/dynamics/test_cmm2_coupled_transient.py`.
 Prerequisite load map, already accepted and unchanged here:
 [planar aero-load prerequisite](cmm2_planar_aero_load_prerequisite.md).
 CMM-1 boundary: [CMM-1](cmm1_partial_coupled_transient.md) and ADR-005.
-Decision record for this slice: ADR-007, proposed and not accepted.
+Decision record for this slice: ADR-007, accepted for the isolated PR-A
+screening dynamics software contract after independent review and merge in
+PR #76.
