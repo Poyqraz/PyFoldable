@@ -53,6 +53,19 @@ promoted. There is no calibration and no experimental validation. CMM-2 is
 not approved and not implemented. Contract:
 [planar aero-load prerequisite](../cmm2_planar_aero_load_prerequisite.md).
 
+**2026-09-26 CMM-2 PR-A isolated dynamics.** A separate screening transient
+uses the accepted planar load identifiers with analytic paired loads. Model
+class `coupled_aero_hinge_screening_only`. Implementation id
+`cmm2_planar_projected_rate_independent_coupling_v1`. Whole-rotor shaft load
+is not multiplied by `N`; one-tip hinge load is multiplied once. The code is
+under independent review and is not accepted. It does not bind production
+FoldableBEM, does not change CMM-1, and does not implement a dashboard.
+`physical_qualification` remains false. CMM-1 still reports
+`aerodynamic_hinge_torque_status = unavailable_omitted_by_cmm1`. PR-06C
+remains unresolved. No GEOM gate is promoted. There is no calibration and no
+experimental validation. Contract:
+[CMM-2 PR-A](../cmm2_coupled_transient_contract.md).
+
 ## Reality summary
 
 The project is a Python scientific library plus one Streamlit engineering app,
@@ -78,6 +91,7 @@ ranges: [pyproject.toml](../../pyproject.toml); UI routing:
 | Current | GEOM-01–04: feasibility scan, explicit station import/edit, continuous retained-surface bounds, triangle refinement, finite/convex hardware and UI | [GEOM-02](../geom02_station_contract.md), [GEOM-03](../geom03_surface_clearance.md), [GEOM-04](../geom04_surface_hardware.md), `pyfoldable/application/surface_clearance.py`, `tests/geometry/` |
 | Partial | Default GEOM-01 surface gates stay unknown. Opt-in `geom01_negative_clearance_v1` may set either gate to False from accepted GEOM-04 witnesses; it cannot set True or select a candidate. Optional `geom01_positive_readiness_v1` only diagnoses proof prerequisites and does not assign either gate | `pyfoldable/application/geometry_clearance_policy.py`, `geometry_clearance_readiness.py`, `geometry_search.py`; [GEOM-01](../geom01_feasibility_plan.md) |
 | Partial | CFD/FEA/experiment UI inspects specific existing canonical contracts in session; not arbitrary ANSYS or raw experimental import, not evidence promotion | `pyfoldable/application/evidence_import.py::_CANONICAL_IDENTITIES`, `inspect_evidence_upload`; `tests/application/test_evidence_import.py` |
+| Partial | CMM-2 PR-A isolated paired-load dynamics are implemented and under review. Production FoldableBEM binding, sealed replay, and dashboard are absent. This is not accepted CMM-2 qualification | `pyfoldable/dynamics/cmm2_coupled_transient.py`, [CMM-2 PR-A](../cmm2_coupled_transient_contract.md) |
 | Partial | Full workspace coverage: Motor–Pervane, Doğrulama ve Kanıtlar, Raporlar are placeholder pages despite lower-layer APIs | `apps/pyfoldable_dashboard.py::main`, `_render_planned_page` |
 | Planned / evidence-dependent | PY-06D2 identifiable parameter fitting, E structural correlation, F consolidated comparison UI, physically supported Pareto recommendations | [PY-06 plan](../py06_calibration_uncertainty_plan.md), [Python roadmap](../python_research_execution_plan.md) |
 | Not delivered | Qualified project rotor/structure/deployment; general CAD solids, asynchronous folding, impact/bounce/latch and full BEM–motor–hinge feedback | [validation roadmap](../validation_and_development_roadmap.md), [PY-05 limits](../py05_completion.md), [GEOM-04 limits](../geom04_surface_hardware.md) |
