@@ -99,7 +99,7 @@ yoktur.
 | Rotor aerodinamiği | implemented | Sayısal BEM var. Proje rotoru fiziksel olarak eksik. PR-06C kapısı bloklu |
 | Motor–rotor dengesi | implemented | Ortak devirde tork dengesi. Zaman domeninde mekanizma bağlaşımı değil |
 | Mekanizma geçişi | implemented | PY-05 öngörülen tahrik. Tam bağlaşık açılma modeli değil |
-| Bütünleşik aero–motor–mekanizma | proposed next slice | Uygulanmadı. Kabul edilmiş ADR değil |
+| Bütünleşik aero–motor–mekanizma | screening slices merged | CMM-1, PR-A (ADR-007) ve PR-B (ADR-008) tarama yazılımıdır. PR-C sayısal doğrulama ve fiziksel model uygulanmamıştır |
 | Deneyle doğrulanmış öngörü sistemi | blocked on evidence | Ulaşılmadı |
 
 PY-05 gerçek bir sayısal geçiş modelidir: tek düzlemsel rijit uç cismi,
@@ -222,11 +222,14 @@ yazılım sözleşmesi için kabul edilmiştir. Son incelenen head
 `da4dcb2589c1a58f1cb97ceb285968a66036e97f`, birleştirme commit'i
 `63c75346c09280ed4572784aca1a6f1014463744` şeklindedir. Sözleşme:
 [CMM-2 PR-A](cmm2_coupled_transient_contract.md). CMM-2 PR-B kaynak bağlı
-tarama servisi ayrı modülde uygulanmıştır ve inceleme altındadır. ADR-008
-önerilmiştir; kabul edilmemiştir. Ayrıntı:
+tarama servisi uygulanmış, bağımsız çekişmeli incelemeden geçmiş ve PR #78
+ile birleşmiştir. ADR-008 yalnız bu yazılım entegrasyonu için kabul
+edilmiştir. Son incelenen head
+`653526bca79160a2ec41e2e2ebea802dd8b39d1c`, birleştirme commit'i
+`6f72b28273b38334851df570b1c4cccbbc6b5140` şeklindedir. Ayrıntı:
 [CMM-2 source-bound production binding](cmm2_source_bound_production_binding.md).
-CMM-2 PR-C bağımsız sayısal doğrulama uygulanmamıştır. Pano bu sıranın
-dışındadır. Ayrıntı:
+CMM-2 PR-C bağımsız sayısal doğrulamadır. Sonraki CMM-2 dilimidir ve
+uygulanmamıştır. Pano A/B/C sırasının dışındadır. Ayrıntı:
 [CMM-1 sözleşmesi](cmm1_partial_coupled_transient.md) ve ADR-005.
 Faz 4 sayısal kanıtı
 [CMM-1 numerical verification](cmm1_numerical_verification.md)
@@ -235,8 +238,8 @@ tamamdır ve PR #72 ile birleşmiştir. Bu, fiziksel doğrulama değildir.
 Fiziksel yeterlilik false kalır. PR-06C çözülmemiştir. GEOM kapısı
 yükseltilmez. Kalibrasyon ve deneysel doğrulama yoktur. CMM-2 fiziksel
 olarak doğrulanmamıştır. Kaynak bağlı tarama bağlaması ve mühürlü rapor
-inceleme altındadır; bu fiziksel yeterlilik değildir. Bağımsız CMM-2 sayısal
-doğrulaması yoktur. PY-06D2 uygun ölçüm olmadan kapalı kalır; PR-A
+PR #78 ile birleşmiştir; bu fiziksel yeterlilik değildir. PR-C bağımsız
+sayısal doğrulama uygulanmamıştır. PY-06D2 uygun ölçüm olmadan kapalı kalır; PR-A
 tamamlanması PY-06D2'yi çözmez. Robust optimizasyon
 erken kalır. Faz 5, Faz 6 ve Faz 7 uygulanmış değildir.
 

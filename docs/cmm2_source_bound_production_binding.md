@@ -1,6 +1,9 @@
 # CMM-2 source-bound production binding
 
-Status: implemented under independent review. ADR-008 is proposed and is not accepted.
+Status: implemented, independently reviewed, and merged in PR #78.
+ADR-008 is accepted for this screening software integration.
+Final reviewed head `653526bca79160a2ec41e2e2ebea802dd8b39d1c`.
+Merge commit `6f72b28273b38334851df570b1c4cccbbc6b5140`.
 This is a screening service. `physical_qualification` stays false.
 
 The service lives in `pyfoldable/application/cmm2_coupled_transient_service.py`.
@@ -110,4 +113,5 @@ hinge torque. The accepted load map is unchanged.
 
 Dynamics contract: [CMM-2 PR-A](cmm2_coupled_transient_contract.md).
 Load map: [planar aero-load prerequisite](cmm2_planar_aero_load_prerequisite.md).
-Decision: ADR-008, proposed.
+Decision: ADR-008, accepted for this screening software integration after
+independent review and merge in PR #78.

@@ -150,9 +150,12 @@ No result assigns clearance, calibration, PR-06C, or design readiness.
 PR-A, this contract: isolated paired-load dynamics and analytic evaluators.
 Complete, independently reviewed, and merged in PR #76.
 
-PR-B is the source-bound production screening service. It is implemented under
-review in `pyfoldable/application/cmm2_coupled_transient_service.py`. ADR-008
-is proposed for that service and is not accepted. The service includes:
+PR-B is the source-bound production screening service. It is complete as a
+source-bound screening software slice, independently reviewed, and merged in
+PR #78. ADR-008 is accepted for that software integration. Final reviewed
+head `653526bca79160a2ec41e2e2ebea802dd8b39d1c`. Merge commit
+`6f72b28273b38334851df570b1c4cccbbc6b5140`. The service, in
+`pyfoldable/application/cmm2_coupled_transient_service.py`, includes:
 
 - PR-07 motor binding through the existing `Pr07MotorEvaluator`.
 - Exactly one `solve_foldable_bem_rotor` call per aerodynamic evaluation.
@@ -205,9 +208,9 @@ Service implementation id `cmm2_source_bound_screening_service_v1`.
 That id is not the dynamics implementation id. Binding detail:
 [CMM-2 source-bound production binding](cmm2_source_bound_production_binding.md).
 
-PR-C is independent CMM-2 numerical verification. It is not implemented.
-PR-C is not dashboard work. The dashboard stays later, and outside this
-sequence, until the production model and the verification chain are reviewed.
+PR-C is independent CMM-2 numerical verification. It is the next CMM-2
+slice and is not implemented. PR-C is not dashboard work. The dashboard
+stays outside this sequence.
 
 Dynamics code: `pyfoldable/dynamics/cmm2_coupled_transient.py`.
 Dynamics tests: `tests/dynamics/test_cmm2_coupled_transient.py`.
@@ -218,4 +221,6 @@ Prerequisite load map, already accepted. Its mapping mathematics are unchanged:
 CMM-1 boundary: [CMM-1](cmm1_partial_coupled_transient.md) and ADR-005.
 Decision record for the isolated dynamics: ADR-007, accepted for the PR-A
 screening dynamics software contract after independent review and merge in
-PR #76. Decision record for this service: ADR-008, proposed, not accepted.
+PR #76. Decision record for this service: ADR-008, accepted for the
+source-bound screening software integration after independent adversarial
+review and merge in PR #78.

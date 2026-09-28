@@ -292,14 +292,18 @@ polar schedule / airfoil / scenario / source identity already present on the
 foldable result, the projected intervals, the fixed-root versus movable-tip
 partition, the source densities, the reconstructed shaft load, the resisting
 shaft torque, and the one-tip hinge load. A hash is not added at this layer.
-A hash would not authenticate physical truth. A later source-bound CMM-2
-service would seal the complete request.
+A hash would not authenticate physical truth. The accepted PR-B
+source-bound CMM-2 service now seals the complete request. This PR #74
+prerequisite layer itself still does not add or own that request hash.
 
 ## What remains unapproved
 
 Isolated CMM-2 PR-A screening dynamics were later reviewed and merged in
-PR #76. This load-map record does not accept production FoldableBEM binding,
-independent CMM-2 numerical verification, or physical validity. PY-06D2 remains
+PR #76. This PR #74 load-map record itself does not constitute the
+source-bound service acceptance. The PR-B source-bound service was
+separately reviewed and accepted under ADR-008 and merged in PR #78.
+Independent CMM-2 numerical verification remains unapproved and is not
+implemented. Physical validity remains unapproved. PY-06D2 remains
 blocked without suitable identifiable measurements. Robust optimization remains
 premature. Phase 5, Phase 6, and Phase 7 of the validation roadmap are not
 advanced.
