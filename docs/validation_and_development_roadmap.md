@@ -221,9 +221,12 @@ incelenmiş ve PR #76 ile birleşmiştir. ADR-007 yalnız bu tarama dinamiği
 yazılım sözleşmesi için kabul edilmiştir. Son incelenen head
 `da4dcb2589c1a58f1cb97ceb285968a66036e97f`, birleştirme commit'i
 `63c75346c09280ed4572784aca1a6f1014463744` şeklindedir. Sözleşme:
-[CMM-2 PR-A](cmm2_coupled_transient_contract.md). Sonraki uygulama dilimi
-CMM-2 PR-B üretim kaynağı bağlamasıdır. CMM-2 PR-C bağımsız sayısal
-doğrulama uygulanmamıştır. Pano bu sıranın dışındadır. Ayrıntı:
+[CMM-2 PR-A](cmm2_coupled_transient_contract.md). CMM-2 PR-B kaynak bağlı
+tarama servisi ayrı modülde uygulanmıştır ve inceleme altındadır. ADR-008
+önerilmiştir; kabul edilmemiştir. Ayrıntı:
+[CMM-2 source-bound production binding](cmm2_source_bound_production_binding.md).
+CMM-2 PR-C bağımsız sayısal doğrulama uygulanmamıştır. Pano bu sıranın
+dışındadır. Ayrıntı:
 [CMM-1 sözleşmesi](cmm1_partial_coupled_transient.md) ve ADR-005.
 Faz 4 sayısal kanıtı
 [CMM-1 numerical verification](cmm1_numerical_verification.md)
@@ -231,8 +234,9 @@ belgesindedir. İlan edilen CMM-1 tarama modeli için sayısal doğrulama
 tamamdır ve PR #72 ile birleşmiştir. Bu, fiziksel doğrulama değildir.
 Fiziksel yeterlilik false kalır. PR-06C çözülmemiştir. GEOM kapısı
 yükseltilmez. Kalibrasyon ve deneysel doğrulama yoktur. CMM-2 fiziksel
-olarak doğrulanmamıştır. Üretim FoldableBEM kaynak bağlaması ve mühürlü
-üretim raporu yoktur. PY-06D2 uygun ölçüm olmadan kapalı kalır; PR-A
+olarak doğrulanmamıştır. Kaynak bağlı tarama bağlaması ve mühürlü rapor
+inceleme altındadır; bu fiziksel yeterlilik değildir. Bağımsız CMM-2 sayısal
+doğrulaması yoktur. PY-06D2 uygun ölçüm olmadan kapalı kalır; PR-A
 tamamlanması PY-06D2'yi çözmez. Robust optimizasyon
 erken kalır. Faz 5, Faz 6 ve Faz 7 uygulanmış değildir.
 
