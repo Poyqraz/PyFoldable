@@ -9,9 +9,15 @@ This is not physical validation.
 Final PR head `7494ffa7c2ba9f676152b02eebe54b794d7a8f52`. Merge commit
 `b99c3f9f109e034380edfd6120c144bc9f66f030`.
 
-`physical_qualification` remains false. PR-06C remains unresolved. No
-aerodynamic hinge load exists. No GEOM gate is promoted. There is no
-calibration and no experimental validation. CMM-2 is not approved.
+`physical_qualification` remains false. PR-06C remains unresolved. The
+declared CMM-1 model contains no aerodynamic hinge-load term;
+`aerodynamic_hinge_torque_status` remains
+`unavailable_omitted_by_cmm1`. No GEOM gate is promoted. There is no
+calibration and no experimental validation. This Phase-4 verification applies
+only to the declared CMM-1 screening model. Separately reviewed CMM-2
+screening software slices are governed by ADR-007 and ADR-008; their
+acceptance does not transfer into this CMM-1 numerical evidence and does not
+establish physical qualification.
 
 This document records frozen output of
 `tests/verification/test_cmm1_numerical_verification.py`. It is not a
