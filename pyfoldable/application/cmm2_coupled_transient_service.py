@@ -834,24 +834,77 @@ def _result_document(result: Cmm2TransientResult) -> dict[str, object]:
     return document
 
 
+# First-party sources whose executable model, binding, calculation, or numerical
+# logic materially defines the source-bound screening result. This is a reviewed
+# list, not an import-graph walk and not a hash of SciPy, NumPy, or another
+# external library. config.py and units.py are included because the sealed draft
+# is reparsed into the SI blade and hinge that the BEM solve uses.
+_IMPLEMENTATION_FILE_MANIFEST: tuple[str, ...] = (
+    "pyfoldable/application/cmm2_coupled_transient_service.py",
+    "pyfoldable/application/coupled_transient_service.py",
+    "pyfoldable/application/mechanism_binding.py",
+    "pyfoldable/dynamics/cmm2_coupled_transient.py",
+    "pyfoldable/dynamics/coupled_transient.py",
+    "pyfoldable/dynamics/mechanism_transient.py",
+    "pyfoldable/dynamics/mechanism_contracts.py",
+    "pyfoldable/core/foldable_aero_load.py",
+    "pyfoldable/core/foldable_rotor.py",
+    "pyfoldable/core/bem_rotor.py",
+    "pyfoldable/core/bem.py",
+    "pyfoldable/core/polar.py",
+    "pyfoldable/core/polar_spanwise.py",
+    "pyfoldable/core/rotational_augmentation.py",
+    "pyfoldable/core/models.py",
+    "pyfoldable/core/motor_bem_coupling.py",
+    "pythrust/propulsion/models.py",
+    "pyfoldable/core/config.py",
+    "pyfoldable/core/units.py",
+)
+
+
+def _manifest_file(repository_root: Path, relative: object) -> Path:
+    if (
+        not isinstance(relative, str)
+        or not relative
+        or "\\" in relative
+        or relative.startswith("/")
+    ):
+        raise Cmm2TransientFailure(
+            "CMM-2 implementation manifest path is not repository-relative."
+        )
+    parts = Path(relative).parts
+    if not parts or any(part in {"", ".", ".."} for part in parts):
+        raise Cmm2TransientFailure(
+            "CMM-2 implementation manifest path is not repository-relative."
+        )
+    path = repository_root.joinpath(*parts)
+    resolved_root = repository_root.resolve()
+    resolved = path.resolve()
+    if resolved != resolved_root and resolved_root not in resolved.parents:
+        raise Cmm2TransientFailure(
+            "CMM-2 implementation manifest path is not repository-relative."
+        )
+    if path.is_symlink() or not path.is_file():
+        raise Cmm2TransientFailure(f"CMM-2 implementation file is missing: {relative}")
+    return path
+
+
 def _implementation_files() -> dict[str, str]:
-    root = Path(__file__).resolve().parents[1]
-    names = (
-        "dynamics/cmm2_coupled_transient.py",
-        "dynamics/coupled_transient.py",
-        "application/cmm2_coupled_transient_service.py",
-        "application/coupled_transient_service.py",
-        "core/foldable_aero_load.py",
-        "core/foldable_rotor.py",
-        "core/bem_rotor.py",
-        "core/motor_bem_coupling.py",
-    )
+    """Hash the reviewed manifest. An unsafe or missing path fails closed."""
+    repository_root = Path(__file__).resolve().parents[2]
+    manifest = _IMPLEMENTATION_FILE_MANIFEST
+    if len(manifest) != len(set(manifest)):
+        raise Cmm2TransientFailure("CMM-2 implementation manifest contains a duplicate path.")
     digests: dict[str, str] = {}
-    for name in names:
-        path = root / name
-        if not path.is_file():
-            raise Cmm2TransientFailure(f"CMM-2 implementation file is missing: {name}")
-        digests[name] = hashlib.sha256(path.read_bytes()).hexdigest()
+    for relative in manifest:
+        path = _manifest_file(repository_root, relative)
+        try:
+            payload = path.read_bytes()
+        except OSError as exc:
+            raise Cmm2TransientFailure(
+                f"CMM-2 implementation file is missing: {relative}"
+            ) from exc
+        digests[relative] = hashlib.sha256(payload).hexdigest()
     return digests
 
 

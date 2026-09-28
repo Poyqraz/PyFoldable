@@ -88,6 +88,14 @@ hashes, the provenance ledger, and the serialized result.
 `report_sha256` is the SHA-256 of that report JSON. Two runs of the same
 sealed binding produce the same report bytes.
 
+`implementation_files_sha256` records an explicit reviewed manifest of
+first-party source files that materially define the source-bound screening
+calculation. It is provenance identity, not authentication or proof of
+correctness. The manifest is not a complete Python import graph and does not
+hash external libraries such as SciPy or NumPy. Paths are repository-relative.
+The draft loader and SI unit normalization are on that manifest because they
+produce the blade and hinge geometry the solver uses.
+
 A hash identifies content. It does not authenticate a source, prove
 numerical correctness, or establish physical validation.
 

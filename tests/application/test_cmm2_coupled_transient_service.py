@@ -613,11 +613,12 @@ def test_report_is_deterministic_and_keeps_the_seal(monkeypatch) -> None:
     assert document["loading_branch"] == document["bem_settings"]["annulus_settings"]["loading_branch"]
     assert document["result"]["physical_qualification"] is False
     assert document["result"]["limitations"][1].startswith("A source-bound production screening service")
-    root = ROOT / "pyfoldable"
     for name, digest in document["implementation_files_sha256"].items():
-        assert hashlib.sha256((root / name).read_bytes()).hexdigest() == digest
-    assert "dynamics/cmm2_coupled_transient.py" in document["implementation_files_sha256"]
-    assert "core/foldable_aero_load.py" in document["implementation_files_sha256"]
+        assert not Path(name).is_absolute()
+        assert ".." not in Path(name).parts
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+    assert "pyfoldable/dynamics/cmm2_coupled_transient.py" in document["implementation_files_sha256"]
+    assert "pyfoldable/core/foldable_aero_load.py" in document["implementation_files_sha256"]
     ledger = document["aero_evaluation_ledger"]
     by_id = {row["source_id"]: row for row in ledger}
     assert len(by_id) == len(ledger)
@@ -633,6 +634,90 @@ def test_report_is_deterministic_and_keeps_the_seal(monkeypatch) -> None:
         assert row["terminal_boundary_normalized"] is False
         assert row["terminal_boundary_delta_m"] == 0.0
         assert row["source_terminal_radius_m"] == row["projected_tip_radius_m"]
+
+
+_EXPECTED_IMPLEMENTATION_MANIFEST = (
+    "pyfoldable/application/cmm2_coupled_transient_service.py",
+    "pyfoldable/application/coupled_transient_service.py",
+    "pyfoldable/application/mechanism_binding.py",
+    "pyfoldable/dynamics/cmm2_coupled_transient.py",
+    "pyfoldable/dynamics/coupled_transient.py",
+    "pyfoldable/dynamics/mechanism_transient.py",
+    "pyfoldable/dynamics/mechanism_contracts.py",
+    "pyfoldable/core/foldable_aero_load.py",
+    "pyfoldable/core/foldable_rotor.py",
+    "pyfoldable/core/bem_rotor.py",
+    "pyfoldable/core/bem.py",
+    "pyfoldable/core/polar.py",
+    "pyfoldable/core/polar_spanwise.py",
+    "pyfoldable/core/rotational_augmentation.py",
+    "pyfoldable/core/models.py",
+    "pyfoldable/core/motor_bem_coupling.py",
+    "pythrust/propulsion/models.py",
+    "pyfoldable/core/config.py",
+    "pyfoldable/core/units.py",
+)
+
+
+def test_implementation_file_manifest_covers_direct_calculation_path(monkeypatch) -> None:
+    assert len(_EXPECTED_IMPLEMENTATION_MANIFEST) == len(set(_EXPECTED_IMPLEMENTATION_MANIFEST))
+    assert cmm2_service._IMPLEMENTATION_FILE_MANIFEST == _EXPECTED_IMPLEMENTATION_MANIFEST
+    required = {
+        "pyfoldable/core/bem.py",
+        "pyfoldable/core/polar.py",
+        "pyfoldable/core/polar_spanwise.py",
+        "pyfoldable/core/rotational_augmentation.py",
+        "pyfoldable/core/models.py",
+        "pyfoldable/core/motor_bem_coupling.py",
+        "pythrust/propulsion/models.py",
+        "pyfoldable/dynamics/mechanism_transient.py",
+        "pyfoldable/dynamics/mechanism_contracts.py",
+        "pyfoldable/application/mechanism_binding.py",
+        "pyfoldable/application/cmm2_coupled_transient_service.py",
+        "pyfoldable/application/coupled_transient_service.py",
+        "pyfoldable/dynamics/cmm2_coupled_transient.py",
+        "pyfoldable/dynamics/coupled_transient.py",
+        "pyfoldable/core/foldable_aero_load.py",
+        "pyfoldable/core/foldable_rotor.py",
+        "pyfoldable/core/bem_rotor.py",
+        "pyfoldable/core/config.py",
+        "pyfoldable/core/units.py",
+    }
+    assert required <= set(_EXPECTED_IMPLEMENTATION_MANIFEST)
+    _install(monkeypatch)
+    document = json.loads(run_cmm2_coupled_transient(_binding()).report_json)
+    published = document["implementation_files_sha256"]
+    assert set(published) == set(_EXPECTED_IMPLEMENTATION_MANIFEST)
+    for path in _EXPECTED_IMPLEMENTATION_MANIFEST:
+        digest = hashlib.sha256((ROOT / path).read_bytes()).hexdigest()
+        assert published[path] == digest
+        assert int(digest, 16) >= 0
+        assert len(published[path]) == 64
+
+
+def test_unavailable_implementation_manifest_path_fails_closed(monkeypatch) -> None:
+    _install(monkeypatch)
+    monkeypatch.setattr(
+        cmm2_service,
+        "_IMPLEMENTATION_FILE_MANIFEST",
+        ("pyfoldable/core/bem.py", "pyfoldable/core/not_a_source_file.py"),
+    )
+    with pytest.raises(Cmm2TransientFailure, match="missing"):
+        run_cmm2_coupled_transient(_binding())
+    monkeypatch.setattr(
+        cmm2_service,
+        "_IMPLEMENTATION_FILE_MANIFEST",
+        ("pyfoldable/core/bem.py", "pyfoldable/core/bem.py"),
+    )
+    with pytest.raises(Cmm2TransientFailure, match="duplicate"):
+        cmm2_service._implementation_files()
+    monkeypatch.setattr(
+        cmm2_service,
+        "_IMPLEMENTATION_FILE_MANIFEST",
+        ("../pyfoldable/core/bem.py",),
+    )
+    with pytest.raises(Cmm2TransientFailure, match="repository-relative"):
+        cmm2_service._implementation_files()
 
 
 def test_normalized_terminal_provenance_is_preserved(monkeypatch) -> None:
