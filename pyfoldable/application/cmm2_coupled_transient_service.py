@@ -834,15 +834,16 @@ def _result_document(result: Cmm2TransientResult) -> dict[str, object]:
     return document
 
 
-# First-party sources whose executable model, binding, calculation, or numerical
-# logic materially defines the source-bound screening result. This is a reviewed
-# list, not an import-graph walk and not a hash of SciPy, NumPy, or another
-# external library. config.py and units.py are included because the sealed draft
-# is reparsed into the SI blade and hinge that the BEM solve uses.
+# First-party sources whose executable model, binding, calculation, acceptance,
+# or numerical logic materially defines the source-bound screening service.
+# This is a reviewed list, not an import-graph walk and not a hash of SciPy,
+# NumPy, or another external library. folding_mechanism.py can reject the
+# binding. airfoil.py can reject a draft that carries inline coordinates.
 _IMPLEMENTATION_FILE_MANIFEST: tuple[str, ...] = (
     "pyfoldable/application/cmm2_coupled_transient_service.py",
     "pyfoldable/application/coupled_transient_service.py",
     "pyfoldable/application/mechanism_binding.py",
+    "pyfoldable/application/folding_mechanism.py",
     "pyfoldable/dynamics/cmm2_coupled_transient.py",
     "pyfoldable/dynamics/coupled_transient.py",
     "pyfoldable/dynamics/mechanism_transient.py",
@@ -856,13 +857,15 @@ _IMPLEMENTATION_FILE_MANIFEST: tuple[str, ...] = (
     "pyfoldable/core/rotational_augmentation.py",
     "pyfoldable/core/models.py",
     "pyfoldable/core/motor_bem_coupling.py",
-    "pythrust/propulsion/models.py",
     "pyfoldable/core/config.py",
     "pyfoldable/core/units.py",
+    "pyfoldable/core/airfoil.py",
+    "pythrust/propulsion/models.py",
 )
 
 
-def _manifest_file(repository_root: Path, relative: object) -> Path:
+def _raw_manifest_parts(relative: object) -> tuple[str, ...]:
+    """Reject unsafe keys before pathlib can collapse them."""
     if (
         not isinstance(relative, str)
         or not relative
@@ -872,21 +875,37 @@ def _manifest_file(repository_root: Path, relative: object) -> Path:
         raise Cmm2TransientFailure(
             "CMM-2 implementation manifest path is not repository-relative."
         )
-    parts = Path(relative).parts
-    if not parts or any(part in {"", ".", ".."} for part in parts):
+    raw_parts = relative.split("/")
+    if any(part in {"", ".", ".."} or ":" in part for part in raw_parts):
         raise Cmm2TransientFailure(
             "CMM-2 implementation manifest path is not repository-relative."
         )
-    path = repository_root.joinpath(*parts)
+    return tuple(raw_parts)
+
+
+def _manifest_file(repository_root: Path, relative: object) -> Path:
+    raw_parts = _raw_manifest_parts(relative)
+    parsed = Path(relative)
+    if parsed.is_absolute() or parsed.drive:
+        raise Cmm2TransientFailure(
+            "CMM-2 implementation manifest path is not repository-relative."
+        )
+    candidate = repository_root
+    for part in raw_parts:
+        candidate = candidate / part
+        if candidate.is_symlink():
+            raise Cmm2TransientFailure(
+                "CMM-2 implementation manifest path contains a symlink."
+            )
+    if not candidate.is_file():
+        raise Cmm2TransientFailure(f"CMM-2 implementation file is missing: {relative}")
     resolved_root = repository_root.resolve()
-    resolved = path.resolve()
+    resolved = candidate.resolve()
     if resolved != resolved_root and resolved_root not in resolved.parents:
         raise Cmm2TransientFailure(
             "CMM-2 implementation manifest path is not repository-relative."
         )
-    if path.is_symlink() or not path.is_file():
-        raise Cmm2TransientFailure(f"CMM-2 implementation file is missing: {relative}")
-    return path
+    return candidate
 
 
 def _implementation_files() -> dict[str, str]:

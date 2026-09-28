@@ -640,6 +640,7 @@ _EXPECTED_IMPLEMENTATION_MANIFEST = (
     "pyfoldable/application/cmm2_coupled_transient_service.py",
     "pyfoldable/application/coupled_transient_service.py",
     "pyfoldable/application/mechanism_binding.py",
+    "pyfoldable/application/folding_mechanism.py",
     "pyfoldable/dynamics/cmm2_coupled_transient.py",
     "pyfoldable/dynamics/coupled_transient.py",
     "pyfoldable/dynamics/mechanism_transient.py",
@@ -653,9 +654,10 @@ _EXPECTED_IMPLEMENTATION_MANIFEST = (
     "pyfoldable/core/rotational_augmentation.py",
     "pyfoldable/core/models.py",
     "pyfoldable/core/motor_bem_coupling.py",
-    "pythrust/propulsion/models.py",
     "pyfoldable/core/config.py",
     "pyfoldable/core/units.py",
+    "pyfoldable/core/airfoil.py",
+    "pythrust/propulsion/models.py",
 )
 
 
@@ -682,11 +684,15 @@ def test_implementation_file_manifest_covers_direct_calculation_path(monkeypatch
         "pyfoldable/core/bem_rotor.py",
         "pyfoldable/core/config.py",
         "pyfoldable/core/units.py",
+        "pyfoldable/application/folding_mechanism.py",
+        "pyfoldable/core/airfoil.py",
     }
     assert required <= set(_EXPECTED_IMPLEMENTATION_MANIFEST)
+    assert len(_EXPECTED_IMPLEMENTATION_MANIFEST) == 21
     _install(monkeypatch)
     document = json.loads(run_cmm2_coupled_transient(_binding()).report_json)
     published = document["implementation_files_sha256"]
+    assert len(published) == 21
     assert set(published) == set(_EXPECTED_IMPLEMENTATION_MANIFEST)
     for path in _EXPECTED_IMPLEMENTATION_MANIFEST:
         digest = hashlib.sha256((ROOT / path).read_bytes()).hexdigest()
@@ -718,6 +724,57 @@ def test_unavailable_implementation_manifest_path_fails_closed(monkeypatch) -> N
     )
     with pytest.raises(Cmm2TransientFailure, match="repository-relative"):
         cmm2_service._implementation_files()
+
+
+@pytest.mark.parametrize(
+    "relative",
+    [
+        "pyfoldable//core/bem.py",
+        "pyfoldable/./core/bem.py",
+        "./pyfoldable/core/bem.py",
+        "pyfoldable/core/../core/bem.py",
+        "pyfoldable/core/bem.py/",
+        "/pyfoldable/core/bem.py",
+        "pyfoldable\\core\\bem.py",
+        "C:/pyfoldable/core/bem.py",
+    ],
+)
+def test_manifest_rejects_raw_path_components_before_normalization(relative: str) -> None:
+    assert (ROOT / "pyfoldable/core/bem.py").is_file()
+    with pytest.raises(Cmm2TransientFailure, match="repository-relative"):
+        cmm2_service._manifest_file(ROOT, relative)
+
+
+def test_manifest_rejects_symlink_components_and_accepts_a_regular_file(tmp_path: Path) -> None:
+    real = tmp_path / "real"
+    real.mkdir()
+    source = real / "source.py"
+    source.write_text("regular\n", encoding="utf-8")
+    linked = tmp_path / "linked"
+    leaf = tmp_path / "real_source.py"
+    alias = tmp_path / "alias.py"
+    nested = real / "inner"
+    nested.mkdir()
+    nested_source = nested / "source.py"
+    nested_source.write_text("nested\n", encoding="utf-8")
+    nested_link = real / "via"
+    try:
+        linked.symlink_to(real, target_is_directory=True)
+        leaf.write_text("leaf\n", encoding="utf-8")
+        alias.symlink_to(leaf)
+        nested_link.symlink_to(nested, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"symlink creation is unavailable: {exc}")
+    with pytest.raises(Cmm2TransientFailure, match="symlink"):
+        cmm2_service._manifest_file(tmp_path, "linked/source.py")
+    with pytest.raises(Cmm2TransientFailure, match="symlink"):
+        cmm2_service._manifest_file(tmp_path, "alias.py")
+    with pytest.raises(Cmm2TransientFailure, match="symlink"):
+        cmm2_service._manifest_file(tmp_path, "real/via/source.py")
+    accepted = cmm2_service._manifest_file(tmp_path, "real/source.py")
+    assert accepted == source
+    assert accepted.is_file()
+    assert not accepted.is_symlink()
 
 
 def test_normalized_terminal_provenance_is_preserved(monkeypatch) -> None:
