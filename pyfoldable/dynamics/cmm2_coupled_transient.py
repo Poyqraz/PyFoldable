@@ -46,7 +46,7 @@ AERO_LOAD_STATUS = "signed_paired_generalized_loads"
 
 CMM2_LIMITATIONS = (
     "PR-A isolated paired-load dynamics were independently reviewed and merged in PR #76.",
-    "Production aerodynamic source binding is not implemented.",
+    "A source-bound production screening service binds PR-07, FoldableBEM, and the accepted planar load map; this does not establish physical qualification.",
     "Aerodynamic loads are a rate-independent quasi-steady screen.",
     "No physical hinge-rate validity range is claimed.",
     "CMM-1 Phase-4 numerical verification does not transfer to this solver.",

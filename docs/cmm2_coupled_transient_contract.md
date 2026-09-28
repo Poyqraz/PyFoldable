@@ -150,10 +150,11 @@ No result assigns clearance, calibration, PR-06C, or design readiness.
 PR-A, this contract: isolated paired-load dynamics and analytic evaluators.
 Complete, independently reviewed, and merged in PR #76.
 
-PR-B is the next implementation slice: source-bound production integration.
-It is not implemented here. It must include:
+PR-B is the source-bound production screening service. It is implemented under
+review in `pyfoldable/application/cmm2_coupled_transient_service.py`. ADR-008
+is proposed for that service and is not accepted. The service includes:
 
-- PR-07 motor binding.
+- PR-07 motor binding through the existing `Pr07MotorEvaluator`.
 - Exactly one `solve_foldable_bem_rotor` call per aerodynamic evaluation.
 - Exactly one `map_foldable_bem_aero_loads` call on that same returned
   `FoldableBEMRotorResult`.
@@ -164,7 +165,10 @@ It is not implemented here. It must include:
 - Load-map, BEM, and provenance reporting.
 - Fail-closed source identity checks.
 
-The intended binding evaluates
+The pure dynamics function still accepts an analytic callback on
+`Cmm2TransientRequest`. The production prepare and run functions do not.
+
+The implemented binding evaluates
 
 ```text
 result = solve_foldable_bem_rotor(...)
@@ -187,27 +191,31 @@ Whole-rotor `Q_phi` is not multiplied by `N`.
 `synchronous_n_times_one_tip_hinge_generalized_torque_nm` is not fed into the
 one-tip CMM-2 field.
 
-PR-B will reuse the existing source-bound ingredients: `DesignDraftArtifact`,
-`TipMassDistribution`, `BaseRotatingAssemblyInertia`, `CoupledEnvironment`,
-`MotorSpec`, `BatterySpec`, `SystemSpec`, `HingeActuationHistory`,
-`BEMRotorSettings`, `PolarFamily` / `SpanwisePolarSchedule`, `bounds = "error"`,
-and `CoupledSolverControls`. This reconciliation does not add
-`cmm2_coupled_transient_service.py` or any application implementation.
+The service reuses `DesignDraftArtifact`, `TipMassDistribution`,
+`BaseRotatingAssemblyInertia`, `CoupledEnvironment`, `MotorSpec`,
+`BatterySpec`, `SystemSpec`, `HingeActuationHistory`, `BEMRotorSettings`,
+`PolarFamily` / `SpanwisePolarSchedule`, `bounds = "error"`, and
+`CoupledSolverControls`.
 
-A future sealed request hash identifies content. It does not authenticate the
+The sealed request hash identifies content. It does not authenticate the
 source, prove numerical correctness, or establish physical validation. The
-seal must include the CMM-2 load-mapping contract identity and version. The
-seal is not implemented here.
+seal includes the CMM-2 load-mapping contract identity and version.
+Service id `pyfoldable.application.cmm2_coupled_transient_service`.
+Service implementation id `cmm2_source_bound_screening_service_v1`.
+That id is not the dynamics implementation id. Binding detail:
+[CMM-2 source-bound production binding](cmm2_source_bound_production_binding.md).
 
 PR-C is independent CMM-2 numerical verification. It is not implemented.
 PR-C is not dashboard work. The dashboard stays later, and outside this
 sequence, until the production model and the verification chain are reviewed.
 
-Code: `pyfoldable/dynamics/cmm2_coupled_transient.py`.
-Tests: `tests/dynamics/test_cmm2_coupled_transient.py`.
+Dynamics code: `pyfoldable/dynamics/cmm2_coupled_transient.py`.
+Dynamics tests: `tests/dynamics/test_cmm2_coupled_transient.py`.
+Service code: `pyfoldable/application/cmm2_coupled_transient_service.py`.
+Service tests: `tests/application/test_cmm2_coupled_transient_service.py`.
 Prerequisite load map, already accepted. Its mapping mathematics are unchanged:
 [planar aero-load prerequisite](cmm2_planar_aero_load_prerequisite.md).
 CMM-1 boundary: [CMM-1](cmm1_partial_coupled_transient.md) and ADR-005.
-Decision record for this slice: ADR-007, accepted for the isolated PR-A
+Decision record for the isolated dynamics: ADR-007, accepted for the PR-A
 screening dynamics software contract after independent review and merge in
-PR #76.
+PR #76. Decision record for this service: ADR-008, proposed, not accepted.

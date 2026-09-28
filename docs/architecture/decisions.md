@@ -219,6 +219,38 @@ Evidence: `pyfoldable/dynamics/cmm2_coupled_transient.py`,
 `tests/dynamics/test_cmm2_coupled_transient.py`,
 [CMM-2 PR-A contract](../cmm2_coupled_transient_contract.md).
 
+## ADR-008 — CMM-2 source-bound production screening integration
+
+**Status: proposed — implementation under independent review.**
+
+Decision: add `pyfoldable.application.cmm2_coupled_transient_service` beside
+the frozen CMM-1 service and the isolated CMM-2 dynamics. The service seals
+one screening request and binds the existing PR-07 motor law, exactly one
+`solve_foldable_bem_rotor` call, and exactly one
+`map_foldable_bem_aero_loads` call on that same returned object.
+`Cmm2AeroEvaluation.whole_rotor_shaft_generalized_load_nm` is
+`mapped.whole_rotor_aerodynamic_shaft_generalized_load_nm` and is not
+multiplied by `N`. `one_tip_hinge_generalized_load_nm` is
+`mapped.one_tip_hinge_generalized_torque_nm`. The synchronous N-tip field is
+not that input. Polar bounds stay `"error"`. A failed BEM solve or map raises
+and does not return a shortened success, a zero hinge load, or the raw BEM
+torque. The request and report hashes identify content. They do not
+authenticate a source, prove numerical correctness, or set
+`physical_qualification`.
+
+The pure dynamics API still accepts analytic callbacks. This record does not
+change ADR-005, ADR-006, or ADR-007. It does not change the accepted load-map
+mathematics. It does not start independent CMM-2 numerical verification, add
+a dashboard, promote GEOM or PR-06C, or claim calibration or experiment.
+
+Service implementation id `cmm2_source_bound_screening_service_v1`. Dynamics
+implementation id remains
+`cmm2_planar_projected_rate_independent_coupling_v1`.
+
+Evidence: `pyfoldable/application/cmm2_coupled_transient_service.py`,
+`tests/application/test_cmm2_coupled_transient_service.py`,
+[CMM-2 source-bound production binding](../cmm2_source_bound_production_binding.md).
+
 ## Future records
 
 An unproven architectural interpretation must say **inferred — requires
