@@ -221,7 +221,7 @@ Evidence: `pyfoldable/dynamics/cmm2_coupled_transient.py`,
 
 ## ADR-008 — CMM-2 source-bound production screening integration
 
-**Status: proposed — implementation under independent review.**
+**Status: accepted after independent adversarial review and merge in PR #78.**
 
 Decision: add `pyfoldable.application.cmm2_coupled_transient_service` beside
 the frozen CMM-1 service and the isolated CMM-2 dynamics. The service seals
@@ -240,12 +240,27 @@ authenticate a source, prove numerical correctness, or set
 
 The pure dynamics API still accepts analytic callbacks. This record does not
 change ADR-005, ADR-006, or ADR-007. It does not change the accepted load-map
-mathematics. It does not start independent CMM-2 numerical verification, add
-a dashboard, promote GEOM or PR-06C, or claim calibration or experiment.
+mathematics.
+
+Acceptance covers the source-bound CMM-2 screening software integration only:
+the separate application service, unchanged PR-07 reuse, one FoldableBEM
+solve per aerodynamic evaluation, one planar map of that same returned
+object, mapped whole-rotor `Q_phi`, mapped one-tip `q_theta`, the sealed
+request, the deterministic standalone report, the source and provenance
+ledger, the explicit first-party implementation-file manifest, and
+fail-closed provenance and path behavior.
+
+Acceptance does not cover independent CMM-2 numerical verification, physical
+CMM-2 validity, dynamic-stall or finite-rate aerodynamic validity, PR-06C,
+GEOM qualification, calibration, experimental validation, design readiness,
+or dashboard completion. `physical_qualification` stays false.
 
 Service implementation id `cmm2_source_bound_screening_service_v1`. Dynamics
 implementation id remains
 `cmm2_planar_projected_rate_independent_coupling_v1`.
+
+Final reviewed head `653526bca79160a2ec41e2e2ebea802dd8b39d1c`. Merge commit
+`6f72b28273b38334851df570b1c4cccbbc6b5140`.
 
 Evidence: `pyfoldable/application/cmm2_coupled_transient_service.py`,
 `tests/application/test_cmm2_coupled_transient_service.py`,
