@@ -99,7 +99,7 @@ yoktur.
 | Rotor aerodinamiği | implemented | Sayısal BEM var. Proje rotoru fiziksel olarak eksik. PR-06C kapısı bloklu |
 | Motor–rotor dengesi | implemented | Ortak devirde tork dengesi. Zaman domeninde mekanizma bağlaşımı değil |
 | Mekanizma geçişi | implemented | PY-05 öngörülen tahrik. Tam bağlaşık açılma modeli değil |
-| Bütünleşik aero–motor–mekanizma | screening slices merged | CMM-1, PR-A (ADR-007) ve PR-B (ADR-008) tarama yazılımıdır. PR-C sayısal doğrulama ve fiziksel model uygulanmamıştır |
+| Bütünleşik aero–motor–mekanizma | proposed next slice | Uygulanmadı. Kabul edilmiş ADR değil |
 | Deneyle doğrulanmış öngörü sistemi | blocked on evidence | Ulaşılmadı |
 
 PY-05 gerçek bir sayısal geçiş modelidir: tek düzlemsel rijit uç cismi,

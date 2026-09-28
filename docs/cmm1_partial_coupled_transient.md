@@ -13,7 +13,10 @@ calibration, or optimization.
 omitted term, not a measured, negligible, or validated zero. The report does
 not publish `aerodynamic_hinge_torque_nm`.
 
-CMM-2, a reviewed local aerodynamic hinge load, is not approved.
+This CMM-1 contract does not consume or approve an aerodynamic hinge-load
+term; `Q_h,aero` remains omitted. Separately reviewed CMM-2 screening
+software slices are governed by ADR-007 and ADR-008. They do not change
+this CMM-1 contract or establish physical qualification.
 
 ## States and sign convention
 
