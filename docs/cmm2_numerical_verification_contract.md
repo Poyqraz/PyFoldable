@@ -239,12 +239,21 @@ Local mutants, and only these:
 
 Raw positive resisting torque is not a C2V-01 mutant. It belongs to C2V-09.
 
-For each mutant, the infinity-norm difference between the exact represented
-accelerations of the correct system and of the mutant must exceed the C2V-01
-forward-uncertainty envelope of the correct system. With an exact `Fraction`
-reference, that residual against `x_ref` is zero, so the envelope is zero and
-any nonzero exact acceleration difference discriminates. A zero difference
-does not. A mutant that is not discriminated is not evidence for that mutant.
+The rational reference has no arithmetic uncertainty. That does not make the
+production forward-error allowance zero. The allowance is the frozen section
+10 policy. For each local mutant define
+
+```text
+G_mut = ||x_ref_mutant - x_ref_correct||_inf
+B_abs_correct = ||M^-1||_inf * ||b - M x_prod||_inf
+```
+
+using the correct production evaluation. Both reference accelerations are
+exact represented solutions. The row separates that mutant only when
+`G_mut > B_abs_correct`. Otherwise that row is not evidence for that mutant.
+The fixture is not retuned after the result. `N`-multiplication mutants need
+be separated only on a row with `N > 1`, not at `N = 1`. `B_abs_correct` is
+an acceleration magnitude. Dimensionless `B_rel` is not that threshold.
 
 Limitations: this case does not integrate a trajectory and does not qualify
 FoldableBEM.
@@ -389,8 +398,41 @@ the matrix or acceleration comparison.
 
 ### C2V-07 — analytic first-contact timing
 
-Purpose: one manufactured transverse crossing of a declared stop at analytic
+Purpose: one manufactured transverse crossing of the lower stop at analytic
 time `t_c`.
+
+The target on `t in [0, 1]` s, with `N = 2`, is
+
+```text
+theta*(t) = -0.20 - 0.40 t
+theta_dot*(t) = -0.40
+theta_ddot*(t) = 0
+omega*(t) = 40
+omega_dot*(t) = 0
+Qm*(t) = 0.04 N m
+Qh*(t) = 0
+```
+
+`lower_stop = -0.50 rad` and `upper_stop = 0.20 rad`, so `t_c = 0.75 s`.
+The aerodynamic loads are the unique synthetic values that realize those
+target accelerations. They are not FoldableBEM or PR #74 loads.
+
+```text
+Q_phi*(t) = -Qm*(t)
+            - N C sin(theta*(t))
+              (2 omega*(t) theta_dot*(t) + theta_dot*(t)^2)
+
+q_theta*(t) = -Qh*(t)
+              + k (theta*(t) - theta_rest)
+              + b theta_dot*(t)
+              + tau_c tanh(theta_dot*(t) / v)
+              + C omega*(t)^2 sin(theta*(t))
+```
+
+The shaft formula is the zero-acceleration shaft row. The hinge formula is
+the zero-acceleration hinge bracket. Metadata may name the queried state.
+The force values stay these target-time functions. On `[0, t_c]` the target
+stays inside the fold domain and above the 100 rpm floor.
 
 Neighborhood, using the frozen production maximum step:
 
@@ -414,8 +456,10 @@ U_root = xtol_brent + rtol_brent * abs(t_c)
 T_allow = A_theta / v_min + U_root
 ```
 
-The production contact must satisfy `abs(t_contact - t_c) <= T_allow`, the
-correct stop, the correct pre-impact sign and state, and no later sample.
+The production contact must meet the lower stop, satisfy
+`abs(t_contact - t_c) <= T_allow`, keep the pre-impact hinge rate inside its
+section 7 state allowance with the target sign, keep shaft speed inside its
+section 7 state allowance, and emit no sample after contact.
 From the analytic target and the state-error envelope, the fixture must remain
 inside the fold and speed domains on `[t0, t_c]`. If a right-hand side stage
 leaves the declared model domain before contact can be reconstructed, the case
@@ -474,9 +518,10 @@ The reference may consume the same sealed mechanical parameters. It assembles
 request builder as the equation oracle.
 
 Raw-torque mutant, on the same real BEM evaluation that produced the mapped
-load: substituting the raw positive resisting rotor torque for mapped signed
-`Q_phi` must change the exact represented acceleration by more than the C2V-01
-forward-uncertainty envelope. Otherwise this fixture is not valid evidence.
+load: the infinity-norm gap between the exact represented accelerations for
+mapped signed `Q_phi` and for that raw positive resisting torque must exceed
+`B_abs_correct` from section 10, in acceleration units. Otherwise this fixture
+is not valid evidence. Dimensionless `B_rel` is not that threshold.
 
 Selection, detectability, and the pre-result record are section 11. Trajectory
 acceptance, after those gates, is section 7.
@@ -553,8 +598,9 @@ eta_i <= max(1.0e-8, 64 * ulp(row_scale_i) / row_scale_i)
 No other residual threshold is introduced.
 
 `x_ref` is the exact rational solution of the `Fraction.from_float`
-represented system. Report `x_ref`, `x_prod`, the absolute forward error, the
-row backward errors, and `kappa_inf`.
+represented system. Report the row backward errors, `kappa_inf`, the measured
+forward error `E_rel` or `E_abs`, and the theoretical bound `B_rel` or
+`B_abs`. No value is fitted to production output.
 
 Infinity norm:
 
@@ -576,21 +622,25 @@ rho_inf = ||r||_inf / (||M||_inf * ||x_prod||_inf + ||b||_inf)
 If the denominator is zero, `rho_inf = 0` when `r` is zero and the state is
 numerically inconclusive when `r` is not zero.
 
-When `kappa_inf * rho_inf < 1`,
+When `||x_ref||_inf > 0` and `kappa_inf * rho_inf < 1`,
 
 ```text
-B_rel = (kappa_inf * rho_inf) / (1 - kappa_inf * rho_inf)
+E_rel = ||x_prod - x_ref||_inf / ||x_ref||_inf
+B_rel = 2 * kappa_inf * rho_inf / (1 - kappa_inf * rho_inf)
 ```
 
-The measured relative forward error against `x_ref` must not exceed `B_rel`.
-The `Fraction` reference adds no further uncertainty. Where a relative metric
-is undefined because the exact reference component or norm is zero, use
+and the case requires `E_rel <= B_rel`. The factor of two belongs to this
+normwise residual definition. The one-factor quotient is not the bound.
+When `||x_ref||_inf == 0`,
 
 ```text
+E_abs = ||x_prod - x_ref||_inf
 B_abs = ||M^-1||_inf * ||r||_inf
 ```
 
-and compare in absolute acceleration units.
+and the case requires `E_abs <= B_abs`, in acceleration units. The `Fraction`
+reference adds no further reference uncertainty. `B_rel` is dimensionless and
+is not used as an acceleration threshold.
 
 When `kappa_inf * rho_inf >= 1`, the state is `NUMERICALLY INCONCLUSIVE` for
 forward-error evidence. It is not accepted as C2V-01 evidence. No other
@@ -678,12 +728,12 @@ selected. No trajectory metric is computed before that selection.
 
 Detectability, fixed before any trajectory error is known:
 
-- `q_theta` is resolvable when the exact represented acceleration difference
-  between the mapped `q_theta` and `q_theta = 0` exceeds the C2V-01
-  forward-uncertainty envelope
-- the raw-torque mutant is resolvable when the exact represented acceleration
-  difference between mapped signed `Q_phi` and the raw positive resisting
-  torque from that same BEM evaluation exceeds the same envelope
+- `q_theta` is resolvable when
+  `||x_ref(q_theta) - x_ref(q_theta = 0)||_inf > B_abs_correct`,
+  with `B_abs_correct` in acceleration units
+- the raw-torque mutant is resolvable when
+  `||x_ref(mapped Q_phi) - x_ref(raw positive rotor torque)||_inf > B_abs_correct`
+  for that same BEM evaluation
 - aerodynamic hinge work is resolvable when `abs(N q_theta theta_dot)` exceeds
   the C2V-04 instantaneous power allowance at that state
 
@@ -858,10 +908,12 @@ C2V-06. One finite state: `N = 2`, `theta = -0.3 rad`, `theta_dot = 0.1 rad/s`,
 those loads held constant. No 21,062-state sweep.
 
 C2V-07. `N = 2`, `lower_stop = -0.50 rad`, `upper_stop = 0.20 rad`,
-`theta*(t) = -0.20 - 0.40 * t`, `omega*(t) = 40`, `Qm = 0.04`, `Qh = 0`,
-`q_theta = 0`, `Q_phi = -0.01`. Then `t_c = 0.75 s` and `theta_dot* = -0.40`.
-Duration `1.0 s`. `max_step_prod = 0.002 s`. The analytic target is the
-authority for `v_min` and domain membership on `[0, t_c]`.
+duration `1.0 s`, `max_step_prod = 0.002 s`. Target:
+`theta*(t) = -0.20 - 0.40 t`, `theta_dot* = -0.40`, `theta_ddot* = 0`,
+`omega* = 40`, `omega_dot* = 0`, `Qm* = 0.04 N m`, `Qh* = 0`. Then
+`t_c = 0.75 s`. `Q_phi*(t)` and `q_theta*(t)` are the section 8 target
+formulas, not constant loads. The analytic target is the authority for
+`v_min` and domain membership on `[0, t_c]`.
 
 C2V-08, four frozen subcases, shared mechanism except as written:
 
