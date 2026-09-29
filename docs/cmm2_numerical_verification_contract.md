@@ -328,13 +328,16 @@ P_scale = abs((dE/dt)_independent)
         + abs(N tau_c theta_dot tanh(theta_dot / v))
 ```
 
-If `P_scale == 0`, then `R_P` must be exactly zero. Otherwise
+The watt allowance is
 
 ```text
-abs(R_P) / P_scale <= max(1.0e-8, 64 * ulp(P_scale) / P_scale)
+U_P = 0
+      if P_scale == 0
+      otherwise max(1.0e-8 * P_scale, 64 * ulp(P_scale))
 ```
 
-This reuses the accepted represented-arithmetic residual policy.
+and the identity requires `abs(R_P) <= U_P`. `U_P` is in watts. This is the
+same represented-arithmetic residual policy, named so later cases can reuse it.
 
 Integrated energy uses the manufactured target, not production
 `cumulative_work_j`. The primary quadrature is `scipy.integrate.quad` at two
@@ -346,18 +349,26 @@ quad B: epsabs = 0, epsrel = 1.0e-12
 U_quad = max(reported_error_B, abs(I_B - I_A))
 R_E = E_target(t1) - E_target(t0) - I_B
 E_scale = abs(E_target(t1)) + abs(E_target(t0)) + abs(I_B)
+U_round_E = max(1.0e-8 * E_scale, 64 * ulp(E_scale))
 ```
 
-If `E_scale == 0`, the non-quadrature residual is exactly zero subject to
-`U_quad`. Otherwise
+`E_scale`, `R_E`, `U_quad`, and `U_round_E` are in joules. The frozen fixture
+requires `E_scale > 0`. Every quadrature value and reported error must be
+finite. An `IntegrationWarning`, an explicit convergence or failure message, or
+a nonfinite value or reported error is `QUADRATURE REFERENCE NOT RELIABLE`.
+C2V-04 then fails and is not evidence.
+
+Before the energy comparison, require `U_quad <= 0.1 * U_round_E`. The factor
+`0.1` is frozen and reserves at most ten percent of the represented energy
+budget for quadrature uncertainty. Only after that gate,
 
 ```text
-U_round_E = max(1.0e-8 * E_scale, 64 * ulp(E_scale))
-abs(R_E) <= U_quad + U_round_E
+abs(R_E) <= U_round_E + U_quad
 ```
 
-`U_quad` and `U_round_E` are recorded separately. Production
-`cumulative_work_j` is diagnostic only. There is no battery-energy claim.
+A large `U_quad` cannot manufacture a pass. `U_quad` and `U_round_E` are
+recorded separately. Production `cumulative_work_j` is diagnostic only. There
+is no battery-energy claim.
 
 ### C2V-05 — DOP853 comparison
 
@@ -434,62 +445,124 @@ the zero-acceleration hinge bracket. Metadata may name the queried state.
 The force values stay these target-time functions. On `[0, t_c]` the target
 stays inside the fold domain and above the 100 rpm floor.
 
-Neighborhood, using the frozen production maximum step:
+For this frozen target, `v_min = 0.40 rad/s` on the event neighborhood. The
+target stays inside the fold domain and above the 100 rpm floor on `[0, t_c]`.
+
+The future harness may wrap the imported `_first_contact` for observation
+only. The wrapper calls that function unchanged. It does not replace the
+solver, change a load, change an exception, or alter a numerical return. When
+the real function returns an event, the wrapper keeps the accepted RK45 step
+start, step end, event time, and the production dense callable. It evaluates
+that dense output at the event time before the externally returned angle is
+replaced by the exact stop:
 
 ```text
-I_c = [max(t0, t_c - max_step_prod), t_c]
-v_min = min over I_c of abs(theta_dot*(t))
+theta_dense_event = dense(t_contact)[0]
+omega_dense_event = dense(t_contact)[2]
+theta_target_event = theta*(t_contact)
+S_theta_event = angle_atol_rad + rtol * abs(theta_target_event)
+D_event = abs(theta_dense_event - theta_target_event)
 ```
 
-The fixture is valid only when `v_min > 0` is true from the analytic target
-before any production result is used.
+Require `D_event <= S_theta_event`. This is a direct dense-output check at the
+event time. It is not inferred from stored samples, and `S_theta_event` is not
+claimed to be a proved maximum dense-interpolation error.
+
+On the accepted step, reconstruct the production contact scale from the five
+fixed normalized nodes:
 
 ```text
-A_theta = max over I_c of (angle_atol_rad + rtol * abs(theta*(t)))
+scale_contact = max(1, abs(stop), abs(theta_dense(node_0)), ..., abs(theta_dense(node_4)))
+angle_tol_contact = max(8 * angle_atol_rad, 2 * ulp(scale_contact))
 ```
 
-The contact solver inherited by `_first_contact` uses Brent tolerances
-`xtol_brent = 1e-14` and `rtol_brent = 1e-14`.
+Require `abs(theta_dense_event - stop) <= 4 * angle_tol_contact`. This records
+the post-root acceptance condition before the stop value hides the dense angle.
+Both angle comparisons are in radians.
+
+The Brent solve is in normalized step coordinates. With
+`step_width = step_end - step_start` and
+`xi_event = (t_contact - step_start) / step_width`,
 
 ```text
-U_root = xtol_brent + rtol_brent * abs(t_c)
-T_allow = A_theta / v_min + U_root
+U_root_time = step_width * (1e-14 + 1e-14 * abs(xi_event))
+T_allow = (S_theta_event + 4 * angle_tol_contact) / v_min + U_root_time
 ```
 
-The production contact must meet the lower stop, satisfy
-`abs(t_contact - t_c) <= T_allow`, keep the pre-impact hinge rate inside its
-section 7 state allowance with the target sign, keep shaft speed inside its
-section 7 state allowance, and emit no sample after contact.
-From the analytic target and the state-error envelope, the fixture must remain
-inside the fold and speed domains on `[t0, t_c]`. If a right-hand side stage
-leaves the declared model domain before contact can be reconstructed, the case
-does not demand a success artifact. It is invalid or inconclusive for C2V-07
-and does not continue. The frozen fixture is not replaced.
+`T_allow` and `U_root_time` are in seconds. This is a frozen numerical
+acceptance policy, not an RK45 dense-error theorem. Because `D_event` has its
+own gate, a large dense error does not enlarge `T_allow`.
 
-Time is compared with `T_allow` in seconds. State samples that are part of the
-terminal check use section 7. Those scales are not used as the time tolerance.
+Require the lower stop, `abs(t_contact - t_c) <= T_allow`, the terminal
+pre-impact hinge rate against `theta_dot*` under its section 7 state scale,
+the terminal shaft speed against `omega*` under its section 7 state scale, and
+no later sample. If a right-hand-side stage leaves the declared model domain
+before contact can be reconstructed, the case is invalid or inconclusive. It
+is not a success, and the frozen fixture is not replaced.
 
 ### C2V-08 — representative fail-closed boundary
 
 Purpose: CMM-2 fails closed on representative exits and returns no shortened
 success.
 
-Exits, using production control names:
-
-- fold-domain exit
-- shaft speed below `OMEGA_MIN` (100 rpm)
-- `max_rhs_evaluations` exhaustion
-- one hard failure raised by the synthetic aerodynamic callback
-
-`max_samples` may be recorded as a separate regression. There is no separate
-configurable work budget. The production message may still say that the work
-budget was exhausted when `max_rhs_evaluations` is hit.
-
 Oracle class: `REGRESSION_CONTRACT`.
 
 Shared dense-quartic isolation remains a CMM-1 dependency. This case shows that
 CMM-2 invokes fail-closed behavior. It does not reimplement that proof and
-does not repeat every lower-layer exception test.
+does not repeat every lower-layer exception test. There is no separate
+configurable work budget. The production message may still say that the work
+budget was exhausted when `max_rhs_evaluations` is hit. `max_samples` may be
+recorded as a separate regression.
+
+Unless a subcase overrides them, every subcase uses the shared synthetic
+mechanism, `N = 2`, that fixture's `I0`, zero hinge actuation on two knots
+that span the subcase duration, a finite synthetic motor sample `Qm = 0.04 N m`,
+and a finite synthetic aerodynamic sample `Q_phi = -0.02 N m`,
+`q_theta = 0.004 N m`, finite thrust, and the accepted CMM-2 mapping and
+qualification metadata. Production controls are the repository defaults except
+the one control the subcase changes.
+
+Fold exit is manufactured, not constant forcing. On `t in [0, 0.5] s`,
+
+```text
+theta*(t) = -1.20 - 1.00 t
+theta_dot* = -1.00 rad/s
+theta_ddot* = 0
+omega* = 40 rad/s
+omega_dot* = 0
+lower_stop = -2.0 rad
+upper_stop = 0.5 rad
+Qm* = 0.04 N m
+Qh* = 0
+```
+
+`Q_phi*(t)` and `q_theta*(t)` use the same zero-acceleration formulas as
+C2V-07. The initial angle is inside the fold domain. The target reaches
+`theta = -pi/2` at `t_fold = pi/2 - 1.20`, before the lower stop at `t = 0.8 s`.
+The expected result is an integration-time `Cmm2DomainExit` for the fold
+domain and no successful shortened artifact. This subcase does not claim
+mechanical contact.
+
+Speed exit uses `omega0 = 10 rad/s`, which is below `OMEGA_MIN`, with
+`theta0 = -0.3 rad` and `theta_dot0 = 0`. It fails while
+`Cmm2TransientRequest` is constructed, before integration and before either
+callback. The expected class is `Cmm2TransientError` for the screening-minimum
+speed contract. The callables are still the valid finite callables required by
+the request, and they are not invoked. This is request-time validation, not an
+integration-time domain exit.
+
+The budget subcase uses `theta0 = -0.3 rad`, `theta_dot0 = 0.1 rad/s`,
+`omega0 = 40 rad/s`, duration `0.2 s`, the shared finite loads, and
+`max_rhs_evaluations = 1`. The initial record consumes evaluation 1. The first
+integration right-hand side attempts evaluation 2 and raises
+`Cmm2TransientFailure` with message `CMM-2 work budget exhausted.` There is no
+successful shortened artifact.
+
+The hard-failure subcase uses the same interior request and duration, and the
+frozen finite motor sample. The aerodynamic callback raises
+`Cmm2TransientFailure` with message `hard failure` on the first aerodynamic
+call during the initial record. That failure propagates. There is no
+successful result and no continued trajectory.
 
 ### C2V-09 — real source-bound trajectory
 
@@ -598,9 +671,19 @@ eta_i <= max(1.0e-8, 64 * ulp(row_scale_i) / row_scale_i)
 No other residual threshold is introduced.
 
 `x_ref` is the exact rational solution of the `Fraction.from_float`
-represented system. Report the row backward errors, `kappa_inf`, the measured
-forward error `E_rel` or `E_abs`, and the theoretical bound `B_rel` or
-`B_abs`. No value is fitted to production output.
+represented system. Each production acceleration component is converted the
+same way, `x_prod_fraction_j = Fraction.from_float(x_prod_float_j)`. The exact
+represented residual is only
+
+```text
+r_fraction = b_fraction - M_fraction * x_prod_fraction
+```
+
+`Fraction` is not built from `str(x_prod)`, decimal formatting, JSON text, or
+a rounded decimal literal. `||r||_inf`, `rho_inf`, `B_abs`, and the forward
+bound use `r_fraction`. Report the row backward errors, `kappa_inf`, the
+measured forward error, and the theoretical bound. No value is fitted to
+production output.
 
 Infinity norm:
 
@@ -619,10 +702,22 @@ r = b - M x_prod
 rho_inf = ||r||_inf / (||M||_inf * ||x_prod||_inf + ||b||_inf)
 ```
 
-If the denominator is zero, `rho_inf = 0` when `r` is zero and the state is
-numerically inconclusive when `r` is not zero.
+If the denominator is zero and `r` is zero, `rho_inf = 0`. If the denominator
+is zero and `r` is not zero, `rho_inf` is undefined and the relative bound is
+not used. The absolute branch does not depend on `rho_inf`.
 
-When `||x_ref||_inf > 0` and `kappa_inf * rho_inf < 1`,
+If `||x_ref||_inf == 0`, the absolute branch applies directly:
+
+```text
+E_abs = ||x_prod - x_ref||_inf
+B_abs = ||M^-1||_inf * ||r||_inf
+```
+
+and the case requires `E_abs <= B_abs`, in acceleration units. That branch is
+not inconclusive merely because a separately computed
+`kappa_inf * rho_inf >= 1`.
+
+If `||x_ref||_inf > 0` and `kappa_inf * rho_inf < 1`,
 
 ```text
 E_rel = ||x_prod - x_ref||_inf / ||x_ref||_inf
@@ -631,20 +726,14 @@ B_rel = 2 * kappa_inf * rho_inf / (1 - kappa_inf * rho_inf)
 
 and the case requires `E_rel <= B_rel`. The factor of two belongs to this
 normwise residual definition. The one-factor quotient is not the bound.
-When `||x_ref||_inf == 0`,
+`B_rel`, `rho_inf`, `kappa_inf`, `eta_i`, and `e_j` are dimensionless.
+`B_rel` is not an acceleration threshold.
 
-```text
-E_abs = ||x_prod - x_ref||_inf
-B_abs = ||M^-1||_inf * ||r||_inf
-```
-
-and the case requires `E_abs <= B_abs`, in acceleration units. The `Fraction`
-reference adds no further reference uncertainty. `B_rel` is dimensionless and
-is not used as an acceleration threshold.
-
-When `kappa_inf * rho_inf >= 1`, the state is `NUMERICALLY INCONCLUSIVE` for
-forward-error evidence. It is not accepted as C2V-01 evidence. No other
-forward envelope is chosen after seeing `x_prod`.
+If `||x_ref||_inf > 0` and `kappa_inf * rho_inf >= 1`, the state is
+`NUMERICALLY INCONCLUSIVE` for the relative forward bound. It is not C2V-01
+evidence. The row backward-error gate remains a separate check. No other
+forward envelope is chosen after seeing `x_prod`. The `Fraction` reference
+adds no further reference uncertainty.
 
 ## 11. C2V-09 selection and detectability
 
@@ -691,7 +780,15 @@ Base inputs, candidate `C2V09-00`, are the `_binding()` literals:
   `max_step_s = 0.002`, `max_duration_s = 2`, `max_samples = 5000`,
   `max_rhs_evaluations = 12000`, `max_input_knots = 256`
 
-Later candidates change exactly one of those fields, in this order:
+`C2V09-00` is that unmodified base. `C2V09-01` through `C2V09-25` are the
+ordered single-field seal variants in
+`test_seal_tracks_declared_inputs`. `C2V09-26` and `C2V09-27` are appended, in
+committed source order, from the separate motor-domain test. They are not all
+single-field changes. `C2V09-27` changes three fields together: motor
+`current_max_a = 5`, throttle `1`, and initial shaft speed `1000 * pi / 30`.
+The order itself stays frozen:
+
+
 
 1. `I0 = 2.0e-4`, same source and inventory
 2. inertia source `other inertia`
@@ -722,20 +819,48 @@ Later candidates change exactly one of those fields, in this order:
 27. motor `current_max_a = 5`, throttle `1`, initial shaft speed
     `1000 * pi / 30 rad/s`
 
-Selection evaluates that order. For each candidate it performs only the
-initial-state preflight. The first candidate that satisfies every rule is
-selected. No trajectory metric is computed before that selection.
+Selection walks that order. Phase A reconstructs the candidate exactly. If
+construction, sealing, or binding validation fails, the result is
+`CONTRACT BLOCKED` and the next candidate is not tried. These candidates are
+claimed to reproduce committed bindings. Phase B performs only the frozen
+initial-state preflight. An expected motor, BEM, or map domain or convergence
+rejection for that candidate is `CANDIDATE REJECTED: SOURCE DOMAIN`, and
+selection continues. A failed detectability predicate or an insufficient
+domain or partition margin is `CANDIDATE REJECTED: PREFLIGHT PREDICATE`, and
+selection continues. An unexpected exception or a provenance or seal
+inconsistency is `CONTRACT BLOCKED`. A Q4 failure is
+`PRODUCTION DEFECT / CONTRACT BLOCK`, and selection stops. No trajectory
+metric is computed for a rejected candidate. The first candidate that passes
+every rule is selected. After selection, no other candidate is substituted.
+If none pass, the result is `CONTRACT BLOCKED`.
 
 Detectability, fixed before any trajectory error is known:
 
 - `q_theta` is resolvable when
   `||x_ref(q_theta) - x_ref(q_theta = 0)||_inf > B_abs_correct`,
-  with `B_abs_correct` in acceleration units
+  with `B_abs_correct` in `rad/s^2`
 - the raw-torque mutant is resolvable when
   `||x_ref(mapped Q_phi) - x_ref(raw positive rotor torque)||_inf > B_abs_correct`
-  for that same BEM evaluation
-- aerodynamic hinge work is resolvable when `abs(N q_theta theta_dot)` exceeds
-  the C2V-04 instantaneous power allowance at that state
+  for that same BEM evaluation, again in `rad/s^2`
+- aerodynamic hinge work uses a one-state power scale, not the C2V-04
+  manufactured `dE/dt`. Fresh mapped loads and the motor sample are assembled
+  into `M` and the right-hand side. The exact represented solve of section 10
+  supplies `omega_dot_ref` and `theta_ddot_ref`. `(dE/dt)_ref` is the
+  independent derivative of the declared mechanical energy at that same state.
+  Production `power_identity` is not that derivative. Then
+
+```text
+P_scale_09 = abs((dE/dt)_ref)
+           + abs(Qm omega) + abs(Q_phi omega)
+           + abs(N q_theta theta_dot) + abs(N Qh theta_dot)
+           + abs(N b theta_dot^2)
+           + abs(N tau_c theta_dot tanh(theta_dot / v))
+U_P09 = 0 if P_scale_09 == 0
+        otherwise max(1.0e-8 * P_scale_09, 64 * ulp(P_scale_09))
+```
+
+  Hinge work is resolvable when `abs(N q_theta theta_dot) > U_P09`. Both
+  `P_scale_09` and `U_P09` are in watts.
 
 Domain margins use the frozen production scales at the initial state.
 Fold-domain distance must exceed `S_theta(0)`. Distance of shaft speed above
@@ -754,28 +879,41 @@ is blocked or inconclusive and returns to contract review. It is not replaced.
 
 Before the production trajectory, write a canonical selection record:
 
-- contract head SHA
+- `contract_head`
+- `critical_fixture_manifest_sha256`
 - ordered-list identity `prc_c2v09_ordered_candidates_v1`
 - candidate input digests
+- candidate disposition codes in order
 - frozen controls
 - preflight rules
-- preflight metrics in list order for every candidate inspected
+- all preflight metrics
 - selected index
 - selected sealed-request digest
 - Q2 uncertainty values
 - `q_theta`, hinge-work, and raw-versus-mapped detectability
-- domain margins and partition margin
+- domain margin and partition margin, in metres
+- Q4 result
 
 `selection_record_sha256` is the SHA-256 of that canonical JSON, computed
-before trajectory acceptance. The evidence JSON includes that digest. A file
-that contains only the selected request digest is not enough.
+before the trajectory acceptance routine is called. The later evidence JSON
+contains both `critical_fixture_manifest_sha256` and
+`selection_record_sha256`. The implementation test must show that the
+selection digest exists before that routine runs. A file that contains only
+the selected request digest is not enough.
 
-Q4 remains open as an implementation preflight, not as an open acceptance
-policy. Identical physical and numerical BEM inputs with a changed evaluation
-index must keep thrust, `Q_phi`, and `q_theta` numerically identical under
-this case's equality rule. Identifiers may differ. A numerical difference is
-a production defect or a contract block. C2V-09 does not pass, and no other
-candidate is substituted.
+Q4 is closed as an acceptance policy and measured during the implementation
+preflight. The same physical and numerical BEM and mapper inputs, with only
+the evaluation index or source metadata changed, must produce identical finite
+IEEE-754 binary64 bit patterns for `thrust_n`, mapped `Q_phi`, and mapped
+one-tip `q_theta`. The comparison is the eight-byte pattern equivalent to
+`struct.pack("!d", value)`. It distinguishes `+0.0` from `-0.0`. There is no
+tolerance: that metadata is not an input to the numerical calculation, so a
+different floating-point operation sequence is not allowed. Identifier strings
+may differ. Any differing numerical bit pattern is
+`PRODUCTION DEFECT / CONTRACT BLOCK`. No replacement candidate is used. Test-only
+wrappers may observe the index variants. They call the real production
+functions unchanged and do not replace the solver, change a load, change an
+exception, or alter a numerical return.
 
 ## 12. Failure and domain policy
 
@@ -844,12 +982,22 @@ bound are frozen in section 10.
 Q3. CLOSED. The ordered C2V-09 list, detectability definitions, and
 pre-result selection record are frozen in section 11.
 
-Q4. OPEN FOR IMPLEMENTATION PREFLIGHT. It is mandatory. Failure blocks C2V-09
-and does not permit a substitute fixture.
+Q4. CLOSED AS ACCEPTANCE POLICY. The binary64 bit-identity rule is frozen.
+The measurement itself is executed during the implementation preflight.
+Failure blocks C2V-09 and does not permit a substitute fixture.
 
-Q5. OPEN RUNTIME CHARACTERIZATION. It may affect only where C2V-12 runs.
+Q5. OPEN RUNTIME CHARACTERIZATION. It may affect only where C2V-12 runs. It
+cannot weaken C2V-01 through C2V-10 or remove C2V-09.
 
-No other merge-critical numerical threshold is left undefined.
+No other merge-critical acceptance policy is undefined.
+
+State scales are radians and radians per second. `B_abs` and the mutation and
+load-detectability gaps are radians per second squared. `B_rel`, `rho_inf`,
+`kappa_inf`, `eta_i`, and `e_j` are dimensionless. Torques are newton-metres.
+`U_P` and `U_P09` are watts. `R_E`, `U_quad`, and `U_round_E` are joules.
+`T_allow` is seconds. Partition margins are metres. Q4 equality is binary64
+bit identity and has no physical-unit tolerance. A state scale does not gate
+watts, joules, acceleration, torque, or time.
 
 ## 16. Frozen critical-fixture manifest
 
@@ -915,16 +1063,23 @@ duration `1.0 s`, `max_step_prod = 0.002 s`. Target:
 formulas, not constant loads. The analytic target is the authority for
 `v_min` and domain membership on `[0, t_c]`.
 
-C2V-08, four frozen subcases, shared mechanism except as written:
-
-- fold exit: `theta0 = -1.20 rad`, `theta_dot0 = -1.0 rad/s`, `omega0 = 40`,
-  stops `(-2.0, 0.5)`, duration `0.5 s`
-- speed exit: `omega0 = 10.0 rad/s`, which is below `OMEGA_MIN`,
-  `theta0 = -0.3`, `theta_dot0 = 0`
-- `max_rhs_evaluations = 1`, interior state `theta0 = -0.3`,
-  `theta_dot0 = 0.1`, `omega0 = 40`, duration `0.2 s`
-- hard failure: the synthetic aerodynamic callback raises
-  `Cmm2TransientFailure` with message `hard failure` on the first call
+C2V-08. Shared mechanism, `N = 2`, and that fixture's `I0`, unless a subcase
+overrides them. Zero actuation uses two knots spanning the subcase duration.
+Default controls apply except the named override. Fold exit: manufactured
+`theta*(t) = -1.20 - 1.00 t`, `theta_dot* = -1`, `theta_ddot* = 0`,
+`omega* = 40`, `omega_dot* = 0`, stops `(-2.0, 0.5)`, duration `0.5 s`,
+`Qm* = 0.04 N m`, `Qh* = 0`, and the C2V-07 zero-acceleration load formulas.
+Expected layer: integration-time `Cmm2DomainExit`, not mechanical contact.
+Speed exit: `omega0 = 10 rad/s < OMEGA_MIN`, `theta0 = -0.3`,
+`theta_dot0 = 0`. Expected layer: `Cmm2TransientError` during request
+construction, before callbacks. Budget exit: `theta0 = -0.3`,
+`theta_dot0 = 0.1`, `omega0 = 40`, duration `0.2 s`, shared finite loads
+`Qm = 0.04`, `Q_phi = -0.02`, `q_theta = 0.004`, `max_rhs_evaluations = 1`.
+Expected layer: `Cmm2TransientFailure` with message
+`CMM-2 work budget exhausted.` on evaluation 2. Hard failure: the same
+interior request; the aerodynamic callback raises `Cmm2TransientFailure`
+with message `hard failure` on the first aerodynamic call of the initial
+record. Expected layer: that failure, with no continued trajectory.
 
 C2V-09. The ordered candidate list in section 11. No other inputs.
 
@@ -938,9 +1093,13 @@ is the section formula, which is `0.1 s` for these equal segment widths.
 
 Implementation has not started. This pull request adds no test, fixture, or
 production change. Expected production-code changes for the later
-implementation are none. If rigorous verification needs a production change,
-stop and report the missing observability or defect separately. Do not change
-equations to obtain a pass.
+implementation are none. Test-only wrappers may observe the pre-snap dense
+contact state, evaluation-index variants, and selection sequencing. They call
+the real production functions unchanged. They do not replace the solver,
+change a load, change an exception, or alter a numerical return. No production
+observability change is authorized. If rigorous verification needs a
+production change, stop and report the missing observability or defect
+separately. Do not change equations to obtain a pass.
 
 ## 18. Acceptance boundary
 
