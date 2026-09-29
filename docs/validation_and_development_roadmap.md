@@ -228,9 +228,12 @@ edilmiştir. Son incelenen head
 `653526bca79160a2ec41e2e2ebea802dd8b39d1c`, birleştirme commit'i
 `6f72b28273b38334851df570b1c4cccbbc6b5140` şeklindedir. Ayrıntı:
 [CMM-2 source-bound production binding](cmm2_source_bound_production_binding.md).
-CMM-2 PR-C bağımsız sayısal doğrulamadır. Doğrulama sözleşmesi incelenmiş ve
-uygulama için dondurulmuştur. Son incelenen sözleşme head'i
-`613072514f793f2a1bc65704f9158f536210707f` şeklindedir:
+CMM-2 PR-C bağımsız sayısal doğrulamadır. Doğrulama sözleşmesi
+`613072514f793f2a1bc65704f9158f536210707f` head'inde bağımsız olarak
+incelenmiştir. Yalnız C2V-02 ilk ivme karşılaştırması dar bir aritmetik
+düzeltme için yeniden açılmıştır: REOPENED / NARROW C2V-02 ARITHMETIC
+CORRECTION UNDER INDEPENDENT REVIEW. Yörünge kabul politikası yeniden
+açılmamıştır:
 [CMM-2 PR-C numerical verification contract](cmm2_numerical_verification_contract.md).
 Doğrulama uygulaması başlamamıştır. Sayısal kanıt yoktur. PR-C doğrulama
 kilometre taşı tamamlanmış değildir. Pano A/B/C sırasının dışındadır. Ayrıntı:

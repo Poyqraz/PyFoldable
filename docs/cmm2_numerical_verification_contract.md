@@ -1,31 +1,42 @@
 # CMM-2 PR-C numerical verification contract
 
-Status: REVIEWED / FROZEN FOR IMPLEMENTATION.
+Status: REOPENED / NARROW C2V-02 ARITHMETIC CORRECTION UNDER INDEPENDENT REVIEW.
 
-Independent final reviewed head:
+Prior independently reviewed contract head:
 `613072514f793f2a1bc65704f9158f536210707f`.
 
-Review result: APPROVE.
+Review result of that prior head: APPROVE.
+
+Reason: C2V-02 analytic-zero versus represented-system solve-envelope mismatch
+found during PR #81 forensic verification.
+
+The trajectory acceptance policy is NOT reopened.
 
 Exact design base: `f739ded3d712e42b61a47bf5ef4170c7dfdb7ea8`.
 
-PR-C implementation: NOT STARTED.
+PR-C implementation: NOT STARTED on this amendment. PR #81 is a separate
+blocked implementation and is unchanged here.
 
 `physical_qualification`: false.
 
-Frozen for implementation means the C2V-01 through C2V-10 identities, the
-merge-critical fixture and control construction, and the closed Q1, Q2, and
-Q3 acceptance policies stay as reviewed. Q4's acceptance policy is closed.
-Its measurement remains an implementation preflight. Q5 remains runtime
-characterization and cannot weaken a critical gate. Implementation must not
-retune thresholds, fixtures, oracle choices, or candidate order from observed
-PR-C results.
+The prior freeze still covers C2V-01, C2V-03 through C2V-12, the
+merge-critical fixture and control construction, and the closed Q1, Q2, Q3,
+Q4, and Q5 policies. Q4's measurement remains an implementation preflight.
+Q5 remains runtime characterization and cannot weaken a critical gate.
+Implementation must not retune thresholds, fixtures, oracle choices, or
+candidate order from observed PR-C results.
 
-Frozen for implementation does not mean that PR-C verification has passed,
-that evidence exists, that ADR-009 is accepted, that CMM-2 is physically
-validated, or that `physical_qualification` is true.
+Only the C2V-02 initial-acceleration comparison is reopened, and only to
+separate analytic continuous zero from the binary64 represented-system
+solution. Q2 itself is not changed. The short-trajectory rule, duration,
+tolerances, fixture values, `Q_phi`, and `q_theta` are not changed. This
+amendment does not convert an observed C2V-02 trajectory failure into PASS.
 
-This document freezes the verification claims for the declared CMM-2 screening
+This status does not mean that PR-C verification has passed, that evidence
+exists, that ADR-009 is accepted, that CMM-2 is physically validated, or that
+`physical_qualification` is true.
+
+This document records the verification claims for the declared CMM-2 screening
 model. It does not record evidence. No case below has a measured PASS. A
 future ADR-009 may accept independent numerical verification of that screening
 software model after implementation, evidence closure, exact-head CI, and
@@ -277,7 +288,8 @@ FoldableBEM.
 
 ### C2V-02 — nonzero-load exact equilibrium
 
-Purpose: a manufactured constant state with both accelerations equal to zero.
+Purpose: a manufactured constant state whose continuous analytic accelerations
+are exactly zero.
 
 A constant state has `theta_dot = 0`. Therefore `-b theta_dot = 0` and
 `-tau_c tanh(theta_dot / v) = 0`. This case does not exercise nonzero damping
@@ -285,16 +297,83 @@ or friction. Nonzero dissipation is C2V-03 and C2V-04.
 
 It does exercise `C != 0`, `theta != 0`, `N > 1`, nonzero `Qm`, nonzero
 `Q_phi`, nonzero `q_theta`, the spring term, and centrifugal balance. `Q_phi`
-and `q_theta` are the unique values that make both right-hand sides zero for
-the frozen primitives. They are not taken from a production residual.
+and `q_theta` are the unique values that make both continuous analytic
+right-hand sides zero for the frozen primitives. They are not taken from a
+production residual. Binary64 assembly of those same frozen values may leave
+a represented right-hand side that is not exactly zero.
 
 Oracle class: `INDEPENDENT_NUMERICAL`.
 
-Acceptance basis, in acceleration units `rad/s^2`: the independently predicted
-`omega_dot = 0` and `theta_ddot = 0` must lie inside the applicable C2V-01
-absolute represented-error envelope. The short returned trajectory is a
-different metric. It is compared with the exact constant state under section 7,
-`max e_j <= 1`. Section 7 state scales are not applied to the accelerations.
+The continuous C2V-02 target remains an exact equilibrium. Q2 validates the
+production solve against the represented system. The C2V-02 bridge separately
+accounts for the represented-system displacement from the analytic target.
+This amendment does not weaken or alter the trajectory gate.
+
+Initial acceleration requires both of the following. The analytic bridge does
+not replace Q2.
+
+A. Ordinary Q2 represented-system solver audit, unchanged. Policy id
+`prc_represented_forward_v1` stays. Apply section 10 exactly, with
+
+```text
+x_repr = exact Fraction solution of M_repr x = b_repr
+r_repr = b_repr - M_repr x_prod
+B_solve = ||M_repr^-1||_inf * ||r_repr||_inf
+```
+
+`M_repr` and `b_repr` are the independently assembled binary64 system.
+`x_analytic` is not substituted for `x_repr` inside Q2. Row backward-error
+gates and the factor-of-two relative branch stay as written in section 10.
+
+B. Analytic-equilibrium bridge, for C2V-02 only. In acceleration units
+`rad/s^2`:
+
+```text
+x_analytic = [0, 0]
+x_repr = exact rational solution of the independently assembled binary64 M_repr, b_repr
+B_assembly = ||x_repr - x_analytic||_inf
+B_solve = ||M_repr^-1||_inf * ||b_repr - M_repr x_prod||_inf
+E_analytic = ||x_prod - x_analytic||_inf
+```
+
+`B_assembly` is the exact acceleration displacement caused by representation
+and assembly of the frozen binary64 system relative to the analytic continuous
+equilibrium. It is not a fitted tolerance. `B_solve` is the production-solve
+contribution: it bounds production solve error relative to the exact
+represented system. It does not by itself bound analytic continuous zero
+versus that represented-system solution. Record `B_assembly`, `B_solve`, and
+`E_analytic` separately. Do not merge them into an unexplained tolerance.
+
+The C2V-02 initial acceleration gate is
+
+```text
+E_analytic <= B_assembly + B_solve
+```
+
+This follows from
+
+```text
+x_prod - x_analytic = (x_prod - x_repr) + (x_repr - x_analytic)
+```
+
+and the triangle inequality. Analytic zero is not required to lie inside
+`B_solve` alone.
+
+The short returned trajectory is a different metric and is not reopened. The
+reference trajectory remains the exact constant state. Section 7 applies
+exactly:
+
+```text
+S_j(t) = atol_j + rtol * abs(y_ref_j(t))
+e_j(t) = abs(y_prod_j(t) - y_ref_j(t)) / S_j(t)
+```
+
+and `max e_j <= 1` for every state component. Duration `0.02 s`, the section
+11 default controls (`rtol = 1e-6`, hinge-rate atol `1e-8`, angle atol
+`1e-8`, shaft-speed atol `1e-6`, `max_step = 0.002`), the section 16 fixture
+values, `Q_phi`, and `q_theta` stay unchanged. An observed trajectory failure
+remains a legitimate PR-C failure. This amendment does not convert that
+failure into PASS. Section 7 state scales are not applied to the accelerations.
 
 Limitations: one equilibrium does not verify transient coupling.
 
@@ -1121,8 +1200,13 @@ separately. Do not change equations to obtain a pass.
 ## 18. Acceptance boundary
 
 Review of this contract is not verification acceptance. Passing tests do not
-yet exist. Status is REVIEWED / FROZEN FOR IMPLEMENTATION. That status does
-not record evidence and does not accept ADR-009.
+yet exist. Status is REOPENED / NARROW C2V-02 ARITHMETIC CORRECTION UNDER
+INDEPENDENT REVIEW. The trajectory acceptance policy is not reopened. Prior
+independently reviewed contract head:
+`613072514f793f2a1bc65704f9158f536210707f`. Reason: C2V-02 analytic-zero
+versus represented-system solve-envelope mismatch found during PR #81
+forensic verification. That status does not record evidence and does not
+accept ADR-009.
 ADR-009 is not created and is not accepted. `physical_qualification` stays
 false. PR-06C stays unresolved. No GEOM gate is promoted. There is no
 calibration and no experimental validation.
