@@ -90,9 +90,8 @@ authenticate a source or establish qualification. The slice was independently
 reviewed and merged in PR #78. ADR-008 is accepted for this software
 integration only. Final reviewed head
 `653526bca79160a2ec41e2e2ebea802dd8b39d1c`. Merge commit
-`6f72b28273b38334851df570b1c4cccbbc6b5140`. No merged or accepted PR-C
-verification implementation exists. Draft PR #81 contains a blocked evidence
-implementation attempt. There is no dashboard. The service
+`6f72b28273b38334851df570b1c4cccbbc6b5140`. Independent CMM-2 numerical
+verification, PR-C, is not implemented. There is no dashboard. The service
 does not change CMM-1 or the accepted load-map mathematics.
 `physical_qualification` remains false. PR-06C remains unresolved. No GEOM
 gate is promoted. There is no calibration and no experimental validation.

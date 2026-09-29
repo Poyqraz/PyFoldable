@@ -20,9 +20,10 @@ blocked implementation and is unchanged here.
 `physical_qualification`: false.
 
 The prior freeze still covers C2V-01, C2V-03 through C2V-12, the
-merge-critical fixture and control construction, and the closed Q1, Q2, Q3,
-Q4, and Q5 policies. Q4's measurement remains an implementation preflight.
-Q5 remains runtime characterization and cannot weaken a critical gate.
+merge-critical fixture and control construction, the closed Q1, Q2, and Q3
+policies, and Q4's closed acceptance policy. Q4's measurement remains an
+implementation preflight. Q5 remains open runtime characterization and cannot
+weaken a critical gate.
 Implementation must not retune thresholds, fixtures, oracle choices, or
 candidate order from observed PR-C results.
 
