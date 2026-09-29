@@ -208,9 +208,11 @@ Service implementation id `cmm2_source_bound_screening_service_v1`.
 That id is not the dynamics implementation id. Binding detail:
 [CMM-2 source-bound production binding](cmm2_source_bound_production_binding.md).
 
-PR-C is independent CMM-2 numerical verification. It is the next CMM-2
-slice and is not implemented. PR-C is not dashboard work. The dashboard
-stays outside this sequence.
+PR-C is independent CMM-2 numerical verification. The verification contract
+is proposed and under independent review:
+[CMM-2 PR-C numerical verification contract](cmm2_numerical_verification_contract.md).
+Verification implementation is not started. PR-C is not dashboard work. The
+dashboard stays outside this sequence.
 
 Dynamics code: `pyfoldable/dynamics/cmm2_coupled_transient.py`.
 Dynamics tests: `tests/dynamics/test_cmm2_coupled_transient.py`.
