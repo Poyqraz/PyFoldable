@@ -235,8 +235,10 @@ düzeltme için yeniden açılmıştır: REOPENED / NARROW C2V-02 ARITHMETIC
 CORRECTION UNDER INDEPENDENT REVIEW. Yörünge kabul politikası yeniden
 açılmamıştır:
 [CMM-2 PR-C numerical verification contract](cmm2_numerical_verification_contract.md).
-Doğrulama uygulaması başlamamıştır. Sayısal kanıt yoktur. PR-C doğrulama
-kilometre taşı tamamlanmış değildir. Pano A/B/C sırasının dışındadır. Ayrıntı:
+PR #81 üzerinde doğrulama/kanıt uygulaması başlatılmıştır ancak dondurulmuş
+C2V-02/C2V-03 yörünge kapılarında BLOCKED durumdadır; birleştirilmemiştir ve
+bağımsız sayısal doğrulama kabul edilmemiştir. Sayısal kanıt yoktur. PR-C
+doğrulama kilometre taşı tamamlanmış değildir. Pano A/B/C sırasının dışındadır. Ayrıntı:
 [CMM-1 sözleşmesi](cmm1_partial_coupled_transient.md) ve ADR-005.
 Faz 4 sayısal kanıtı
 [CMM-1 numerical verification](cmm1_numerical_verification.md)

@@ -90,8 +90,9 @@ authenticate a source or establish qualification. The slice was independently
 reviewed and merged in PR #78. ADR-008 is accepted for this software
 integration only. Final reviewed head
 `653526bca79160a2ec41e2e2ebea802dd8b39d1c`. Merge commit
-`6f72b28273b38334851df570b1c4cccbbc6b5140`. Independent CMM-2 numerical
-verification, PR-C, is not implemented. There is no dashboard. The service
+`6f72b28273b38334851df570b1c4cccbbc6b5140`. No merged or accepted PR-C
+verification implementation exists. Draft PR #81 contains a blocked evidence
+implementation attempt. There is no dashboard. The service
 does not change CMM-1 or the accepted load-map mathematics.
 `physical_qualification` remains false. PR-06C remains unresolved. No GEOM
 gate is promoted. There is no calibration and no experimental validation.
@@ -100,12 +101,14 @@ This does not state that CMM-2 is complete or physically validated. Binding:
 
 **2026-09-29 CMM-2 PR-C verification contract.** The numerical-verification
 contract was independently reviewed at head
-`613072514f793f2a1bc65704f9158f536210707f`. A later narrow amendment reopened
-only the C2V-02 initial-acceleration comparison:
+`613072514f793f2a1bc65704f9158f536210707f`. PR #82 reopens only the C2V-02
+initial-acceleration arithmetic bridge:
 REOPENED / NARROW C2V-02 ARITHMETIC CORRECTION UNDER INDEPENDENT REVIEW.
-The trajectory acceptance policy is not reopened. Verification implementation
-is absent and not started on that amendment. Independent CMM-2 numerical
-verification is absent. ADR-009 is not created and is not accepted.
+The trajectory acceptance policy is not reopened. No merged or accepted PR-C
+verification implementation exists. Draft PR #81 contains a blocked evidence
+implementation attempt. That draft is unmerged and BLOCKED by the frozen
+C2V-02/C2V-03 trajectory gates. Independent CMM-2 numerical verification
+remains not established. ADR-009 is not created and is not accepted.
 `physical_qualification` remains false. Contract:
 [CMM-2 PR-C numerical verification contract](../cmm2_numerical_verification_contract.md).
 
@@ -136,7 +139,7 @@ ranges: [pyproject.toml](../../pyproject.toml); UI routing:
 | Partial | CFD/FEA/experiment UI inspects specific existing canonical contracts in session; not arbitrary ANSYS or raw experimental import, not evidence promotion | `pyfoldable/application/evidence_import.py::_CANONICAL_IDENTITIES`, `inspect_evidence_upload`; `tests/application/test_evidence_import.py` |
 | Current | Isolated CMM-2 paired-load screening dynamics are implemented, independently reviewed, and merged in PR #76. ADR-007 accepts that slice only | `pyfoldable/dynamics/cmm2_coupled_transient.py`, [CMM-2 PR-A](../cmm2_coupled_transient_contract.md) |
 | Current | Source-bound CMM-2 screening service and sealed deterministic report were independently reviewed and merged in PR #78. ADR-008 accepts that software slice only | `pyfoldable/application/cmm2_coupled_transient_service.py`, [CMM-2 PR-B](../cmm2_source_bound_production_binding.md) |
-| Partial | Independent CMM-2 numerical verification is absent. Prior reviewed contract head `613072514f793f2a1bc65704f9158f536210707f`. Only the C2V-02 initial-acceleration comparison is reopened for a narrow arithmetic correction under independent review. The trajectory acceptance policy is not reopened. That is not evidence and not physical qualification | [CMM-2 PR-C contract](../cmm2_numerical_verification_contract.md) |
+| Partial | No merged or accepted PR-C verification implementation exists. Draft PR #81 contains a blocked evidence implementation attempt and is unmerged. Prior reviewed contract head `613072514f793f2a1bc65704f9158f536210707f`. PR #82 reopens only the C2V-02 initial-acceleration arithmetic bridge. The trajectory acceptance policy is not reopened. Independent CMM-2 numerical verification is not established. ADR-009 is absent. `physical_qualification` is false | [CMM-2 PR-C contract](../cmm2_numerical_verification_contract.md) |
 | Partial | Full workspace coverage: Motor–Pervane, Doğrulama ve Kanıtlar, Raporlar are placeholder pages despite lower-layer APIs | `apps/pyfoldable_dashboard.py::main`, `_render_planned_page` |
 | Planned / evidence-dependent | PY-06D2 identifiable parameter fitting, E structural correlation, F consolidated comparison UI, physically supported Pareto recommendations | [PY-06 plan](../py06_calibration_uncertainty_plan.md), [Python roadmap](../python_research_execution_plan.md) |
 | Not delivered | Qualified project rotor/structure/deployment; general CAD solids, asynchronous folding, impact/bounce/latch and full BEM–motor–hinge feedback | [validation roadmap](../validation_and_development_roadmap.md), [PY-05 limits](../py05_completion.md), [GEOM-04 limits](../geom04_surface_hardware.md) |

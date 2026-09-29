@@ -215,9 +215,11 @@ initial-acceleration comparison is reopened: REOPENED / NARROW C2V-02
 ARITHMETIC CORRECTION UNDER INDEPENDENT REVIEW. The trajectory acceptance
 policy is not reopened:
 [CMM-2 PR-C numerical verification contract](cmm2_numerical_verification_contract.md).
-Verification implementation is not started. Independent CMM-2 numerical
-verification is not yet established. PR-C is not complete and is not dashboard
-work. The dashboard stays outside this sequence.
+A separate Draft PR #81 contains a PR-C evidence implementation attempt.
+That implementation is unmerged and BLOCKED by the frozen C2V-02/C2V-03
+trajectory gates. Independent CMM-2 numerical verification is not established.
+PR-C is not complete and is not dashboard work. The dashboard stays outside
+this sequence.
 
 Dynamics code: `pyfoldable/dynamics/cmm2_coupled_transient.py`.
 Dynamics tests: `tests/dynamics/test_cmm2_coupled_transient.py`.
