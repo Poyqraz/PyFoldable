@@ -228,11 +228,12 @@ edilmiştir. Son incelenen head
 `653526bca79160a2ec41e2e2ebea802dd8b39d1c`, birleştirme commit'i
 `6f72b28273b38334851df570b1c4cccbbc6b5140` şeklindedir. Ayrıntı:
 [CMM-2 source-bound production binding](cmm2_source_bound_production_binding.md).
-CMM-2 PR-C bağımsız sayısal doğrulamadır. Doğrulama sözleşmesi önerilmiştir
-ve inceleme altındadır:
+CMM-2 PR-C bağımsız sayısal doğrulamadır. Doğrulama sözleşmesi incelenmiş ve
+uygulama için dondurulmuştur. Son incelenen sözleşme head'i
+`613072514f793f2a1bc65704f9158f536210707f` şeklindedir:
 [CMM-2 PR-C numerical verification contract](cmm2_numerical_verification_contract.md).
-Doğrulama uygulaması başlamamıştır. Bu, sayısal kilometre taşının tamamlandığı
-anlamına gelmez. Pano A/B/C sırasının dışındadır. Ayrıntı:
+Doğrulama uygulaması başlamamıştır. Sayısal kanıt yoktur. PR-C doğrulama
+kilometre taşı tamamlanmış değildir. Pano A/B/C sırasının dışındadır. Ayrıntı:
 [CMM-1 sözleşmesi](cmm1_partial_coupled_transient.md) ve ADR-005.
 Faz 4 sayısal kanıtı
 [CMM-1 numerical verification](cmm1_numerical_verification.md)

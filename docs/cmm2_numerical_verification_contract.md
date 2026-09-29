@@ -1,6 +1,11 @@
 # CMM-2 PR-C numerical verification contract
 
-Status: PROPOSED / CONTRACT UNDER INDEPENDENT REVIEW.
+Status: REVIEWED / FROZEN FOR IMPLEMENTATION.
+
+Independent final reviewed head:
+`613072514f793f2a1bc65704f9158f536210707f`.
+
+Review result: APPROVE.
 
 Exact design base: `f739ded3d712e42b61a47bf5ef4170c7dfdb7ea8`.
 
@@ -8,11 +13,23 @@ PR-C implementation: NOT STARTED.
 
 `physical_qualification`: false.
 
+Frozen for implementation means the C2V-01 through C2V-10 identities, the
+merge-critical fixture and control construction, and the closed Q1, Q2, and
+Q3 acceptance policies stay as reviewed. Q4's acceptance policy is closed.
+Its measurement remains an implementation preflight. Q5 remains runtime
+characterization and cannot weaken a critical gate. Implementation must not
+retune thresholds, fixtures, oracle choices, or candidate order from observed
+PR-C results.
+
+Frozen for implementation does not mean that PR-C verification has passed,
+that evidence exists, that ADR-009 is accepted, that CMM-2 is physically
+validated, or that `physical_qualification` is true.
+
 This document freezes the verification claims for the declared CMM-2 screening
 model. It does not record evidence. No case below has a measured PASS. A
 future ADR-009 may accept independent numerical verification of that screening
-software model after implementation, exact-head CI, independent review, and
-evidence closure. ADR-009 is not created and is not accepted here.
+software model after implementation, evidence closure, exact-head CI, and
+independent review. ADR-009 is not created and is not accepted here.
 
 ## 1. Scope
 
@@ -1104,7 +1121,8 @@ separately. Do not change equations to obtain a pass.
 ## 18. Acceptance boundary
 
 Review of this contract is not verification acceptance. Passing tests do not
-yet exist. Status remains PROPOSED / CONTRACT UNDER INDEPENDENT REVIEW.
+yet exist. Status is REVIEWED / FROZEN FOR IMPLEMENTATION. That status does
+not record evidence and does not accept ADR-009.
 ADR-009 is not created and is not accepted. `physical_qualification` stays
 false. PR-06C stays unresolved. No GEOM gate is promoted. There is no
 calibration and no experimental validation.
