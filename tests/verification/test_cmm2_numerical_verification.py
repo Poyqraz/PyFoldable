@@ -64,6 +64,8 @@ from pyfoldable.core import load_design_config
 from pythrust.propulsion.models import BatterySpec, MotorSpec, SystemSpec
 from tests.verification.cmm2_prc_evidence import (
     EVIDENCE,
+    measurement_partial,
+    recorded_case,
     MANIFEST_SHA,
     commit_case,
     execute_measured_case,
@@ -126,6 +128,10 @@ def _dump_prc_evidence(tmp_path_factory):
 
 
 def _publish(case_id: str, payload: dict[str, object]) -> None:
+    partial = measurement_partial()
+    payload = {**partial, **payload}
+    if partial.get("premeasurement_snapshots"):
+        payload["premeasurement_digest"] = partial["premeasurement_digest"]
     executed = payload.pop("executed_inputs", {})
     fixture = executed_fixture(case_id, executed if isinstance(executed, dict) else {})
     payload.setdefault("fixture_identity", f"prc_critical_fixture_manifest_v1:{case_id}")
@@ -135,6 +141,7 @@ def _publish(case_id: str, payload: dict[str, object]) -> None:
         payload.setdefault("fixture_digest", fixture_digest(fixture))
     payload.setdefault("controls", fixture["controls"])
     payload.setdefault("executed_inputs", executed)
+    partial.update(payload)
     commit_case(case_id, payload)
 
 
@@ -385,8 +392,10 @@ def _dop853(rhs, y0, t1, controls: CoupledSolverControls, level: str):
             max_step=max_step,
             dense_output=True,
         )
-    except Exception as exc:
-        return None, f"REFERENCE NOT STABILIZED: {type(exc).__name__}: {exc}"
+    except Exception:
+        # Entry recording boundaries retain the partial measurements, then the
+        # original oracle exception must remain a pytest failure.
+        raise
     if not solution.success or solution.sol is None:
         return None, "REFERENCE NOT STABILIZED"
     return solution, None
@@ -577,18 +586,30 @@ def _power(system, theta, theta_dot, omega, motor_nm, hinge_nm, q_phi, q_theta) 
     return sum(terms), sum(abs(term) for term in terms), terms[-1]
 
 
+@recorded_case("C2V-01")
 def test_c2v01_represented_algebra() -> None:
     rows = []
     separated = {name: False for name in ("A", "B", "C", "D")}
     state = (-0.4, 0.2, 40.0)
     pairs = ((-0.02, 0.004), (0.015, -0.003))
-    for count in (1, 2, 4):
-        system = _system(count)
+    partial = measurement_partial()
+    partial["metrics"] = {"rows": rows, "mutants_separated": separated}
+    systems = {count: _system(count) for count in (1, 2, 4)}
+    controls = _controls()
+    for count, system in systems.items():
+        for pair in pairs:
+            freeze_case_before_measurement("C2V-01", system=system, controls=controls,
+                executed_inputs={"state_rad": list(state), "Qm_nm": .05, "Qh_nm": .001, "load_pair_nm": list(pair)})
+    partial["freeze_complete"] = True
+    for count, system in systems.items():
         for q_phi, q_theta in pairs:
             m00, m01, m11, _coupling = _matrix(system, state[0])
             shaft, hinge = _rhs(system, *state, 0.05, 0.001, q_phi, q_theta)
             produced = _production_acceleration(system, *state, 0.05, 0.001, q_phi, q_theta)
+            row = {"N": count, "loads": [q_phi, q_theta], "production_accelerations_rad_s2": list(produced)}
+            rows.append(row)
             report, _reference, bound = _audit_solution(m00, m01, m11, shaft, hinge, produced)
+            row["audit"] = report
             mutants = {
                 "A": (count * q_phi, q_theta),
                 "B": (q_phi, q_theta / count if count else q_theta),
@@ -620,7 +641,7 @@ def test_c2v01_represented_algebra() -> None:
                 gaps[name] = float(gap)
                 if gap > bound and (name == "D" or count > 1):
                     separated[name] = True
-            rows.append({"N": count, "loads": [q_phi, q_theta], "audit": report, "gaps_rad_s2": gaps})
+            row["gaps_rad_s2"] = gaps
     passed = all(row["audit"]["classification"] == "PASS" for row in rows) and all(separated.values())
     _publish(
         "C2V-01",
@@ -639,7 +660,7 @@ def test_c2v01_represented_algebra() -> None:
             "limitations": "no trajectory and no FoldableBEM qualification",
         },
     )
-    assert passed
+    assert passed, "C2V-01 represented algebra or mutant separation failed"
 
 
 def _analytic_bridge(produced, reference, b_solve: Fraction) -> dict[str, object]:
@@ -658,6 +679,7 @@ def _analytic_bridge(produced, reference, b_solve: Fraction) -> dict[str, object
     }
 
 
+@recorded_case("C2V-02")
 def test_c2v02_exact_equilibrium() -> None:
     system = _system(2)
     theta, omega, motor_nm, hinge_nm = -0.4, 40.0, 0.05, 0.001
@@ -671,19 +693,25 @@ def test_c2v02_exact_equilibrium() -> None:
         "Q_phi_nm": q_phi,
         "q_theta_nm": q_theta,
         "duration_s": 0.02,
+        "actuation_knots_s": [0., .02], "actuation_torques_nm": [.001, .001],
     }
+    controls = _controls()
     frozen = freeze_case_before_measurement(
         "C2V-02",
         system=system,
-        controls=_controls(),
+        controls=controls,
         executed_inputs=executed,
     )
+    measurement_partial()["freeze_complete"] = True
     q_phi_matches = q_phi == pytest.approx(-motor_nm)
     m00, m01, m11, _coupling = _matrix(system, theta)
     shaft, hinge = _rhs(system, theta, 0.0, omega, motor_nm, hinge_nm, q_phi, q_theta)
     produced = _production_acceleration(system, theta, 0.0, omega, motor_nm, hinge_nm, q_phi, q_theta)
+    measurement_partial()["metrics"] = {"production_accelerations_rad_s2": list(produced)}
     report, reference, bound = _audit_solution(m00, m01, m11, shaft, hinge, produced)
+    measurement_partial()["metrics"]["q2_audit"] = report
     bridge = _analytic_bridge(produced, reference, bound)
+    measurement_partial()["metrics"] = {"q2_audit": report, **bridge}
     result = _run(
         system,
         0.02,
@@ -695,9 +723,9 @@ def test_c2v02_exact_equilibrium() -> None:
             q_phi, q_theta, 1.0, LOAD_MAPPING_MODEL, AERO_LOAD_QUALIFICATION,
             PROJECTION_MODEL, HINGE_RATE_AERO_MODEL, 2, R_HINGE, angle, rate, "c2v02",
         ),
+        controls=controls,
         actuation=HingeActuationHistory((0.0, 0.02), (hinge_nm, hinge_nm), "prc"),
     )
-    controls = _controls()
     worst = None
     if result.status == "completed" and result.samples:
         worst = _worst_sample(
@@ -753,7 +781,7 @@ def test_c2v02_exact_equilibrium() -> None:
         },
     )
     assert q_phi_matches
-    assert passed
+    assert passed, "C2V-02 trajectory gate max e_j <= 1 failed" if not trajectory_pass else "C2V-02 initial acceleration gate failed"
 
 
 def _c2v03_target(time: float) -> tuple[float, float, float, float, float, float]:
@@ -798,28 +826,28 @@ def _manufactured_measurement():
     cached = getattr(_manufactured_measurement, "value", None)
     if cached is not None:
         return cached
+    _manufactured_measurement.partial = {}
     system = _system(2)
+    controls = _controls()
     motor, aero, rhs, loads = _manufactured_callbacks(system)
     initial = _c2v03_target(0.0)
     if initial[0] != -0.30 or initial[3] != 40.0 or initial[4] != 2.0:
         raise AssertionError("shared target formula drifted before measurement")
     probe = _c2v03_target(0.05)
     q_phi, q_theta = loads(0.05)
-    shared_inputs = {"duration_s": 0.2, "Qm_nm": 0.04, "Qh_nm": 0.001}
+    shared_inputs = _manufactured_inputs(initial)
+    _manufactured_measurement.partial = {}
     try:
         frozen_03 = freeze_case_before_measurement(
-            "C2V-03", system=system, controls=_controls(), executed_inputs=shared_inputs
+            "C2V-03", system=system, controls=controls, executed_inputs=shared_inputs
         )
+        _manufactured_measurement.partial = {"C2V-03": _snapshot_partial(frozen_03)}
         frozen_05 = freeze_case_before_measurement(
-            "C2V-05", system=system, controls=_controls(), executed_inputs=shared_inputs
+            "C2V-05", system=system, controls=controls, executed_inputs=shared_inputs
         )
         _manufactured_measurement.partial = {
-            "metrics": {
-                "premeasurement_digest_c2v03": frozen_03["premeasurement_digest"],
-                "premeasurement_digest_c2v05": frozen_05["premeasurement_digest"],
-            },
-            "premeasurement_digest": frozen_03["premeasurement_digest"],
-            "executed_inputs": shared_inputs,
+            "C2V-03": _snapshot_partial(frozen_03),
+            "C2V-05": _snapshot_partial(frozen_05),
         }
         result = _run(
             system,
@@ -829,9 +857,11 @@ def _manufactured_measurement():
             initial[3],
             motor,
             aero,
+            controls=controls,
             actuation=HingeActuationHistory((0.0, 0.2), (0.001, 0.001), "prc"),
         )
-        controls = _controls()
+        for case_partial in _manufactured_measurement.partial.values():
+            case_partial["metrics"] = {"result_status": result.status, "sample_count": len(result.samples), "q_phi_sample_nm": q_phi, "q_theta_sample_nm": q_theta}
         times = [sample.time_s for sample in result.samples]
         stabilization = _stabilization_metrics(
             rhs, (initial[0], initial[1], initial[3]), times, controls
@@ -864,6 +894,7 @@ def _manufactured_measurement():
             "premeasurement_digest": frozen_03["premeasurement_digest"],
             "premeasurement_digest_c2v05": frozen_05["premeasurement_digest"],
         }
+        cached["premeasurement_snapshots"] = {"C2V-03": frozen_03, "C2V-05": frozen_05}
         _manufactured_measurement.value = cached
         return cached
     except Exception as exc:
@@ -918,17 +949,36 @@ def _trajectory_case_payload(measurement: dict[str, object], purpose: str, oracl
     }
 
 
-def _shared_measurement_or_partial(partial: dict[str, object]):
+def _manufactured_inputs(initial=None):
+    initial = initial or _c2v03_target(0.0)
+    return {"duration_s": .2, "Qm_nm": .04, "Qh_nm": .001,
+            "initial_state_rad": [initial[0], initial[1], initial[3]],
+            "theta_formula": "theta*(t) = -0.30 + 0.05 * sin(2 * pi * t / 0.2)",
+            "omega_formula": "omega*(t) = 40 + 2 * t", "omega_dot_rad_s2": 2.,
+            "load_formula": "Q_phi*(t) and q_theta*(t) solve the target equations at the target state and accelerations",
+            "actuation_knots_s": [0., .2], "actuation_torques_nm": [.001, .001]}
+
+
+def _snapshot_partial(snapshot):
+    return {"freeze_complete": True, "premeasurement_snapshots": [snapshot],
+            "premeasurement_digest": snapshot["premeasurement_digest"],
+            "fixture_digest": snapshot["premeasurement_digest"],
+            "executed_inputs": snapshot["executed_inputs"], "controls": snapshot["controls"]}
+
+
+def _shared_measurement_or_partial(case_id, partial: dict[str, object]):
     try:
-        return _manufactured_measurement()
+        result = _manufactured_measurement()
+        partial.update(_snapshot_partial(result["premeasurement_snapshots"][case_id]))
+        return result
     except Exception:
-        partial.update(getattr(_manufactured_measurement, "partial", {}) or {})
+        partial.update((getattr(_manufactured_measurement, "partial", {}) or {}).get(case_id, {}))
         raise
 
 
 def test_c2v03_manufactured_trajectory() -> None:
     def measure(partial):
-        measurement = _shared_measurement_or_partial(partial)
+        measurement = _shared_measurement_or_partial("C2V-03", partial)
         payload = _trajectory_case_payload(
             measurement,
             "manufactured coupled trajectory",
@@ -937,7 +987,8 @@ def test_c2v03_manufactured_trajectory() -> None:
         payload["premeasurement_digest"] = measurement["premeasurement_digest"]
         partial["metrics"] = payload["metrics"]
         partial["premeasurement_digest"] = measurement["premeasurement_digest"]
-        partial["executed_inputs"] = {"duration_s": 0.2, "Qm_nm": 0.04, "Qh_nm": 0.001}
+        payload["premeasurement_snapshots"] = partial["premeasurement_snapshots"]
+        payload["executed_inputs"] = partial["executed_inputs"]
         return payload
 
     def checks(payload):
@@ -956,7 +1007,7 @@ def test_c2v03_manufactured_trajectory() -> None:
 
 def test_c2v05_dop853_reference() -> None:
     def measure(partial):
-        measurement = _shared_measurement_or_partial(partial)
+        measurement = _shared_measurement_or_partial("C2V-05", partial)
         payload = _trajectory_case_payload(
             measurement,
             "DOP853 reference on the C2V-03 right-hand side",
@@ -968,12 +1019,14 @@ def test_c2v05_dop853_reference() -> None:
         payload["premeasurement_digest"] = measurement["premeasurement_digest_c2v05"]
         partial["metrics"] = payload["metrics"]
         partial["premeasurement_digest"] = measurement["premeasurement_digest_c2v05"]
-        partial["executed_inputs"] = {"duration_s": 0.2, "Qm_nm": 0.04, "Qh_nm": 0.001}
+        payload["premeasurement_snapshots"] = partial["premeasurement_snapshots"]
+        payload["executed_inputs"] = partial["executed_inputs"]
         return payload
 
     execute_measured_case("C2V-05", measure)
 
 
+@recorded_case("C2V-04")
 def test_c2v04_independent_work() -> None:
     system = _system(2)
     _motor, _aero, _rhs, loads = _manufactured_callbacks(system)
@@ -989,15 +1042,19 @@ def test_c2v04_independent_work() -> None:
         allowance = 0.0 if scale == 0.0 else max(1.0e-8 * scale, 64.0 * math.ulp(scale))
         return residual, allowance, power
 
-    residuals = [sample(time / 20.0) for time in range(5)]
+    inputs = _manufactured_inputs()
+    inputs.pop("actuation_knots_s")
+    inputs.pop("actuation_torques_nm")
+    inputs.update(quad_A_epsrel=1.e-10, quad_B_epsrel=1.e-12, quad_epsabs=0., power_sample_times_s=[i / 20. for i in range(5)])
+    frozen = freeze_case_before_measurement("C2V-04", system=system, controls=_controls(), executed_inputs=inputs)
+    measurement_partial()["freeze_complete"] = True
+    residuals = []
+    measurement_partial()["metrics"] = {"power_samples": residuals}
+    for time in inputs["power_sample_times_s"]:
+        residuals.append(sample(time))
     power_pass = all(abs(residual) <= allowance for residual, allowance, _power_value in residuals)
-    frozen = freeze_case_before_measurement(
-        "C2V-04",
-        system=system,
-        controls=_controls(),
-        executed_inputs={"duration_s": 0.2, "Qm_nm": 0.04, "Qh_nm": 0.001},
-    )
     quadrature_reason = None
+    quadrature_error = None
     integral_a = error_a = integral_b = error_b = None
     energy_scale = quadrature_uncertainty = roundoff = energy_residual = None
 
@@ -1008,8 +1065,9 @@ def test_c2v04_independent_work() -> None:
     try:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always", IntegrationWarning)
-            integral_a, error_a = quad(integrand, 0.0, 0.2, epsabs=0.0, epsrel=1.0e-10)
-            integral_b, error_b = quad(integrand, 0.0, 0.2, epsabs=0.0, epsrel=1.0e-12)
+            integral_a, error_a = quad(integrand, 0.0, 0.2, epsabs=inputs["quad_epsabs"], epsrel=inputs["quad_A_epsrel"])
+            measurement_partial()["metrics"].update(integral_a_j=integral_a, error_a_j=error_a)
+            integral_b, error_b = quad(integrand, 0.0, 0.2, epsabs=inputs["quad_epsabs"], epsrel=inputs["quad_B_epsrel"])
         reliable, reliable_reason = _quadrature_is_reliable(integral_a, error_a, integral_b, error_b)
         if caught or not reliable:
             quadrature_reason = reliable_reason or "QUADRATURE REFERENCE NOT RELIABLE"
@@ -1031,6 +1089,7 @@ def test_c2v04_independent_work() -> None:
                     energy_scale > 0.0 and quadrature_uncertainty <= 0.1 * roundoff
                 ) else "energy gate failed"
     except Exception as exc:
+        quadrature_error = exc
         quadrature_reason = f"QUADRATURE REFERENCE NOT RELIABLE: {type(exc).__name__}: {exc}"
     passed = power_pass and quadrature_reason is None
     _publish(
@@ -1071,7 +1130,9 @@ def test_c2v04_independent_work() -> None:
             "pass_blocked_reason": None if passed else quadrature_reason or "watt gate failed",
         },
     )
-    assert passed
+    if quadrature_error is not None:
+        raise quadrature_error
+    assert passed, quadrature_reason or "C2V-04 watt gate failed"
 
 
 def _mechanical(system: CoupledSystem, theta: float, theta_dot: float, omega: float) -> float:
@@ -1083,11 +1144,16 @@ def _mechanical(system: CoupledSystem, theta: float, theta_dot: float, omega: fl
     return kinetic + spring
 
 
+@recorded_case("C2V-06")
 def test_c2v06_zero_hinge_limit() -> None:
     system = _system(2)
     theta, theta_dot, omega = -0.3, 0.1, 40.0
     resisting = 0.02
+    executed = {"theta_rad": theta, "theta_dot_rad_s": theta_dot, "omega_rad_s": omega, "Qa_nm": resisting, "Q_phi_nm": -resisting, "q_theta_nm": 0., "Qm_nm": .04, "Qh_nm": .001}
+    freeze_case_before_measurement("C2V-06", system=system, controls=_controls(), executed_inputs=executed)
+    measurement_partial()["freeze_complete"] = True
     cmm2_values = _production_acceleration(system, theta, theta_dot, omega, 0.04, 0.001, -resisting, 0.0)
+    measurement_partial()["metrics"] = {"cmm2_accelerations_rad_s2": list(cmm2_values)}
     cmm1 = coupled_accelerations(system, theta, theta_dot, omega, 0.04, resisting, 0.001)
     compared = (
         (cmm2_values[0], cmm1.omega_dot_rad_s2),
@@ -1121,13 +1187,14 @@ def test_c2v06_zero_hinge_limit() -> None:
             "limitations": "not a transfer of CMM-1 Phase-4 evidence",
         },
     )
-    assert passed
+    assert passed, "C2V-06 one-ULP limit failed"
 
 
 def _zero_acceleration_loads(system, theta, theta_dot, omega, motor_nm, hinge_nm):
     return _target_loads(system, theta, theta_dot, omega, 0.0, 0.0, motor_nm, hinge_nm)
 
 
+@recorded_case("C2V-07")
 def test_c2v07_manufactured_contact(monkeypatch) -> None:
     system = _system(2, _mechanism(lower_stop_rad=-0.50, upper_stop_rad=0.20))
     observed: dict[str, object] = {}
@@ -1158,8 +1225,12 @@ def test_c2v07_manufactured_contact(monkeypatch) -> None:
             PROJECTION_MODEL, HINGE_RATE_AERO_MODEL, 2, R_HINGE, theta, theta_dot, "c2v07",
         )
 
-    result = _run(system, 1.0, -0.20, -0.40, 40.0, motor, aero)
+    executed = {"duration_s": 1., "theta_rad": -.20, "theta_dot_rad_s": -.40, "omega_rad_s": 40., "Qm_nm": .04, "Qh_nm": 0., "theta_rate_rad_s": -.40, "theta_ddot_rad_s2": 0., "omega_dot_rad_s2": 0., "load_formula": "zero_acceleration_target", "actuation_knots_s": [0., 1.], "actuation_torques_nm": [0., 0.]}
     controls = _controls()
+    freeze_case_before_measurement("C2V-07", system=system, controls=controls, executed_inputs=executed)
+    measurement_partial()["freeze_complete"] = True
+    measurement_partial()["metrics"] = observed
+    result = _run(system, 1.0, -0.20, -0.40, 40.0, motor, aero, controls)
     metrics = {
         "t_contact_s": None,
         "T_allow_s": None,
@@ -1230,7 +1301,7 @@ def test_c2v07_manufactured_contact(monkeypatch) -> None:
             "pass_blocked_reason": reason,
         },
     )
-    assert passed
+    assert passed, reason or "C2V-07 contact gate failed"
 
 
 def _exception_text(exc: BaseException) -> str:
@@ -1278,99 +1349,60 @@ def _c2v08_payload(layers, calls, digest, passed, reason):
     }
 
 
+@recorded_case("C2V-08")
 def _execute_c2v08(fold_aero=None):
     layers = {}
     calls = []
-    fold = _system(2, _mechanism(lower_stop_rad=-2.0, upper_stop_rad=0.5))
-    frozen = freeze_case_before_measurement(
-        "C2V-08",
-        system=fold,
-        controls=_controls(),
-        executed_inputs={"duration_s": 0.5, "subcase": "fold"},
-        subcase="fold",
-    )
+    partial = measurement_partial()
+    partial["metrics"] = {"failure_layers": layers, "speed_callbacks_invoked": calls}
+    systems = {"fold": _system(2, _mechanism(lower_stop_rad=-2., upper_stop_rad=.5)),
+               "speed": _system(2), "budget": _system(2), "hard": _system(2)}
+    inputs = {
+        "fold": dict(duration_s=.5, theta_rad=-1.2, theta_dot_rad_s=-1., omega_rad_s=40., Qm_nm=.04, Qh_nm=0., theta_rate_rad_s=-1., theta_ddot_rad_s2=0., omega_dot_rad_s2=0., load_formula="zero_acceleration_target"),
+        "speed": dict(duration_s=.2, theta_rad=-.3, theta_dot_rad_s=0., omega_rad_s=10., Qm_nm=.04, Qh_nm=0., load_formula="unreachable_counting_callback"),
+        "budget": dict(duration_s=.2, theta_rad=-.3, theta_dot_rad_s=.1, omega_rad_s=40., Qm_nm=.04, Qh_nm=0., Q_phi_nm=-.02, q_theta_nm=.004),
+        "hard": dict(duration_s=.2, theta_rad=-.3, theta_dot_rad_s=.1, omega_rad_s=40., Qm_nm=.04, Qh_nm=0., load_formula="raises_Cmm2TransientFailure", failure_message="hard failure"),
+    }
+    controls = {name: _controls(max_rhs_evaluations=1) if name == "budget" else _controls() for name in inputs}
+    for name, executed in inputs.items():
+        executed.update(actuation_knots_s=[0., executed["duration_s"]], actuation_torques_nm=[0., 0.])
+        freeze_case_before_measurement("C2V-08", system=systems[name], controls=controls[name], executed_inputs=executed, subcase=name)
+
+    partial["freeze_complete"] = True
 
     def default_fold(time, theta, theta_dot, _omega):
-        q_phi, q_theta = _zero_acceleration_loads(fold, -1.20 - time, -1.0, 40.0, 0.04, 0.0)
-        return Cmm2AeroEvaluation(
-            q_phi, q_theta, 1.0, LOAD_MAPPING_MODEL, AERO_LOAD_QUALIFICATION,
-            PROJECTION_MODEL, HINGE_RATE_AERO_MODEL, 2, R_HINGE, theta, theta_dot, "fold",
-        )
+        row = inputs["fold"]
+        q_phi, q_theta = _zero_acceleration_loads(systems["fold"], row["theta_rad"] + row["theta_rate_rad_s"] * time, row["theta_dot_rad_s"], row["omega_rad_s"], row["Qm_nm"], row["Qh_nm"])
+        return Cmm2AeroEvaluation(q_phi, q_theta, 1., LOAD_MAPPING_MODEL, AERO_LOAD_QUALIFICATION,
+            PROJECTION_MODEL, HINGE_RATE_AERO_MODEL, 2, R_HINGE, theta, theta_dot, "fold")
 
-    def measure(partial):
-        partial["metrics"] = {"failure_layers": layers, "speed_callbacks_invoked": calls}
-        partial["premeasurement_digest"] = frozen["premeasurement_digest"]
-        partial["executed_inputs"] = {"subcases": ["fold", "speed", "budget", "hard"]}
-        try:
-            _expect_layer(
-                "fold",
-                Cmm2DomainExit,
-                None,
-                lambda: _run(
-                    fold, 0.5, -1.20, -1.0, 40.0,
-                    lambda *_args: MotorEvaluation(0.04),
-                    fold_aero or default_fold,
-                ),
-                layers,
-            )
-            def counting(*_args):
-                calls.append(1)
-                return MotorEvaluation(0.04)
+    def counting(*_args):
+        calls.append(1)
+        return MotorEvaluation(inputs["speed"]["Qm_nm"])
 
-            _expect_layer(
-                "speed",
-                Cmm2TransientError,
-                "100 rpm",
-                lambda: _run(_system(2), 0.2, -0.3, 0.0, 10.0, counting, counting),
-                layers,
-            )
-            if calls:
-                raise AssertionError("speed callback was invoked")
-            budget = _system(2)
-            freeze_case_before_measurement(
-                "C2V-08",
-                system=budget,
-                controls=_controls(max_rhs_evaluations=1),
-                executed_inputs={"duration_s": 0.2, "subcase": "budget"},
-                subcase="budget",
-            )
-            _expect_layer(
-                "budget",
-                Cmm2TransientFailure,
-                "work budget exhausted",
-                lambda: _run(
-                    budget, 0.2, -0.3, 0.1, 40.0,
-                    lambda *_args: MotorEvaluation(0.04),
-                    lambda _time, theta, theta_dot, _omega: Cmm2AeroEvaluation(
-                        -0.02, 0.004, 1.0, LOAD_MAPPING_MODEL, AERO_LOAD_QUALIFICATION,
-                        PROJECTION_MODEL, HINGE_RATE_AERO_MODEL, 2, R_HINGE, theta, theta_dot, "budget",
-                    ),
-                    _controls(max_rhs_evaluations=1),
-                ),
-                layers,
-            )
-            def hard(_time, _theta, _rate, _omega):
-                raise Cmm2TransientFailure("hard failure")
+    def budget_aero(_time, theta, theta_dot, _omega):
+        row = inputs["budget"]
+        return Cmm2AeroEvaluation(row["Q_phi_nm"], row["q_theta_nm"], 1., LOAD_MAPPING_MODEL, AERO_LOAD_QUALIFICATION,
+            PROJECTION_MODEL, HINGE_RATE_AERO_MODEL, 2, R_HINGE, theta, theta_dot, "budget")
 
-            _expect_layer(
-                "hard",
-                Cmm2TransientFailure,
-                "hard failure",
-                lambda: _run(
-                    _system(2), 0.2, -0.3, 0.1, 40.0,
-                    lambda *_args: MotorEvaluation(0.04),
-                    hard,
-                ),
-                layers,
-            )
-        except Exception as exc:
-            partial["metrics"] = {"failure_layers": dict(layers), "speed_callbacks_invoked": list(calls)}
-            partial["record_reason"] = _exception_text(exc)
-            raise
-        passed = set(layers) == {"fold", "speed", "budget", "hard"} and not calls
-        return _c2v08_payload(layers, calls, frozen["premeasurement_digest"], passed, None)
+    def hard(*_args):
+        raise Cmm2TransientFailure(inputs["hard"]["failure_message"])
 
-    return execute_measured_case("C2V-08", measure)
+    aero_callbacks = {"fold": fold_aero or default_fold, "speed": counting, "budget": budget_aero, "hard": hard}
+    expected_layers = {"fold": (Cmm2DomainExit, None), "speed": (Cmm2TransientError, "100 rpm"),
+                       "budget": (Cmm2TransientFailure, "work budget exhausted"), "hard": (Cmm2TransientFailure, "hard failure")}
+    for name, row in inputs.items():
+        def action(name=name, row=row):
+            return _run(systems[name], row["duration_s"], row["theta_rad"], row["theta_dot_rad_s"], row["omega_rad_s"],
+                        counting if name == "speed" else lambda *_args: MotorEvaluation(row["Qm_nm"]),
+                        aero_callbacks[name], controls[name],
+                        actuation=HingeActuationHistory(tuple(row["actuation_knots_s"]), tuple(row["actuation_torques_nm"]), "prc"))
+        _expect_layer(name, *expected_layers[name], action, layers)
+        if name == "speed" and calls:
+            raise AssertionError("speed callback was invoked")
+    passed = set(layers) == {"fold", "speed", "budget", "hard"} and not calls
+    _publish("C2V-08", _c2v08_payload(layers, calls, partial["premeasurement_digest"], passed, None))
+    assert passed
 
 
 def test_c2v08_fail_closed_layers() -> None:

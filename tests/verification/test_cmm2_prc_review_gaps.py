@@ -109,46 +109,35 @@ def test_quadrature_reported_error_a_blocks_pass() -> None:
     assert cleaned["reason"] == "QUADRATURE REFERENCE NOT RELIABLE"
 
 
-def test_duration_drift_is_rejected_before_the_production_call() -> None:
+def _equilibrium_inputs():
     system = prc._system(2)
-    called = {"production": False}
-
-    def production():
-        called["production"] = True
-
-    with pytest.raises(AssertionError, match="before measurement"):
-        evidence.freeze_case_before_measurement(
-            "C2V-02",
-            system=system,
-            controls=CoupledSolverControls(),
-            executed_inputs={"duration_s": 0.03, "theta_rad": -0.4},
-            production_call=production,
-        )
-    assert called["production"] is False
+    q_phi, q_theta = prc._target_loads(system, -.4, 0., 40., 0., 0., .05, .001)
+    return dict(duration_s=.02, theta_rad=-.4, theta_dot_rad_s=0., omega_rad_s=40., Qm_nm=.05, Qh_nm=.001,
+                Q_phi_nm=q_phi, q_theta_nm=q_theta, actuation_knots_s=[0., .02], actuation_torques_nm=[.001, .001])
 
 
-def test_control_drift_is_rejected_before_measurement() -> None:
+@pytest.mark.parametrize('field,value', [('duration_s', .03), ('q_theta_nm', 0.), ('Q_phi_nm', -.04), ('theta_dot_rad_s', .01)])
+def test_duration_and_load_drift_are_rejected_before_production(field, value):
+    inputs = _equilibrium_inputs()
     system = prc._system(2)
-    with pytest.raises(AssertionError, match="before measurement"):
-        evidence.freeze_case_before_measurement(
-            "C2V-02",
-            system=system,
-            controls=CoupledSolverControls(rtol=1.0e-5),
-            executed_inputs={"duration_s": 0.02, "theta_rad": -0.4},
-            production_call=lambda: None,
-        )
+    evidence.freeze_case_before_measurement('C2V-02', system=system, controls=CoupledSolverControls(), executed_inputs=inputs)
+    called = []
+    with pytest.raises(AssertionError, match=field):
+        evidence.freeze_case_before_measurement('C2V-02', system=system, controls=CoupledSolverControls(), executed_inputs={**inputs, field: value}, production_call=lambda: called.append(1))
+    assert not called
 
 
-def test_mechanism_drift_is_rejected_before_measurement() -> None:
-    system = prc._system(2, prc._mechanism(spring_stiffness_nm_rad=0.02))
-    with pytest.raises(AssertionError, match="before measurement"):
-        evidence.freeze_case_before_measurement(
-            "C2V-02",
-            system=system,
-            controls=CoupledSolverControls(),
-            executed_inputs={"duration_s": 0.02, "theta_rad": -0.4},
-            production_call=lambda: None,
-        )
+@pytest.mark.parametrize('kind,field', [('control', 'controls.rtol'), ('mechanism', 'mechanism.spring_nm_rad')])
+def test_control_and_mechanism_drift_after_valid_baseline(kind, field):
+    inputs = _equilibrium_inputs()
+    evidence.freeze_case_before_measurement('C2V-02', system=prc._system(2), controls=CoupledSolverControls(), executed_inputs=inputs)
+    called = []
+    with pytest.raises(AssertionError, match=field):
+        evidence.freeze_case_before_measurement('C2V-02',
+            system=prc._system(2, prc._mechanism(spring_stiffness_nm_rad=.02)) if kind == 'mechanism' else prc._system(2),
+            controls=CoupledSolverControls(rtol=1.e-5) if kind == 'control' else CoupledSolverControls(), executed_inputs=inputs,
+            production_call=lambda: called.append(1))
+    assert not called
 
 
 def test_c2v08_unexpected_callback_records_and_reraises() -> None:
@@ -185,6 +174,16 @@ def test_shared_manufactured_failure_records_c2v03_and_c2v05(monkeypatch) -> Non
         assert evidence.EVIDENCE["C2V-05"]["classification"] == "FAIL"
         assert "injected manufactured failure" in evidence.EVIDENCE["C2V-03"]["record_reason"]
         assert "injected manufactured failure" in evidence.EVIDENCE["C2V-05"]["record_reason"]
+        digests = []
+        for case_id in ('C2V-03', 'C2V-05'):
+            row = evidence.EVIDENCE[case_id]
+            snapshot = row['premeasurement_snapshots'][0]
+            assert snapshot['case_id'] == case_id
+            assert row['premeasurement_digest'] == snapshot['premeasurement_digest']
+            unhashed = {k:v for k,v in snapshot.items() if k != 'premeasurement_digest'}
+            assert row['premeasurement_digest'] == evidence.fixture_digest(unhashed)
+            digests.append(row['premeasurement_digest'])
+        assert len(set(digests)) == 2
     finally:
         prc._manufactured_measurement.value = None
         prc._manufactured_measurement.error = None
@@ -237,6 +236,201 @@ def test_late_assertion_does_not_leave_a_pass_record() -> None:
         assert "late real gate" in evidence.EVIDENCE["C2V-06"]["record_reason"]
         assert "omega_dot_rad_s2" in evidence.EVIDENCE["C2V-06"]["metrics"]
         json.dumps(evidence.EVIDENCE["C2V-06"], allow_nan=False)
+    finally:
+        evidence.EVIDENCE.clear()
+        evidence.EVIDENCE.update(saved)
+
+
+@pytest.mark.parametrize('case_id,entry', [
+    ('C2V-01', 'test_c2v01_represented_algebra'),
+    ('C2V-02', 'test_c2v02_exact_equilibrium'),
+    ('C2V-04', 'test_c2v04_independent_work'),
+    ('C2V-06', 'test_c2v06_zero_hinge_limit'),
+    ('C2V-07', 'test_c2v07_manufactured_contact'),
+    ('C2V-08', 'test_c2v08_fail_closed_layers'),
+])
+@pytest.mark.parametrize('fault', ['setup', 'freeze'])
+def test_real_entry_early_failure_is_written(case_id, entry, fault, monkeypatch, tmp_path):
+    saved = dict(evidence.EVIDENCE)
+    evidence.EVIDENCE.clear()
+    called = []
+    def boom(*args, **kwargs):
+        raise RuntimeError(f'injected {fault}')
+    def production(*args, **kwargs):
+        called.append(True)
+        raise AssertionError('production must not run')
+    monkeypatch.setattr(prc, '_system' if fault == 'setup' else 'freeze_case_before_measurement', boom)
+    monkeypatch.setattr(prc, '_production_acceleration', production)
+    monkeypatch.setattr(prc, '_run', production)
+    try:
+        with pytest.raises(RuntimeError, match=f'injected {fault}'):
+            if case_id == 'C2V-07':
+                getattr(prc, entry)(monkeypatch)
+            else:
+                getattr(prc, entry)()
+        path = tmp_path / 'early-fail.json'
+        evidence.write_evidence(path)
+        row = json.loads(path.read_text())['cases'][case_id]
+        assert row['classification'] == 'FAIL'
+        assert f'injected {fault}' in row['record_reason']
+        assert row['pre_result_freeze_status'] != 'frozen_before_measurement'
+        assert row['premeasurement_digest'] is None
+        assert not called
+    finally:
+        evidence.EVIDENCE.clear()
+        evidence.EVIDENCE.update(saved)
+
+
+@pytest.mark.parametrize('subcase,inputs,field,value', [
+    ('fold', dict(duration_s=.5, theta_rad=-1.2, theta_dot_rad_s=-1., omega_rad_s=40., Qm_nm=.04, Qh_nm=0., theta_rate_rad_s=-1., theta_ddot_rad_s2=0., omega_dot_rad_s2=0., load_formula='zero_acceleration_target'), 'duration_s', .4),
+    ('speed', dict(duration_s=.2, theta_rad=-.3, theta_dot_rad_s=0., omega_rad_s=10., Qm_nm=.04, Qh_nm=0., load_formula='unreachable_counting_callback'), 'omega_rad_s', 11.),
+    ('budget', dict(duration_s=.2, theta_rad=-.3, theta_dot_rad_s=.1, omega_rad_s=40., Qm_nm=.04, Qh_nm=0., Q_phi_nm=-.02, q_theta_nm=.004), 'q_theta_nm', .005),
+    ('hard', dict(duration_s=.2, theta_rad=-.3, theta_dot_rad_s=.1, omega_rad_s=40., Qm_nm=.04, Qh_nm=0., load_formula='raises_Cmm2TransientFailure', failure_message='hard failure'), 'theta_dot_rad_s', .2),
+])
+def test_each_c2v08_baseline_then_single_field_drift(subcase, inputs, field, value):
+    system = prc._system(2, prc._mechanism(lower_stop_rad=-2., upper_stop_rad=.5)) if subcase == 'fold' else prc._system(2)
+    controls = prc._controls(max_rhs_evaluations=1) if subcase == 'budget' else prc._controls()
+    inputs = {**inputs, "actuation_knots_s": [0., inputs["duration_s"]], "actuation_torques_nm": [0., 0.]}
+    evidence.freeze_case_before_measurement('C2V-08', system=system, controls=controls, executed_inputs=inputs, subcase=subcase)
+    mutations = {field: value, 'duration_s': inputs['duration_s'] + .01,
+                 'theta_rad': inputs['theta_rad'] + .01, 'Qm_nm': .05,
+                 'Qh_nm': .001, 'actuation_knots_s': [0., inputs['duration_s'] + .01]}
+    for drift_field, drift_value in mutations.items():
+        called = []
+        with pytest.raises(AssertionError, match=drift_field):
+            evidence.freeze_case_before_measurement('C2V-08', system=system, controls=controls,
+                executed_inputs={**inputs, drift_field: drift_value}, subcase=subcase, production_call=lambda: called.append(1))
+        assert not called
+    called = []
+    from dataclasses import replace
+    with pytest.raises(AssertionError, match='controls.max_rhs_evaluations'):
+        evidence.freeze_case_before_measurement('C2V-08', system=system,
+            controls=replace(controls,max_rhs_evaluations=2 if subcase == "budget" else 11999),
+            executed_inputs=inputs,subcase=subcase,production_call=lambda:called.append(1))
+    assert not called
+
+
+def test_c2v01_freezes_all_six_rows_before_first_acceleration(monkeypatch):
+    saved = dict(evidence.EVIDENCE)
+    evidence.EVIDENCE.clear()
+    frozen = []
+    original = prc.freeze_case_before_measurement
+    def capture(*args, **kwargs):
+        snapshot = original(*args, **kwargs)
+        frozen.append(snapshot)
+        return snapshot
+    def production(*args, **kwargs):
+        assert len(frozen) == 6
+        raise RuntimeError('after all row freezes')
+    monkeypatch.setattr(prc, 'freeze_case_before_measurement', capture)
+    monkeypatch.setattr(prc, '_production_acceleration', production)
+    try:
+        with pytest.raises(RuntimeError, match='after all row freezes'):
+            prc.test_c2v01_represented_algebra()
+        row = evidence.EVIDENCE['C2V-01']
+        assert len(row['premeasurement_snapshots']) == 6
+        assert {(x['mechanism']['blade_count'], tuple(x['executed_inputs']['load_pair_nm'])) for x in row['premeasurement_snapshots']} == {(n,p) for n in (1,2,4) for p in ((-.02,.004),(.015,-.003))}
+    finally:
+        evidence.EVIDENCE.clear()
+        evidence.EVIDENCE.update(saved)
+
+
+@pytest.mark.parametrize('case_id,inputs,field,value', [
+    ('C2V-01', dict(state_rad=[-.4,.2,40.],Qm_nm=.05,Qh_nm=.001,load_pair_nm=[-.02,.004]), 'load_pair_nm', [-.02,.005]),
+    ('C2V-06', dict(theta_rad=-.3,theta_dot_rad_s=.1,omega_rad_s=40.,Qa_nm=.02,Q_phi_nm=-.02,q_theta_nm=0.,Qm_nm=.04,Qh_nm=.001), 'Qa_nm', .03),
+    ('C2V-07', dict(duration_s=1.,theta_rad=-.2,theta_dot_rad_s=-.4,omega_rad_s=40.,Qm_nm=.04,Qh_nm=0.,theta_rate_rad_s=-.4,theta_ddot_rad_s2=0.,omega_dot_rad_s2=0.,load_formula='zero_acceleration_target',actuation_knots_s=[0.,1.],actuation_torques_nm=[0.,0.]), 'theta_rate_rad_s', -.5),
+])
+def test_new_case_complete_baseline_then_single_field_drift(case_id, inputs, field, value):
+    system = prc._system(2, prc._mechanism(lower_stop_rad=-.5,upper_stop_rad=.2)) if case_id == 'C2V-07' else prc._system(2)
+    controls = prc._controls()
+    baseline = evidence.freeze_case_before_measurement(case_id, system=system, controls=controls, executed_inputs=inputs)
+    assert baseline['executed_inputs'] == inputs
+    called = []
+    with pytest.raises(AssertionError, match=field):
+        evidence.freeze_case_before_measurement(case_id, system=system, controls=controls, executed_inputs={**inputs,field:value}, production_call=lambda:called.append(1))
+    assert not called
+
+
+def test_c2v08_snapshot_covers_all_four_actual_subcases():
+    saved = dict(evidence.EVIDENCE)
+    evidence.EVIDENCE.clear()
+    try:
+        prc.test_c2v08_fail_closed_layers()
+        row = evidence.EVIDENCE['C2V-08']
+        snapshots = row['premeasurement_snapshots']
+        assert [x['subcase'] for x in snapshots] == ['fold','speed','budget','hard']
+        assert row['premeasurement_digest'] == evidence.fixture_digest({'case_id':'C2V-08','snapshots':snapshots})
+        assert row['premeasurement_digest'] != snapshots[0]['premeasurement_digest']
+        for snapshot in snapshots:
+            unhashed = {k:v for k,v in snapshot.items() if k != 'premeasurement_digest'}
+            assert snapshot['premeasurement_digest'] == evidence.fixture_digest(unhashed)
+        assert snapshots[2]['controls']['max_rhs_evaluations'] == 1
+        assert snapshots[1]['executed_inputs']['omega_rad_s'] == 10.
+    finally:
+        evidence.EVIDENCE.clear()
+        evidence.EVIDENCE.update(saved)
+
+
+def test_partial_freeze_failure_does_not_claim_complete_freeze(monkeypatch, tmp_path):
+    saved = dict(evidence.EVIDENCE)
+    evidence.EVIDENCE.clear()
+    original = prc.freeze_case_before_measurement
+    calls = []
+    def failing_second(*args, **kwargs):
+        calls.append(1)
+        if len(calls) == 2:
+            raise RuntimeError('second row freeze failed')
+        return original(*args, **kwargs)
+    monkeypatch.setattr(prc,'freeze_case_before_measurement',failing_second)
+    try:
+        with pytest.raises(RuntimeError,match='second row freeze failed'):
+            prc.test_c2v01_represented_algebra()
+        path = tmp_path / 'partial.json'
+        evidence.write_evidence(path)
+        row = json.loads(path.read_text())['cases']['C2V-01']
+        assert row['pre_result_freeze_status'] == 'PARTIALLY_FROZEN'
+        assert len(row['premeasurement_snapshots']) == 1
+        assert row['metrics']['rows'] == []
+    finally:
+        evidence.EVIDENCE.clear()
+        evidence.EVIDENCE.update(saved)
+
+
+def test_real_oracle_failure_keeps_production_partial_metrics(monkeypatch, tmp_path):
+    saved = dict(evidence.EVIDENCE)
+    evidence.EVIDENCE.clear()
+    def boom(*args, **kwargs):
+        raise RuntimeError('injected algebra oracle')
+    monkeypatch.setattr(prc,'_audit_solution',boom)
+    try:
+        with pytest.raises(RuntimeError,match='injected algebra oracle'):
+            prc.test_c2v01_represented_algebra()
+        path = tmp_path / 'oracle-fail.json'
+        evidence.write_evidence(path)
+        row = json.loads(path.read_text())['cases']['C2V-01']
+        assert row['classification'] == 'FAIL'
+        assert len(row['premeasurement_snapshots']) == 6
+        assert row['metrics']['rows'][0]['production_accelerations_rad_s2']
+        assert 'injected algebra oracle' in row['record_reason']
+    finally:
+        evidence.EVIDENCE.clear()
+        evidence.EVIDENCE.update(saved)
+
+
+def test_failed_setup_replaces_previous_case_record(monkeypatch):
+    saved = dict(evidence.EVIDENCE)
+    try:
+        evidence.EVIDENCE['C2V-06'] = {'classification':'PASS','premeasurement_digest':'old-run','metrics':{'stale':1}}
+        def boom(*args, **kwargs):
+            raise RuntimeError('fresh setup failed')
+        monkeypatch.setattr(prc,'_system',boom)
+        with pytest.raises(RuntimeError,match='fresh setup failed'):
+            prc.test_c2v06_zero_hinge_limit()
+        row = evidence.EVIDENCE['C2V-06']
+        assert row['classification'] == 'FAIL'
+        assert row['premeasurement_digest'] is None
+        assert row['pre_result_freeze_status'] == 'NOT_FROZEN'
+        assert row['metrics'] is None
     finally:
         evidence.EVIDENCE.clear()
         evidence.EVIDENCE.update(saved)

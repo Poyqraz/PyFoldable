@@ -19,15 +19,33 @@ The evidence writer records these identities separately:
 The figures below belong to that run context. They are not the measurements
 previously reported for head `370c1647ced896b6a79cff0870d985fc02874fa7`.
 
+The case recording boundary covers setup, freeze, production/oracle calls,
+and final assertions. An unexpected exception is recorded as FAIL with its
+cause and all available partial metrics, then re-raised. Successful freeze
+snapshots are retained even when a later row fails to freeze; such an incomplete
+case reports PARTIALLY_FROZEN, never frozen_before_measurement. A failure before
+any successful freeze reports NOT_FROZEN.
+
 Premeasurement digests are fixed from the real system, controls, and case
-inputs before the production call. C2V-02, C2V-03, and C2V-05 below were
+inputs before any measurement. C2V-01 freezes all six count/load rows before
+its first production acceleration. C2V-06 and C2V-07 freeze their actual
+state/load/control inputs. C2V-08 freezes fold, speed, budget, and hard-failure
+subcases separately, including each duration, state, actuation, load policy and
+control override, and records their snapshots and combined digest. Its case
+digest therefore represents all four subcases rather than only the fold run.
+Shared C2V-03/C2V-05 execution retains distinct case-specific snapshots and
+digests on both success and the cached failure path.
+
+The following digest values describe the earlier writer format, retained as
+historical measurement provenance; they do not identify the expanded snapshots.
+Current digests must be read from the matching execution's evidence JSON. C2V-02, C2V-03, and C2V-05 below were
 measured with this writer; their checkout is the `evidence_checkout_head` of
 that evidence JSON, not a later documentation edit.
 
 `critical_fixture_manifest_sha256`:
 `265d531f51f08d45139313cd81b0239de0c2e9dd8926e12ded66d2011d83c1f7`.
 
-Premeasurement digests from the real inputs, fixed before the production call:
+Premeasurement digests from the real inputs, fixed from the earlier writer:
 
 - C2V-02: `8e2cf00c546a2b9fdcf7678670fb2c305aa66d37407abd1255a5533629dbfbf3`
 - C2V-03: `842213980ff41e1a91bde91c9a9386e7e9a0fb57852cdd5d49ccfadac75fedaf`
@@ -93,3 +111,18 @@ C2V-03 and C2V-05 are both FAIL.
 
 C2V-01, C2V-04, C2V-06, C2V-07, and C2V-08 passed their existing gates.
 Those passes are not PR-C acceptance and do not accept ADR-009.
+
+## Harness closure regressions
+
+Regression baselines first pass complete valid inputs, then drift only the
+specified field. They verify that the field is named and production is not
+called. Real C2V-01/02/04/06/07 and the first C2V-08 freeze are fault-injected
+at setup/freeze entry, with FAIL retained in written JSON. Separate regressions
+cover all six algebra rows, all four fail-closed subcase snapshots, partial
+freeze status, and C2V-03/C2V-05 snapshot/digest identity on shared failure.
+
+This repair changes recording and input validation only. The normative contract,
+production code, fixtures, controls, Q2, analytic bridge and DOP853 oracle remain
+unchanged. C2V-02/C2V-03/C2V-05 trajectory gates remain actual pytest failures;
+no xfail, skip or acceptance promotion is introduced. C2V-09 through C2V-12
+remain unmeasured.

@@ -7,6 +7,10 @@ checkout that executes the evidence is recorded separately at runtime.
 
 from __future__ import annotations
 
+from contextvars import ContextVar
+from copy import deepcopy
+from functools import wraps
+
 import hashlib
 import json
 import math
@@ -554,6 +558,81 @@ def _expected_controls(case: dict[str, object], subcase: str | None) -> dict[str
     return expected
 
 
+def _expected_inputs(case_id: str, subcase: str | None) -> dict[str, object]:
+    """Actual scalar/target inputs authorized by the unchanged fixture manifest."""
+    case = MANIFEST["cases"][case_id]
+    if case_id == "C2V-01":
+        return {"state_rad": case["state_rad"], "Qm_nm": case["Qm_nm"], "Qh_nm": case["Qh_nm"]}
+    if case_id in {"C2V-03", "C2V-04", "C2V-05"}:
+        target = MANIFEST["cases"]["C2V-03"]
+        initial = [-.30, .05 * (2.0 * math.pi / .2), 40.0]
+        inputs = {"duration_s": target["duration_s"], "Qm_nm": target["Qm_nm"], "Qh_nm": target["Qh_nm"],
+                  "initial_state_rad": initial, "theta_formula": target["theta_formula"], "omega_formula": target["omega_formula"],
+                  "load_formula": target["load_formula"], "omega_dot_rad_s2": target["omega_dot_rad_s2"]}
+        if case_id == "C2V-04":
+            inputs.update({"quad_A_epsrel": case["quad_A_epsrel"], "quad_B_epsrel": case["quad_B_epsrel"], "quad_epsabs": case["quad_epsabs"], "power_sample_times_s": [i / 20.0 for i in range(5)]})
+        else:
+            inputs.update({"actuation_knots_s": [0.0, .2], "actuation_torques_nm": [.001, .001]})
+        return inputs
+    if case_id == "C2V-08":
+        common = {"duration_s": .2, "theta_rad": -.3, "theta_dot_rad_s": .1, "omega_rad_s": 40., "Qm_nm": .04, "Qh_nm": 0.}
+        if subcase == "fold":
+            common.update(duration_s=.5, theta_rad=-1.2, theta_dot_rad_s=-1., theta_rate_rad_s=-1., theta_ddot_rad_s2=0., omega_dot_rad_s2=0., load_formula="zero_acceleration_target")
+        elif subcase == "speed":
+            common.update(theta_dot_rad_s=0., omega_rad_s=10., load_formula="unreachable_counting_callback")
+        elif subcase == "budget":
+            common.update(Q_phi_nm=-.02, q_theta_nm=.004)
+        elif subcase == "hard":
+            common.update(load_formula="raises_Cmm2TransientFailure", failure_message="hard failure")
+        else:
+            raise AssertionError("fixture drifted before measurement: subcase")
+        common.update(actuation_knots_s=[0., common["duration_s"]], actuation_torques_nm=[0., 0.])
+        return common
+    inputs = {key: case[key] for key in ("duration_s", "theta_rad", "theta_dot_rad_s", "omega_rad_s", "Qm_nm", "Qh_nm", "Qa_nm", "q_theta_nm") if key in case}
+    if case_id == "C2V-02":
+        # Independently assemble the frozen equilibrium load, preserving binary64
+        # operation order; this does not use a production acceleration/residual.
+        m = case["mechanism"]
+        theta = case["theta_rad"]
+        spring = -m["spring_nm_rad"] * (theta - m["rest_rad"])
+        centrifugal = -(m["m_kg"] * m["hinge_radius_m"] * m["cg_distance_m"]) * case["omega_rad_s"]**2 * math.sin(theta)
+        inputs.update(Q_phi_nm=-case["Qm_nm"], q_theta_nm=-case["Qh_nm"] - spring - centrifugal,
+                      actuation_knots_s=[0., .02], actuation_torques_nm=[.001, .001])
+    elif case_id == "C2V-06":
+        inputs.update(Q_phi_nm=-case["Qa_nm"])
+    elif case_id == "C2V-07":
+        inputs.update(theta_rad=-.20, theta_dot_rad_s=-.40, theta_ddot_rad_s2=0., omega_dot_rad_s2=0.,
+                      theta_rate_rad_s=-.40, load_formula="zero_acceleration_target", actuation_knots_s=[0., 1.], actuation_torques_nm=[0., 0.])
+    return inputs
+
+
+_ACTIVE_PARTIAL: ContextVar[dict[str, object] | None] = ContextVar("prc_partial", default=None)
+
+
+def measurement_partial() -> dict[str, object]:
+    partial = _ACTIVE_PARTIAL.get()
+    if partial is None:
+        raise AssertionError("measured case has no recording boundary")
+    return partial
+
+
+def recorded_case(case_id: str):
+    """Capture setup through final assertions, not only the production call."""
+    def decorate(function):
+        @wraps(function)
+        def wrapped(*args, **kwargs):
+            def measure(partial):
+                token = _ACTIVE_PARTIAL.set(partial)
+                try:
+                    function(*args, **kwargs)
+                    return dict(partial)
+                finally:
+                    _ACTIVE_PARTIAL.reset(token)
+            execute_measured_case(case_id, measure)
+        return wrapped
+    return decorate
+
+
 def freeze_case_before_measurement(
     case_id: str,
     *,
@@ -571,7 +650,8 @@ def freeze_case_before_measurement(
     for key, expected in _expected_mechanism(case, subcase).items():
         if key in actual_mechanism and actual_mechanism[key] != expected:
             mismatches.append(f"mechanism.{key}")
-    if "blade_count" in case and actual_mechanism["blade_count"] != case["blade_count"]:
+    expected_count = case.get("blade_count", 2 if case_id in {"C2V-04", "C2V-05"} else None)
+    if expected_count is not None and actual_mechanism["blade_count"] != expected_count:
         mismatches.append("blade_count")
     if "blade_counts" in case and actual_mechanism["blade_count"] not in case["blade_counts"]:
         mismatches.append("blade_count")
@@ -590,6 +670,13 @@ def freeze_case_before_measurement(
         for key in ("duration_s", "Qm_nm", "Qh_nm"):
             if executed_inputs.get(key) != target[key]:
                 mismatches.append(f"shared_target.{key}")
+    expected_inputs = _expected_inputs(case_id, subcase)
+    for key, expected in expected_inputs.items():
+        if executed_inputs.get(key) != expected:
+            mismatches.append(key)
+    if case_id == "C2V-01":
+        if executed_inputs.get("load_pair_nm") not in case["load_pairs_nm"]:
+            mismatches.append("load_pair_nm")
     if mismatches:
         raise AssertionError(
             "fixture drifted before measurement: " + ", ".join(mismatches)
@@ -599,10 +686,17 @@ def freeze_case_before_measurement(
         "subcase": subcase,
         "mechanism": actual_mechanism,
         "controls": actual_controls,
-        "executed_inputs": executed_inputs,
-        "manifest_case": case,
+        "executed_inputs": deepcopy(executed_inputs),
+        "manifest_case": deepcopy(case),
     }
     snapshot["premeasurement_digest"] = sha256(canonical(snapshot))
+    partial = _ACTIVE_PARTIAL.get()
+    if partial is not None:
+        snapshots = partial.setdefault("premeasurement_snapshots", [])
+        snapshots.append(snapshot)
+        partial["premeasurement_digest"] = fixture_digest({"case_id": case_id, "snapshots": snapshots})
+        partial["executed_inputs"] = {"snapshots": snapshots}
+        partial["controls"] = actual_controls
     if production_call is not None:
         production_call()
     return snapshot
@@ -610,16 +704,19 @@ def freeze_case_before_measurement(
 
 def execute_measured_case(case_id: str, measure, checks=()) -> dict[str, object]:
     partial: dict[str, object] = {}
+    EVIDENCE.pop(case_id, None)
     try:
         payload = measure(partial)
         if not isinstance(payload, dict):
             raise AssertionError("measured case did not return a record")
+        payload = {**partial, **payload}
         if payload.get("premeasurement_digest") is None and partial.get("premeasurement_digest"):
             payload["premeasurement_digest"] = partial["premeasurement_digest"]
         if payload.get("fixture_digest") is None and payload.get("premeasurement_digest"):
             payload["fixture_digest"] = payload["premeasurement_digest"]
         if partial.get("metrics") and not payload.get("metrics"):
             payload["metrics"] = partial["metrics"]
+        partial.update(payload)
         commit_case(case_id, payload)
         for check in checks:
             check(payload)
@@ -627,32 +724,22 @@ def execute_measured_case(case_id: str, measure, checks=()) -> dict[str, object]
             raise AssertionError(str(payload.get("pass_blocked_reason") or "case gate failed"))
         return payload
     except Exception as exc:
-        recorded = EVIDENCE.get(case_id)
-        if not isinstance(recorded, dict) or recorded.get("classification") == "PASS":
-            metrics = partial.get("metrics")
-            if isinstance(recorded, dict) and recorded.get("metrics") and not metrics:
-                metrics = recorded["metrics"]
-            fail = {
-                "primary_evidence_class": partial.get("primary_evidence_class"),
-                "purpose": partial.get("purpose") or case_id,
-                "classification": "FAIL",
-                "oracle_method": partial.get("oracle_method") or "execution boundary",
-                "independence_limit": partial.get("independence_limit")
-                or "failure recorded before reraise",
-                "controls": partial.get("controls") or MANIFEST["shared"]["controls"],
-                "metrics": metrics,
-                "units": partial.get("units") or {},
-                "reference_stabilization": partial.get("reference_stabilization"),
-                "acceptance_rule": partial.get("acceptance_rule") or "record then reraise",
-                "threshold_basis": partial.get("threshold_basis") or "execution boundary",
-                "limitations": partial.get("limitations") or "partial metrics from the failed execution",
-                "fixture_digest": partial.get("premeasurement_digest") or partial.get("fixture_digest"),
-                "premeasurement_digest": partial.get("premeasurement_digest"),
-                "record_reason": partial.get("record_reason") or f"{type(exc).__name__}: {exc}",
-                "pass_blocked_reason": partial.get("record_reason") or f"{type(exc).__name__}: {exc}",
-                "executed_inputs": partial.get("executed_inputs") or {},
-            }
-            commit_case(case_id, fail)
+        # Always replace this invocation's provisional record. Never use an old
+        # run's record/digest to claim this failed setup was frozen.
+        fail = dict(partial)
+        reason = f"{type(exc).__name__}: {exc}"
+        cause = exc.__cause__
+        while cause is not None:
+            reason += f"; cause {type(cause).__name__}: {cause}"
+            cause = cause.__cause__
+        fail.update(classification="FAIL", record_reason=reason, pass_blocked_reason=reason)
+        fail.setdefault("purpose", case_id)
+        fail.setdefault("oracle_method", "execution boundary")
+        fail.setdefault("limitations", "partial metrics from failed execution")
+        fail.setdefault("premeasurement_digest", None)
+        fail.setdefault("fixture_digest", fail.get("premeasurement_digest"))
+        fail.setdefault("executed_inputs", {})
+        commit_case(case_id, fail)
         raise
 
 
@@ -704,7 +791,7 @@ def commit_case(case_id: str, payload: dict[str, object]) -> dict[str, object]:
             "merged_contract_source": MERGED_CONTRACT_SOURCE,
             "case_id": case_id,
             "critical_fixture_manifest_sha256": MANIFEST_SHA,
-            "pre_result_freeze_status": "frozen_before_measurement",
+            "pre_result_freeze_status": "frozen_before_measurement" if body.get("freeze_complete") is True else "PARTIALLY_FROZEN" if body.get("premeasurement_snapshots") else "NOT_FROZEN",
             "threshold_policy_id": "prc_state_scale_v1",
             "reference_policy_id": "prc_dop853_ab_v1",
             "conditioning_policy_id": "prc_represented_forward_v1",
@@ -783,7 +870,7 @@ def evidence_document() -> dict[str, object]:
         "numpy_version": provenance["numpy_version"],
         "scipy_version": provenance["scipy_version"],
         "critical_fixture_manifest_sha256": MANIFEST_SHA,
-        "pre_result_freeze_status": "frozen_before_measurement",
+        "pre_result_freeze_status": "manifest_hashed_before_measurement; see individual case freeze status",
         "physical_qualification": False,
         "adr_009": "NOT CREATED / NOT ACCEPTED",
         "cases": EVIDENCE,
