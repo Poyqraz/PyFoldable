@@ -118,6 +118,25 @@ remains false. PR-06C remains unresolved. No GEOM gate is promoted. There is
 no calibration and no experimental validation. Contract:
 [CMM-2 PR-C numerical verification contract](../cmm2_numerical_verification_contract.md).
 
+**2026-09-30 CMM-2 Radau remediation contract.** The design contract is
+REVIEWED / FROZEN FOR IMPLEMENTATION — CMM-2 RADAU AMENDMENT at technical
+reviewed head `2ec4da9acdccc7508fab7c33f289ec9771b2ea65`. That review is
+APPROVE FOR CONTRACT FREEZE from a separate read-only automated reviewer and
+is not a submitted GitHub review. The later status-closure commit is not that
+technical head. Freezing approves the design contract. It does not authorize
+production implementation, demonstrate feasibility, establish PR-C
+verification, or accept ADR-009. Current production remains RK45/v1. The
+frozen amendment governs a separately authorized future CMM-2 v2
+implementation. Radau is not implemented. CMM-1 remains RK45. Q1–Q4, DOP853
+A/B, fixtures, controls and trajectory gates remain unchanged; Q5 and
+runtime/partition/minimum-SciPy measurements remain pending. Draft PR #81 is a
+separate blocked evidence attempt, not accepted PR-C verification. Independent
+CMM-2 numerical verification is not established. ADR-009 is not created or
+accepted; `physical_qualification=false`. PR-06C remains unresolved, with no GEOM
+promotion, calibration or experimental validation. Earlier dated acceptance
+records remain historical provenance. Contract:
+[CMM-2 Radau remediation contract](../cmm2_radau_remediation_contract.md).
+
 ## Reality summary
 
 The project is a Python scientific library plus one Streamlit engineering app,

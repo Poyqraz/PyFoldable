@@ -1231,3 +1231,18 @@ calibration and no experimental validation.
 
 Dynamics contract link:
 [CMM-2 PR-A](cmm2_coupled_transient_contract.md).
+
+## Frozen Radau design amendment — not in force for this RK45 contract
+
+[CMM-2 Radau remediation contract](cmm2_radau_remediation_contract.md) is
+REVIEWED / FROZEN FOR IMPLEMENTATION — CMM-2 RADAU AMENDMENT at technical
+reviewed head `2ec4da9acdccc7508fab7c33f289ec9771b2ea65`. This contract's
+production-RK45 requirements remain in force. The freeze does not change the
+normative gates above and does not authorize a production implementation.
+Current production remains RK45/v1. The frozen amendment governs a separately
+authorized future CMM-2 v2 implementation. Radau is not implemented. Q1–Q4,
+DOP853 A/B, fixtures, controls and the trajectory gates remain unchanged; Q5
+and runtime/partition/minimum-SciPy measurements remain pending. Historical
+technical-contract acceptance records above remain unchanged. Draft PR #81
+remains BLOCKED; no independent CMM-2 numerical verification is established.
+ADR-009 is not created or accepted. `physical_qualification` remains false.
