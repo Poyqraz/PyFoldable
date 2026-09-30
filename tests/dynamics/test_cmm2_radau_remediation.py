@@ -540,6 +540,49 @@ def test_irrational_tolerance_contact_is_kept() -> None:
     assert hit[0] == "lower"
 
 
+def test_irrational_transverse_root_calls_brent(monkeypatch) -> None:
+    from pyfoldable.dynamics import cmm2_radau_dense
+
+    calls = {"count": 0}
+    real = cmm2_radau_dense.brentq
+
+    def wrapped(*args, **kwargs):
+        calls["count"] += 1
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(cmm2_radau_dense, "brentq", wrapped)
+    q_matrix = np.zeros((3, 3))
+    q_matrix[0, 2] = 2.0
+    dense = _dense(0.0, 1.0, (-1.0, 0.0, 40.0), q_matrix)
+    hit = first_radau_contact(
+        dense, 0.0, 1.0, dense(0.0), dense(1.0), _mechanism(0.0, 5.0), _controls()
+    )
+    assert calls["count"] > 0
+    assert hit is not None
+    assert hit[0] == "lower"
+
+
+def test_large_coefficient_rational_root_stays_exact() -> None:
+    from pyfoldable.dynamics.cmm2_radau_dense import RootBudget, _locate_roots
+
+    scale = Fraction(1 << 40)
+    roots = _locate_roots(
+        (-scale, 3 * scale, Fraction(-1), Fraction(3)),
+        Fraction(0),
+        Fraction(1),
+        RootBudget(800),
+    )
+    assert [root.exact for root in roots] == [Fraction(1, 3)]
+    q_matrix = np.zeros((3, 3))
+    q_matrix[0] = (float(3 * scale), -1.0, 3.0)
+    dense = _dense(0.0, 1.0, (float(-scale), 0.0, 40.0), q_matrix)
+    hit = first_radau_contact(
+        dense, 0.0, 1.0, dense(0.0), dense(1.0), _mechanism(0.0, 5.0), _controls()
+    )
+    assert hit is not None
+    assert hit[1] == float(Fraction(1, 3))
+
+
 def test_successful_candidate_order_is_debited() -> None:
     from pyfoldable.dynamics.cmm2_radau_dense import RootBudget, _Root, _order_candidates
 

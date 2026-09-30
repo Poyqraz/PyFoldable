@@ -358,11 +358,58 @@ def _isolate_real_roots(polynomial, left: Fraction, right: Fraction, budget: Roo
         ]
     if count == 1:
         low, high = _refine_to(polynomial, left, right, budget, ROOT_XTOL)
-        return [_Root(low, high, low if low == high else None)]
+        return [_certify_interval(polynomial, low, high)]
     return [
         *_isolate_real_roots(polynomial, left, middle, budget, depth + 1),
         *_isolate_real_roots(polynomial, middle, right, budget, depth + 1),
     ]
+
+
+def _simplest_between(low: Fraction, high: Fraction) -> Fraction | None:
+    """Least-denominator rational strictly inside ``(low, high)``."""
+    if low >= high:
+        return None
+    if low < 0 < high:
+        return Fraction(0)
+    if high <= 0:
+        positive = _simplest_between(-high, -low)
+        return None if positive is None else -positive
+    left_n, left_d = 0, 1
+    right_n, right_d = 1, 0
+    for _step in range(128):
+        mid_n = left_n + right_n
+        mid_d = left_d + right_d
+        if mid_d <= 0:
+            return None
+        middle = Fraction(mid_n, mid_d)
+        if middle <= low:
+            denominator = low.denominator * right_n - low.numerator * right_d
+            numerator = low.numerator * left_d - low.denominator * left_n
+            steps = 1 if denominator <= 0 else max(1, numerator // denominator)
+            left_n += steps * right_n
+            left_d += steps * right_d
+        elif middle >= high:
+            denominator = high.denominator * left_n - high.numerator * left_d
+            numerator = high.numerator * right_d - high.denominator * right_n
+            steps = 1 if denominator <= 0 else max(1, numerator // denominator)
+            right_n += steps * left_n
+            right_d += steps * left_d
+        else:
+            return middle
+    return None
+
+
+def _certify_interval(polynomial, low: Fraction, high: Fraction, anchor: Fraction | None = None) -> _Root:
+    if low == high and _evaluate(polynomial, low) == 0:
+        return _Root(low, high, low)
+    candidate = _simplest_between(low, high)
+    if (
+        candidate is not None
+        and low < candidate < high
+        and _evaluate(polynomial, candidate) == 0
+    ):
+        return _Root(candidate, candidate, candidate)
+    return _Root(low, high, None, anchor)
 
 
 def _positive_divisors(value: int) -> list[int] | None:
@@ -663,8 +710,8 @@ def _confirm_brent(coefficients, left: Fraction, right: Fraction, exact: Fractio
     same_sign = _sign(_evaluate(coefficients, left)) * _sign(_evaluate(coefficients, right)) >= 0
     if exact is not None and (narrow or same_sign):
         return exact
-    if exact is None and narrow:
-        return (left + right) / 2
+    if exact is None and narrow and float(left) >= float(right):
+        raise RadauContractFailure("CMM-2 Brent root is unresolved.")
     if exact is None and same_sign:
         raise RadauContractFailure("CMM-2 Brent root is unresolved.")
 
