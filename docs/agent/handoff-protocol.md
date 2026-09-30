@@ -63,6 +63,11 @@ At the audited baseline no `.cursor/rules/`, `.cursor/skills/` or
 update script was not backed by a repository script. A clone must follow the
 explicit setup commands; no cloud credentials or vendor settings are assumed.
 
+A 2026-09-18 cloud-agent session observed a pre-existing `venv/` on Python 3.12.3
+with `[dev,plot]` but without Streamlit/Plotly. CI remains 3.10/3.11. Install
+`.[dev,plot,ui]` in the interpreter you will test; do not assume extras or the
+CI Python pair. That observation is not a committed environment schema.
+
 For this increment, **AGENTS is the only always-read project contract** and the
 linked documents supply progressive disclosure. Do not add large vendor-specific
 rule files that duplicate it. No new tool-specific environment schema or skills
