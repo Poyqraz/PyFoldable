@@ -125,12 +125,14 @@ APPROVE FOR CONTRACT FREEZE from a separate read-only automated reviewer and
 is not a submitted GitHub review. The later status-closure commit is not that
 technical head. Freezing approves the design contract. It does not authorize
 production implementation, demonstrate feasibility, establish PR-C
-verification, or accept ADR-009. This draft branch implements that authorized CMM-2 v2 Radau integrator and
-cubic adapter. It is not merged. Shipped main
-`4cf0d0ea017fa824ba8d4a063ceddd015dae09d6` remains RK45/v1 until this
-implementation merges. CMM-1 remains RK45. Q1–Q4, DOP853
-A/B, fixtures, controls and trajectory gates remain unchanged; Q5 and
-runtime/partition/minimum-SciPy measurements remain pending. Draft PR #81 is a
+verification, or accept ADR-009. This unmerged draft contains the authorized
+CMM-2 v2 Radau integrator, cubic adapter, and certified-root repair. It remains
+Draft/BLOCKED; local trajectory passes do not close the frozen contract.
+Shipped main `4cf0d0ea017fa824ba8d4a063ceddd015dae09d6` remains RK45/v1.
+CMM-1 remains RK45. Q1–Q4, DOP853 A/B, fixtures, controls and trajectory gates
+remain unchanged. Q5 and minimum-SciPy support under `scipy>=1.7` remain open.
+The frozen C2V09-00 real FoldableBEM call is a source-domain rejection, not a
+trajectory pass, and no later candidate was substituted. Draft PR #81 is a
 separate blocked evidence attempt, not accepted PR-C verification. Independent
 CMM-2 numerical verification is not established. ADR-009 is not created or
 accepted; `physical_qualification=false`. PR-06C remains unresolved, with no GEOM
