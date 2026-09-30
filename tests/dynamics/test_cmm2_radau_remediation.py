@@ -7,6 +7,7 @@ assembly. Fixture literals and section-7 scales are the frozen contract values.
 from __future__ import annotations
 
 import math
+from fractions import Fraction
 
 import numpy as np
 import pytest
@@ -28,6 +29,7 @@ from pyfoldable.dynamics.cmm2_radau_dense import (
 )
 from pyfoldable.dynamics import coupled_transient
 from pyfoldable.dynamics.coupled_transient import (
+    FOLD_LIMIT_RAD,
     BaseRotatingAssemblyInertia,
     CoupledSolverControls,
     CoupledSystem,
@@ -38,7 +40,7 @@ from pyfoldable.dynamics.mechanism_contracts import DryFriction
 from pyfoldable.dynamics.mechanism_transient import MechanismParameters
 
 
-def _mechanism() -> MechanismParameters:
+def _mechanism(lower: float = -1.2, upper: float = 0.2) -> MechanismParameters:
     return MechanismParameters(
         mass_kg=0.02,
         cg_distance_m=0.03,
@@ -47,8 +49,8 @@ def _mechanism() -> MechanismParameters:
         spring_stiffness_nm_rad=0.01,
         rest_angle_rad=-0.2,
         viscous_damping_nm_s_rad=0.002,
-        lower_stop_rad=-1.2,
-        upper_stop_rad=0.2,
+        lower_stop_rad=lower,
+        upper_stop_rad=upper,
         dry_friction=DryFriction("regularized_coulomb", 0.001, 0.05, source="prc-contract"),
     )
 
@@ -242,12 +244,14 @@ def test_c2v03_c2v05_manufactured_gate() -> None:
     ) <= 1.0
 
 
-def _controls():
+def _controls(atol: float = 1.0e-8):
     class Controls:
-        atol = 1.0e-8
-        atol_angular_velocity_rad_s = 1.0e-8
+        pass
 
-    return Controls()
+    controls = Controls()
+    controls.atol = atol
+    controls.atol_angular_velocity_rad_s = atol
+    return controls
 
 
 def test_radau_identity_is_v2_and_cmm1_stays_rk45() -> None:
@@ -260,10 +264,10 @@ def test_represented_cubic_does_not_scale_q_by_h() -> None:
     q_matrix[0, 0] = -0.2
     dense = RadauDenseOutput(0.0, 0.5, np.array([-0.4, 0.0, 40.0]), q_matrix)
     _t_old, step, polynomials = represented_cubic(dense)
-    assert step == pytest.approx(0.5) or float(step) == 0.5
-    x = 0.5
-    expected = -0.4 + (-0.2) * x
-    assert float(dense(0.25)[0]) == pytest.approx(expected)
+    assert float(step) == 0.5
+    assert float(polynomials[0][1]) == -0.2
+    assert float(polynomials[0][1]) != -0.2 * 0.5
+    assert float(polynomials[0][0] + polynomials[0][1] * 0.5) == pytest.approx(-0.5)
 
 
 def test_malformed_dense_output_fails_closed() -> None:
@@ -310,6 +314,112 @@ def test_interior_stop_breach_is_not_a_clear_step() -> None:
         assert "breach" in str(exc)
     else:
         assert hit is not None
+
+
+def _dense(t_old, t, y_old, q_matrix):
+    return RadauDenseOutput(t_old, t, np.array(y_old, dtype=float), np.array(q_matrix, dtype=float))
+
+
+def test_exact_fold_equality_is_not_clear() -> None:
+    q_matrix = np.zeros((3, 3))
+    q_matrix[0] = (0.75, 0.0, -1.0)
+    dense = _dense(0.0, 1.0, (FOLD_LIMIT_RAD - 0.25, 0.0, 40.0), q_matrix)
+    with pytest.raises(RadauDomainExit):
+        audit_represented_domain(dense, 0.0, 1.0, deployed_angle=0.0)
+
+
+def test_exact_tolerance_contact_is_retained() -> None:
+    atol = 2.0**-20
+    q_matrix = np.zeros((3, 3))
+    q_matrix[0] = (-0.75, 0.0, 1.0)
+    dense = _dense(0.0, 1.0, (0.25 + 8.0 * atol, 0.0, 40.0), q_matrix)
+    hit = first_radau_contact(
+        dense, 0.0, 1.0, dense(0.0), dense(1.0), _mechanism(0.0, 1.2), _controls(atol)
+    )
+    assert hit is not None
+    assert hit[0] == "lower"
+
+
+def test_rate_just_above_velocity_tolerance_fails_the_breach() -> None:
+    atol = 2.0**-20
+    q_matrix = np.zeros((3, 3))
+    q_matrix[0, 0] = -1.5
+    q_matrix[1, 0] = 3.0
+    dense = _dense(0.0, 1.0, (0.5, -1.0 + 2.0**-17 + 2.0**-50, 40.0), q_matrix)
+    with pytest.raises(RadauContractFailure, match="breach"):
+        first_radau_contact(
+            dense, 0.0, 1.0, dense(0.0), dense(1.0), _mechanism(0.0, 1.2), _controls(atol)
+        )
+
+
+def test_out_of_step_audit_is_rejected() -> None:
+    dense = _dense(0.0, 1.0, (0.1, 0.0, 40.0), np.zeros((3, 3)))
+    with pytest.raises(RadauContractFailure, match="accepted step"):
+        audit_represented_domain(dense, -1.0, 2.0, deployed_angle=0.0)
+
+
+def test_distinct_roots_do_not_collapse_to_one_public_time() -> None:
+    tiny_a = 2.0**-60
+    tiny_b = 2.0**-59
+    q_matrix = np.zeros((3, 3))
+    q_matrix[0, 0] = -(tiny_a + tiny_b)
+    q_matrix[0, 1] = 1.0
+    dense = _dense(1.0, 2.0, (tiny_a * tiny_b, 0.0, 40.0), q_matrix)
+    with pytest.raises(RadauContractFailure):
+        first_radau_contact(
+            dense,
+            1.0,
+            2.0,
+            dense(1.0),
+            dense(2.0),
+            _mechanism(0.0, 1.2),
+            _controls(),
+            origin=0.0,
+            last_published=0.0,
+        )
+
+
+def test_public_time_rounded_to_the_origin_is_rejected() -> None:
+    q_matrix = np.zeros((3, 3))
+    q_matrix[0, 0] = -0.5
+    q_matrix[1, 0] = -250.0
+    origin = float(2**44)
+    dense = _dense(0.0, 0.002, (-0.2, -250.0, 40.0), q_matrix)
+    with pytest.raises(RadauContractFailure):
+        first_radau_contact(
+            dense,
+            0.0,
+            0.002,
+            dense(0.0),
+            dense(0.002),
+            _mechanism(-0.5, 0.2),
+            _controls(),
+            origin=origin,
+            last_published=origin,
+        )
+
+
+def test_public_rounding_does_not_hide_a_shaft_exit() -> None:
+    q_matrix = np.zeros((3, 3))
+    q_matrix[2, 1] = -140.0
+    q_matrix[2, 2] = 140.0 / 1.2
+    dense = _dense(0.0, 0.002, (-0.2, 0.0, 40.0), q_matrix)
+    with pytest.raises(RadauDomainExit):
+        audit_represented_domain(
+            dense, 0.0, 0.002, deployed_angle=0.0, origin=float(2**43)
+        )
+
+
+def test_refinement_count_persists_on_the_same_bracket() -> None:
+    from pyfoldable.dynamics.cmm2_radau_dense import RootBudget, _refine_sign_change
+
+    budget = RootBudget(800)
+    polynomial = (Fraction(-1, 3), Fraction(1))
+    _refine_sign_change(polynomial, Fraction(0), Fraction(1), budget)
+    assert budget.refinements > 0
+    with pytest.raises(RadauContractFailure, match="refinement"):
+        _refine_sign_change(polynomial, Fraction(0), Fraction(1), budget)
+    assert budget.refinements > 80
 
 
 def test_interior_shaft_minimum_is_a_domain_exit() -> None:
