@@ -21,6 +21,8 @@ from pyfoldable.dynamics.cmm2_coupled_transient import (
 )
 from pyfoldable.dynamics.cmm2_radau_dense import (
     RadauContractFailure,
+    RadauDomainExit,
+    audit_represented_domain,
     first_radau_contact,
     represented_cubic,
 )
@@ -292,3 +294,28 @@ def test_hidden_lower_stop_crossing_is_not_reported_as_clear() -> None:
     )
     assert hit is not None
     assert hit[0] == "lower"
+
+
+def test_interior_stop_breach_is_not_a_clear_step() -> None:
+    q_matrix = np.zeros((3, 3))
+    q_matrix[0, 0] = 6.4
+    q_matrix[0, 1] = -20.0
+    q_matrix[0, 2] = 40.0 / 3.0
+    dense = RadauDenseOutput(0.0, 1.0, np.array([-0.5, 0.0, 40.0]), q_matrix)
+    try:
+        hit = first_radau_contact(
+            dense, 0.0, 1.0, dense(0.0), dense(1.0), _mechanism(), _controls()
+        )
+    except RadauContractFailure as exc:
+        assert "breach" in str(exc)
+    else:
+        assert hit is not None
+
+
+def test_interior_shaft_minimum_is_a_domain_exit() -> None:
+    q_matrix = np.zeros((3, 3))
+    q_matrix[2, 1] = -600.0
+    q_matrix[2, 2] = 800.0
+    dense = RadauDenseOutput(0.0, 1.0, np.array([0.0, 0.0, 40.0]), q_matrix)
+    with pytest.raises(RadauDomainExit):
+        audit_represented_domain(dense, 0.0, 1.0, deployed_angle=0.0)

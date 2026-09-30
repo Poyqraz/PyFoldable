@@ -128,12 +128,17 @@ def _isolate_derivative_roots(coefficients, left: Fraction, right: Fraction, bud
     if degree == 1:
         root = -derivative[0] / derivative[1]
         return [root] if left < root < right else []
-    a, b, c = derivative[0], derivative[1], derivative[2]
-    discriminant = b * b - 4 * a * c
+    constant, linear, quadratic = derivative[0], derivative[1], derivative[2]
+    if quadratic == 0:
+        if linear == 0:
+            return []
+        root = -constant / linear
+        return [root] if left < root < right else []
+    discriminant = linear * linear - 4 * quadratic * constant
     budget.charge()
-    if discriminant < 0 or a == 0:
+    if discriminant < 0:
         return []
-    vertex = -b / (2 * a)
+    vertex = -linear / (2 * quadratic)
     points = [left, right]
     if left < vertex < right:
         points.append(vertex)
@@ -254,12 +259,16 @@ def first_radau_contact(dense, start, end, _y0, _y1, parameters, controls):
         exact_tol = Fraction(8) * Fraction.from_float(controls.atol)
         tolerance = _as_fraction(angle_tol)
         stationary = _isolate_derivative_roots(relative, start_x, end_x, budget)
+        split = sorted({start_x, end_x, *stationary})
         roots = []
-        if _sign(_evaluate(relative, start_x)) == 0:
-            roots.append(start_x)
-        if _sign(_evaluate(relative, start_x)) * _sign(_evaluate(relative, end_x)) < 0:
-            roots.append(_refine_sign_change(relative, start_x, end_x, budget))
-        if _sign(_evaluate(relative, end_x)) == 0 and end_x not in roots:
+        for bracket_left, bracket_right in zip(split, split[1:]):
+            left_sign = _sign(_evaluate(relative, bracket_left))
+            right_sign = _sign(_evaluate(relative, bracket_right))
+            if left_sign == 0:
+                roots.append(bracket_left)
+            elif left_sign * right_sign < 0:
+                roots.append(_refine_sign_change(relative, bracket_left, bracket_right, budget))
+        if _sign(_evaluate(relative, end_x)) == 0:
             roots.append(end_x)
         for point in stationary:
             budget.charge()
@@ -296,6 +305,12 @@ def first_radau_contact(dense, start, end, _y0, _y1, parameters, controls):
     event_time = float(physical)
     if not math.isfinite(event_time) or event_time < start or event_time > end:
         raise RadauContractFailure("CMM-2 contact time is outside the accepted step.")
+    converted = (_as_fraction(event_time) - t_old) / step
+    if abs(converted - _root) > ROOT_XTOL * (1 + abs(_root)):
+        raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
     stop = parameters.lower_stop_rad if name == "lower" else parameters.upper_stop_rad
     pre_snap = dense(event_time)
+    angle_tol, _velocity_tol = _scale_and_tolerances(stop, angles, end - start, controls)
+    if abs(float(pre_snap[0]) - stop) > 4 * angle_tol:
+        raise RadauContractFailure("CMM-2 pre-snap contact angle is outside tolerance.")
     return name, event_time, (stop, float(pre_snap[1])), pre_snap
