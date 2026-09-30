@@ -416,17 +416,27 @@ def _positive_divisors(value: int) -> list[int] | None:
     number = abs(int(value))
     if number == 0:
         return []
-    if number.bit_length() > 32:
-        return None
+    shift = (number & -number).bit_length() - 1
+    odd = number >> shift
+    odd_divisors = [1]
+    if odd > 1:
+        if odd.bit_length() > 24:
+            odd_divisors = [1, odd]
+        else:
+            factor = 1
+            while factor * factor <= odd:
+                if odd % factor == 0:
+                    odd_divisors.append(factor)
+                    quotient = odd // factor
+                    if quotient != factor:
+                        odd_divisors.append(quotient)
+                factor = 3 if factor == 1 else factor + 2
     divisors = []
-    factor = 1
-    while factor * factor <= number:
-        if number % factor == 0:
-            divisors.append(factor)
-            quotient = number // factor
-            if quotient != factor:
-                divisors.append(quotient)
-        factor += 1
+    for part in dict.fromkeys(odd_divisors):
+        power = part
+        for _exponent in range(shift + 1):
+            divisors.append(power)
+            power *= 2
     return divisors
 
 

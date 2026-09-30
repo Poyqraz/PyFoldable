@@ -583,6 +583,28 @@ def test_large_coefficient_rational_root_stays_exact() -> None:
     assert hit[1] == float(Fraction(1, 3))
 
 
+def test_dyadic_root_near_zero_is_not_published_as_zero() -> None:
+    from pyfoldable.dynamics.cmm2_radau_dense import RootBudget, _locate_roots
+
+    scale = Fraction(1 << 50)
+    roots = _locate_roots(
+        (Fraction(-1), scale, Fraction(-1), scale),
+        Fraction(0),
+        Fraction(1),
+        RootBudget(800),
+    )
+    assert [root.exact for root in roots] == [Fraction(1, 1 << 50)]
+    q_matrix = np.zeros((3, 3))
+    q_matrix[0] = (float(scale), -1.0, float(scale))
+    dense = _dense(0.0, 1.0, (-1.0, 0.0, 40.0), q_matrix)
+    hit = first_radau_contact(
+        dense, 0.0, 1.0, dense(0.0), dense(1.0), _mechanism(0.0, 1.0e6), _controls()
+    )
+    assert hit is not None
+    assert hit[1] == float(Fraction(1, 1 << 50))
+    assert hit[1] != 0.0
+
+
 def test_successful_candidate_order_is_debited() -> None:
     from pyfoldable.dynamics.cmm2_radau_dense import RootBudget, _Root, _order_candidates
 
