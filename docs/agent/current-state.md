@@ -99,11 +99,23 @@ This does not state that CMM-2 is complete or physically validated. Binding:
 [CMM-2 source-bound production binding](../cmm2_source_bound_production_binding.md).
 
 **2026-09-29 CMM-2 PR-C verification contract.** The numerical-verification
-contract is reviewed and frozen for implementation. Final reviewed head
-`613072514f793f2a1bc65704f9158f536210707f`. Verification implementation is
-absent and not started. Independent CMM-2 numerical verification is absent.
-ADR-009 is not created and is not accepted. `physical_qualification` remains
-false. Contract:
+contract was independently reviewed at head
+`613072514f793f2a1bc65704f9158f536210707f`. The narrow C2V-02
+initial-acceleration arithmetic amendment was independently reviewed at
+technical head `b840ec55b4d1dd57197b97e91e1a48a7fbe7da0d`. That review is
+APPROVE from a separate read-only automated reviewer and is not a submitted
+GitHub review. Status is REVIEWED / FROZEN FOR IMPLEMENTATION WITH C2V-02
+ARITHMETIC AMENDMENT. The amendment changes only initial-acceleration
+accounting. Ordinary Q2 remains required. The analytic bridge is an
+accounting bound. The trajectory acceptance policy was never reopened.
+Implementation against this amended contract has not started. No merged or
+accepted PR-C verification implementation exists. Draft PR #81 contains a
+blocked evidence implementation attempt. That draft is unmerged and BLOCKED.
+Its C2V-02 and C2V-03 trajectory results remain FAIL. Independent CMM-2
+numerical verification remains not established. No accepted PR-C evidence
+exists. ADR-009 is not created and is not accepted. `physical_qualification`
+remains false. PR-06C remains unresolved. No GEOM gate is promoted. There is
+no calibration and no experimental validation. Contract:
 [CMM-2 PR-C numerical verification contract](../cmm2_numerical_verification_contract.md).
 
 ## Reality summary
@@ -133,7 +145,7 @@ ranges: [pyproject.toml](../../pyproject.toml); UI routing:
 | Partial | CFD/FEA/experiment UI inspects specific existing canonical contracts in session; not arbitrary ANSYS or raw experimental import, not evidence promotion | `pyfoldable/application/evidence_import.py::_CANONICAL_IDENTITIES`, `inspect_evidence_upload`; `tests/application/test_evidence_import.py` |
 | Current | Isolated CMM-2 paired-load screening dynamics are implemented, independently reviewed, and merged in PR #76. ADR-007 accepts that slice only | `pyfoldable/dynamics/cmm2_coupled_transient.py`, [CMM-2 PR-A](../cmm2_coupled_transient_contract.md) |
 | Current | Source-bound CMM-2 screening service and sealed deterministic report were independently reviewed and merged in PR #78. ADR-008 accepts that software slice only | `pyfoldable/application/cmm2_coupled_transient_service.py`, [CMM-2 PR-B](../cmm2_source_bound_production_binding.md) |
-| Partial | Independent CMM-2 numerical verification is absent. The verification contract is reviewed and frozen for implementation; that is not evidence and not physical qualification | [CMM-2 PR-C contract](../cmm2_numerical_verification_contract.md) |
+| Partial | No merged or accepted PR-C verification implementation exists. Draft PR #81 contains a blocked evidence implementation attempt and is unmerged; its C2V-02 and C2V-03 trajectory results remain FAIL. Prior reviewed contract head `613072514f793f2a1bc65704f9158f536210707f`. Reviewed amended technical head `b840ec55b4d1dd57197b97e91e1a48a7fbe7da0d`. Status is REVIEWED / FROZEN FOR IMPLEMENTATION WITH C2V-02 ARITHMETIC AMENDMENT. The amendment changes only initial-acceleration accounting. Ordinary Q2 remains required. The trajectory acceptance policy was never reopened. Implementation against this amended contract has not started. Independent CMM-2 numerical verification is not established. ADR-009 is absent. `physical_qualification` is false | [CMM-2 PR-C contract](../cmm2_numerical_verification_contract.md) |
 | Partial | Full workspace coverage: Motor–Pervane, Doğrulama ve Kanıtlar, Raporlar are placeholder pages despite lower-layer APIs | `apps/pyfoldable_dashboard.py::main`, `_render_planned_page` |
 | Planned / evidence-dependent | PY-06D2 identifiable parameter fitting, E structural correlation, F consolidated comparison UI, physically supported Pareto recommendations | [PY-06 plan](../py06_calibration_uncertainty_plan.md), [Python roadmap](../python_research_execution_plan.md) |
 | Not delivered | Qualified project rotor/structure/deployment; general CAD solids, asynchronous folding, impact/bounce/latch and full BEM–motor–hinge feedback | [validation roadmap](../validation_and_development_roadmap.md), [PY-05 limits](../py05_completion.md), [GEOM-04 limits](../geom04_surface_hardware.md) |
