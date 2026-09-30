@@ -845,6 +845,7 @@ _IMPLEMENTATION_FILE_MANIFEST: tuple[str, ...] = (
     "pyfoldable/application/mechanism_binding.py",
     "pyfoldable/application/folding_mechanism.py",
     "pyfoldable/dynamics/cmm2_coupled_transient.py",
+    "pyfoldable/dynamics/cmm2_radau_dense.py",
     "pyfoldable/dynamics/coupled_transient.py",
     "pyfoldable/dynamics/mechanism_transient.py",
     "pyfoldable/dynamics/mechanism_contracts.py",

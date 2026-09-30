@@ -642,6 +642,7 @@ _EXPECTED_IMPLEMENTATION_MANIFEST = (
     "pyfoldable/application/mechanism_binding.py",
     "pyfoldable/application/folding_mechanism.py",
     "pyfoldable/dynamics/cmm2_coupled_transient.py",
+    "pyfoldable/dynamics/cmm2_radau_dense.py",
     "pyfoldable/dynamics/coupled_transient.py",
     "pyfoldable/dynamics/mechanism_transient.py",
     "pyfoldable/dynamics/mechanism_contracts.py",
@@ -688,11 +689,11 @@ def test_implementation_file_manifest_covers_direct_calculation_path(monkeypatch
         "pyfoldable/core/airfoil.py",
     }
     assert required <= set(_EXPECTED_IMPLEMENTATION_MANIFEST)
-    assert len(_EXPECTED_IMPLEMENTATION_MANIFEST) == 21
+    assert len(_EXPECTED_IMPLEMENTATION_MANIFEST) == 22
     _install(monkeypatch)
     document = json.loads(run_cmm2_coupled_transient(_binding()).report_json)
     published = document["implementation_files_sha256"]
-    assert len(published) == 21
+    assert len(published) == 22
     assert set(published) == set(_EXPECTED_IMPLEMENTATION_MANIFEST)
     for path in _EXPECTED_IMPLEMENTATION_MANIFEST:
         digest = hashlib.sha256((ROOT / path).read_bytes()).hexdigest()

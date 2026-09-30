@@ -1239,8 +1239,9 @@ REVIEWED / FROZEN FOR IMPLEMENTATION — CMM-2 RADAU AMENDMENT at technical
 reviewed head `2ec4da9acdccc7508fab7c33f289ec9771b2ea65`. This contract's
 production-RK45 requirements remain in force. The freeze does not change the
 normative gates above and does not authorize a production implementation.
-Current production remains RK45/v1. The frozen amendment governs a separately
-authorized future CMM-2 v2 implementation. Radau is not implemented. Q1–Q4,
+This draft branch implements the authorized CMM-2 v2 Radau integrator. It is
+not merged, and it is not acceptance of the PR-C evidence package. Shipped
+main `4cf0d0ea017fa824ba8d4a063ceddd015dae09d6` remains RK45/v1. Q1–Q4,
 DOP853 A/B, fixtures, controls and the trajectory gates remain unchanged; Q5
 and runtime/partition/minimum-SciPy measurements remain pending. Historical
 technical-contract acceptance records above remain unchanged. Draft PR #81

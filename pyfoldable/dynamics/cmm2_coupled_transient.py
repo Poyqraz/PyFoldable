@@ -12,8 +12,14 @@ import math
 from dataclasses import dataclass
 from typing import Callable
 
-from scipy.integrate import RK45
+from scipy.integrate import Radau
 
+from pyfoldable.dynamics.cmm2_radau_dense import (
+    RadauContractFailure,
+    RadauDomainExit,
+    audit_represented_domain,
+    first_radau_contact,
+)
 from pyfoldable.dynamics.coupled_transient import (
     FOLD_LIMIT_RAD,
     OMEGA_MIN,
@@ -25,7 +31,6 @@ from pyfoldable.dynamics.coupled_transient import (
     HingeActuationHistory,
     MotorEvaluation,
     _ContactControls,
-    _audit_dense_model_domain,
     _friction_nm,
     _interpolate,
     _row_backward_error,
@@ -33,11 +38,11 @@ from pyfoldable.dynamics.coupled_transient import (
     mechanical_energy,
 )
 from pyfoldable.dynamics.mechanism_contracts import ContactPolicy
-from pyfoldable.dynamics.mechanism_transient import _first_contact
 
 
 MODEL_CLASS = "coupled_aero_hinge_screening_only"
-IMPLEMENTATION_ID = "cmm2_planar_projected_rate_independent_coupling_v1"
+IMPLEMENTATION_ID_V1 = "cmm2_planar_projected_rate_independent_coupling_v1"
+IMPLEMENTATION_ID = "cmm2_planar_projected_rate_independent_coupling_v2"
 LOAD_MAPPING_MODEL = "planar_projected_material_load_v1"
 AERO_LOAD_QUALIFICATION = "screening_only_projected_rate_independent"
 HINGE_RATE_AERO_MODEL = "ignored_rate_independent_quasi_steady"
@@ -706,7 +711,7 @@ def solve_cmm2_transient(request: Cmm2TransientRequest) -> Cmm2TransientResult:
             return (y[1], solved.theta_ddot_rad_s2, solved.omega_dot_rad_s2)
 
         try:
-            solver = RK45(
+            solver = Radau(
                 rhs,
                 start,
                 state,
@@ -718,6 +723,10 @@ def solve_cmm2_transient(request: Cmm2TransientRequest) -> Cmm2TransientResult:
                     controls.hinge_velocity_atol_rad_s,
                     controls.shaft_speed_atol_rad_s,
                 ),
+                jac=None,
+                jac_sparsity=None,
+                vectorized=False,
+                first_step=None,
             )
             while solver.status == "running":
                 previous_time = float(solver.t)
@@ -730,21 +739,28 @@ def solve_cmm2_transient(request: Cmm2TransientRequest) -> Cmm2TransientResult:
                 if current_time <= previous_time:
                     raise Cmm2TransientFailure("CMM-2 integrator stalled.")
                 dense = solver.dense_output()
-                hit = _first_contact(
-                    dense,
-                    previous_time,
-                    current_time,
-                    previous_state,
-                    current_state,
-                    system.parameters,
-                    contact_controls,
-                )
+                try:
+                    hit = first_radau_contact(
+                        dense,
+                        previous_time,
+                        current_time,
+                        previous_state,
+                        current_state,
+                        system.parameters,
+                        contact_controls,
+                    )
+                    audit_represented_domain(
+                        dense,
+                        previous_time,
+                        hit[1] if hit else current_time,
+                        deployed_angle=system.deployed_angle_rad,
+                    )
+                except RadauDomainExit as exc:
+                    raise Cmm2DomainExit(str(exc)) from exc
+                except RadauContractFailure as exc:
+                    raise Cmm2TransientFailure(str(exc)) from exc
                 if hit:
-                    _audit_dense_model_domain(dense, previous_time, hit[1])
-                else:
-                    _audit_dense_model_domain(dense, previous_time, current_time)
-                if hit:
-                    name, event_time, event_state = hit
+                    name, event_time, event_state, _pre_snap = hit
                     event_omega = _finite_failure("contact shaft speed", dense(event_time)[2])
                     if event_omega < OMEGA_MIN or abs(event_state[0]) >= FOLD_LIMIT_RAD:
                         raise Cmm2DomainExit(

@@ -125,9 +125,10 @@ APPROVE FOR CONTRACT FREEZE from a separate read-only automated reviewer and
 is not a submitted GitHub review. The later status-closure commit is not that
 technical head. Freezing approves the design contract. It does not authorize
 production implementation, demonstrate feasibility, establish PR-C
-verification, or accept ADR-009. Current production remains RK45/v1. The
-frozen amendment governs a separately authorized future CMM-2 v2
-implementation. Radau is not implemented. CMM-1 remains RK45. Q1–Q4, DOP853
+verification, or accept ADR-009. This draft branch implements that authorized CMM-2 v2 Radau integrator and
+cubic adapter. It is not merged. Shipped main
+`4cf0d0ea017fa824ba8d4a063ceddd015dae09d6` remains RK45/v1 until this
+implementation merges. CMM-1 remains RK45. Q1–Q4, DOP853
 A/B, fixtures, controls and trajectory gates remain unchanged; Q5 and
 runtime/partition/minimum-SciPy measurements remain pending. Draft PR #81 is a
 separate blocked evidence attempt, not accepted PR-C verification. Independent

@@ -246,9 +246,9 @@ review and merge in PR #78.
 REVIEWED / FROZEN FOR IMPLEMENTATION — CMM-2 RADAU AMENDMENT at technical
 reviewed head `2ec4da9acdccc7508fab7c33f289ec9771b2ea65`. Freezing approves
 that design. It does not authorize production implementation, demonstrate
-feasibility, establish PR-C verification, or accept ADR-009. Current
-production remains RK45/v1. The frozen amendment governs a separately
-authorized future CMM-2 v2 implementation. Radau is not implemented. CMM-1
-remains RK45. The PR #76/#78 acceptance records and existing
+feasibility, establish PR-C verification, or accept ADR-009. This draft branch implements the authorized CMM-2 v2 Radau integrator and
+cubic adapter. It is not merged. Shipped main
+`4cf0d0ea017fa824ba8d4a063ceddd015dae09d6` remains RK45/v1. CMM-1 remains
+RK45. The PR #76/#78 acceptance records and existing
 model/qualification identities remain unchanged. `physical_qualification`
 remains false.

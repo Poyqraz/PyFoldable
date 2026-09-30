@@ -21,6 +21,10 @@ the PyFoldable CLA." `CLA.md` is unchanged, blob SHA
 new personal confirmation.
 
 Proposal base: `64eea154f72365b647a1cff4d3fc768e45578d0c`.
+Merged contract source: `4cf0d0ea017fa824ba8d4a063ceddd015dae09d6`.
+This draft branch implements numerical identity v2. It is not merged, and the
+shipped tree at that merged source remains RK45/v1 until the implementation
+merges.
 At that base, production CMM-2 uses SciPy RK45, the existing RK45 quartic
 contact reconstruction, and the inherited continuous dense-domain audit.
 Radau is not implemented. CMM-1 also continues to use its existing RK45 path.

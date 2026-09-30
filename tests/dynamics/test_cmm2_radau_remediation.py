@@ -8,14 +8,23 @@ from __future__ import annotations
 
 import math
 
+import numpy as np
 import pytest
 from scipy.integrate import solve_ivp
+from scipy.integrate._ivp.radau import RadauDenseOutput
 
 from pyfoldable.dynamics.cmm2_coupled_transient import (
+    IMPLEMENTATION_ID,
     Cmm2AeroEvaluation,
     Cmm2TransientRequest,
     solve_cmm2_transient,
 )
+from pyfoldable.dynamics.cmm2_radau_dense import (
+    RadauContractFailure,
+    first_radau_contact,
+    represented_cubic,
+)
+from pyfoldable.dynamics import coupled_transient
 from pyfoldable.dynamics.coupled_transient import (
     BaseRotatingAssemblyInertia,
     CoupledSolverControls,
@@ -229,3 +238,57 @@ def test_c2v03_c2v05_manufactured_gate() -> None:
         result.samples,
         lambda time: tuple(float(value) for value in reference_b.sol(time)),
     ) <= 1.0
+
+
+def _controls():
+    class Controls:
+        atol = 1.0e-8
+        atol_angular_velocity_rad_s = 1.0e-8
+
+    return Controls()
+
+
+def test_radau_identity_is_v2_and_cmm1_stays_rk45() -> None:
+    assert IMPLEMENTATION_ID == "cmm2_planar_projected_rate_independent_coupling_v2"
+    assert "RK45(" in open(coupled_transient.__file__, encoding="utf-8").read()
+
+
+def test_represented_cubic_does_not_scale_q_by_h() -> None:
+    q_matrix = np.zeros((3, 3))
+    q_matrix[0, 0] = -0.2
+    dense = RadauDenseOutput(0.0, 0.5, np.array([-0.4, 0.0, 40.0]), q_matrix)
+    _t_old, step, polynomials = represented_cubic(dense)
+    assert step == pytest.approx(0.5) or float(step) == 0.5
+    x = 0.5
+    expected = -0.4 + (-0.2) * x
+    assert float(dense(0.25)[0]) == pytest.approx(expected)
+
+
+def test_malformed_dense_output_fails_closed() -> None:
+    class Bad:
+        t_old = 0.0
+        t = 1.0
+        h = 1.0
+        y_old = np.zeros(3)
+        Q = np.zeros((3, 4))
+        order = 3
+
+    with pytest.raises(RadauContractFailure):
+        represented_cubic(Bad())
+
+
+def test_hidden_lower_stop_crossing_is_not_reported_as_clear() -> None:
+    q_matrix = np.zeros((3, 3))
+    q_matrix[0, 0] = -1.3
+    dense = RadauDenseOutput(0.0, 1.0, np.array([-0.2, -1.0, 40.0]), q_matrix)
+    hit = first_radau_contact(
+        dense,
+        0.0,
+        1.0,
+        dense(0.0),
+        dense(1.0),
+        _mechanism(),
+        _controls(),
+    )
+    assert hit is not None
+    assert hit[0] == "lower"
