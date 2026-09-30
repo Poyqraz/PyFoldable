@@ -748,12 +748,16 @@ def solve_cmm2_transient(request: Cmm2TransientRequest) -> Cmm2TransientResult:
                         current_state,
                         system.parameters,
                         contact_controls,
+                        origin=origin,
+                        last_published=rows[-1].time_s,
                     )
                     audit_represented_domain(
                         dense,
                         previous_time,
                         hit[1] if hit else current_time,
                         deployed_angle=system.deployed_angle_rad,
+                        origin=origin,
+                        evaluation_time=hit[1] if hit else None,
                     )
                 except RadauDomainExit as exc:
                     raise Cmm2DomainExit(str(exc)) from exc
