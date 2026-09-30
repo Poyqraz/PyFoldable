@@ -422,6 +422,75 @@ def test_refinement_count_persists_on_the_same_bracket() -> None:
     assert budget.refinements > 80
 
 
+def test_contact_work_is_shared_across_stops() -> None:
+    dense = _dense(0.0, 1.0, (-0.2, 0.0, 40.0), np.zeros((3, 3)))
+    with pytest.raises(RadauContractFailure, match="budget"):
+        first_radau_contact(
+            dense,
+            0.0,
+            1.0,
+            dense(0.0),
+            dense(1.0),
+            _mechanism(),
+            _controls(),
+            origin=0.0,
+            last_published=0.0,
+            work_limit=1,
+        )
+    assert (
+        first_radau_contact(
+            dense,
+            0.0,
+            1.0,
+            dense(0.0),
+            dense(1.0),
+            _mechanism(),
+            _controls(),
+            origin=0.0,
+            last_published=0.0,
+        )
+        is None
+    )
+
+
+def test_domain_work_is_shared_by_theta_and_omega() -> None:
+    dense = _dense(0.0, 1.0, (0.1, 0.0, 40.0), np.zeros((3, 3)))
+    used = audit_represented_domain(dense, 0.0, 1.0, deployed_angle=0.0)
+    assert used > 1
+    with pytest.raises(RadauContractFailure, match="budget"):
+        audit_represented_domain(dense, 0.0, 1.0, deployed_angle=0.0, work_limit=used - 1)
+
+
+def test_refinement_debits_the_shared_work_counter() -> None:
+    from pyfoldable.dynamics.cmm2_radau_dense import RootBudget, _refine_sign_change
+
+    budget = RootBudget(30)
+    with pytest.raises(RadauContractFailure, match="budget"):
+        _refine_sign_change((Fraction(-1, 3), Fraction(1)), Fraction(0), Fraction(1), budget)
+    assert budget.used > 30
+    assert budget.refinements > 30
+
+
+def test_isolation_depth_above_32_fails() -> None:
+    from pyfoldable.dynamics.cmm2_radau_dense import RootBudget, _isolate_real_roots
+
+    budget = RootBudget(800)
+    with pytest.raises(RadauContractFailure, match="depth"):
+        _isolate_real_roots((Fraction(-1, 2), Fraction(1)), Fraction(0), Fraction(1), budget, 33)
+
+
+def test_unseparated_roots_fail_at_the_width_floor() -> None:
+    from pyfoldable.dynamics.cmm2_radau_dense import RootBudget, _isolate_real_roots
+
+    right = Fraction(1, 1 << 80)
+    center = Fraction(1, 1 << 81)
+    offset = Fraction(3, 1 << 200)
+    polynomial = (center * center - offset, -2 * center, Fraction(1))
+    budget = RootBudget(800)
+    with pytest.raises(RadauContractFailure, match="width"):
+        _isolate_real_roots(polynomial, Fraction(0), right, budget)
+
+
 def test_interior_shaft_minimum_is_a_domain_exit() -> None:
     q_matrix = np.zeros((3, 3))
     q_matrix[2, 1] = -600.0
