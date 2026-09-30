@@ -1,7 +1,18 @@
-# CMM-2 Radau remediation — proposed contract amendment
+# CMM-2 Radau remediation — contract amendment
 
-Status: PROPOSED / NOT FROZEN. This document is not implementation authorization,
-an independently approved amendment, or numerical verification acceptance.
+Status: REVIEWED / FROZEN FOR IMPLEMENTATION — CMM-2 RADAU AMENDMENT.
+
+Technical reviewed head:
+`2ec4da9acdccc7508fab7c33f289ec9771b2ea65`.
+
+Review result of that technical head: APPROVE FOR CONTRACT FREEZE.
+That review was a separate read-only automated reviewer in the coordination
+session. It is not a submitted GitHub review. A later status-closure commit
+is not this technical reviewed head.
+
+Freezing approves the design contract. It does not authorize production
+implementation, demonstrate feasibility, establish PR-C verification, or
+accept ADR-009.
 
 Proposal base: `64eea154f72365b647a1cff4d3fc768e45578d0c`.
 At that base, production CMM-2 uses SciPy RK45, the existing RK45 quartic
@@ -377,9 +388,9 @@ cheaper fixture. PR #81 is not changed or accepted by this proposal.
 
 ## 9. Proposed amendment locations and historical records
 
-The current documents remain authoritative for the implemented RK45 path until
-an amendment is separately approved. Only proposal links/status explanations
-are added now. The following future changes would require explicit review:
+The current documents remain authoritative for the implemented RK45/v1 path.
+This design freeze does not rewrite their production rules. The following
+future changes would require a separately authorized CMM-2 v2 implementation:
 
 | Existing document/section | Proposed change if separately approved |
 | --- | --- |

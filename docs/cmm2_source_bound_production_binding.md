@@ -116,11 +116,16 @@ Load map: [planar aero-load prerequisite](cmm2_planar_aero_load_prerequisite.md)
 Decision: ADR-008, accepted for this screening software integration after
 independent review and merge in PR #78.
 
-## Proposed Radau amendment — not in force
+## Frozen Radau design amendment — not in this service
 
-[CMM-2 Radau remediation proposal](cmm2_radau_remediation_contract.md) is
-PROPOSED / NOT FROZEN. Current production remains RK45; Radau is not implemented.
-Any future numerical-implementation v2 would need its own implementation identity
-and source-bound seals, while preserving model/qualification identity, actual-call
-budgets, ledger/sample matching and Q4 bit identity. The accepted PR-B provenance
-above remains unchanged. This proposal does not establish PR-C verification.
+[CMM-2 Radau remediation contract](cmm2_radau_remediation_contract.md) is
+REVIEWED / FROZEN FOR IMPLEMENTATION — CMM-2 RADAU AMENDMENT at technical
+reviewed head `2ec4da9acdccc7508fab7c33f289ec9771b2ea65`. Freezing approves
+that design. It does not authorize production implementation or establish
+PR-C verification. Current production remains RK45/v1. The frozen amendment
+governs a separately authorized future CMM-2 v2 implementation. Radau is not
+implemented. That future numerical-implementation v2 would need its own
+implementation identity and source-bound seals, while preserving
+model/qualification identity, actual-call budgets, ledger/sample matching and
+Q4 bit identity. The accepted PR-B provenance above remains unchanged.
+ADR-009 is not created or accepted. `physical_qualification` remains false.
