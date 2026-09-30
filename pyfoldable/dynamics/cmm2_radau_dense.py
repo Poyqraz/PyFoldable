@@ -365,25 +365,84 @@ def _isolate_real_roots(polynomial, left: Fraction, right: Fraction, budget: Roo
     ]
 
 
+def _positive_divisors(value: int) -> list[int] | None:
+    number = abs(int(value))
+    if number == 0:
+        return []
+    if number.bit_length() > 32:
+        return None
+    divisors = []
+    factor = 1
+    while factor * factor <= number:
+        if number % factor == 0:
+            divisors.append(factor)
+            quotient = number // factor
+            if quotient != factor:
+                divisors.append(quotient)
+        factor += 1
+    return divisors
+
+
+def _pull_rational_roots(polynomial):
+    """Deflate exact rational roots. A bounded divisor search is one isolation query."""
+    current = _trim(polynomial)
+    found: list[Fraction] = []
+    while len(current) > 1 and current[0] == 0:
+        found.append(Fraction(0))
+        current = _deflate_root(current, Fraction(0))
+    if len(current) <= 1:
+        return found, current
+    multiplier = 1
+    for coefficient in current:
+        multiplier = math.lcm(multiplier, coefficient.denominator)
+    integers = []
+    for coefficient in current:
+        scaled = coefficient * multiplier
+        if scaled.denominator != 1:
+            return found, current
+        integers.append(int(scaled))
+    constant = abs(integers[0])
+    leading = abs(integers[-1])
+    if constant == 0 or leading == 0:
+        return found, current
+    numerators = _positive_divisors(constant)
+    denominators = _positive_divisors(leading)
+    if numerators is None or denominators is None or len(numerators) * len(denominators) > 4096:
+        return found, current
+    candidates = []
+    for numerator in numerators:
+        for denominator in denominators:
+            candidates.append(Fraction(numerator, denominator))
+            candidates.append(Fraction(-numerator, denominator))
+    for candidate in dict.fromkeys(candidates):
+        while len(current) > 1 and _evaluate(current, candidate) == 0:
+            found.append(candidate)
+            current = _deflate_root(current, candidate)
+    return found, _trim(current)
+
+
 def _locate_roots(coefficients, left: Fraction, right: Fraction, budget: RootBudget):
     polynomial = _trim(coefficients)
     key = (polynomial, left, right)
     cached = budget.located.get(key)
     if cached is not None:
         return cached
+    budget.charge()
     if len(polynomial) <= 1:
         found: list[_Root] = []
-    elif len(polynomial) <= 3:
-        exact = _exact_quadratic_roots(polynomial)
-        if exact == "identical":
-            raise RadauContractFailure("CMM-2 identical root is unresolved.")
-        if exact is not None:
-            budget.charge()
-            found = [_Root(root, root, root) for root in exact if left < root < right]
-        else:
-            found = _isolate_real_roots(polynomial, left, right, budget, 0)
     else:
-        found = _isolate_real_roots(polynomial, left, right, budget, 0)
+        rational, remainder = _pull_rational_roots(polynomial)
+        found = [_Root(root, root, root) for root in rational if left < root < right]
+        remainder = _trim(remainder)
+        if len(remainder) > 1:
+            exact = _exact_quadratic_roots(remainder) if len(remainder) <= 3 else None
+            if exact == "identical":
+                raise RadauContractFailure("CMM-2 identical root is unresolved.")
+            if isinstance(exact, list):
+                found.extend(_Root(root, root, root) for root in exact if left < root < right)
+            else:
+                found.extend(_isolate_real_roots(remainder, left, right, budget, 0))
+    found = _dedupe_roots(found)
     budget.located[key] = found
     return found
 
@@ -604,9 +663,9 @@ def _confirm_brent(coefficients, left: Fraction, right: Fraction, exact: Fractio
     same_sign = _sign(_evaluate(coefficients, left)) * _sign(_evaluate(coefficients, right)) >= 0
     if exact is not None and (narrow or same_sign):
         return exact
-    if exact is None and (narrow or same_sign):
-        if left == right:
-            return left
+    if exact is None and narrow:
+        return (left + right) / 2
+    if exact is None and same_sign:
         raise RadauContractFailure("CMM-2 Brent root is unresolved.")
 
     def function(value: float) -> float:
@@ -628,43 +687,40 @@ def _confirm_brent(coefficients, left: Fraction, right: Fraction, exact: Fractio
     return anchor
 
 
-def _transverse_roots(polynomial, start_x, end_x, stationary, budget: RootBudget) -> list[_Root]:
-    splits = [start_x, end_x]
-    for root in stationary:
-        if root.exact is not None and start_x < root.exact < end_x:
-            splits.append(root.exact)
-    splits = sorted(set(splits))
+def _monotone_bracket(root: _Root, start_x: Fraction, end_x: Fraction, roots: list[_Root]):
+    position = root.exact if root.exact is not None else root.left
+    left, right = start_x, end_x
+    for other in roots:
+        if other == root:
+            continue
+        other_left = other.exact if other.exact is not None else other.left
+        other_right = other.exact if other.exact is not None else other.right
+        if other_right <= position and other_right > left:
+            left = other_right
+        if other_left >= position and other_left < right:
+            right = other_left
+    if left >= right:
+        return position, position
+    return left, right
+
+
+def _transverse_roots(polynomial, start_x, end_x, _stationary, budget: RootBudget) -> list[_Root]:
+    """Every interior root, including each exact rational root of a cubic."""
+    located = list(_locate_roots(polynomial, start_x, end_x, budget))
     found: list[_Root] = []
     if _evaluate(polynomial, start_x) == 0:
         found.append(_Root(start_x, start_x, start_x))
-    for left, right in zip(splits, splits[1:]):
-        if right <= left:
+    for root in located:
+        left, right = _monotone_bracket(root, start_x, end_x, located)
+        if root.exact is not None:
+            _confirm_brent(polynomial, left, right, root.exact, budget)
+            found.append(root)
             continue
-        budget.charge()
-        left_value = _evaluate(polynomial, left)
-        right_value = _evaluate(polynomial, right)
-        if left_value == 0 and start_x < left < end_x:
-            found.append(_Root(left, left, left))
-        if _sign(left_value) * _sign(right_value) < 0:
-            exact = _exact_quadratic_roots(polynomial)
-            chosen = None
-            if isinstance(exact, list):
-                inside = [root for root in exact if left < root < right]
-                if len(inside) == 1:
-                    chosen = inside[0]
-            if chosen is not None:
-                _confirm_brent(polynomial, left, right, chosen, budget)
-                found.append(_Root(chosen, chosen, chosen))
-            else:
-                anchor = _confirm_brent(polynomial, left, right, None, budget)
-                low, high = _refine_to(polynomial, left, right, budget, ROOT_XTOL)
-                if low == high:
-                    found.append(_Root(low, high, low))
-                else:
-                    allowance = ROOT_XTOL * (1 + abs(anchor))
-                    if abs(anchor - low) > allowance or abs(anchor - high) > allowance:
-                        raise RadauContractFailure("CMM-2 Brent root left its certified enclosure.")
-                    found.append(_Root(low, high, None, anchor))
+        anchor = _confirm_brent(polynomial, root.left, root.right, None, budget)
+        allowance = ROOT_XTOL * (1 + abs(anchor))
+        if abs(anchor - root.left) > allowance or abs(anchor - root.right) > allowance:
+            raise RadauContractFailure("CMM-2 Brent root left its certified enclosure.")
+        found.append(_Root(root.left, root.right, None, anchor))
     if _evaluate(polynomial, end_x) == 0:
         found.append(_Root(end_x, end_x, end_x))
     return _dedupe_roots(found)
@@ -681,26 +737,26 @@ def _stationary_class(relative, root: _Root, exact_tol: Fraction, angle_tol: Fra
         else:
             lower, upper = _value_bounds(relative, active.left, active.right)
         if lower == 0 and upper == 0:
-            return "exact"
+            return "exact", active
         if lower > angle_tol or upper < -angle_tol:
-            return "excluded"
+            return "excluded", active
         if lower >= -exact_tol and upper <= exact_tol:
             if lower > 0 or upper < 0 or (active.exact is not None and _evaluate(relative, active.exact) != 0):
-                return "tolerance"
+                return "tolerance", active
         if active.exact is not None:
             distance = abs(_evaluate(relative, active.exact))
             if distance == 0:
-                return "exact"
+                return "exact", active
             if distance <= exact_tol:
-                return "tolerance"
+                return "tolerance", active
             if distance > angle_tol:
-                return "excluded"
-            return "unresolved"
+                return "excluded", active
+            return "unresolved", active
         if active.right - active.left <= WIDTH_FLOOR or derivative == (Fraction(0),):
-            return "unresolved"
+            return "unresolved", active
         updated = _shrink_root(derivative, active, budget, WIDTH_FLOOR)
         if updated.left == active.left and updated.right == active.right:
-            return "unresolved"
+            return "unresolved", active
         active = updated
 
 
@@ -779,6 +835,7 @@ def _convert_root(origin, last_published, t_old, step, xi: Fraction, start: floa
 
 
 def _order_candidates(candidates, budget: RootBudget):
+    budget.charge()
     for index, first in enumerate(candidates):
         for second in candidates[index + 1 :]:
             first_exact = first[0].exact
@@ -856,13 +913,18 @@ def first_radau_contact(
         for root in stationary:
             if root.exact is not None and any(previous.exact == root.exact for previous in accepted):
                 continue
-            kind = _stationary_class(relative, root, exact_tol, tolerance, budget)
+            kind, root = _stationary_class(relative, root, exact_tol, tolerance, budget)
             if kind == "unresolved":
                 raise RadauContractFailure("CMM-2 tangent contact threshold is unresolved.")
             if kind not in {"exact", "tolerance"}:
                 continue
             if root.exact is None:
-                raise RadauContractFailure("CMM-2 tangent contact threshold is unresolved.")
+                anchor = root.anchor if root.anchor is not None else (root.left + root.right) / 2
+                root = _Root(root.left, root.right, None, anchor)
+                try:
+                    root.certified
+                except RadauContractFailure as exc:
+                    raise RadauContractFailure("CMM-2 tangent contact threshold is unresolved.") from exc
             if not _direction_allows(rate, root, velocity_limit, lower, budget):
                 continue
             accepted.append(root)

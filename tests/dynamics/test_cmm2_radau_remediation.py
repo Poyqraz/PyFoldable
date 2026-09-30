@@ -491,6 +491,68 @@ def test_unseparated_roots_fail_at_the_width_floor() -> None:
         _isolate_real_roots(polynomial, Fraction(0), right, budget)
 
 
+def test_cubic_keeps_every_exact_rational_root_and_the_earliest() -> None:
+    q_matrix = np.zeros((3, 3))
+    q_matrix[0] = (22.0, -48.0, 32.0)
+    dense = _dense(0.0, 1.0, (-3.0, 0.0, 40.0), q_matrix)
+    hit = first_radau_contact(
+        dense, 0.0, 1.0, dense(0.0), dense(1.0), _mechanism(0.0, 100.0), _controls()
+    )
+    assert hit is not None
+    assert hit[0] == "lower"
+    assert hit[1] == 0.25
+
+
+def test_non_dyadic_cubic_roots_do_not_lose_the_earliest() -> None:
+    q_matrix = np.zeros((3, 3))
+    q_matrix[0] = (55.0, -150.0, 125.0)
+    dense = _dense(0.0, 1.0, (-6.0, 0.0, 40.0), q_matrix)
+    hit = first_radau_contact(
+        dense, 0.0, 1.0, dense(0.0), dense(1.0), _mechanism(0.0, 100.0), _controls()
+    )
+    assert hit is not None
+    assert hit[0] == "lower"
+    assert abs(hit[1] - 0.2) < abs(hit[1] - 0.4)
+
+
+def test_cubic_rational_root_identity_stays_exact() -> None:
+    from pyfoldable.dynamics.cmm2_radau_dense import RootBudget, _locate_roots
+
+    roots = _locate_roots(
+        (Fraction(-1), Fraction(3), Fraction(-1), Fraction(3)),
+        Fraction(0),
+        Fraction(1),
+        RootBudget(800),
+    )
+    assert [root.exact for root in roots] == [Fraction(1, 3)]
+
+
+def test_irrational_tolerance_contact_is_kept() -> None:
+    atol = 2.0**-12
+    offset = (4.0 / 3.0) * math.sqrt(2.0 / 3.0) + 0.001
+    q_matrix = np.zeros((3, 3))
+    q_matrix[0] = (-2.0, 0.0, 1.0)
+    dense = _dense(0.0, 1.0, (offset, 0.0, 40.0), q_matrix)
+    hit = first_radau_contact(
+        dense, 0.0, 1.0, dense(0.0), dense(1.0), _mechanism(0.0, 5.0), _controls(atol)
+    )
+    assert hit is not None
+    assert hit[0] == "lower"
+
+
+def test_successful_candidate_order_is_debited() -> None:
+    from pyfoldable.dynamics.cmm2_radau_dense import RootBudget, _Root, _order_candidates
+
+    budget = RootBudget(800)
+    candidates = [
+        (_Root(Fraction(3, 10), Fraction(3, 10), Fraction(3, 10)), "upper", 0.2, 1.0e-7),
+        (_Root(Fraction(7, 10), Fraction(7, 10), Fraction(7, 10)), "lower", -0.2, 1.0e-7),
+    ]
+    ordered = _order_candidates(candidates, budget)
+    assert ordered[0][1] == "upper"
+    assert budget.used > 0
+
+
 def test_interior_shaft_minimum_is_a_domain_exit() -> None:
     q_matrix = np.zeros((3, 3))
     q_matrix[2, 1] = -600.0
