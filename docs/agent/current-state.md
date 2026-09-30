@@ -131,8 +131,9 @@ Draft/BLOCKED; local trajectory passes do not close the frozen contract.
 Shipped main `4cf0d0ea017fa824ba8d4a063ceddd015dae09d6` remains RK45/v1.
 CMM-1 remains RK45. Q1–Q4, DOP853 A/B, fixtures, controls and trajectory gates
 remain unchanged. Q5 and minimum-SciPy support under `scipy>=1.7` remain open.
-The frozen C2V09-00 real FoldableBEM call is a source-domain rejection, not a
-trajectory pass, and no later candidate was substituted. Draft PR #81 is a
+The ordered C2V09-00…27 preflight rejects every candidate before a trajectory
+metric: 00–25 fail in FoldableBEM on the Mach-0 polar, and 26–27 fail in the
+motor domain. No candidate is selected. Draft PR #81 is a
 separate blocked evidence attempt, not accepted PR-C verification. Independent
 CMM-2 numerical verification is not established. ADR-009 is not created or
 accepted; `physical_qualification=false`. PR-06C remains unresolved, with no GEOM
