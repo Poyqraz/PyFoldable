@@ -14,6 +14,12 @@ Freezing approves the design contract. It does not authorize production
 implementation, demonstrate feasibility, establish PR-C verification, or
 accept ADR-009.
 
+Contributor agreement provenance: the author is Poyqraz. The required
+statement, already recorded in merged PR #64, is: "I have read and agree to
+the PyFoldable CLA." `CLA.md` is unchanged, blob SHA
+`08a83389ee9760207990446954fb3a2b99825e7b`. This closure does not record a
+new personal confirmation.
+
 Proposal base: `64eea154f72365b647a1cff4d3fc768e45578d0c`.
 At that base, production CMM-2 uses SciPy RK45, the existing RK45 quartic
 contact reconstruction, and the inherited continuous dense-domain audit.
