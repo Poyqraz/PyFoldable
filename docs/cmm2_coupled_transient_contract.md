@@ -210,14 +210,20 @@ That id is not the dynamics implementation id. Binding detail:
 
 PR-C is independent CMM-2 numerical verification. The verification contract
 was independently reviewed at
-`613072514f793f2a1bc65704f9158f536210707f`. Only the C2V-02
-initial-acceleration comparison is reopened: REOPENED / NARROW C2V-02
-ARITHMETIC CORRECTION UNDER INDEPENDENT REVIEW. The trajectory acceptance
-policy is not reopened:
+`613072514f793f2a1bc65704f9158f536210707f`. The narrow C2V-02
+initial-acceleration arithmetic amendment is reviewed and frozen at technical
+head `b840ec55b4d1dd57197b97e91e1a48a7fbe7da0d`:
+REVIEWED / FROZEN FOR IMPLEMENTATION WITH C2V-02 ARITHMETIC AMENDMENT.
+That amended-head review is APPROVE from a separate read-only automated
+reviewer and is not a submitted GitHub review. The amendment changes only
+initial-acceleration accounting. Ordinary Q2 remains required. The analytic
+bridge is an accounting bound. The trajectory acceptance policy was never
+reopened. Implementation against this amended contract has not started:
 [CMM-2 PR-C numerical verification contract](cmm2_numerical_verification_contract.md).
 A separate Draft PR #81 contains a PR-C evidence implementation attempt.
 That implementation is unmerged and BLOCKED by the frozen C2V-02/C2V-03
-trajectory gates. Independent CMM-2 numerical verification is not established.
+trajectory gates. Those trajectory results remain FAIL. No accepted PR-C
+evidence exists. Independent CMM-2 numerical verification is not established.
 PR-C is not complete and is not dashboard work. The dashboard stays outside
 this sequence.
 

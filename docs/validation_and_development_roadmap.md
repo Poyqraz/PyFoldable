@@ -230,15 +230,18 @@ edilmiştir. Son incelenen head
 [CMM-2 source-bound production binding](cmm2_source_bound_production_binding.md).
 CMM-2 PR-C bağımsız sayısal doğrulamadır. Doğrulama sözleşmesi
 `613072514f793f2a1bc65704f9158f536210707f` head'inde bağımsız olarak
-incelenmiştir. Yalnız C2V-02 ilk ivme karşılaştırması dar bir aritmetik
-düzeltme için yeniden açılmıştır: REOPENED / NARROW C2V-02 ARITHMETIC
-CORRECTION UNDER INDEPENDENT REVIEW. Yörünge kabul politikası yeniden
-açılmamıştır:
+incelenmiştir. Dar C2V-02 ilk ivme aritmetik değişikliği
+`b840ec55b4d1dd57197b97e91e1a48a7fbe7da0d` teknik head'inde ayrı salt okunur
+otomatik incelemede APPROVE almıştır. Bu, gönderilmiş bir GitHub incelemesi
+değildir. Durum: REVIEWED / FROZEN FOR IMPLEMENTATION WITH C2V-02 ARITHMETIC
+AMENDMENT. Değişiklik yalnız ilk ivme muhasebesini değiştirir. Olağan Q2
+gerekli kalır. Yörünge kabul politikası hiç yeniden açılmamıştır. Bu
+değiştirilmiş sözleşmeye karşı uygulama başlamamıştır:
 [CMM-2 PR-C numerical verification contract](cmm2_numerical_verification_contract.md).
-PR #81 üzerinde doğrulama/kanıt uygulaması başlatılmıştır ancak dondurulmuş
-C2V-02/C2V-03 yörünge kapılarında BLOCKED durumdadır; birleştirilmemiştir ve
-bağımsız sayısal doğrulama kabul edilmemiştir. Kabul edilmiş bağımsız sayısal
-kanıt yoktur. PR-C
+PR #81 üzerindeki doğrulama/kanıt denemesi dondurulmuş C2V-02/C2V-03 yörünge
+kapılarında BLOCKED durumdadır; birleştirilmemiştir ve o yörünge sonuçları
+FAIL kalır. Bağımsız sayısal doğrulama kabul edilmemiştir. Kabul edilmiş
+bağımsız sayısal kanıt yoktur. PR-C
 doğrulama kilometre taşı tamamlanmış değildir. Pano A/B/C sırasının dışındadır. Ayrıntı:
 [CMM-1 sözleşmesi](cmm1_partial_coupled_transient.md) ve ADR-005.
 Faz 4 sayısal kanıtı

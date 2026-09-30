@@ -1,21 +1,34 @@
 # CMM-2 PR-C numerical verification contract
 
-Status: REOPENED / NARROW C2V-02 ARITHMETIC CORRECTION UNDER INDEPENDENT REVIEW.
+Status: REVIEWED / FROZEN FOR IMPLEMENTATION WITH C2V-02 ARITHMETIC AMENDMENT.
 
 Prior independently reviewed contract head:
 `613072514f793f2a1bc65704f9158f536210707f`.
 
 Review result of that prior head: APPROVE.
 
-Reason: C2V-02 analytic-zero versus represented-system solve-envelope mismatch
-found during PR #81 forensic verification.
+Reviewed amended technical head:
+`b840ec55b4d1dd57197b97e91e1a48a7fbe7da0d`.
 
-The trajectory acceptance policy is NOT reopened.
+Review result of that amended technical head: APPROVE. The reviewer was a
+separate read-only automated reviewer in the coordinating chat. That result
+is not a submitted GitHub review. PR #82 has no GitHub review at this status
+closure.
+
+Reason for the narrow amendment: C2V-02 analytic-zero versus
+represented-system solve-envelope mismatch found during PR #81 forensic
+verification.
+
+The C2V-02 amendment changes only initial-acceleration accounting. Ordinary
+Q2 remains required. The analytic bridge is an accounting bound. The
+trajectory acceptance policy was never reopened.
 
 Exact design base: `f739ded3d712e42b61a47bf5ef4170c7dfdb7ea8`.
 
-PR-C implementation: NOT STARTED on this amendment. PR #81 is a separate
-blocked implementation and is unchanged here.
+Implementation against this amended contract has not started. Draft PR #81
+remains a separate blocked evidence attempt. Its C2V-02 and C2V-03 trajectory
+results remain FAIL. No accepted PR-C evidence exists. PR #81 is unchanged
+here.
 
 `physical_qualification`: false.
 
@@ -27,15 +40,15 @@ weaken a critical gate.
 Implementation must not retune thresholds, fixtures, oracle choices, or
 candidate order from observed PR-C results.
 
-Only the C2V-02 initial-acceleration comparison is reopened, and only to
-separate analytic continuous zero from the binary64 represented-system
+The C2V-02 amendment changes only the initial-acceleration comparison, and
+only to separate analytic continuous zero from the binary64 represented-system
 solution. Q2 itself is not changed. The short-trajectory rule, duration,
 tolerances, fixture values, `Q_phi`, and `q_theta` are not changed. This
 amendment does not convert an observed C2V-02 trajectory failure into PASS.
 
-This status does not mean that PR-C verification has passed, that evidence
-exists, that ADR-009 is accepted, that CMM-2 is physically validated, or that
-`physical_qualification` is true.
+This status does not mean that PR-C verification has passed, that accepted
+evidence exists, that ADR-009 is accepted, that CMM-2 is physically
+validated, or that `physical_qualification` is true.
 
 This document records the verification claims for the declared CMM-2 screening
 model. It does not record evidence. No case below has a measured PASS. A
@@ -1188,7 +1201,9 @@ is the section formula, which is `0.1 s` for these equal segment widths.
 
 ## 17. Implementation boundary
 
-Implementation has not started. This pull request adds no test, fixture, or
+Implementation against this amended contract has not started. Draft PR #81
+is an existing blocked evidence attempt and is not an implementation of this
+amended contract. This pull request adds no test, fixture, or
 production change. Expected production-code changes for the later
 implementation are none. Test-only wrappers may observe the pre-snap dense
 contact state, evaluation-index variants, and selection sequencing. They call
@@ -1201,13 +1216,15 @@ separately. Do not change equations to obtain a pass.
 ## 18. Acceptance boundary
 
 Review of this contract is not verification acceptance. Passing tests do not
-yet exist. Status is REOPENED / NARROW C2V-02 ARITHMETIC CORRECTION UNDER
-INDEPENDENT REVIEW. The trajectory acceptance policy is not reopened. Prior
-independently reviewed contract head:
-`613072514f793f2a1bc65704f9158f536210707f`. Reason: C2V-02 analytic-zero
-versus represented-system solve-envelope mismatch found during PR #81
-forensic verification. That status does not record evidence and does not
-accept ADR-009.
+yet exist. Status is REVIEWED / FROZEN FOR IMPLEMENTATION WITH C2V-02
+ARITHMETIC AMENDMENT. The trajectory acceptance policy was never reopened.
+Prior independently reviewed contract head:
+`613072514f793f2a1bc65704f9158f536210707f`. Reviewed amended technical head:
+`b840ec55b4d1dd57197b97e91e1a48a7fbe7da0d`. That amended-head review is
+APPROVE from a separate read-only automated reviewer and is not a submitted
+GitHub review. Draft PR #81 remains unmerged and BLOCKED. Its C2V-02 and
+C2V-03 trajectory results remain FAIL. No accepted PR-C evidence exists.
+That status does not record evidence and does not accept ADR-009.
 ADR-009 is not created and is not accepted. `physical_qualification` stays
 false. PR-06C stays unresolved. No GEOM gate is promoted. There is no
 calibration and no experimental validation.
