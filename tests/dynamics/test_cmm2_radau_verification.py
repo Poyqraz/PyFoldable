@@ -7,8 +7,10 @@ do not accept the separate PR-C evidence package.
 from __future__ import annotations
 
 import dataclasses
+import importlib.util
 import math
 import struct
+from pathlib import Path
 
 import pytest
 
@@ -29,13 +31,20 @@ from pyfoldable.dynamics.coupled_transient import (
     CoupledSolverControls,
     MotorEvaluation,
 )
-from tests.dynamics.test_cmm2_radau_remediation import (
-    _aero,
-    _loads,
-    _mechanism,
-    _scales,
-    _system,
-)
+def _load_test_module(filename: str):
+    path = Path(__file__).resolve().parents[1] / filename
+    spec = importlib.util.spec_from_file_location(path.stem, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+_helpers = _load_test_module("dynamics/test_cmm2_radau_remediation.py")
+_aero = _helpers._aero
+_loads = _helpers._loads
+_mechanism = _helpers._mechanism
+_scales = _helpers._scales
+_system = _helpers._system
 
 
 def _history(end: float, knots=None, values=None):
@@ -423,9 +432,7 @@ def test_c2v09_first_candidate_is_rejected_by_the_real_source_domain() -> None:
         _build_cmm2_request,
         run_cmm2_coupled_transient,
     )
-    from tests.application.test_cmm2_coupled_transient_service import _binding
-
-    binding = _binding()
+    binding = _load_test_module("application/test_cmm2_coupled_transient_service.py")._binding()
     assert binding.initial_omega_rad_s > OMEGA_MIN
     assert abs(binding.initial_angle_rad) < FOLD_LIMIT_RAD
     fresh = _build_cmm2_request(binding)
