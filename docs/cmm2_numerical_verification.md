@@ -2,7 +2,7 @@
 
 Status: BLOCKED. This is not an accepted verification package.
 
-The evidence writer records four different identities:
+The evidence writer records these identities separately:
 
 - amended reviewed technical head:
   `b840ec55b4d1dd57197b97e91e1a48a7fbe7da0d`
@@ -10,17 +10,28 @@ The evidence writer records four different identities:
   `613072514f793f2a1bc65704f9158f536210707f`
 - merged contract source:
   `64eea154f72365b647a1cff4d3fc768e45578d0c`
-- `evidence_checkout_head`: the commit actually checked out when the evidence
-  JSON is written
+- `pr_source_head`: GitHub pull-request or push SHA when that event is present
+- `git_rev_parse_head` and `evidence_checkout_head`: `git rev-parse HEAD`
 
-The figures in this file come from a local run of this evidence writer on
-parent checkout `706586ee2ed85b868d5c22d48e6ff7b85dc8b792`. They are not the
-measurements previously reported for head
-`370c1647ced896b6a79cff0870d985fc02874fa7`. CI records its own
-`evidence_checkout_head`.
+`evidence_checkout_head` is the real checkout. It is not replaced by
+`pr_source_head` when those SHAs differ. The same JSON records
+`worktree_dirty`, `dirty_paths`, and the Python, NumPy, and SciPy versions.
+The figures below belong to that run context. They are not the measurements
+previously reported for head `370c1647ced896b6a79cff0870d985fc02874fa7`.
 
-`critical_fixture_manifest_sha256` for that run:
+Premeasurement digests are fixed from the real system, controls, and case
+inputs before the production call. C2V-02, C2V-03, and C2V-05 below were
+measured with this writer; their checkout is the `evidence_checkout_head` of
+that evidence JSON, not a later documentation edit.
+
+`critical_fixture_manifest_sha256`:
 `265d531f51f08d45139313cd81b0239de0c2e9dd8926e12ded66d2011d83c1f7`.
+
+Premeasurement digests from the real inputs, fixed before the production call:
+
+- C2V-02: `8e2cf00c546a2b9fdcf7678670fb2c305aa66d37407abd1255a5533629dbfbf3`
+- C2V-03: `842213980ff41e1a91bde91c9a9386e7e9a0fb57852cdd5d49ccfadac75fedaf`
+- C2V-05: `affa3dc34528cd95a697723ac2967fb5e4ab70cd3cac555e5ea35184e29dc293`
 
 The manifest is hashed at import, before measurement. Case fixture digests
 include the inputs passed to that case. Production equations and production

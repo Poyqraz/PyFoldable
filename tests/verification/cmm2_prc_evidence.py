@@ -11,9 +11,13 @@ import hashlib
 import json
 import math
 import os
+import platform
 import subprocess
 from fractions import Fraction
 from pathlib import Path
+
+import numpy
+import scipy
 
 from pyfoldable.dynamics.coupled_transient import CoupledSolverControls
 from pyfoldable.dynamics.cmm2_coupled_transient import IMPLEMENTATION_ID, MODEL_CLASS
@@ -76,7 +80,13 @@ def json_safe(value: object) -> tuple[object, list[dict[str, str]]]:
     return walk(value, ""), reasons
 
 
-def repository_head() -> str:
+def git_rev_parse_head() -> str:
+    return subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
+    ).strip()
+
+
+def pr_source_head() -> str | None:
     event_name = os.environ.get("GITHUB_EVENT_NAME", "")
     event_path = os.environ.get("GITHUB_EVENT_PATH")
     if event_name == "pull_request" and event_path:
@@ -84,11 +94,34 @@ def repository_head() -> str:
         sha = payload.get("pull_request", {}).get("head", {}).get("sha")
         if isinstance(sha, str) and sha:
             return sha
-    if event_name == "push" and os.environ.get("GITHUB_SHA"):
-        return os.environ["GITHUB_SHA"]
-    return subprocess.check_output(
-        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
-    ).strip()
+    if event_name == "push":
+        sha = os.environ.get("GITHUB_SHA")
+        if isinstance(sha, str) and sha:
+            return sha
+    return None
+
+
+def worktree_status() -> tuple[bool, list[str]]:
+    output = subprocess.check_output(
+        ["git", "status", "--porcelain"], cwd=ROOT, text=True
+    )
+    paths = [line[3:] for line in output.splitlines() if line.strip()]
+    return bool(paths), paths
+
+
+def provenance_record() -> dict[str, object]:
+    checkout = git_rev_parse_head()
+    dirty, paths = worktree_status()
+    return {
+        "pr_source_head": pr_source_head(),
+        "git_rev_parse_head": checkout,
+        "evidence_checkout_head": checkout,
+        "worktree_dirty": dirty,
+        "dirty_paths": paths,
+        "python_version": platform.python_version(),
+        "numpy_version": numpy.__version__,
+        "scipy_version": scipy.__version__,
+    }
 
 
 def _rad_s_from_rpm_number(rpm_number: float) -> float:
@@ -474,6 +507,155 @@ def fixture_digest(payload: dict[str, object]) -> str:
     return sha256(canonical(payload))
 
 
+def _mechanism_snapshot(system: object) -> dict[str, object]:
+    parameters = system.parameters
+    friction = parameters.dry_friction
+    return {
+        "m_kg": parameters.mass_kg,
+        "hinge_radius_m": parameters.hinge_radius_m,
+        "cg_distance_m": parameters.cg_distance_m,
+        "hinge_inertia_kg_m2": parameters.hinge_inertia_kg_m2,
+        "base_inertia_kg_m2": system.base_inertia.inertia_kg_m2,
+        "spring_nm_rad": parameters.spring_stiffness_nm_rad,
+        "rest_rad": parameters.rest_angle_rad,
+        "damping_nm_s_rad": parameters.viscous_damping_nm_s_rad,
+        "coulomb_nm": friction.coulomb_torque_nm,
+        "friction_velocity_rad_s": friction.transition_velocity_rad_s,
+        "friction_mode": friction.mode,
+        "lower_stop_rad": parameters.lower_stop_rad,
+        "upper_stop_rad": parameters.upper_stop_rad,
+        "blade_count": system.blade_count,
+    }
+
+
+def _expected_mechanism(case: dict[str, object], subcase: str | None) -> dict[str, object]:
+    expected = dict(MANIFEST["shared"]["mechanism"])
+    nested = case.get("mechanism")
+    if isinstance(nested, dict):
+        expected.update(nested)
+    if subcase is not None:
+        details = case.get(subcase)
+        if isinstance(details, dict):
+            for key in ("lower_stop_rad", "upper_stop_rad"):
+                if key in details:
+                    expected[key] = details[key]
+    return expected
+
+
+def _expected_controls(case: dict[str, object], subcase: str | None) -> dict[str, object]:
+    expected = dict(MANIFEST["shared"]["controls"])
+    nested = case.get("controls")
+    if isinstance(nested, dict):
+        expected.update(nested)
+    if subcase is not None:
+        details = case.get(subcase)
+        if isinstance(details, dict) and "max_rhs_evaluations" in details:
+            expected["max_rhs_evaluations"] = details["max_rhs_evaluations"]
+    return expected
+
+
+def freeze_case_before_measurement(
+    case_id: str,
+    *,
+    system: object,
+    controls: CoupledSolverControls,
+    executed_inputs: dict[str, object],
+    production_call=None,
+    subcase: str | None = None,
+) -> dict[str, object]:
+    case = MANIFEST["cases"][case_id]
+    if not isinstance(case, dict):
+        raise AssertionError("fixture drifted before measurement: missing case")
+    mismatches: list[str] = []
+    actual_mechanism = _mechanism_snapshot(system)
+    for key, expected in _expected_mechanism(case, subcase).items():
+        if key in actual_mechanism and actual_mechanism[key] != expected:
+            mismatches.append(f"mechanism.{key}")
+    if "blade_count" in case and actual_mechanism["blade_count"] != case["blade_count"]:
+        mismatches.append("blade_count")
+    if "blade_counts" in case and actual_mechanism["blade_count"] not in case["blade_counts"]:
+        mismatches.append("blade_count")
+    actual_controls = _control_record(controls)
+    for key, expected in _expected_controls(case, subcase).items():
+        if actual_controls.get(key) != expected:
+            mismatches.append(f"controls.{key}")
+    if "duration_s" in case and case["duration_s"] is not None:
+        if executed_inputs.get("duration_s") != case["duration_s"]:
+            mismatches.append("duration_s")
+    for key in ("theta_rad", "theta_dot_rad_s", "omega_rad_s", "Qm_nm", "Qh_nm"):
+        if key in case and executed_inputs.get(key) != case[key]:
+            mismatches.append(key)
+    if case_id in {"C2V-03", "C2V-04", "C2V-05"} or case.get("shares_target") == "C2V-03":
+        target = MANIFEST["cases"]["C2V-03"]
+        for key in ("duration_s", "Qm_nm", "Qh_nm"):
+            if executed_inputs.get(key) != target[key]:
+                mismatches.append(f"shared_target.{key}")
+    if mismatches:
+        raise AssertionError(
+            "fixture drifted before measurement: " + ", ".join(mismatches)
+        )
+    snapshot = {
+        "case_id": case_id,
+        "subcase": subcase,
+        "mechanism": actual_mechanism,
+        "controls": actual_controls,
+        "executed_inputs": executed_inputs,
+        "manifest_case": case,
+    }
+    snapshot["premeasurement_digest"] = sha256(canonical(snapshot))
+    if production_call is not None:
+        production_call()
+    return snapshot
+
+
+def execute_measured_case(case_id: str, measure, checks=()) -> dict[str, object]:
+    partial: dict[str, object] = {}
+    try:
+        payload = measure(partial)
+        if not isinstance(payload, dict):
+            raise AssertionError("measured case did not return a record")
+        if payload.get("premeasurement_digest") is None and partial.get("premeasurement_digest"):
+            payload["premeasurement_digest"] = partial["premeasurement_digest"]
+        if payload.get("fixture_digest") is None and payload.get("premeasurement_digest"):
+            payload["fixture_digest"] = payload["premeasurement_digest"]
+        if partial.get("metrics") and not payload.get("metrics"):
+            payload["metrics"] = partial["metrics"]
+        commit_case(case_id, payload)
+        for check in checks:
+            check(payload)
+        if payload.get("classification") != "PASS":
+            raise AssertionError(str(payload.get("pass_blocked_reason") or "case gate failed"))
+        return payload
+    except Exception as exc:
+        recorded = EVIDENCE.get(case_id)
+        if not isinstance(recorded, dict) or recorded.get("classification") == "PASS":
+            metrics = partial.get("metrics")
+            if isinstance(recorded, dict) and recorded.get("metrics") and not metrics:
+                metrics = recorded["metrics"]
+            fail = {
+                "primary_evidence_class": partial.get("primary_evidence_class"),
+                "purpose": partial.get("purpose") or case_id,
+                "classification": "FAIL",
+                "oracle_method": partial.get("oracle_method") or "execution boundary",
+                "independence_limit": partial.get("independence_limit")
+                or "failure recorded before reraise",
+                "controls": partial.get("controls") or MANIFEST["shared"]["controls"],
+                "metrics": metrics,
+                "units": partial.get("units") or {},
+                "reference_stabilization": partial.get("reference_stabilization"),
+                "acceptance_rule": partial.get("acceptance_rule") or "record then reraise",
+                "threshold_basis": partial.get("threshold_basis") or "execution boundary",
+                "limitations": partial.get("limitations") or "partial metrics from the failed execution",
+                "fixture_digest": partial.get("premeasurement_digest") or partial.get("fixture_digest"),
+                "premeasurement_digest": partial.get("premeasurement_digest"),
+                "record_reason": partial.get("record_reason") or f"{type(exc).__name__}: {exc}",
+                "pass_blocked_reason": partial.get("record_reason") or f"{type(exc).__name__}: {exc}",
+                "executed_inputs": partial.get("executed_inputs") or {},
+            }
+            commit_case(case_id, fail)
+        raise
+
+
 def _blank_case(case_id: str, reason: str) -> dict[str, object]:
     return {
         "primary_evidence_class": None,
@@ -504,10 +686,18 @@ def commit_case(case_id: str, payload: dict[str, object]) -> dict[str, object]:
         raise AssertionError(f"{case_id} is not measured in this repair")
     body = _blank_case(case_id, "measured")
     body.update(payload)
+    provenance = provenance_record()
     body.update(
         {
-            "repository_head": repository_head(),
-            "evidence_checkout_head": repository_head(),
+            "repository_head": provenance["git_rev_parse_head"],
+            "pr_source_head": provenance["pr_source_head"],
+            "git_rev_parse_head": provenance["git_rev_parse_head"],
+            "evidence_checkout_head": provenance["evidence_checkout_head"],
+            "worktree_dirty": provenance["worktree_dirty"],
+            "dirty_paths": provenance["dirty_paths"],
+            "python_version": provenance["python_version"],
+            "numpy_version": provenance["numpy_version"],
+            "scipy_version": provenance["scipy_version"],
             "contract_head": AMENDED_REVIEWED_TECHNICAL_HEAD,
             "amended_reviewed_technical_head": AMENDED_REVIEWED_TECHNICAL_HEAD,
             "original_reviewed_provenance": ORIGINAL_REVIEWED_PROVENANCE,
@@ -579,11 +769,19 @@ def coverage_record() -> dict[str, dict[str, object]]:
 
 
 def evidence_document() -> dict[str, object]:
+    provenance = provenance_record()
     return {
         "amended_reviewed_technical_head": AMENDED_REVIEWED_TECHNICAL_HEAD,
         "original_reviewed_provenance": ORIGINAL_REVIEWED_PROVENANCE,
         "merged_contract_source": MERGED_CONTRACT_SOURCE,
-        "evidence_checkout_head": repository_head(),
+        "pr_source_head": provenance["pr_source_head"],
+        "git_rev_parse_head": provenance["git_rev_parse_head"],
+        "evidence_checkout_head": provenance["evidence_checkout_head"],
+        "worktree_dirty": provenance["worktree_dirty"],
+        "dirty_paths": provenance["dirty_paths"],
+        "python_version": provenance["python_version"],
+        "numpy_version": provenance["numpy_version"],
+        "scipy_version": provenance["scipy_version"],
         "critical_fixture_manifest_sha256": MANIFEST_SHA,
         "pre_result_freeze_status": "frozen_before_measurement",
         "physical_qualification": False,

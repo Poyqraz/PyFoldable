@@ -66,8 +66,10 @@ from tests.verification.cmm2_prc_evidence import (
     EVIDENCE,
     MANIFEST_SHA,
     commit_case,
+    execute_measured_case,
     executed_fixture,
     fixture_digest,
+    freeze_case_before_measurement,
     write_evidence,
 )
 
@@ -124,10 +126,15 @@ def _dump_prc_evidence(tmp_path_factory):
 
 
 def _publish(case_id: str, payload: dict[str, object]) -> None:
-    fixture = executed_fixture(case_id, payload.pop("executed_inputs", {}))
+    executed = payload.pop("executed_inputs", {})
+    fixture = executed_fixture(case_id, executed if isinstance(executed, dict) else {})
     payload.setdefault("fixture_identity", f"prc_critical_fixture_manifest_v1:{case_id}")
-    payload.setdefault("fixture_digest", fixture_digest(fixture))
+    if payload.get("premeasurement_digest"):
+        payload["fixture_digest"] = payload["premeasurement_digest"]
+    else:
+        payload.setdefault("fixture_digest", fixture_digest(fixture))
     payload.setdefault("controls", fixture["controls"])
+    payload.setdefault("executed_inputs", executed)
     commit_case(case_id, payload)
 
 
@@ -409,13 +416,29 @@ def _stabilization_metrics(rhs, y0, times, controls):
     max_over_s = 0.0
     max_over_point1_s = 0.0
     for time in times:
+        if not math.isfinite(float(time)):
+            empty["reason"] = "nonfinite sample time"
+            return empty
         left = first.sol(time)
         right = second.sol(time)
-        scale = _state_scale(controls, (float(right[0]), float(right[1]), float(right[2])))
+        produced = [float(left[index]) for index in range(3)]
+        reference = [float(right[index]) for index in range(3)]
+        if any(not math.isfinite(value) for value in produced + reference):
+            empty["reason"] = "nonfinite state component"
+            return empty
+        scale = _state_scale(controls, (reference[0], reference[1], reference[2]))
+        if any((not math.isfinite(value)) or value <= 0.0 for value in scale):
+            empty["reason"] = "nonpositive or nonfinite scale"
+            return empty
         for index in range(3):
-            gap = abs(float(left[index]) - float(right[index]))
-            max_over_s = max(max_over_s, gap / scale[index])
-            max_over_point1_s = max(max_over_point1_s, gap / (0.1 * scale[index]))
+            gap = abs(produced[index] - reference[index])
+            ratio = gap / scale[index]
+            ratio_point1 = gap / (0.1 * scale[index])
+            if not math.isfinite(ratio) or not math.isfinite(ratio_point1):
+                empty["reason"] = "nonfinite stabilization ratio"
+                return empty
+            max_over_s = max(max_over_s, ratio)
+            max_over_point1_s = max(max_over_point1_s, ratio_point1)
     stabilized = max_over_s <= 0.1 and max_over_point1_s <= 1.0
     return {
         "max_abs_A_minus_B_over_S": max_over_s,
@@ -428,19 +451,44 @@ def _stabilization_metrics(rhs, y0, times, controls):
     }
 
 
+def _invalid_sample(reason: str) -> dict[str, object]:
+    return {
+        "valid": False,
+        "reason": reason,
+        "e": None,
+        "time_s": None,
+        "component": None,
+        "absolute_error": None,
+        "scale": None,
+        "unit": None,
+    }
+
+
 def _worst_sample(controls, samples, reference_at):
     names = ("theta", "theta_dot", "omega")
     units = ("rad", "rad/s", "rad/s")
     worst = None
     for sample in samples:
+        if not math.isfinite(float(sample.time_s)):
+            return _invalid_sample("nonfinite sample time")
         reference = reference_at(sample.time_s)
+        if any(not math.isfinite(float(value)) for value in reference):
+            return _invalid_sample("nonfinite state component")
         scale = _state_scale(controls, reference)
+        if any((not math.isfinite(value)) or value <= 0.0 for value in scale):
+            return _invalid_sample("nonpositive or nonfinite scale")
         produced = (sample.theta_rad, sample.theta_dot_rad_s, sample.omega_rad_s)
+        if any(not math.isfinite(float(value)) for value in produced):
+            return _invalid_sample("nonfinite state component")
         for index, name in enumerate(names):
-            absolute = abs(produced[index] - reference[index])
+            absolute = abs(float(produced[index]) - float(reference[index]))
             ratio = absolute / scale[index]
+            if not math.isfinite(absolute) or not math.isfinite(ratio):
+                return _invalid_sample("nonfinite state ratio")
             row = {
-                "time_s": sample.time_s,
+                "valid": True,
+                "reason": None,
+                "time_s": float(sample.time_s),
                 "component": name,
                 "absolute_error": absolute,
                 "scale": scale[index],
@@ -449,7 +497,14 @@ def _worst_sample(controls, samples, reference_at):
             }
             if worst is None or ratio > worst["e"]:
                 worst = row
-    return worst
+    return worst or _invalid_sample("no production samples")
+
+
+def _quadrature_is_reliable(integral_a, error_a, integral_b, error_b):
+    values = (integral_a, error_a, integral_b, error_b)
+    if any(value is None or not math.isfinite(float(value)) for value in values):
+        return False, "QUADRATURE REFERENCE NOT RELIABLE"
+    return True, None
 
 
 def _actuation(duration: float, torque: float = 0.0) -> HingeActuationHistory:
@@ -607,6 +662,22 @@ def test_c2v02_exact_equilibrium() -> None:
     system = _system(2)
     theta, omega, motor_nm, hinge_nm = -0.4, 40.0, 0.05, 0.001
     q_phi, q_theta = _target_loads(system, theta, 0.0, omega, 0.0, 0.0, motor_nm, hinge_nm)
+    executed = {
+        "theta_rad": theta,
+        "theta_dot_rad_s": 0.0,
+        "omega_rad_s": omega,
+        "Qm_nm": motor_nm,
+        "Qh_nm": hinge_nm,
+        "Q_phi_nm": q_phi,
+        "q_theta_nm": q_theta,
+        "duration_s": 0.02,
+    }
+    frozen = freeze_case_before_measurement(
+        "C2V-02",
+        system=system,
+        controls=_controls(),
+        executed_inputs=executed,
+    )
     q_phi_matches = q_phi == pytest.approx(-motor_nm)
     m00, m01, m11, _coupling = _matrix(system, theta)
     shaft, hinge = _rhs(system, theta, 0.0, omega, motor_nm, hinge_nm, q_phi, q_theta)
@@ -634,7 +705,12 @@ def test_c2v02_exact_equilibrium() -> None:
             result.samples,
             lambda _time: (theta, 0.0, omega),
         )
-    trajectory_pass = bool(worst is not None and worst["e"] <= 1.0 and result.status == "completed")
+    trajectory_pass = bool(
+        worst is not None
+        and worst.get("valid") is True
+        and worst["e"] <= 1.0
+        and result.status == "completed"
+    )
     q2_pass = report["classification"] == "PASS"
     bridge_pass = bridge["analytic_bridge_pass"] is True
     passed = bool(q_phi_matches and q2_pass and bridge_pass and trajectory_pass)
@@ -646,16 +722,8 @@ def test_c2v02_exact_equilibrium() -> None:
             "classification": "PASS" if passed else "FAIL",
             "oracle_method": "independent represented solve plus exact constant state",
             "independence_limit": "Q_phi and q_theta are not taken from a production residual",
-            "executed_inputs": {
-                "theta_rad": theta,
-                "theta_dot_rad_s": 0.0,
-                "omega_rad_s": omega,
-                "Qm_nm": motor_nm,
-                "Qh_nm": hinge_nm,
-                "Q_phi_nm": q_phi,
-                "q_theta_nm": q_theta,
-                "duration_s": 0.02,
-            },
+            "executed_inputs": executed,
+            "premeasurement_digest": frozen["premeasurement_digest"],
             "metrics": {
                 "q_phi_nm": q_phi,
                 "q_theta_nm": q_theta,
@@ -724,56 +792,88 @@ def _manufactured_callbacks(system: CoupledSystem):
 
 
 def _manufactured_measurement():
+    cached_error = getattr(_manufactured_measurement, "error", None)
+    if cached_error is not None:
+        raise cached_error
     cached = getattr(_manufactured_measurement, "value", None)
     if cached is not None:
         return cached
     system = _system(2)
     motor, aero, rhs, loads = _manufactured_callbacks(system)
-    theta, theta_dot, theta_ddot, omega, omega_dot, _time = _c2v03_target(0.05)
-    q_phi, q_theta = loads(0.05)
     initial = _c2v03_target(0.0)
-    result = _run(
-        system,
-        0.2,
-        initial[0],
-        initial[1],
-        initial[3],
-        motor,
-        aero,
-        actuation=HingeActuationHistory((0.0, 0.2), (0.001, 0.001), "prc"),
-    )
-    controls = _controls()
-    times = [sample.time_s for sample in result.samples]
-    stabilization = _stabilization_metrics(
-        rhs, (initial[0], initial[1], initial[3]), times, controls
-    )
-    reference = stabilization.pop("reference_b")
-    worst = None
-    if stabilization["stabilized"] and reference is not None and result.samples:
-        worst = _worst_sample(
-            controls,
-            result.samples,
-            lambda time: tuple(float(value) for value in reference.sol(time)),
+    if initial[0] != -0.30 or initial[3] != 40.0 or initial[4] != 2.0:
+        raise AssertionError("shared target formula drifted before measurement")
+    probe = _c2v03_target(0.05)
+    q_phi, q_theta = loads(0.05)
+    shared_inputs = {"duration_s": 0.2, "Qm_nm": 0.04, "Qh_nm": 0.001}
+    try:
+        frozen_03 = freeze_case_before_measurement(
+            "C2V-03", system=system, controls=_controls(), executed_inputs=shared_inputs
         )
-    trajectory_pass = bool(
-        stabilization["stabilized"]
-        and result.status == "completed"
-        and worst is not None
-        and worst["e"] <= 1.0
-    )
-    cached = {
-        "coupling_nonzero": _tip_c(system.parameters) != 0.0,
-        "target_nonzero": theta_dot != 0.0 and omega_dot != 0.0 and theta_ddot != 0.0,
-        "loads_nonzero": q_phi != 0.0 and q_theta != 0.0,
-        "q_phi_nm": q_phi,
-        "q_theta_nm": q_theta,
-        "result_status": result.status,
-        "stabilization": stabilization,
-        "worst_state_error": worst,
-        "trajectory_pass": trajectory_pass,
-    }
-    _manufactured_measurement.value = cached
-    return cached
+        frozen_05 = freeze_case_before_measurement(
+            "C2V-05", system=system, controls=_controls(), executed_inputs=shared_inputs
+        )
+        _manufactured_measurement.partial = {
+            "metrics": {
+                "premeasurement_digest_c2v03": frozen_03["premeasurement_digest"],
+                "premeasurement_digest_c2v05": frozen_05["premeasurement_digest"],
+            },
+            "premeasurement_digest": frozen_03["premeasurement_digest"],
+            "executed_inputs": shared_inputs,
+        }
+        result = _run(
+            system,
+            0.2,
+            initial[0],
+            initial[1],
+            initial[3],
+            motor,
+            aero,
+            actuation=HingeActuationHistory((0.0, 0.2), (0.001, 0.001), "prc"),
+        )
+        controls = _controls()
+        times = [sample.time_s for sample in result.samples]
+        stabilization = _stabilization_metrics(
+            rhs, (initial[0], initial[1], initial[3]), times, controls
+        )
+        reference = stabilization.pop("reference_b")
+        worst = None
+        if stabilization["stabilized"] and reference is not None and result.samples:
+            worst = _worst_sample(
+                controls,
+                result.samples,
+                lambda time: tuple(float(value) for value in reference.sol(time)),
+            )
+        trajectory_pass = bool(
+            stabilization["stabilized"]
+            and result.status == "completed"
+            and worst is not None
+            and worst.get("valid") is True
+            and worst["e"] <= 1.0
+        )
+        cached = {
+            "coupling_nonzero": _tip_c(system.parameters) != 0.0,
+            "target_nonzero": probe[1] != 0.0 and probe[4] != 0.0 and probe[2] != 0.0,
+            "loads_nonzero": q_phi != 0.0 and q_theta != 0.0,
+            "q_phi_nm": q_phi,
+            "q_theta_nm": q_theta,
+            "result_status": result.status,
+            "stabilization": stabilization,
+            "worst_state_error": worst,
+            "trajectory_pass": trajectory_pass,
+            "premeasurement_digest": frozen_03["premeasurement_digest"],
+            "premeasurement_digest_c2v05": frozen_05["premeasurement_digest"],
+        }
+        _manufactured_measurement.value = cached
+        return cached
+    except Exception as exc:
+        _manufactured_measurement.error = exc
+        raise
+
+
+_manufactured_measurement.value = None
+_manufactured_measurement.error = None
+_manufactured_measurement.partial = {}
 
 
 def _trajectory_case_payload(measurement: dict[str, object], purpose: str, oracle: str) -> dict[str, object]:
@@ -818,33 +918,60 @@ def _trajectory_case_payload(measurement: dict[str, object], purpose: str, oracl
     }
 
 
+def _shared_measurement_or_partial(partial: dict[str, object]):
+    try:
+        return _manufactured_measurement()
+    except Exception:
+        partial.update(getattr(_manufactured_measurement, "partial", {}) or {})
+        raise
+
+
 def test_c2v03_manufactured_trajectory() -> None:
-    measurement = _manufactured_measurement()
-    payload = _trajectory_case_payload(
-        measurement,
-        "manufactured coupled trajectory",
-        "independent target right-hand side",
-    )
-    _publish("C2V-03", payload)
-    assert measurement["coupling_nonzero"]
-    assert measurement["target_nonzero"]
-    assert measurement["loads_nonzero"]
-    assert payload["classification"] == "PASS"
+    def measure(partial):
+        measurement = _shared_measurement_or_partial(partial)
+        payload = _trajectory_case_payload(
+            measurement,
+            "manufactured coupled trajectory",
+            "independent target right-hand side",
+        )
+        payload["premeasurement_digest"] = measurement["premeasurement_digest"]
+        partial["metrics"] = payload["metrics"]
+        partial["premeasurement_digest"] = measurement["premeasurement_digest"]
+        partial["executed_inputs"] = {"duration_s": 0.2, "Qm_nm": 0.04, "Qh_nm": 0.001}
+        return payload
+
+    def checks(payload):
+        measurement = _manufactured_measurement()
+        if not measurement["coupling_nonzero"]:
+            raise AssertionError("shared target coupling is zero")
+        if not measurement["target_nonzero"]:
+            raise AssertionError("shared target derivatives vanished")
+        if not measurement["loads_nonzero"]:
+            raise AssertionError("shared target loads vanished")
+        if payload["classification"] != "PASS":
+            raise AssertionError(str(payload.get("pass_blocked_reason")))
+
+    execute_measured_case("C2V-03", measure, checks=[checks])
 
 
 def test_c2v05_dop853_reference() -> None:
-    measurement = _manufactured_measurement()
-    payload = _trajectory_case_payload(
-        measurement,
-        "DOP853 reference on the C2V-03 right-hand side",
-        "DOP853 Reference A and Reference B",
-    )
-    stabilization = measurement["stabilization"]
-    if stabilization["stabilized"] is True and measurement["trajectory_pass"] is not True:
-        payload["classification"] = "FAIL"
-        payload["pass_blocked_reason"] = "production versus Reference B failed max e_j <= 1"
-    _publish("C2V-05", payload)
-    assert payload["classification"] == "PASS"
+    def measure(partial):
+        measurement = _shared_measurement_or_partial(partial)
+        payload = _trajectory_case_payload(
+            measurement,
+            "DOP853 reference on the C2V-03 right-hand side",
+            "DOP853 Reference A and Reference B",
+        )
+        if measurement["stabilization"]["stabilized"] is True and measurement["trajectory_pass"] is not True:
+            payload["classification"] = "FAIL"
+            payload["pass_blocked_reason"] = "production versus Reference B failed max e_j <= 1"
+        payload["premeasurement_digest"] = measurement["premeasurement_digest_c2v05"]
+        partial["metrics"] = payload["metrics"]
+        partial["premeasurement_digest"] = measurement["premeasurement_digest_c2v05"]
+        partial["executed_inputs"] = {"duration_s": 0.2, "Qm_nm": 0.04, "Qh_nm": 0.001}
+        return payload
+
+    execute_measured_case("C2V-05", measure)
 
 
 def test_c2v04_independent_work() -> None:
@@ -864,8 +991,14 @@ def test_c2v04_independent_work() -> None:
 
     residuals = [sample(time / 20.0) for time in range(5)]
     power_pass = all(abs(residual) <= allowance for residual, allowance, _power_value in residuals)
+    frozen = freeze_case_before_measurement(
+        "C2V-04",
+        system=system,
+        controls=_controls(),
+        executed_inputs={"duration_s": 0.2, "Qm_nm": 0.04, "Qh_nm": 0.001},
+    )
     quadrature_reason = None
-    integral_a = integral_b = error_b = None
+    integral_a = error_a = integral_b = error_b = None
     energy_scale = quadrature_uncertainty = roundoff = energy_residual = None
 
     def integrand(time: float) -> float:
@@ -875,10 +1008,11 @@ def test_c2v04_independent_work() -> None:
     try:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always", IntegrationWarning)
-            integral_a, _error_a = quad(integrand, 0.0, 0.2, epsabs=0.0, epsrel=1.0e-10)
+            integral_a, error_a = quad(integrand, 0.0, 0.2, epsabs=0.0, epsrel=1.0e-10)
             integral_b, error_b = quad(integrand, 0.0, 0.2, epsabs=0.0, epsrel=1.0e-12)
-        if caught or not all(math.isfinite(value) for value in (integral_a, integral_b, error_b)):
-            quadrature_reason = "QUADRATURE REFERENCE NOT RELIABLE"
+        reliable, reliable_reason = _quadrature_is_reliable(integral_a, error_a, integral_b, error_b)
+        if caught or not reliable:
+            quadrature_reason = reliable_reason or "QUADRATURE REFERENCE NOT RELIABLE"
         else:
             start = _c2v03_target(0.0)
             end = _c2v03_target(0.2)
@@ -908,8 +1042,13 @@ def test_c2v04_independent_work() -> None:
             "oracle_method": "independent power identity and scipy.integrate.quad",
             "independence_limit": "production cumulative_work_j is not the oracle",
             "executed_inputs": {"duration_s": 0.2, "Qm_nm": 0.04, "Qh_nm": 0.001},
+            "premeasurement_digest": frozen["premeasurement_digest"],
             "metrics": {
                 "max_abs_power_residual_w": max(abs(item[0]) for item in residuals),
+                "integral_a_j": integral_a,
+                "error_a_j": error_a,
+                "integral_b_j": integral_b,
+                "error_b_j": error_b,
                 "U_quad_j": quadrature_uncertainty,
                 "U_round_E_j": roundoff,
                 "R_E_j": energy_residual,
@@ -917,6 +1056,10 @@ def test_c2v04_independent_work() -> None:
             },
             "units": {
                 "max_abs_power_residual_w": "W",
+                "integral_a_j": "J",
+                "error_a_j": "J",
+                "integral_b_j": "J",
+                "error_b_j": "J",
                 "U_quad_j": "J",
                 "U_round_E_j": "J",
                 "R_E_j": "J",
@@ -1090,76 +1233,152 @@ def test_c2v07_manufactured_contact(monkeypatch) -> None:
     assert passed
 
 
-def test_c2v08_fail_closed_layers() -> None:
-    layers = {}
-    fold = _system(2, _mechanism(lower_stop_rad=-2.0, upper_stop_rad=0.5))
+def _exception_text(exc: BaseException) -> str:
+    text = f"{type(exc).__name__}: {exc}"
+    cause = exc.__cause__
+    if cause is not None:
+        text = f"{text}; cause {type(cause).__name__}: {cause}"
+    return text
 
-    def fold_aero(time, theta, theta_dot, _omega):
+
+def _expect_layer(name, exc_type, match, action, layers):
+    try:
+        action()
+    except exc_type as exc:
+        text = _exception_text(exc)
+        if match is not None and match not in text:
+            layers[name] = text
+            raise
+        layers[name] = text
+        return
+    except Exception as exc:
+        layers[name] = _exception_text(exc)
+        raise
+    layers[name] = f"missing {exc_type.__name__}"
+    raise AssertionError(f"{name} did not raise {exc_type.__name__}")
+
+
+def _c2v08_payload(layers, calls, digest, passed, reason):
+    return {
+        "primary_evidence_class": "REGRESSION_CONTRACT",
+        "purpose": "fail-closed boundaries",
+        "classification": "PASS" if passed else "FAIL",
+        "oracle_method": "expected exception layer for each manufactured boundary",
+        "independence_limit": "callbacks are the production request callbacks",
+        "executed_inputs": {"subcases": ["fold", "speed", "budget", "hard"]},
+        "premeasurement_digest": digest,
+        "metrics": {"failure_layers": dict(layers), "speed_callbacks_invoked": list(calls)},
+        "units": {},
+        "reference_stabilization": None,
+        "acceptance_rule": "no shortened success artifact",
+        "threshold_basis": "section C2V-08 expected exception layers",
+        "limitations": "not a catalogue of every lower-layer exception",
+        "record_reason": reason,
+        "pass_blocked_reason": reason,
+    }
+
+
+def _execute_c2v08(fold_aero=None):
+    layers = {}
+    calls = []
+    fold = _system(2, _mechanism(lower_stop_rad=-2.0, upper_stop_rad=0.5))
+    frozen = freeze_case_before_measurement(
+        "C2V-08",
+        system=fold,
+        controls=_controls(),
+        executed_inputs={"duration_s": 0.5, "subcase": "fold"},
+        subcase="fold",
+    )
+
+    def default_fold(time, theta, theta_dot, _omega):
         q_phi, q_theta = _zero_acceleration_loads(fold, -1.20 - time, -1.0, 40.0, 0.04, 0.0)
         return Cmm2AeroEvaluation(
             q_phi, q_theta, 1.0, LOAD_MAPPING_MODEL, AERO_LOAD_QUALIFICATION,
             PROJECTION_MODEL, HINGE_RATE_AERO_MODEL, 2, R_HINGE, theta, theta_dot, "fold",
         )
 
-    with pytest.raises(Cmm2DomainExit):
-        _run(fold, 0.5, -1.20, -1.0, 40.0, lambda *_args: MotorEvaluation(0.04), fold_aero)
-    layers["fold"] = "Cmm2DomainExit"
-    calls = []
+    def measure(partial):
+        partial["metrics"] = {"failure_layers": layers, "speed_callbacks_invoked": calls}
+        partial["premeasurement_digest"] = frozen["premeasurement_digest"]
+        partial["executed_inputs"] = {"subcases": ["fold", "speed", "budget", "hard"]}
+        try:
+            _expect_layer(
+                "fold",
+                Cmm2DomainExit,
+                None,
+                lambda: _run(
+                    fold, 0.5, -1.20, -1.0, 40.0,
+                    lambda *_args: MotorEvaluation(0.04),
+                    fold_aero or default_fold,
+                ),
+                layers,
+            )
+            def counting(*_args):
+                calls.append(1)
+                return MotorEvaluation(0.04)
 
-    def counting(*_args):
-        calls.append(1)
-        return MotorEvaluation(0.04)
+            _expect_layer(
+                "speed",
+                Cmm2TransientError,
+                "100 rpm",
+                lambda: _run(_system(2), 0.2, -0.3, 0.0, 10.0, counting, counting),
+                layers,
+            )
+            if calls:
+                raise AssertionError("speed callback was invoked")
+            budget = _system(2)
+            freeze_case_before_measurement(
+                "C2V-08",
+                system=budget,
+                controls=_controls(max_rhs_evaluations=1),
+                executed_inputs={"duration_s": 0.2, "subcase": "budget"},
+                subcase="budget",
+            )
+            _expect_layer(
+                "budget",
+                Cmm2TransientFailure,
+                "work budget exhausted",
+                lambda: _run(
+                    budget, 0.2, -0.3, 0.1, 40.0,
+                    lambda *_args: MotorEvaluation(0.04),
+                    lambda _time, theta, theta_dot, _omega: Cmm2AeroEvaluation(
+                        -0.02, 0.004, 1.0, LOAD_MAPPING_MODEL, AERO_LOAD_QUALIFICATION,
+                        PROJECTION_MODEL, HINGE_RATE_AERO_MODEL, 2, R_HINGE, theta, theta_dot, "budget",
+                    ),
+                    _controls(max_rhs_evaluations=1),
+                ),
+                layers,
+            )
+            def hard(_time, _theta, _rate, _omega):
+                raise Cmm2TransientFailure("hard failure")
 
-    with pytest.raises(Cmm2TransientError, match="100 rpm"):
-        _run(_system(2), 0.2, -0.3, 0.0, 10.0, counting, counting)
-    assert calls == []
-    layers["speed"] = "Cmm2TransientError"
-    with pytest.raises(Cmm2TransientFailure, match="work budget exhausted"):
-        _run(
-            _system(2),
-            0.2,
-            -0.3,
-            0.1,
-            40.0,
-            lambda *_args: MotorEvaluation(0.04),
-            lambda _time, theta, theta_dot, _omega: Cmm2AeroEvaluation(
-                -0.02, 0.004, 1.0, LOAD_MAPPING_MODEL, AERO_LOAD_QUALIFICATION,
-                PROJECTION_MODEL, HINGE_RATE_AERO_MODEL, 2, R_HINGE, theta, theta_dot, "budget",
-            ),
-            _controls(max_rhs_evaluations=1),
-        )
-    layers["budget"] = "Cmm2TransientFailure: CMM-2 work budget exhausted."
+            _expect_layer(
+                "hard",
+                Cmm2TransientFailure,
+                "hard failure",
+                lambda: _run(
+                    _system(2), 0.2, -0.3, 0.1, 40.0,
+                    lambda *_args: MotorEvaluation(0.04),
+                    hard,
+                ),
+                layers,
+            )
+        except Exception as exc:
+            partial["metrics"] = {"failure_layers": dict(layers), "speed_callbacks_invoked": list(calls)}
+            partial["record_reason"] = _exception_text(exc)
+            raise
+        passed = set(layers) == {"fold", "speed", "budget", "hard"} and not calls
+        return _c2v08_payload(layers, calls, frozen["premeasurement_digest"], passed, None)
 
-    def hard(_time, _theta, _rate, _omega):
-        raise Cmm2TransientFailure("hard failure")
+    return execute_measured_case("C2V-08", measure)
 
-    with pytest.raises(Cmm2TransientFailure, match="hard failure"):
-        _run(
-            _system(2),
-            0.2,
-            -0.3,
-            0.1,
-            40.0,
-            lambda *_args: MotorEvaluation(0.04),
-            hard,
-        )
-    layers["hard"] = "Cmm2TransientFailure: hard failure"
-    passed = calls == [] and set(layers) == {"fold", "speed", "budget", "hard"}
-    _publish(
-        "C2V-08",
-        {
-            "primary_evidence_class": "REGRESSION_CONTRACT",
-            "purpose": "fail-closed boundaries",
-            "classification": "PASS" if passed else "FAIL",
-            "oracle_method": "expected exception layer for each manufactured boundary",
-            "independence_limit": "callbacks are the production request callbacks",
-            "executed_inputs": {"subcases": ["fold", "speed", "budget", "hard"]},
-            "metrics": {"failure_layers": layers, "speed_callbacks_invoked": calls},
-            "units": {},
-            "reference_stabilization": None,
-            "acceptance_rule": "no shortened success artifact",
-            "threshold_basis": "section C2V-08 expected exception layers",
-            "limitations": "not a catalogue of every lower-layer exception",
-        },
-    )
-    assert passed
+
+def test_c2v08_fail_closed_layers() -> None:
+    _execute_c2v08()
+
+
+def run_c2v08_with_callback_fault(exc: BaseException) -> None:
+    def faulty(*_args):
+        raise exc
+
+    _execute_c2v08(faulty)
