@@ -17,6 +17,7 @@ from scipy.integrate import Radau
 from pyfoldable.dynamics.cmm2_radau_dense import (
     RadauContractFailure,
     RadauDomainExit,
+    AcceptedIntervalWork,
     audit_represented_domain,
     first_radau_contact,
 )
@@ -739,6 +740,7 @@ def solve_cmm2_transient(request: Cmm2TransientRequest) -> Cmm2TransientResult:
                 if current_time <= previous_time:
                     raise Cmm2TransientFailure("CMM-2 integrator stalled.")
                 dense = solver.dense_output()
+                interval_work = AcceptedIntervalWork.create()
                 try:
                     hit = first_radau_contact(
                         dense,
@@ -750,6 +752,7 @@ def solve_cmm2_transient(request: Cmm2TransientRequest) -> Cmm2TransientResult:
                         contact_controls,
                         origin=origin,
                         last_published=rows[-1].time_s,
+                        work=interval_work,
                     )
                     audit_represented_domain(
                         dense,
@@ -758,6 +761,7 @@ def solve_cmm2_transient(request: Cmm2TransientRequest) -> Cmm2TransientResult:
                         deployed_angle=system.deployed_angle_rad,
                         origin=origin,
                         evaluation_time=hit[1] if hit else None,
+                        work=interval_work,
                     )
                 except RadauDomainExit as exc:
                     raise Cmm2DomainExit(str(exc)) from exc

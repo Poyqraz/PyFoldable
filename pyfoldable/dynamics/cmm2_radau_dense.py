@@ -64,6 +64,25 @@ class RootBudget:
         self.charge()
 
 
+@dataclass
+class AcceptedIntervalWork:
+    """Contact and domain counters for one accepted interval.
+
+    Retries and later portions of that interval reuse the same counters.
+    A new accepted step builds a new context.
+    """
+
+    contact: RootBudget
+    domain: RootBudget
+
+    @staticmethod
+    def create(
+        contact_limit: int = CONTACT_WORK_LIMIT,
+        domain_limit: int = DOMAIN_WORK_LIMIT,
+    ) -> "AcceptedIntervalWork":
+        return AcceptedIntervalWork(RootBudget(contact_limit), RootBudget(domain_limit))
+
+
 @dataclass(frozen=True)
 class _Root:
     left: Fraction
@@ -546,15 +565,11 @@ def _normalized_interval(t_old: Fraction, step: Fraction, start: float, end: flo
     return start_x, end_x
 
 
-def _later_coordinate(t_old: Fraction, step: Fraction, latest: Fraction, moment, dense) -> Fraction:
-    if moment is None:
-        return latest
-    moment = float(moment)
-    if not math.isfinite(moment):
-        raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
-    if moment > float(dense.t):
+def _extend_exact_relative(t_old: Fraction, step: Fraction, latest: Fraction, moment: Fraction, dense) -> Fraction:
+    """Normalize an exact relative time. Never replace it by a float subtraction."""
+    if moment > Fraction.from_float(float(dense.t)) or moment < Fraction.from_float(float(dense.t_old)):
         raise RadauContractFailure("CMM-2 contact time is outside the accepted step.")
-    coordinate = (_as_fraction(moment) - t_old) / step
+    coordinate = (moment - t_old) / step
     return coordinate if coordinate > latest else latest
 
 
@@ -666,6 +681,7 @@ def audit_represented_domain(
     origin: float | None = None,
     evaluation_time: float | None = None,
     work_limit: int = DOMAIN_WORK_LIMIT,
+    work: AcceptedIntervalWork | None = None,
 ) -> int:
     """Audit the cubic through the actual returned interval. Returns domain-work used."""
     _require_in_step(dense, start, end)
@@ -673,9 +689,15 @@ def audit_represented_domain(
     start_x, end_x = _normalized_interval(t_old, step, start, end)
     if origin is not None:
         public = float(origin) + float(end)
-        end_x = _later_coordinate(t_old, step, end_x, public - float(origin), dense)
-    end_x = _later_coordinate(t_old, step, end_x, evaluation_time, dense)
-    budget = RootBudget(work_limit)
+        public_relative = Fraction.from_float(public) - Fraction.from_float(float(origin))
+        end_x = _extend_exact_relative(t_old, step, end_x, public_relative, dense)
+    if evaluation_time is not None:
+        end_x = _extend_exact_relative(
+            t_old, step, end_x, Fraction.from_float(float(evaluation_time)), dense
+        )
+    if work is None:
+        work = AcceptedIntervalWork.create(domain_limit=work_limit)
+    budget = work.domain
     _require_component_inside(
         polynomials[0],
         start_x,
@@ -872,23 +894,118 @@ def _proved_breach(relative, root: _Root, tolerance: Fraction, lower: bool, budg
         active = updated
 
 
-def _convert_root(origin, last_published, t_old, step, xi: Fraction, start: float, end: float, budget: RootBudget):
-    budget.charge()
-    physical = t_old + step * xi
-    relative = float(physical)
-    public = float(origin) + relative
-    if not math.isfinite(relative) or not math.isfinite(public):
-        raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
-    if relative < start or relative > end:
-        raise RadauContractFailure("CMM-2 contact time is outside the accepted step.")
-    if last_published is not None and not public > float(last_published):
-        raise RadauContractFailure("CMM-2 contact time is not advancing.")
-    relative_xi = (_as_fraction(relative) - t_old) / step
-    public_xi = (_as_fraction(public) - _as_fraction(origin) - t_old) / step
+def _bisect_sign(polynomial, left: Fraction, right: Fraction, budget: RootBudget):
+    key = _matched_key(budget, polynomial, left, right)
+    budget.refine(key)
+    middle = (left + right) / 2
+    if middle == left or middle == right:
+        return left, right
+    if _evaluate(polynomial, middle) == 0:
+        return middle, middle
+    if _sign(_evaluate(polynomial, left)) * _sign(_evaluate(polynomial, middle)) <= 0:
+        return left, middle
+    return middle, right
+
+
+def _enclosure_covers(left: Fraction, right: Fraction, xi: Fraction, allowance: Fraction) -> bool:
+    return max(abs(xi - left), abs(xi - right)) <= allowance
+
+
+def _certify_against_root(polynomial, root: _Root, xi: Fraction, budget: RootBudget):
+    """Refine the retained bracket until ``xi`` lies in its allowance, or fail."""
     allowance = ROOT_XTOL * (1 + abs(xi))
-    if abs(relative_xi - xi) > allowance or abs(public_xi - xi) > allowance:
+    left = root.exact if root.exact is not None else root.left
+    right = root.exact if root.exact is not None else root.right
+    while not _enclosure_covers(left, right, xi, allowance):
+        outside = xi < left or xi > right
+        gap = min(abs(xi - left), abs(xi - right))
+        if left == right or (outside and gap > allowance):
+            raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
+        left, right = _bisect_sign(polynomial, left, right, budget)
+    budget.charge()
+    return left, right
+
+
+def certify_representable_time(polynomial, t_old: Fraction, step: Fraction, timestamp, budget: RootBudget):
+    """Certify one timestamp against the quadratic/cubic root enclosure.
+
+    This helper is the synthetic allowance witness. It is not a C2V-07 fixture.
+    """
+    budget.charge()
+    polynomial = _trim(tuple(polynomial))
+    roots = _locate_roots(polynomial, Fraction(0), Fraction(1), budget)
+    if len(roots) != 1:
         raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
-    return relative, public, relative_xi, public_xi
+    xi = (Fraction.from_float(float(timestamp)) - t_old) / step
+    _certify_against_root(polynomial, roots[0], xi, budget)
+    budget.charge()
+    budget.charge()
+    return xi
+
+
+def _nearby_floats(value: float, radius: int = 8):
+    cursor = value
+    for _step in range(radius):
+        cursor = math.nextafter(cursor, -math.inf)
+    values = []
+    for _step in range(2 * radius + 1):
+        values.append(cursor)
+        cursor = math.nextafter(cursor, math.inf)
+    return values
+
+
+def _rate_allows(rate, xi: Fraction, limit: Fraction, lower: bool) -> bool:
+    value = _evaluate(rate, xi)
+    if lower:
+        return value <= limit
+    return value >= -limit
+
+
+def _convert_root(
+    origin,
+    last_published,
+    t_old,
+    step,
+    root: _Root,
+    polynomial,
+    rate,
+    velocity_limit: Fraction,
+    lower: bool,
+    start: float,
+    end: float,
+    budget: RootBudget,
+):
+    budget.charge()
+    if root.exact is not None:
+        seed = root.exact
+    elif root.anchor is not None:
+        seed = root.anchor
+    else:
+        seed = (root.left + root.right) / 2
+    ideal = float(t_old + step * seed)
+    candidates = _nearby_floats(ideal)
+    candidates.sort(key=lambda value: (abs(value - ideal), value))
+    for relative in candidates:
+        if not math.isfinite(relative) or relative < start or relative > end:
+            continue
+        public = float(origin) + relative
+        if not math.isfinite(public):
+            continue
+        if last_published is not None and not public > float(last_published):
+            continue
+        relative_xi = (Fraction.from_float(relative) - t_old) / step
+        public_xi = (Fraction.from_float(public) - Fraction.from_float(float(origin)) - t_old) / step
+        try:
+            _certify_against_root(polynomial, root, relative_xi, budget)
+            _certify_against_root(polynomial, root, public_xi, budget)
+        except RadauContractFailure:
+            continue
+        if not _rate_allows(rate, relative_xi, velocity_limit, lower):
+            continue
+        if not _rate_allows(rate, public_xi, velocity_limit, lower):
+            continue
+        return relative, public, relative_xi, public_xi
+    raise RadauContractFailure("CMM-2 contact direction is unresolved.")
 
 
 def _order_candidates(candidates, budget: RootBudget):
@@ -922,6 +1039,7 @@ def first_radau_contact(
     origin: float = 0.0,
     last_published: float | None = None,
     work_limit: int = CONTACT_WORK_LIMIT,
+    work: AcceptedIntervalWork | None = None,
 ):
     """Return the earliest proved stop contact, or None.
 
@@ -933,7 +1051,9 @@ def first_radau_contact(
     start_x, end_x = _normalized_interval(t_old, step, start, end)
     if not math.isfinite(end - start) or end <= start:
         raise RadauContractFailure("CMM-2 Radau contact interval is not usable.")
-    budget = RootBudget(work_limit)
+    if work is None:
+        work = AcceptedIntervalWork.create(contact_limit=work_limit)
+    budget = work.contact
     angles = _angles_at_nodes(dense, float(start), float(end))
     theta = polynomials[0]
     rate = polynomials[1]
@@ -1000,8 +1120,22 @@ def first_radau_contact(
     ordered = _order_candidates(candidates, budget)
     converted = []
     for root, name, stop, angle_tol in ordered:
+        lower = name == "lower"
+        _angle_tol, velocity_tol = _scale_and_tolerances(stop, angles, float(end) - float(start), controls)
+        relative_polynomial = _trim((theta[0] - _as_fraction(stop), *theta[1:]))
         relative_time, public, _relative_xi, _public_xi = _convert_root(
-            origin, last_published, t_old, step, root.certified, float(start), float(end), budget
+            origin,
+            last_published,
+            t_old,
+            step,
+            root,
+            relative_polynomial,
+            rate,
+            _as_fraction(velocity_tol),
+            lower,
+            float(start),
+            float(end),
+            budget,
         )
         converted.append((public, relative_time, name, stop, angle_tol, root))
     if len({item[0] for item in converted}) != len(converted):
