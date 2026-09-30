@@ -1231,3 +1231,13 @@ calibration and no experimental validation.
 
 Dynamics contract link:
 [CMM-2 PR-A](cmm2_coupled_transient_contract.md).
+
+## Proposed Radau amendment — not in force
+
+[CMM-2 Radau remediation proposal](cmm2_radau_remediation_contract.md) is
+PROPOSED / NOT FROZEN. This contract's production-RK45 requirements remain in
+force until a separately reviewed amendment is accepted. Radau is not implemented
+or frozen. The proposal preserves Q1–Q4, DOP853 A/B, fixtures, controls and the
+trajectory gates; Q5 and runtime/partition/minimum-SciPy measurements are pending.
+Historical technical-contract acceptance records above remain unchanged. Draft
+PR #81 remains BLOCKED; no independent CMM-2 numerical verification is established.

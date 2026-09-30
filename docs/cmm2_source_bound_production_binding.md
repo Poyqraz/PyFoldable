@@ -115,3 +115,12 @@ Dynamics contract: [CMM-2 PR-A](cmm2_coupled_transient_contract.md).
 Load map: [planar aero-load prerequisite](cmm2_planar_aero_load_prerequisite.md).
 Decision: ADR-008, accepted for this screening software integration after
 independent review and merge in PR #78.
+
+## Proposed Radau amendment — not in force
+
+[CMM-2 Radau remediation proposal](cmm2_radau_remediation_contract.md) is
+PROPOSED / NOT FROZEN. Current production remains RK45; Radau is not implemented.
+Any future numerical-implementation v2 would need its own implementation identity
+and source-bound seals, while preserving model/qualification identity, actual-call
+budgets, ledger/sample matching and Q4 bit identity. The accepted PR-B provenance
+above remains unchanged. This proposal does not establish PR-C verification.

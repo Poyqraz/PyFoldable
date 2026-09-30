@@ -239,3 +239,12 @@ screening dynamics software contract after independent review and merge in
 PR #76. Decision record for this service: ADR-008, accepted for the
 source-bound screening software integration after independent adversarial
 review and merge in PR #78.
+
+## Proposed Radau amendment — not in force
+
+[CMM-2 Radau remediation proposal](cmm2_radau_remediation_contract.md) is
+PROPOSED / NOT FROZEN and does not authorize implementation. Current production
+remains RK45; Radau is not implemented. The proposal would change only CMM-2
+integration and its cubic contact/domain adapter after separate review and
+authorization. CMM-1 remains RK45. The PR #76/#78 acceptance records and existing
+model/qualification identities remain unchanged.
