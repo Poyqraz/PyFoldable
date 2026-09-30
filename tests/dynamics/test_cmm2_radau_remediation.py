@@ -17,6 +17,7 @@ from scipy.integrate._ivp.radau import RadauDenseOutput
 from pyfoldable.dynamics.cmm2_coupled_transient import (
     IMPLEMENTATION_ID,
     Cmm2AeroEvaluation,
+    Cmm2TransientFailure,
     Cmm2TransientRequest,
     solve_cmm2_transient,
 )
@@ -616,6 +617,134 @@ def test_successful_candidate_order_is_debited() -> None:
     ordered = _order_candidates(candidates, budget)
     assert ordered[0][1] == "upper"
     assert budget.used > 0
+
+
+def test_public_relative_fraction_extends_the_shaft_audit() -> None:
+    from pyfoldable.dynamics.coupled_transient import OMEGA_MIN
+
+    origin = 3 * 2**-55
+    q_matrix = np.zeros((3, 3))
+    q_matrix[0, 0] = -0.5
+    q_matrix[2, 0] = -1.25
+    q_matrix[2, 1] = 1.0
+    dense = _dense(0.0, 1.0, (0.25, -1.0, OMEGA_MIN + 0.375), q_matrix)
+    hit = first_radau_contact(
+        dense,
+        0.0,
+        1.0,
+        dense(0.0),
+        dense(1.0),
+        _mechanism(0.0, 1.2),
+        _controls(),
+        origin=origin,
+        last_published=0.0,
+    )
+    assert hit is not None
+    assert hit[1] == 0.5
+    public = float(origin) + hit[1]
+    assert public == float.fromhex("0x1.0000000000001p-1")
+    assert Fraction(public) - Fraction(origin) == Fraction(1, 2) + Fraction(1, 2**55)
+    with pytest.raises(RadauDomainExit):
+        audit_represented_domain(
+            dense,
+            0.0,
+            hit[1],
+            deployed_angle=0.0,
+            origin=origin,
+            evaluation_time=hit[1],
+        )
+
+
+def test_converted_public_time_must_preserve_direction() -> None:
+    q_matrix = np.zeros((3, 3))
+    q_matrix[0, 0] = -1.5
+    q_matrix[1, 0] = -3.0
+    dense = _dense(0.0, 1.0, (0.5, 1.0 + 2**-17, 40.0), q_matrix)
+    try:
+        hit = first_radau_contact(
+            dense,
+            0.0,
+            1.0,
+            dense(0.0),
+            dense(1.0),
+            _mechanism(0.0, 1.2),
+            _controls(2**-20),
+            origin=0.5,
+            last_published=0.0,
+        )
+    except RadauContractFailure as exc:
+        assert "direction" in str(exc) or "conversion" in str(exc)
+        return
+    public = float(0.5) + hit[1]
+    public_xi = Fraction(public) - Fraction(0.5)
+    relative_xi = Fraction(hit[1])
+    rate_y = Fraction.from_float(1.0 + 2**-17)
+    velocity = Fraction(1, 2**17)
+    assert rate_y + Fraction(-3) * public_xi <= velocity
+    assert rate_y + Fraction(-3) * relative_xi <= velocity
+
+
+def test_timestamp_is_certified_against_the_root_enclosure() -> None:
+    """Synthetic allowance witness. It is not the C2V-07 fixture."""
+    from pyfoldable.dynamics.cmm2_radau_dense import RootBudget, certify_representable_time
+
+    polynomial = (Fraction(633318697224539, 4503599627370496), Fraction(0), Fraction(-1))
+    t_old = Fraction(6748644041614695, 9007199254740992)
+    step = Fraction(9007199254741, 4503599627370496)
+    timestamp = float.fromhex("0x1.7fffffffff83ap-1")
+    budget = RootBudget(800)
+    certify_representable_time(polynomial, t_old, step, timestamp, budget)
+    assert budget.refinements == 55
+    assert budget.used == 62
+    infeasible = RootBudget(800)
+    with pytest.raises(RadauContractFailure, match="conversion"):
+        certify_representable_time(
+            polynomial,
+            t_old,
+            step,
+            0.1,
+            infeasible,
+        )
+
+
+def test_repeated_domain_audit_does_not_reset_the_interval_budget() -> None:
+    from pyfoldable.dynamics.cmm2_radau_dense import AcceptedIntervalWork
+
+    dense = _dense(0.0, 1.0, (0.1, 0.0, 40.0), np.zeros((3, 3)))
+    work = AcceptedIntervalWork.create(domain_limit=4)
+    measured = []
+    with pytest.raises(RadauContractFailure, match="budget"):
+        for _ in range(3):
+            measured.append(
+                audit_represented_domain(dense, 0.0, 1.0, deployed_angle=0.0, work=work)
+            )
+    assert measured == [4]
+
+
+def test_producer_exhausts_one_shared_domain_budget(monkeypatch) -> None:
+    import pyfoldable.dynamics.cmm2_coupled_transient as solver
+
+    real_create = solver.AcceptedIntervalWork.create
+
+    def tiny(contact_limit=800, domain_limit=800):
+        del domain_limit
+        return real_create(contact_limit=contact_limit, domain_limit=3)
+
+    monkeypatch.setattr(solver.AcceptedIntervalWork, "create", tiny)
+    system = _system()
+    with pytest.raises(Cmm2TransientFailure, match="budget"):
+        solve_cmm2_transient(
+            Cmm2TransientRequest(
+                system,
+                HingeActuationHistory((0.0, 0.02), (0.001, 0.001), "budget-context"),
+                -0.4,
+                0.0,
+                40.0,
+                lambda *_args: MotorEvaluation(0.05),
+                _aero(0.0, 0.0, 2, 0.08, "budget-context"),
+                CoupledSolverControls(),
+            )
+        )
 
 
 def test_interior_shaft_minimum_is_a_domain_exit() -> None:

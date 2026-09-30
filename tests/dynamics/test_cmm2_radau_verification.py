@@ -10,6 +10,7 @@ import dataclasses
 import importlib.util
 import math
 import struct
+import sys
 from pathlib import Path
 
 import pytest
@@ -227,7 +228,27 @@ def test_c2v07_presnap_observer_uses_the_cubic_contact(monkeypatch) -> None:
     real = cmm2_dynamics.first_radau_contact
 
     def wrapper(dense, start, end, y0, y1, parameters, controls_arg, **kwargs):
-        hit = real(dense, start, end, y0, y1, parameters, controls_arg, **kwargs)
+        try:
+            hit = real(dense, start, end, y0, y1, parameters, controls_arg, **kwargs)
+        except Exception:
+            q_matrix = dense.Q
+            y_old = dense.y_old
+            print(
+                "C2V07_CERTIFICATE",
+                {
+                    "t_old_hex": float(dense.t_old).hex(),
+                    "t_hex": float(dense.t).hex(),
+                    "h_hex": float(dense.h).hex(),
+                    "start": start,
+                    "end": end,
+                    "origin": kwargs.get("origin"),
+                    "last_published": kwargs.get("last_published"),
+                    "y_old_hex": [float(value).hex() for value in y_old],
+                    "Q_hex": [[float(value).hex() for value in row] for row in q_matrix],
+                },
+                file=sys.stderr,
+            )
+            raise
         if hit is not None:
             observed.append((dense, float(start), float(end), hit, dense(hit[1])))
         return hit
