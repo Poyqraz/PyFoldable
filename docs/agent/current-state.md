@@ -159,7 +159,11 @@ failed that same acceptance test, plus a preflight assertion that demanded a
 null pull-request SHA on a real pull-request event. The event SHA is recorded
 when the event exists. The acceptance test is unchanged and
 awaits a separately reviewed contract amendment. A local pass does not erase
-that certificate. Coefficient replay inputs and the explicit rational image
+that certificate. On head `3fff759`, push run `36888456607` failed Python 3.10
+C2V-07 while pull-request run `36888462991` passed Python 3.10, both on NumPy
+2.2.6 and SciPy 1.15.3, with shared tree `5f615822`. The cause is not
+established. Diagnostic captures are in
+[the C2V-07 execution report](../../reports/c2v07_execution_diagnostic/report.md). Coefficient replay inputs and the explicit rational image
 are separate records. Draft PR #81 is a
 separate blocked evidence attempt, not accepted PR-C verification. Independent
 CMM-2 numerical verification is not established. ADR-009 is not created or

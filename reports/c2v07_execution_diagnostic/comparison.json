@@ -1,0 +1,70 @@
+{
+  "push_run": "36888456607",
+  "pull_request_run": "36888462991",
+  "pr_source_head": "3fff759a75573e2c888d11ce99b372847568d957",
+  "push_checkout": "3fff759a75573e2c888d11ce99b372847568d957",
+  "pr_merge_checkout": "31c0d4c0ebe37736fadd918e945dba705876d609",
+  "shared_tree": "5f615822180f935b395b3cadd2ec2ad3979c08f0",
+  "ci_python_3_10": {
+    "cpython": "3.10.21",
+    "numpy": "2.2.6",
+    "scipy": "1.15.3"
+  },
+  "local_stack": {
+    "cpython": "3.12.3",
+    "numpy": "2.5.3",
+    "scipy": "1.18.1"
+  },
+  "python_3_10_not_installed_locally": true,
+  "archived_replay": "RadauContractFailure: CMM-2 contact time conversion is unresolved.",
+  "archived_replay_repeat_equal": true,
+  "local_runs": {
+    "isolated-a": {
+      "outcome": "completed",
+      "contacts": 384,
+      "contact": 1,
+      "failure": 0,
+      "input_diffs_vs_isolated_a": 0
+    },
+    "isolated-b": {
+      "outcome": "completed",
+      "contacts": 384,
+      "contact": 1,
+      "failure": 0,
+      "input_diffs_vs_isolated_a": 0
+    },
+    "after-budget-test": {
+      "outcome": "completed",
+      "contacts": 384,
+      "contact": 1,
+      "failure": 0,
+      "input_diffs_vs_isolated_a": 0
+    },
+    "openblas_num_threads_1": {
+      "outcome": "completed",
+      "contacts": 384,
+      "contact": 1,
+      "failure": 0,
+      "q_diffs_vs_isolated_a": 287,
+      "endpoint_diffs": 0,
+      "contact_interval_equal": true
+    },
+    "openblas_omp_mkl_1_vs_openblas_1": {
+      "input_diffs": 0
+    }
+  },
+  "local_contact_interval": {
+    "call_index": 383,
+    "start": 0.7480000000000008,
+    "end": 0.7500000000000008,
+    "t_old_hex": "0x1.7ef9db22d0e5dp-1",
+    "h_hex": "0x1.0624dd2f1aa00p-9"
+  },
+  "archived_failure_interval": {
+    "start": 0.7492500000000007,
+    "end": 0.7512500000000008,
+    "t_old_hex": "0x1.7f9db22d0e567p-1",
+    "h_hex": "0x1.0624dd2f1aa00p-9"
+  },
+  "archived_equals_any_local_contact": false
+}
