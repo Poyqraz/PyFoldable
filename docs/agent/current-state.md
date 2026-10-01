@@ -390,15 +390,18 @@ unproved and is not inherited from frozen PR-C11. Original v1 FAIL and historica
 v2 BLOCKED remain; candidate29 NOT SELECTED. No new source/trajectory calls,
 ordered selection, v2 seal, freeze or accepted PR-C evidence; qualificationfalse.
 
-## 2026-10-02 cumulative numerical-feasibility implementation closure — proposed
+## 2026-10-02 cumulative numerical-feasibility implementation closure — design frozen
 
 The [authoritative cumulative subsection](../cmm2_numerical_feasibility_amendment.md#7-cumulative-implementation-authority-and-live-eligibility)
 combines the unchanged timestamp policy, append-only00…27,28,29 selector and
 partition v2 explicitly narrowed by geometric scope v3. It specifies exact
 partition precedence, mandatory live eligibility and future canonical selection/
-v2-seal provenance. Status remains **PROPOSED / NOT FROZEN / NOT IMPLEMENTED**
-pending independent exact-HEAD approval explicitly for conditional design freeze
-and technical-head checks/CI; only then may a separate status-only closure follow.
+v2-seal provenance. Status is **REVIEWED / FROZEN FOR IMPLEMENTATION — CMM-2
+NUMERICAL FEASIBILITY AMENDMENT**, NOT IMPLEMENTED. Actual technical reviewed
+HEAD `fd55fa97676c84c896511765e94561a706252239` received separate independent
+APPROVE FOR CONTRACT FREEZE; its checks and push/PR baseline CI passed before
+the later status-only closure. That closure HEAD is not the technical review HEAD;
+fresh closure-head CI remains required. Earlier statuses/results remain historical.
 The approved bounded A mathematics requires no additional certificate here;
 live runtime applicability is reserved for future executable implementation.
 Candidate29 remains unchanged / NOT SELECTED; old v1 FAIL, candidate28 rejection

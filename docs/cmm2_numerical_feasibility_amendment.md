@@ -1,11 +1,13 @@
 # CMM-2 numerical-feasibility amendment proposal
 
-Status: **PROPOSED / NOT FROZEN / NOT IMPLEMENTED**.
+Status: **REVIEWED / FROZEN FOR IMPLEMENTATION — CMM-2 NUMERICAL FEASIBILITY AMENDMENT**.
+
+Implementation status: **NOT IMPLEMENTED / NOT AUTHORIZED BY THIS DESIGN FREEZE**.
 
 Current cumulative implementation authority is [section 7](#7-cumulative-implementation-authority-and-live-eligibility).
 Earlier proposal statuses, acceptance prerequisites and measured dispositions
-below retain their declaration-time scope; the cumulative status record follows
-section 7. No design freeze has been recorded at this technical-declaration stage.
+below retain their declaration-time scope; the cumulative status record in
+section 8 records conditional design freeze separately from implementation.
 
 Proposal base: `4cf0d0ea017fa824ba8d4a063ceddd015dae09d6`.
 This document proposes two separately reviewable amendments; it changes no
@@ -1384,3 +1386,52 @@ timestamp arithmetic or proof digest; closure-head checks and fresh CI follow.
 No implementation authorization or accepted PR-C evidence follows. PR #81/#84
 remain untouched; ADR-009 is not accepted, `physical_qualification=false`,
 PR-06C unresolved; no GEOM, calibration or experimental-validation promotion.
+
+## 8. Conditional design-freeze status record — 2026-10-02
+
+Status: **REVIEWED / FROZEN FOR IMPLEMENTATION — CMM-2 NUMERICAL FEASIBILITY AMENDMENT**.
+Implementation: **NOT IMPLEMENTED / NOT AUTHORIZED BY THIS DESIGN FREEZE**.
+
+Actual independently reviewed technical HEAD:
+`fd55fa97676c84c896511765e94561a706252239`.
+Technical tree: `6b73f38cc1d7d42f569bd3577326315b31a1f921`.
+Base: `4cf0d0ea017fa824ba8d4a063ceddd015dae09d6`.
+
+The separate read-only automated reviewer explicitly returned **APPROVE FOR
+CONTRACT FREEZE**, assessing the complete conditional design and section 7's
+precedence, live eligibility, provenance/seal sequence and preserved gates.
+New blockers and non-blocking findings: none. This is not a submitted GitHub
+review and does not establish live execution eligibility or production evidence.
+Earlier reviewed provenance recorded in section 7 remains unchanged.
+
+Technical-head document/link/whitespace/JSON/Python-fence/digest checks passed:
+83 historical fenced records preserved, 11 certificate artifact digests and
+candidate/capsule digests verified, 19 added links/anchors checked, unrelated
+CSV bytes preserved. Exact technical-head baseline CI passed:
+
+- [push 36936347164](https://github.com/Poyqraz/PyFoldable/actions/runs/36936347164)
+- [pull_request 36936354877](https://github.com/Poyqraz/PyFoldable/actions/runs/36936354877)
+
+Both runs succeeded on Python3.10 and3.11; every job reported 1811 passed,
+9 skipped, 37 subtests passed. GitHub review/comment collections were checked
+after that CI and contained no entries. These are baseline regression checks,
+not concrete-runtime eligibility or PR-C verification.
+
+This later **status-only closure commit is not the reviewed technical HEAD**.
+Its exact SHA is supplied by Git history and PR metadata, avoiding a self-hash.
+Its diff changes status/provenance only; section 7 and every prior policy,
+candidate, timestamp and proof artifact remain unchanged. Section 7's approved
+text SHA256 (UTF-8/LF, exactly one final newline) is
+`524c7402fb0cc3972a18bdadf83bc89b5d86bcbadafd7a3ab0392d7489443b92`.
+Closure-head document/digest checks and fresh baseline CI remain completion
+requirements; a technical-head check does not cover a later commit.
+
+The frozen design requires future live eligibility, full initial ordered
+preflight and separate-v2 sealing/selection provenance under section 7; none
+has been executed here. Candidate29 is unchanged / NOT SELECTED. Original
+candidate28 rejection, literal v1 FAIL and historical v2 BLOCKED remain.
+PR #85 remains Draft/unmerged for coordinator bounded-delta review. No production
+implementation is authorized; main remains RK45/v1. PR #81/#84 are untouched;
+accepted PR-C evidence is absent, ADR-009 remains unaccepted and
+physical_qualification=false. Q5, later runtime/partition/dense-interval and
+minimum-SciPy evidence remain pending within their stated scopes.

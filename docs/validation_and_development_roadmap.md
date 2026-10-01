@@ -628,16 +628,19 @@ and conjunctive Q4 replay do not close the unresolved actual whole-neighborhood
 runtime/source proof; prospective result BLOCKED / NOT SELECTED. No trajectories,
 ordered selection, v2 seal, freeze or accepted independent numerical evidence.
 
-## 2026-10-02 cumulative feasibility-design closure — proposed
+## 2026-10-02 cumulative feasibility-design closure — design frozen
 
 The [cumulative implementation subsection](cmm2_numerical_feasibility_amendment.md#7-cumulative-implementation-authority-and-live-eligibility)
-is PROPOSED / NOT FROZEN / NOT IMPLEMENTED pending explicit independent freeze-
-readiness review and exact-head baseline CI. It binds the unchanged timestamp
+is **REVIEWED / FROZEN FOR IMPLEMENTATION — CMM-2 NUMERICAL FEASIBILITY AMENDMENT**,
+NOT IMPLEMENTED. Technical reviewed HEAD `fd55fa97676c84c896511765e94561a706252239`
+received independent APPROVE FOR CONTRACT FREEZE and passed its documentation
+checks and push/PR baseline CI before the separate status-only closure; fresh
+closure-head CI is still required. It binds the unchanged timestamp
 proposal, append-only selector00…27,28,29 and partition v2 narrowed by scope v3,
 with mandatory **live** certificate/runtime eligibility before future successful
 selection and separate-v2 sealing. Archived replay or baseline CI cannot supply
 that eligibility. Earlier declarations/results above remain historical; design
-freeze would not establish selection, trajectories or PR-C verification.
+freeze does not establish selection, trajectories or PR-C verification.
 Candidate29 NOT SELECTED; literal v1 FAIL and historical v2 BLOCKED preserved.
 Kabul edilmiş bağımsız sayısal kanıt yoktur. Main RK45/v1, pending Q5/runtime/
 minimum-SciPy work and qualification boundaries remain; no implementation,
