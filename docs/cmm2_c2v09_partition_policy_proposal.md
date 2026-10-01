@@ -370,3 +370,12 @@ Prospective declaration capsule SHA256 `783cfe0cdb1482c85fbc219c181b07d989529776
   "uniform_transcendental_enclosure_requirement": "actual pinned runtime emitted cos/sin paths throughout Theta0; mathematical cosine or center observations alone insufficient"
 }
 ```
+
+## Subsequent initial-only assessment (declaration preserved)
+
+After independent exact-HEAD review of declarationa8f7d378957fc01c16c247c34b298e64fbce6e22,
+the [initial replay/certificate](cmm2_c2v09_partition_initial_assessment.md)
+retained v1 FAIL and established conditional RN topology/separation/guard
+sublemmas and a true Q4 successor conjunction. The full actual-neighborhood
+prospective policy remains **BLOCKED / NOT SELECTED** because uniform actual
+runtime/source query proofs are unresolved. No new source calls or trajectories.

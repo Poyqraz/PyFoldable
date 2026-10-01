@@ -621,3 +621,9 @@ alias is relabelled as passing v1. The separately versioned proposal and Q4
 successor conjunction are **PROPOSED / NOT FROZEN / NOT IMPLEMENTED**.
 Committed-declaration review precedes any new initial-only assessment; no
 trajectory, ordered selection, v2 seal or acceptance is authorized.
+
+The [prospective partition initial assessment](cmm2_c2v09_partition_initial_assessment.md)
+keeps literal v1 FAIL and unchanged candidate29. Conditional source algebra
+and conjunctive Q4 replay do not close the unresolved actual whole-neighborhood
+runtime/source proof; prospective result BLOCKED / NOT SELECTED. No trajectories,
+ordered selection, v2 seal, freeze or accepted independent numerical evidence.
