@@ -379,3 +379,12 @@ retained v1 FAIL and established conditional RN topology/separation/guard
 sublemmas and a true Q4 successor conjunction. The full actual-neighborhood
 prospective policy remains **BLOCKED / NOT SELECTED** because uniform actual
 runtime/source query proofs are unresolved. No new source calls or trajectories.
+
+## Subsequent prospective scope clarification (v2 declaration preserved)
+
+A [separately versioned v3 scope/runtime proposal](cmm2_c2v09_partition_scope_runtime_proposal.md)
+distinguishes whole-neighborhood geometric ownership conditional on a valid
+returned source object, inherited initial source preflight, and unproved
+every-angle BEM success. It explicitly scopes stored center uncertainty and
+concrete cosine execution; v2 words/results remain historical, not rewritten.
+Status PROPOSED / NOT FROZEN / NOT IMPLEMENTED; candidate29 NOT SELECTED.

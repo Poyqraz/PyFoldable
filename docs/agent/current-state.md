@@ -373,3 +373,11 @@ keeps literal v1 FAIL and unchanged candidate29. Conditional source algebra
 and conjunctive Q4 replay do not close the unresolved actual whole-neighborhood
 runtime/source proof; prospective result BLOCKED / NOT SELECTED. No trajectories,
 ordered selection, v2 seal, freeze or accepted independent numerical evidence.
+
+A [prospective v3 scope/runtime clarification](../cmm2_c2v09_partition_scope_runtime_proposal.md)
+separates geometric ownership over the exact initial angle neighborhood,
+inherited initial source preflight and unproved every-angle BEM success.
+Status PROPOSED / NOT FROZEN / NOT IMPLEMENTED; candidate29 unchanged and
+NOT SELECTED. Historical v2 words/results and literal v1 FAIL remain.
+Independent committed-declaration review precedes concrete-runtime arithmetic
+certification; zero new source/trajectory calls, selection or v2 seal.

@@ -2512,3 +2512,12 @@ record={'policy_id':POLICY,'status':'PROPOSED / NOT FROZEN / NOT IMPLEMENTED','d
 Path('/tmp/partition85/assessment.json').write_text(json.dumps(record,sort_keys=True,indent=2,allow_nan=False)+'\n')
 print(json.dumps({'original_v1':record['original_v1_status'],'q4_conjunction':flags,'q4_pass':all(flags.values()),'conditional_topology':record['conditional_topology'],'native_guard':record['conditional_native_guard'],'prospective_overall':record['prospective_policy_overall'],'assessment_script_sha256':record['assessment_script_sha256'],'new_source_calls':0,'trajectory_calls':0},indent=2))
 ```
+
+## Subsequent prospective dependency clarification (historical assessment preserved)
+
+The [v3 scope/runtime declaration](cmm2_c2v09_partition_scope_runtime_proposal.md)
+separates A geometric certification, B inherited initial source evidence and
+C unproved every-angle source success. The bundled blocker above is preserved
+as this assessment's historical scope; it is not asserted to be an inherited
+all-angle BEM-convergence selection requirement in frozen PR-C11. V3 is a new
+prospective dependency declaration, not retroactive v2 PASS or selection.
