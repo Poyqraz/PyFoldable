@@ -13,20 +13,28 @@ import math
 import struct
 from pathlib import Path
 
-from tests.c2v09_evidence import (
-    FULL_MANIFEST_ID,
-    FULL_MANIFEST_SHA256,
-    HISTORICAL_SELECTION_RECORD_SHA256,
-    MANIFEST_SOURCE_COMMIT,
-    ROOT,
-    SUPERSEDED_EXPANDED_SELECTION_RECORD_SHA256,
-    assert_matches_pinned_candidate,
-    canonical,
-    checkout_provenance,
-    load_full_manifest,
-    project_executed_candidate,
-    sha256_text,
-)
+
+def _load_evidence():
+    path = Path(__file__).resolve().parents[1] / "c2v09_evidence.py"
+    spec = importlib.util.spec_from_file_location("c2v09_evidence", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+_evidence = _load_evidence()
+FULL_MANIFEST_ID = _evidence.FULL_MANIFEST_ID
+FULL_MANIFEST_SHA256 = _evidence.FULL_MANIFEST_SHA256
+HISTORICAL_SELECTION_RECORD_SHA256 = _evidence.HISTORICAL_SELECTION_RECORD_SHA256
+MANIFEST_SOURCE_COMMIT = _evidence.MANIFEST_SOURCE_COMMIT
+ROOT = _evidence.ROOT
+SUPERSEDED_EXPANDED_SELECTION_RECORD_SHA256 = _evidence.SUPERSEDED_EXPANDED_SELECTION_RECORD_SHA256
+assert_matches_pinned_candidate = _evidence.assert_matches_pinned_candidate
+canonical = _evidence.canonical
+checkout_provenance = _evidence.checkout_provenance
+load_full_manifest = _evidence.load_full_manifest
+project_executed_candidate = _evidence.project_executed_candidate
+sha256_text = _evidence.sha256_text
 
 from pyfoldable.application.cmm2_coupled_transient_service import _build_cmm2_request
 from pyfoldable.core.bem import BEMAnnulusError, BEMConvergenceError

@@ -2,19 +2,29 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import platform
+from pathlib import Path
 
-from tests.c2v09_evidence import (
-    FULL_MANIFEST_ID,
-    FULL_MANIFEST_SHA256,
-    ROOT,
-    canonical,
-    checkout_provenance,
-    load_full_manifest,
-    sha256_text,
-    source_event_provenance,
-)
+
+def _load_evidence():
+    path = Path(__file__).resolve().parents[1] / "c2v09_evidence.py"
+    spec = importlib.util.spec_from_file_location("c2v09_evidence", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+_evidence = _load_evidence()
+FULL_MANIFEST_ID = _evidence.FULL_MANIFEST_ID
+FULL_MANIFEST_SHA256 = _evidence.FULL_MANIFEST_SHA256
+ROOT = _evidence.ROOT
+canonical = _evidence.canonical
+checkout_provenance = _evidence.checkout_provenance
+load_full_manifest = _evidence.load_full_manifest
+sha256_text = _evidence.sha256_text
+source_event_provenance = _evidence.source_event_provenance
 
 
 def test_local_event_provenance_stays_null() -> None:
