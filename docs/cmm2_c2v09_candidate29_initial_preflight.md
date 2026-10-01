@@ -2657,3 +2657,11 @@ for path,hashval in x['source_files'].items():
 result={'source_calls':0,'trajectory_calls':0,'captured_file_sha256':hashlib.sha256(Path('/tmp/candidate29_initial_preflight.json').read_bytes()).hexdigest(),'interpolation_rows':rows,'source_files_equal_base':source,'all_pass':True}
 Path('/tmp/candidate29_captured_audit.json').write_text(json.dumps(result,sort_keys=True,indent=2)+'\n');print(json.dumps(result,indent=2))
 ```
+
+A subsequent [prospective partition-policy declaration](cmm2_c2v09_partition_policy_proposal.md)
+uses unchanged candidate29 and a whole stored-scale angle neighborhood. It
+preserves literal v1 FAIL/raw zeros and every historical capture; no structural
+alias is relabelled as passing v1. The separately versioned proposal and Q4
+successor conjunction are **PROPOSED / NOT FROZEN / NOT IMPLEMENTED**.
+Committed-declaration review precedes any new initial-only assessment; no
+trajectory, ordered selection, v2 seal or acceptance is authorized.

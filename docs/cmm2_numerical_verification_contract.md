@@ -1262,3 +1262,11 @@ station under proposed selector v3 (00…27,28,29). Status remains **PROPOSED /
 NOT FROZEN / NOT IMPLEMENTED**. Committed-declaration review precedes any
 initial-only source/preflight measurement; no trajectory, freeze or acceptance
 follows. Main RK45/v1 and unmerged PR81/84 identities are unchanged.
+
+A subsequent [prospective partition-policy declaration](cmm2_c2v09_partition_policy_proposal.md)
+uses unchanged candidate29 and a whole stored-scale angle neighborhood. It
+preserves literal v1 FAIL/raw zeros and every historical capture; no structural
+alias is relabelled as passing v1. The separately versioned proposal and Q4
+successor conjunction are **PROPOSED / NOT FROZEN / NOT IMPLEMENTED**.
+Committed-declaration review precedes any new initial-only assessment; no
+trajectory, ordered selection, v2 seal or acceptance is authorized.

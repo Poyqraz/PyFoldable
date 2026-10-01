@@ -359,3 +359,11 @@ measured source/Q2/detectability/Q4 checks but retained a literal partition
 predicate failure. Candidate29 remains BLOCKED / NOT SELECTED; candidate28
 mapper rejection is preserved. No proposed-candidate trajectory was run,
 no v2 seal exists, and this is not accepted independent numerical evidence.
+
+A subsequent [prospective partition-policy declaration](../cmm2_c2v09_partition_policy_proposal.md)
+uses unchanged candidate29 and a whole stored-scale angle neighborhood. It
+preserves literal v1 FAIL/raw zeros and every historical capture; no structural
+alias is relabelled as passing v1. The separately versioned proposal and Q4
+successor conjunction are **PROPOSED / NOT FROZEN / NOT IMPLEMENTED**.
+Committed-declaration review precedes any new initial-only assessment; no
+trajectory, ordered selection, v2 seal or acceptance is authorized.

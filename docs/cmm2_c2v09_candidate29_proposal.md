@@ -903,3 +903,11 @@ certificate={'type':'A_PRIORI_CONDITIONAL_NOT_MEASURED','epsilon_libm_hypothesis
 if __name__=='__main__':
     print(json.dumps(certificate,sort_keys=True,indent=2))
 ```
+
+A subsequent [prospective partition-policy declaration](cmm2_c2v09_partition_policy_proposal.md)
+uses unchanged candidate29 and a whole stored-scale angle neighborhood. It
+preserves literal v1 FAIL/raw zeros and every historical capture; no structural
+alias is relabelled as passing v1. The separately versioned proposal and Q4
+successor conjunction are **PROPOSED / NOT FROZEN / NOT IMPLEMENTED**.
+Committed-declaration review precedes any new initial-only assessment; no
+trajectory, ordered selection, v2 seal or acceptance is authorized.
