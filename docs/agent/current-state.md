@@ -137,7 +137,10 @@ that limit. Conversion infeasibility, direction rejection, unresolved identity
 and exhaustion stay separate failures. The ordered C2V09-00…27 preflight
 rejects every candidate before a trajectory metric: 00–25 fail in FoldableBEM
 on the Mach-0 polar, and 26–27 fail in the motor domain. Expected source
-rejection is by exception type. A malformed BEM or mapper return is a contract
+rejection is by exception type. Before that evaluation, the sealed draft
+artifact must match the draft built from the pinned declaration and source
+file `a3852e5d14f433528fa9ad63bae26dd076b5136eacf4a7860ef76971eec2afdc`. An
+extra mass sample or polar table is rejected first. A malformed BEM or mapper return is a contract
 block. No candidate is selected. The corrected record is
 `reports/c2v09_ordered_preflight/selection_record.json`. It binds the full
 critical-fixture manifest `prc_critical_fixture_manifest_v1` at

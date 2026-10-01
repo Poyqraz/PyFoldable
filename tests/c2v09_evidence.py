@@ -19,7 +19,7 @@ from typing import Mapping
 import numpy
 import scipy
 
-from pyfoldable.application.design_draft import DesignDraftInputs
+from pyfoldable.application.design_draft import DesignDraftInputs, build_design_draft
 from pyfoldable.core.polar_spanwise import SpanwisePolarSchedule
 from pyfoldable.dynamics.coupled_transient import CoupledSolverControls
 
@@ -29,6 +29,7 @@ MANIFEST_PATH = ROOT / "tests" / "fixtures" / "prc" / "prc_critical_fixture_mani
 FULL_MANIFEST_ID = "prc_critical_fixture_manifest_v1"
 FULL_MANIFEST_SHA256 = "265d531f51f08d45139313cd81b0239de0c2e9dd8926e12ded66d2011d83c1f7"
 MANIFEST_SOURCE_COMMIT = "1fdf213bb991b2f155bf812d837bb4dcb73a8cc8"
+PINNED_DRAFT_SOURCE_SHA256 = "a3852e5d14f433528fa9ad63bae26dd076b5136eacf4a7860ef76971eec2afdc"
 HISTORICAL_SELECTION_RECORD_SHA256 = "1c465dae2d835fc85f468636131a2af6bce90220bcbde71c03ebea69c4ad3cf9"
 SUPERSEDED_EXPANDED_SELECTION_RECORD_SHA256 = "457186d5f52a40099acbebfe0e8ffc47eb2a8ee5fd43605ee159ae9c76cd1579"
 SHAFT_SPEED_FORMULAS = {
@@ -148,10 +149,6 @@ def checkout_provenance(repository: Path, environ: Mapping[str, str] | None = No
     return record
 
 
-def _leading_number(quantity: str) -> float:
-    return float(quantity.split()[0])
-
-
 def _controls(controls: CoupledSolverControls) -> dict[str, float | int]:
     return {
         "rtol": controls.rtol,
@@ -166,30 +163,110 @@ def _controls(controls: CoupledSolverControls) -> dict[str, float | int]:
     }
 
 
-def project_executed_candidate(sealed, draft_inputs: DesignDraftInputs, draft_config: str) -> dict[str, object]:
-    """Project one sealed candidate back onto the pinned declaration keys."""
+def _quantity(value: object, unit: str) -> str:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise AssertionError("Pinned draft quantity is not numeric.")
+    if isinstance(value, int) or float(value).is_integer():
+        text = str(int(value))
+    else:
+        text = format(float(value), ".10g")
+    return f"{text} {unit}"
+
+
+def _inputs_from_pinned(pinned: Mapping[str, object]) -> DesignDraftInputs:
+    return DesignDraftInputs(
+        diameter=_quantity(pinned["diameter_mm"], "mm"),
+        hub_radius=_quantity(pinned["hub_radius_mm"], "mm"),
+        hinge_radius=_quantity(pinned["hinge_radius_mm"], "mm"),
+        blade_count=int(pinned["blade_count"]),
+        airfoil_id=str(pinned["airfoil"]),
+        chord_scale=float(pinned["chord_scale"]),
+        twist_scale=float(pinned["twist_scale"]),
+        preview_fold_angle=_quantity(pinned["preview_fold_deg"], "deg"),
+        angular_speed=_quantity(pinned["angular_speed_rpm"], "rpm"),
+        forward_speed=_quantity(pinned["draft_forward_speed_m_s"], "m/s"),
+        air_density=_quantity(pinned["density_kg_m3"], "kg/m^3"),
+        dynamic_viscosity=_quantity(pinned["viscosity_pa_s"], "Pa*s"),
+        temperature=_quantity(pinned["temperature_degC"], "degC"),
+        pressure=_quantity(pinned["pressure_kPa"], "kPa"),
+    )
+
+
+def _pinned_source_path(pinned: Mapping[str, object]) -> Path:
+    relative = Path(str(pinned["draft_config"]))
+    if relative.is_absolute() or ".." in relative.parts:
+        raise AssertionError("Pinned draft configuration path is not repository-relative.")
+    path = (ROOT / relative).resolve()
+    if not path.is_relative_to(ROOT.resolve()):
+        raise AssertionError("Pinned draft configuration escapes the repository.")
+    return path
+
+
+def _expected_pinned_draft(pinned: Mapping[str, object]):
+    path = _pinned_source_path(pinned)
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    if digest != PINNED_DRAFT_SOURCE_SHA256:
+        raise AssertionError("Draft source configuration does not match the pinned provenance.")
+    expected = build_design_draft(path, _inputs_from_pinned(pinned))
+    if expected.source_sha256 != PINNED_DRAFT_SOURCE_SHA256:
+        raise AssertionError("Draft source configuration does not match the pinned provenance.")
+    return expected
+
+
+def _require_sealed_draft(sealed, pinned: Mapping[str, object]) -> None:
+    expected = _expected_pinned_draft(pinned)
+    draft = sealed.draft
+    if (
+        draft.filename != expected.filename
+        or draft.toml != expected.toml
+        or draft.draft_sha256 != expected.draft_sha256
+        or draft.source_sha256 != expected.source_sha256
+    ):
+        raise AssertionError("Sealed draft does not match the pinned configuration.")
+
+
+def _require_collection_cardinalities(sealed, pinned: Mapping[str, object]) -> None:
+    if len(sealed.distribution.samples) != 1:
+        raise AssertionError("Pinned fixture has one mass sample.")
     if not isinstance(sealed.polars, SpanwisePolarSchedule):
         raise AssertionError("C2V-09 candidate must use a spanwise polar schedule.")
+    anchors = sealed.polars.anchors
+    if len(anchors) != len(pinned["polar_anchors"]):
+        raise AssertionError("Pinned fixture polar anchor count does not match.")
+    for anchor in anchors:
+        if len(anchor.family.tables) != 1:
+            raise AssertionError("Pinned fixture has one polar table.")
+    table = anchors[0].family.tables[0]
+    if any(anchor.family.tables[0] != table for anchor in anchors[1:]):
+        raise AssertionError("Pinned fixture has one polar table.")
+
+
+def project_executed_candidate(sealed, pinned: Mapping[str, object]) -> dict[str, object]:
+    """Project one sealed candidate onto the pinned declaration.
+
+    Geometry comes from the sealed draft artifact, checked against the draft
+    built from the pinned declaration and the pinned source-file hash.
+    """
+    _require_collection_cardinalities(sealed, pinned)
+    _require_sealed_draft(sealed, pinned)
     table = sealed.polars.anchors[0].family.tables[0]
-    if any(anchor.family.tables[0] != table for anchor in sealed.polars.anchors[1:]):
-        raise AssertionError("C2V-09 polar anchors must share one table.")
     sample = sealed.distribution.samples[0]
     observed: dict[str, object] = {
-        "draft_config": draft_config,
-        "diameter_mm": _leading_number(str(draft_inputs.diameter)),
-        "hub_radius_mm": _leading_number(str(draft_inputs.hub_radius)),
-        "hinge_radius_mm": _leading_number(str(draft_inputs.hinge_radius)),
-        "blade_count": draft_inputs.blade_count,
-        "airfoil": draft_inputs.airfoil_id,
-        "chord_scale": draft_inputs.chord_scale,
-        "twist_scale": draft_inputs.twist_scale,
-        "preview_fold_deg": _leading_number(str(draft_inputs.preview_fold_angle)),
-        "angular_speed_rpm": _leading_number(str(draft_inputs.angular_speed)),
-        "draft_forward_speed_m_s": _leading_number(str(draft_inputs.forward_speed)),
-        "density_kg_m3": _leading_number(str(draft_inputs.air_density)),
-        "viscosity_pa_s": _leading_number(str(draft_inputs.dynamic_viscosity)),
-        "temperature_degC": _leading_number(str(draft_inputs.temperature)),
-        "pressure_kPa": _leading_number(str(draft_inputs.pressure)),
+        "draft_config": pinned["draft_config"],
+        "diameter_mm": pinned["diameter_mm"],
+        "hub_radius_mm": pinned["hub_radius_mm"],
+        "hinge_radius_mm": pinned["hinge_radius_mm"],
+        "blade_count": pinned["blade_count"],
+        "airfoil": pinned["airfoil"],
+        "chord_scale": pinned["chord_scale"],
+        "twist_scale": pinned["twist_scale"],
+        "preview_fold_deg": pinned["preview_fold_deg"],
+        "angular_speed_rpm": pinned["angular_speed_rpm"],
+        "draft_forward_speed_m_s": pinned["draft_forward_speed_m_s"],
+        "density_kg_m3": pinned["density_kg_m3"],
+        "viscosity_pa_s": pinned["viscosity_pa_s"],
+        "temperature_degC": pinned["temperature_degC"],
+        "pressure_kPa": pinned["pressure_kPa"],
         "radial_mass_m": sample.distance_from_hinge_m,
         "radial_mass_kg": sample.mass_kg,
         "radial_mass_source": sample.source,

@@ -25,6 +25,7 @@ def _load_evidence():
 
 _evidence = _load_evidence()
 FULL_MANIFEST_ID = _evidence.FULL_MANIFEST_ID
+PINNED_DRAFT_SOURCE_SHA256 = _evidence.PINNED_DRAFT_SOURCE_SHA256
 FULL_MANIFEST_SHA256 = _evidence.FULL_MANIFEST_SHA256
 HISTORICAL_SELECTION_RECORD_SHA256 = _evidence.HISTORICAL_SELECTION_RECORD_SHA256
 MANIFEST_SOURCE_COMMIT = _evidence.MANIFEST_SOURCE_COMMIT
@@ -179,7 +180,6 @@ def negative_preflight_record() -> dict[str, object]:
     manifest = load_full_manifest()
     pinned_candidates = manifest["c2v09_candidates"]
     assert [row["id"] for row in pinned_candidates] == [f"C2V09-{index:02d}" for index in range(28)]
-    draft_config = tests.CANONICAL.relative_to(ROOT).as_posix()
     rows = []
     selected = None
     status = "CONTRACT BLOCKED"
@@ -198,14 +198,8 @@ def negative_preflight_record() -> dict[str, object]:
                 }
             )
             break
-        draft_inputs = tests._draft_inputs()
-        sealed_context = json.loads(sealed.context_json)
-        if sealed_context["blade_count"] != draft_inputs.blade_count:
-            raise AssertionError("Sealed blade count does not match the declared draft input.")
-        if sealed_context["hinge_radius_m"] != 0.085:
-            raise AssertionError("Sealed hinge radius does not match the declared 85 mm draft input.")
         assert_matches_pinned_candidate(
-            project_executed_candidate(sealed, draft_inputs, draft_config),
+            project_executed_candidate(sealed, pinned_candidates[index]),
             pinned_candidates[index],
         )
         row = {
@@ -298,6 +292,7 @@ def negative_preflight_record() -> dict[str, object]:
     }
     evidence = {
         "record_kind": "c2v09_preflight_run",
+        "draft_source_sha256": PINNED_DRAFT_SOURCE_SHA256,
         "selection_record_sha256": digest,
         "historical_selection_record_sha256": HISTORICAL_SELECTION_RECORD_SHA256,
         "superseded_expanded_selection_record_sha256": SUPERSEDED_EXPANDED_SELECTION_RECORD_SHA256,
