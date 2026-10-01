@@ -10,6 +10,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import math
+import os
 import struct
 from pathlib import Path
 
@@ -29,6 +30,7 @@ HISTORICAL_SELECTION_RECORD_SHA256 = _evidence.HISTORICAL_SELECTION_RECORD_SHA25
 MANIFEST_SOURCE_COMMIT = _evidence.MANIFEST_SOURCE_COMMIT
 ROOT = _evidence.ROOT
 SUPERSEDED_EXPANDED_SELECTION_RECORD_SHA256 = _evidence.SUPERSEDED_EXPANDED_SELECTION_RECORD_SHA256
+assert_event_provenance = _evidence.assert_event_provenance
 assert_matches_pinned_candidate = _evidence.assert_matches_pinned_candidate
 canonical = _evidence.canonical
 checkout_provenance = _evidence.checkout_provenance
@@ -306,9 +308,9 @@ def negative_preflight_record() -> dict[str, object]:
     artifact.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     assert evidence["evidence_checkout_sha"]
     assert evidence["evidence_tree_sha"]
-    assert evidence["pr_source_sha"] is None
-    assert evidence["push_source_sha"] is None
-    assert evidence["pr_source_sha"] != evidence["evidence_checkout_sha"]
+    assert_event_provenance(evidence, os.environ)
+    assert "pr_source_sha" not in document
+    assert "push_source_sha" not in document
     assert canonical_record["trajectory_metrics_computed"] is False
     assert canonical_record["critical_fixture_manifest_sha256"] == FULL_MANIFEST_SHA256
     assert canonical_record["selected_index"] is None

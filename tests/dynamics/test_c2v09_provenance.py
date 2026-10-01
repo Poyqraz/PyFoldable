@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import platform
 from pathlib import Path
 
@@ -20,6 +21,7 @@ _evidence = _load_evidence()
 FULL_MANIFEST_ID = _evidence.FULL_MANIFEST_ID
 FULL_MANIFEST_SHA256 = _evidence.FULL_MANIFEST_SHA256
 ROOT = _evidence.ROOT
+assert_event_provenance = _evidence.assert_event_provenance
 canonical = _evidence.canonical
 checkout_provenance = _evidence.checkout_provenance
 load_full_manifest = _evidence.load_full_manifest
@@ -68,6 +70,46 @@ def test_pull_request_without_a_payload_does_not_reuse_github_sha() -> None:
         None,
     )
     assert record == {"pr_source_sha": None, "push_source_sha": None}
+
+
+def test_checkout_provenance_reads_the_pull_request_payload(tmp_path, monkeypatch) -> None:
+    source = "a" * 40
+    merge_checkout = "b" * 40
+    payload = tmp_path / "event.json"
+    payload.write_text(json.dumps({"pull_request": {"head": {"sha": source}}}), encoding="utf-8")
+    monkeypatch.setenv("GITHUB_EVENT_NAME", "pull_request")
+    monkeypatch.setenv("GITHUB_SHA", merge_checkout)
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(payload))
+    record = checkout_provenance(ROOT)
+    assert record["pr_source_sha"] == source
+    assert record["push_source_sha"] is None
+    assert record["pr_source_sha"] != merge_checkout
+    assert_event_provenance(record, os.environ)
+
+
+def test_live_rule_keeps_a_pull_request_head_distinct_from_a_merge_checkout() -> None:
+    source = "a" * 40
+    merge_checkout = "b" * 40
+    assert_event_provenance(
+        {
+            "pr_source_sha": source,
+            "push_source_sha": None,
+            "evidence_checkout_sha": merge_checkout,
+        },
+        {"GITHUB_EVENT_NAME": "pull_request", "GITHUB_SHA": merge_checkout},
+    )
+
+
+def test_live_rule_allows_a_push_sha_to_equal_the_checkout() -> None:
+    sha = "c" * 40
+    assert_event_provenance(
+        {
+            "pr_source_sha": None,
+            "push_source_sha": sha,
+            "evidence_checkout_sha": sha,
+        },
+        {"GITHUB_EVENT_NAME": "push", "GITHUB_SHA": sha},
+    )
 
 
 def test_partial_mechanism_subset_is_not_the_full_manifest() -> None:

@@ -79,6 +79,26 @@ def load_full_manifest() -> dict[str, object]:
     return parsed
 
 
+def assert_event_provenance(evidence: Mapping[str, object], environ: Mapping[str, str]) -> None:
+    """Check live event SHAs without requiring them to be null on CI."""
+    event_name = environ.get("GITHUB_EVENT_NAME", "")
+    if event_name == "pull_request":
+        sha = evidence["pr_source_sha"]
+        if not isinstance(sha, str) or not sha:
+            raise AssertionError("A pull_request run must record the payload head SHA.")
+        if evidence["push_source_sha"] is not None:
+            raise AssertionError("A pull_request run must leave the push SHA null.")
+        return
+    if event_name == "push":
+        if evidence["push_source_sha"] != environ.get("GITHUB_SHA"):
+            raise AssertionError("A push run must record GITHUB_SHA.")
+        if evidence["pr_source_sha"] is not None:
+            raise AssertionError("A push run must leave the pull-request SHA null.")
+        return
+    if evidence["pr_source_sha"] is not None or evidence["push_source_sha"] is not None:
+        raise AssertionError("A local run must leave event SHAs null.")
+
+
 def source_event_provenance(environ: Mapping[str, str], event_text: str | None) -> dict[str, str | None]:
     """Read push and pull-request source SHAs only from their own events.
 

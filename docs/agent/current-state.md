@@ -151,7 +151,10 @@ superseded record that hashed only a shared-mechanism subset under the full
 manifest id. Push checkout `8978ace` and PR merge checkout `c05fe99` share
 tree `07ff58200f6db56e3db5299dde07cb6fb23e1eee`. CI for `be6b85d` failed only
 `test_c2v07_presnap_observer_uses_the_cubic_contact` on both Python 3.10 and
-3.11, with conversion infeasibility. That acceptance test is unchanged and
+3.11, with conversion infeasibility. CI for `c25f8a0` reached the suite and
+failed that same acceptance test, plus a preflight assertion that demanded a
+null pull-request SHA on a real pull-request event. The event SHA is recorded
+when the event exists. The acceptance test is unchanged and
 awaits a separately reviewed contract amendment. A local pass does not erase
 that certificate. Coefficient replay inputs and the explicit rational image
 are separate records. Draft PR #81 is a
