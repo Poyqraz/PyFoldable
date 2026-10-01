@@ -346,3 +346,10 @@ Draft PR #84 remains BLOCKED; PR #81 remains Draft/BLOCKED and unchanged at
 numerical evidence exists. ADR-009 is not created/accepted and
 `physical_qualification=false`; no GEOM, calibration or experimental promotion.
 Earlier dated snapshots and frozen normative contracts are not rewritten.
+
+Prospective append-only [C2V09-29 declaration](../cmm2_c2v09_candidate29_proposal.md) retains candidate28
+and its mapper rejection, adding a first-party synthetic constant terminal
+station under proposed selector v3 (00…27,28,29). Status remains **PROPOSED /
+NOT FROZEN / NOT IMPLEMENTED**. Committed-declaration review precedes any
+initial-only source/preflight measurement; no trajectory, freeze or acceptance
+follows. Main RK45/v1 and unmerged PR81/84 identities are unchanged.

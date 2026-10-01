@@ -600,3 +600,10 @@ sayısal kanıt yoktur. Review, fixture-feasibility resolution and separate
 freeze/implementation authorization precede new trajectories. Draft PR #81
 remains BLOCKED; ADR-009 is not created/accepted; physical qualification
 remains false. Historical phase and acceptance records are unchanged.
+
+Prospective append-only [C2V09-29 declaration](cmm2_c2v09_candidate29_proposal.md) retains candidate28
+and its mapper rejection, adding a first-party synthetic constant terminal
+station under proposed selector v3 (00…27,28,29). Status remains **PROPOSED /
+NOT FROZEN / NOT IMPLEMENTED**. Committed-declaration review precedes any
+initial-only source/preflight measurement; no trajectory, freeze or acceptance
+follows. Main RK45/v1 and unmerged PR81/84 identities are unchanged.

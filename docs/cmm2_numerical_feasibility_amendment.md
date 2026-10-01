@@ -7,7 +7,8 @@ This document proposes two separately reviewable amendments; it changes no
 existing normative section. The [frozen Radau contract](cmm2_radau_remediation_contract.md)
 and [frozen PR-C contract](cmm2_numerical_verification_contract.md) remain in
 force. Approval to publish this proposal is not contract freeze or implementation
-authorization. The candidate below has an unresolved mapper-coverage blocker;
+authorization. Candidate28 below retains its unresolved mapper-coverage blocker; candidate29
+is separately declared in the [append-only proposal](cmm2_c2v09_candidate29_proposal.md);
 **it is not a selectable or freeze-ready fixture**.
 
 Main at this base ships CMM-2 RK45 / numerical implementation v1. Draft PR
@@ -280,6 +281,14 @@ witness comes from PR #84's conversion regression, not the real C2V-07 step.
 The upper choice must remain eligible under the proposed rules; a nearest-only
 implementation would not conform to this proposal.
 
+Whenever refinement changes z or p, **regenerate and certify the neighboring
+pair and restart nearest-first classification**. Previous eligibility,
+ineligibility or rounding-cell evidence cannot authorize the new pair. Retain
+the identified root and shared work counters; do not reset refinement/root
+budgets or skip an unresolved decision. Re-establish both coordinate predicates,
+actual public-time domain audit, identity/order/direction and state gates for
+the new pair; `H*D <=` unchanged U_root_time remains required.
+
 ### 2.3 Proposed C2V-07 arithmetic and audit extent
 
 Before: frozen Radau section 7 and PR-C C2V-07 use
@@ -486,11 +495,17 @@ do not silently modify geometry, radial_domain, mapper coverage or coefficients.
 The requested polar-only amendment is concretely specified but insufficient
 for selectable C2V-09 evidence with retained candidate23 settings. A separate
 reviewed fixture-scope decision is necessary before any freeze/implementation;
-no replacement or geometric extension is proposed or authorized here.
+that earlier candidate28-only scope did not authorize a geometric extension.
+The subsequent explicit authorization appends candidate29 in the
+[separate declaration](cmm2_c2v09_candidate29_proposal.md); candidate28 and its
+rejection are preserved without revision.
 
 ## 4. Complete proposed Phase A/B selector and unchanged gates
 
-Walk 00…27 then 28, in that order, without trajectory metrics. Phase A
+The earlier proposed v2 walk is 00…27 then28. The current proposed v3
+walk appends29: **00…27,28,29**, without trajectory metrics; its complete
+[manifest and initial-only plan](cmm2_c2v09_candidate29_proposal.md) are separate.
+No historical candidate is changed. Phase A
 reconstructs the exact literals and validates all used inputs and seals against
 the corresponding historical/new manifests. Construction, sealing or binding
 mismatch means CONTRACT BLOCKED; stop, do not skip a supposedly committed input.
@@ -558,9 +573,9 @@ This is an amendment map, **not edits to those normative sections**.
 | Radau 8, source/Q4/DOP853 | All actual RHS/Jacobian/aero calls budgeted; fresh oracle | Preserve; remeasure on actual sample times, no nfev-only accounting |
 | Radau 9/10, dependency/acceptance map | Frozen design, future implementation verification | Add feasibility proposal dependency before any changed-policy implementation |
 | PR-C 7, ordinary trajectories | Frozen state scales and oracle stabilization | Preserve, except explicitly scoped C2V-07 returned-time arithmetic above |
-| PR-C 8 C2V-09 / 11 / 15 Q3 | Complete v1 list, none pass means blocked/no new candidate | Proposed v2 appends28; no in-place alteration of00…27 or historical Q3 closure |
+| PR-C 8 C2V-09 / 11 / 15 Q3 | Complete v1 list, none pass means blocked/no new candidate | Proposed v2 appends28; current proposed v3 appends29 via its separate manifest; no in-place alteration of00…27 or historical Q3 closure |
 | PR-C 10 Q2 / 15 Q1,Q2,Q4,Q5 | Accepted equation/residual policies; Q4 measurement pending; Q5 open | No technical change; new candidate still requires all preflight measurements |
-| PR-C 13/16, evidence/critical manifest | v1 fixture identity and pre-result selection record | Separate proposed v2 manifest and hashes; retain v1 evidence provenance |
+| PR-C 13/16, evidence/critical manifest | v1 fixture identity and pre-result selection record | Retain28 proposed v2 manifest/hashes; append29 proposed v3 manifest, draft and seal identities; retain v1 evidence provenance |
 | PR-C 17/18, implementation/acceptance | Verification not established, failure remains visible | Changed-policy implementation requires later review/freeze/authorization, never retroactive PASS |
 | PR-A Termination / frozen Radau pointer | Main RK45/v1 and existing fail-closed behavior | Future CMM-2 adapter may use the proposed timing policy only after freeze; CMM-1 remains RK45 |
 | PR-B Call, Seal/report, frozen Radau pointer | Main source-bound v1, ledger/sample matching | Future v2 seals identify actual numerical policy and bind certificates; no legacy hash reuse |
