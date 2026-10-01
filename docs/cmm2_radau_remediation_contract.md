@@ -478,3 +478,11 @@ complete PR-C evidence package.
 Related current contracts: [PR-A](cmm2_coupled_transient_contract.md),
 [PR-B](cmm2_source_bound_production_binding.md), and
 [PR-C](cmm2_numerical_verification_contract.md).
+
+## Proposed numerical-feasibility amendment — not frozen
+
+The [numerical-feasibility proposal](cmm2_numerical_feasibility_amendment.md)
+separately proposes explicit timestamp-quantization accounting and a C2V-09
+source candidate. It is PROPOSED / NOT FROZEN / NOT IMPLEMENTED and has an
+unresolved candidate mapper-coverage blocker. This frozen contract remains
+unchanged; Draft PR #84 remains BLOCKED. No implementation or freeze follows.

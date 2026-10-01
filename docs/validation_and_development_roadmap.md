@@ -589,3 +589,14 @@ Bu aerodinamik fiziksel kapı açık kalır. Ondan ayrı olarak geometri tarama
 zinciri PR #67–#69 ile duraklatılmıştır ve sonraki model dilimi, henüz
 yazılmamış bağlaşık aero–motor–mekanizma sözleşmesidir. PY-06D2 ve robust
 optimizasyon veri ve doğrulama kapılarının önüne alınmaz.
+
+## 2026-10-01 proposed numerical-feasibility amendment
+
+The [numerical-feasibility proposal](cmm2_numerical_feasibility_amendment.md)
+is PROPOSED / NOT FROZEN / NOT IMPLEMENTED. Main still ships CMM-2 RK45/v1;
+Draft PR #84 Radau/v2 remains BLOCKED. Proposed C2V09-28 reaches real BEM
+but fails mapper span coverage and is not selectable. Kabul edilmiş bağımsız
+sayısal kanıt yoktur. Review, fixture-feasibility resolution and separate
+freeze/implementation authorization precede new trajectories. Draft PR #81
+remains BLOCKED; ADR-009 is not created/accepted; physical qualification
+remains false. Historical phase and acceptance records are unchanged.

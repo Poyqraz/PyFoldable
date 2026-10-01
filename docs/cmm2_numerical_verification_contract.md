@@ -1246,3 +1246,12 @@ and runtime/partition/minimum-SciPy measurements remain pending. Historical
 technical-contract acceptance records above remain unchanged. Draft PR #81
 remains BLOCKED; no independent CMM-2 numerical verification is established.
 ADR-009 is not created or accepted. `physical_qualification` remains false.
+
+## Proposed numerical-feasibility amendment — not frozen
+
+The [numerical-feasibility proposal](cmm2_numerical_feasibility_amendment.md)
+proposes a separately versioned C2V-07 returned-time policy and an appended
+C2V-09 source candidate. Its candidate is not selectable on current evidence.
+Status is PROPOSED / NOT FROZEN / NOT IMPLEMENTED; this contract, existing
+fixture manifest and historical reviews remain unchanged. No PR-C verification
+is established, and Draft PR #81 remains BLOCKED.

@@ -332,3 +332,17 @@ setup or completed measurements are inferred from conversation.
 No repository dump, application refactor, database or vendor-specific automation
 was added to satisfy the documentation structure. Update only affected canonical
 pages as capabilities evolve; keep detailed numeric contracts in their existing files.
+
+## 2026-10-01 numerical-feasibility proposal — not frozen
+
+At main `4cf0d0ea017fa824ba8d4a063ceddd015dae09d6`, CMM-2 still ships
+RK45/v1. The [numerical-feasibility proposal](../cmm2_numerical_feasibility_amendment.md)
+is PROPOSED / NOT FROZEN / NOT IMPLEMENTED. It separates certified root
+accuracy from timestamp quantization and specifies a synthetic C2V09-28 source.
+The initial real BEM passed with that source; mapping rejected incomplete
+station-span coverage, so the candidate is not selected or freeze-ready.
+Draft PR #84 remains BLOCKED; PR #81 remains Draft/BLOCKED and unchanged at
+`1fdf213bb991b2f155bf812d837bb4dcb73a8cc8`. No accepted independent CMM-2
+numerical evidence exists. ADR-009 is not created/accepted and
+`physical_qualification=false`; no GEOM, calibration or experimental promotion.
+Earlier dated snapshots and frozen normative contracts are not rewritten.
