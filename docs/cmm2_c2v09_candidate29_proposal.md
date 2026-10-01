@@ -204,11 +204,14 @@ CI1.15.3 or1.17.1 evidence.
 
 ## 4. Measurement status and acceptance prerequisites
 
-Declaration-time status: **NOT MEASURED / NOT SELECTED**. Source calls0;
-trajectory calls0. Results may be appended only after committed-declaration
-review. Any failed requirement remains visible; no repeated measurement-driven
-fixture adaptation. Initial success, if any, does not establish trajectory
-verification or freeze readiness.
+At declaration HEAD33a59142f0206e1370c9a0c44116f1dd709b35d3 the status
+was **NOT MEASURED / NOT SELECTED**, source calls0/trajectory calls0. Separate
+review then approved initial-only measurements. The [subsequent measured
+record](cmm2_c2v09_candidate29_initial_preflight.md) reports source coverage,
+Q2/detectability/Q4/domain checks passing, but **literal partition predicate
+FAIL / BLOCKED**. Candidate29 remains NOT SELECTED. No trajectories were run;
+no input or gate was adapted. Initial observations do not establish trajectory
+verification, a future v2 seal or freeze readiness.
 
 Before implementation/freeze: review this append-only manifest and timestamp
 policy independently; resolve source/preflight/partition blockers; explicitly

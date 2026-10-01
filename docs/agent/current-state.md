@@ -353,3 +353,9 @@ station under proposed selector v3 (00…27,28,29). Status remains **PROPOSED /
 NOT FROZEN / NOT IMPLEMENTED**. Committed-declaration review precedes any
 initial-only source/preflight measurement; no trajectory, freeze or acceptance
 follows. Main RK45/v1 and unmerged PR81/84 identities are unchanged.
+
+After separate committed-declaration review, [candidate29 initial preflight](../cmm2_c2v09_candidate29_initial_preflight.md)
+measured source/Q2/detectability/Q4 checks but retained a literal partition
+predicate failure. Candidate29 remains BLOCKED / NOT SELECTED; candidate28
+mapper rejection is preserved. No proposed-candidate trajectory was run,
+no v2 seal exists, and this is not accepted independent numerical evidence.

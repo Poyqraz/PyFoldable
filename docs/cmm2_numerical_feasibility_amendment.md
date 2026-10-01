@@ -1162,3 +1162,10 @@ except Exception as e:
 Path('/tmp/candidate28_initial_source.json').write_text(json.dumps(out,sort_keys=True,indent=2,allow_nan=False)+'\n')
 print(json.dumps({k:v for k,v in out.items() if k not in ('bem','mapped')},indent=2))
 ```
+
+Candidate29 was declared and independently reviewed at exact HEAD
+`33a59142f0206e1370c9a0c44116f1dd709b35d3` before initial-only source calls.
+The [measured initial record](cmm2_c2v09_candidate29_initial_preflight.md)
+retains a literal partition-predicate FAIL, despite source/Q2/detectability/Q4
+checks passing. Candidate28 still fails mapping; neither candidate is selected
+or trajectory-verified. The current proposed ordering is00…27,28,29.
