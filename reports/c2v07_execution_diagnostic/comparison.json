@@ -1,15 +1,4 @@
 {
-  "push_run": "36888456607",
-  "pull_request_run": "36888462991",
-  "pr_source_head": "3fff759a75573e2c888d11ce99b372847568d957",
-  "push_checkout": "3fff759a75573e2c888d11ce99b372847568d957",
-  "pr_merge_checkout": "31c0d4c0ebe37736fadd918e945dba705876d609",
-  "shared_tree": "5f615822180f935b395b3cadd2ec2ad3979c08f0",
-  "ci_python_3_10": {
-    "cpython": "3.10.21",
-    "numpy": "2.2.6",
-    "scipy": "1.15.3"
-  },
   "local_stack": {
     "cpython": "3.12.3",
     "numpy": "2.5.3",
@@ -66,5 +55,61 @@
     "t_old_hex": "0x1.7f9db22d0e567p-1",
     "h_hex": "0x1.0624dd2f1aa00p-9"
   },
-  "archived_equals_any_local_contact": false
+  "archived_equals_any_local_contact": false,
+  "record_kind": "summary_not_an_independent_measurement",
+  "investigation": "closed_inconclusive",
+  "execution_variation_cause": "unknown",
+  "archived_cubic_obstruction_under_current_converter": "established",
+  "passing_run_removes_obstruction": false,
+  "historical_ci_3fff759": {
+    "push_run": "36888456607",
+    "pull_request_run": "36888462991",
+    "pr_source_head": "3fff759a75573e2c888d11ce99b372847568d957",
+    "push_checkout": "3fff759a75573e2c888d11ce99b372847568d957",
+    "pr_merge_checkout": "31c0d4c0ebe37736fadd918e945dba705876d609",
+    "shared_tree": "5f615822180f935b395b3cadd2ec2ad3979c08f0",
+    "ci_python_3_10": {
+      "cpython": "3.10.21",
+      "numpy": "2.2.6",
+      "scipy": "1.15.3"
+    }
+  },
+  "latest_ci_272911b": {
+    "head": "272911b2c2533f3227874f62ca4c68bd32441cd6",
+    "push_run": "36922057688",
+    "push": {
+      "python_3_10": "fail C2V-07; 1 failed, 1870 passed, 9 skipped; CPython 3.10.21, NumPy 2.2.6, SciPy 1.15.3",
+      "python_3_11": "pass; 1871 passed, 9 skipped; CPython 3.11.16, NumPy 2.4.6, SciPy 1.17.1"
+    },
+    "pull_request_run": "36922064664",
+    "pull_request": {
+      "python_3_10": "pass; 1871 passed, 9 skipped; CPython 3.10.21, NumPy 2.2.6, SciPy 1.15.3",
+      "python_3_11": "fail C2V-07; 1 failed, 1870 passed, 9 skipped; CPython 3.11.16, NumPy 2.4.6, SciPy 1.17.1"
+    },
+    "both_failures_match_archived_cubic": true
+  },
+  "committed_raw_captures": [
+    {
+      "path": "reports/c2v07_execution_diagnostic/isolated_a.json",
+      "sha256": "a01a5e51cf4d2e5fbabd07dcb96ac99957e350baaee1ee312a3c067747ce86c9"
+    },
+    {
+      "path": "reports/c2v07_execution_diagnostic/captures/isolated_b.json",
+      "sha256": "a0798a73db361fa6826a7014ce85ebd6cf41e6e24b980ccf19d1afaa6d6125b8"
+    },
+    {
+      "path": "reports/c2v07_execution_diagnostic/captures/after_budget_test.json",
+      "sha256": "ac9097e3e3ddedcc0a490a794887ffd2d54d54628c6648a2b4e5f4bd74890964",
+      "note": "contact records only; no replay section"
+    },
+    {
+      "path": "reports/c2v07_execution_diagnostic/captures/openblas_num_threads_1.json",
+      "sha256": "1dce14bb545b94f5008741d72ef1eeb2c249dd10f1ce788a1113ae83d0ae09bc"
+    },
+    {
+      "path": "reports/c2v07_execution_diagnostic/captures/openblas_omp_mkl_threads_1.json",
+      "sha256": "385ce09c5a72366c10bd2b51844d4628c51ab64dfdda90707ea415a866713e01"
+    }
+  ],
+  "local_runs_are_summaries_of_committed_raw_captures": true
 }

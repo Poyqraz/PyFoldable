@@ -161,8 +161,11 @@ when the event exists. The acceptance test is unchanged and
 awaits a separately reviewed contract amendment. A local pass does not erase
 that certificate. On head `3fff759`, push run `36888456607` failed Python 3.10
 C2V-07 while pull-request run `36888462991` passed Python 3.10, both on NumPy
-2.2.6 and SciPy 1.15.3, with shared tree `5f615822`. The cause is not
-established. Diagnostic captures are in
+2.2.6 and SciPy 1.15.3, with shared tree `5f615822`. On head `272911b`, push
+`36922057688` failed Python 3.10 and passed Python 3.11, while pull request
+`36922064664` passed Python 3.10 and failed Python 3.11. Both failures printed
+the same archived cubic. The execution-variation cause remains unknown. A
+passing run does not remove that obstruction. The closed diagnostic record is
 [the C2V-07 execution report](../../reports/c2v07_execution_diagnostic/report.md). Coefficient replay inputs and the explicit rational image
 are separate records. Draft PR #81 is a
 separate blocked evidence attempt, not accepted PR-C verification. Independent
