@@ -381,3 +381,11 @@ Status PROPOSED / NOT FROZEN / NOT IMPLEMENTED; candidate29 unchanged and
 NOT SELECTED. Historical v2 words/results and literal v1 FAIL remain.
 Independent committed-declaration review precedes concrete-runtime arithmetic
 certification; zero new source/trajectory calls, selection or v2 seal.
+
+The [concrete-runtime geometric certificate](../cmm2_c2v09_partition_runtime_certificate.md)
+proves initial whole-neighborhood geometric scope A for one pinned CPython/math/
+libm/CPU-dispatch/RN environment, conditional on a valid returned source object.
+Initial source evidence B is preserved; every-angle BEM-success scope C remains
+unproved and is not inherited from frozen PR-C11. Original v1 FAIL and historical
+v2 BLOCKED remain; candidate29 NOT SELECTED. No new source/trajectory calls,
+ordered selection, v2 seal, freeze or accepted PR-C evidence; qualificationfalse.

@@ -187,3 +187,14 @@ Capsule SHA256 `a90af561107b3691655b32094cd1525f3fbc8de918d257786d512fedf85b5cf5
   "trajectories_authorized": false
 }
 ```
+
+## Subsequent concrete-runtime assessment (declaration preserved)
+
+After independent declaration review at7718ea58a6286fa398b2295a5b60e417cb94b04e,
+the [concrete-runtime certificate](cmm2_c2v09_partition_runtime_certificate.md)
+proved the emitted-cosine enclosure and connected all-c geometric lemmas for
+one pinned CPython/math/libm/CPU-dispatch/RN environment. A geometry is proved
+conditional on a valid returned source object; B initial evidence is preserved;
+C every-angle source success remains unproved and is not inferred as an inherited
+PR-C11 requirement. Old v1 FAIL/v2 result and candidate29 NOT SELECTED remain.
+No source calls, trajectories, selection, v2 seal, freeze or acceptance followed.

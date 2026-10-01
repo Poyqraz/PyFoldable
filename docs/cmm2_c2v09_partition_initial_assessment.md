@@ -2521,3 +2521,8 @@ C unproved every-angle source success. The bundled blocker above is preserved
 as this assessment's historical scope; it is not asserted to be an inherited
 all-angle BEM-convergence selection requirement in frozen PR-C11. V3 is a new
 prospective dependency declaration, not retroactive v2 PASS or selection.
+
+The [later concrete-runtime certificate](cmm2_c2v09_partition_runtime_certificate.md)
+connects the conditional geometric lemmas for one pinned runtime, under v3's
+explicit A/B/C scope. This does not rewrite this historical v2 BLOCKED record,
+select candidate29 or establish every-angle BEM success or later clearance.
