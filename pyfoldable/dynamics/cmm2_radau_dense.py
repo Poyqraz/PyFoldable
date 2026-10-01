@@ -1029,21 +1029,17 @@ def _convert_root(
     for relative in candidates:
         budget.charge()
         if not math.isfinite(relative):
-            reasons.add("conversion")
             continue
         public = float(origin) + relative
         if not math.isfinite(public):
-            reasons.add("conversion")
             continue
         if last_published is not None and not public > float(last_published):
-            reasons.add("conversion")
             continue
         relative_xi = (Fraction.from_float(relative) - t_old) / step
         public_elapsed = Fraction.from_float(public) - Fraction.from_float(float(origin))
         public_xi = (public_elapsed - t_old) / step
         budget.charge()
         if not start_bound <= Fraction.from_float(relative) <= end_bound:
-            reasons.add("conversion")
             continue
         if not start_bound <= public_elapsed <= end_bound:
             reasons.add("conversion")
@@ -1079,10 +1075,10 @@ def _convert_root(
             reasons.add("identity")
             continue
         return relative, public, relative_xi, public_xi
-    if reasons == {"direction"}:
-        raise RadauContractFailure("CMM-2 contact direction is unresolved.")
-    if "identity" in reasons and "conversion" not in reasons and "direction" not in reasons:
+    if "identity" in reasons:
         raise RadauContractFailure("CMM-2 contact identity is unresolved.")
+    if "direction" in reasons:
+        raise RadauContractFailure("CMM-2 contact direction is unresolved.")
     raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
 
 

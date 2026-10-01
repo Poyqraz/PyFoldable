@@ -655,6 +655,32 @@ def test_public_relative_fraction_extends_the_shaft_audit() -> None:
         )
 
 
+def test_out_of_window_neighbors_do_not_hide_direction_rejection() -> None:
+    from pyfoldable.dynamics.cmm2_radau_dense import RootBudget, _Root, _convert_root
+
+    root = _Root(left=Fraction(1, 2), right=Fraction(1, 2), exact=Fraction(1, 2))
+    start = 0.5
+    for _step in range(3):
+        start = float(np.nextafter(start, 0.0))
+    budget = RootBudget(800)
+    with pytest.raises(RadauContractFailure, match="direction") as caught:
+        _convert_root(
+            0.0,
+            None,
+            Fraction(0),
+            Fraction(1),
+            root,
+            (Fraction(-1, 2), Fraction(1)),
+            (Fraction(1),),
+            Fraction(1, 100000000),
+            True,
+            start,
+            1.0,
+            budget,
+        )
+    assert "conversion" not in str(caught.value)
+
+
 def test_converted_public_time_must_preserve_direction() -> None:
     q_matrix = np.zeros((3, 3))
     q_matrix[0, 0] = -1.5
