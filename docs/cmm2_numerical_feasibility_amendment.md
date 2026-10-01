@@ -2,6 +2,11 @@
 
 Status: **PROPOSED / NOT FROZEN / NOT IMPLEMENTED**.
 
+Current cumulative implementation authority is [section 7](#7-cumulative-implementation-authority-and-live-eligibility).
+Earlier proposal statuses, acceptance prerequisites and measured dispositions
+below retain their declaration-time scope; the cumulative status record follows
+section 7. No design freeze has been recorded at this technical-declaration stage.
+
 Proposal base: `4cf0d0ea017fa824ba8d4a063ceddd015dae09d6`.
 This document proposes two separately reviewable amendments; it changes no
 existing normative section. The [frozen Radau contract](cmm2_radau_remediation_contract.md)
@@ -1169,3 +1174,213 @@ The [measured initial record](cmm2_c2v09_candidate29_initial_preflight.md)
 retains a literal partition-predicate FAIL, despite source/Q2/detectability/Q4
 checks passing. Candidate28 still fails mapping; neither candidate is selected
 or trajectory-verified. The current proposed ordering is00…27,28,29.
+
+## 7. Cumulative implementation authority and live eligibility
+
+**Prospective authoritative implementation subsection.** This completes the
+cumulative design, without implementing or executing it. It becomes the governing
+amendment only when a separate status record identifies its independently
+approved technical HEAD and records **REVIEWED / FROZEN FOR IMPLEMENTATION —
+CMM-2 NUMERICAL FEASIBILITY AMENDMENT** after documentation checks and exact-head
+baseline CI pass. A subsequent status-only closure HEAD is not the technical
+reviewed HEAD. Until then this subsection remains PROPOSED / NOT FROZEN /
+NOT IMPLEMENTED. Even after design freeze, implementation requires separate
+authorization; PR #85 remains Draft and unmerged for coordinator review.
+
+The freeze is of the complete conditional implementation design, not successful
+candidate selection, a live runtime eligibility result or accepted PR-C evidence.
+It supersedes earlier declaration-time statements that this cumulative design
+cannot yet be frozen; it does not rewrite their measured failures or assert
+every-angle BEM success. The original technical head
+`613072514f793f2a1bc65704f9158f536210707f`, C2V-02 arithmetic head
+`b840ec55b4d1dd57197b97e91e1a48a7fbe7da0d`, Radau technical head
+`2ec4da9acdccc7508fab7c33f289ec9771b2ea65`, v3 scope declaration head
+`7718ea58a6286fa398b2295a5b60e417cb94b04e` and bounded certificate review head
+`9ccd93eeb8bf7333473f1d647c875de900081227` retain their earlier review scopes.
+
+### 7.1 Dependency and precedence map upon design freeze
+
+The following exact policy identities are retained, including their `_proposed`
+suffixes; lifecycle status is recorded separately. There is no implicit policy
+rename, new model identity or numerical threshold. The earlier section 3
+suggestion to drop a suffix on a future status change is not exercised by this
+cumulative freeze. The reviewed technical HEAD pins every referenced definition.
+
+| Layer / locator | Applicable definition and narrowly replaced obligation |
+| --- | --- |
+| Frozen PR-A/PR-B and [Radau design](cmm2_radau_remediation_contract.md) | Remain the parent model/source-bound/integration, contact, cubic, domain, ledger and budget contracts; main remains RK45/v1 and CMM-1 RK45 is unchanged |
+| This document section 2, `cmm2_contact_timestamp_quantization_v1_proposed` | Unchanged root/time triangle accounting, two-neighbor nearest-first selection and refinement restart; supersedes only Radau sections 5/7 and PR-C C2V-07 returned-time conversion/accounting identified in section 5 |
+| [Candidate29 declaration](cmm2_c2v09_candidate29_proposal.md) sections 1–3, `prc_c2v09_ordered_candidates_v3_proposed`, plus this document section 4 | Append-only order **00…27,28,29** replaces only the complete-list restriction of frozen PR-C section 11/Q3; original00…27 and candidate28/29 literals and histories are immutable; Phase A/B dispositions and first-passing selection remain |
+| [Partition v2](cmm2_c2v09_partition_policy_proposal.md) sections 2–7, `prc_c2v09_partition_provenance_neighborhood_v2_proposed`, explicitly narrowed by [scope v3](cmm2_c2v09_partition_scope_runtime_proposal.md) sections 2–3/5, `prc_c2v09_partition_geometry_scope_v3_proposed` | Replaces exactly this document section 4 item 4's **partition comparison** and the frozen [PR-C section 11](cmm2_numerical_verification_contract.md#11-c2v-09-selection-and-detectability) paragraph beginning “Partition margin:” and ending “Both numbers are recorded.”; the distinct-class rule and complete scope-A certificate below are the replacement |
+| This section 7 | Controls cumulative precedence, mandatory live eligibility and future selection/seal provenance; overrides conflicting earlier prospective dependency/status wording only within that scope |
+
+The replacement partition obligation is: certify topology and represented
+construction provenance throughout exact Theta0 first; retain every original
+row, raw distance, uncertainty and literal v1 result; classify only proved
+whole-neighborhood construction aliases as STRUCTURAL_IDENTITY; for **every
+nonidentical relevant pair** retain the unchanged strict center-distance gate
+and stored uncertainty, nearest boundaries across distinct identity classes,
+and prove signed separation without zero throughout Theta0. Include all actual
+station/spanwise normalized-query branches, the separate kernel-radius path,
+mapper ownership and unchanged native terminal guard. Missing or unresolved
+proof, independent coincidence, ownership/branch changes, touching or crossing
+zero remain BLOCKED. Alias classification never makes a zero v1 row PASS.
+The v2 Q4 successor PASS expression is the conjunction of all five checks,
+not bit identity alone; its numerical bit gate is unchanged.
+
+Only the partition part of section 4 item 4 is replaced: fold/shaft margins,
+all detectability gates, source rejection, Q2 and Q4 rules remain. Frozen PR-C
+section 11's later unresolved-partition paragraph and all other obligations
+remain unchanged. V3 narrows v2's bundled proof dependency to **A: represented
+geometric partition/query/ownership conditional on a valid actual returned
+source object**. Initial-state source/preflight B remains independently required.
+Universal every-angle nongeometric Mach/Re/alpha coverage or BEM convergence C
+is unproved and is not an inherited prerequisite for A. This does not weaken
+any actual source-domain/convergence rejection or later callback failure.
+
+Candidate28's mapper rejection, candidate29's literal v1 FAIL/four raw zeros,
+historical v2 BLOCKED and all captures, observer errors and proof digests retain
+their original policy/head/runtime scope. The approved A certificate is a
+later conditional result under v3, not retroactive PASS for those records.
+Candidate29 remains **NOT SELECTED** and unchanged, manifest SHA256
+`0b37fb45c005d7a046dee6541d1a89e4a0a5cead7434621718c90d191843b7a4`.
+
+### 7.2 Mandatory actual eligibility before relying on scope A
+
+Future executable implementation **MUST establish live eligibility** before
+using the [concrete certificate](cmm2_c2v09_partition_runtime_certificate.md)
+or recording successful selection. Archived-record replay, a matching Python/
+SciPy/libm version label, matching policy names or baseline CI are insufficient.
+The live execution must bind and check the conjunction of:
+
+1. The exact independently reviewed/frozen technical HEAD, applicable timestamp,
+   selector, partition-v2/scope-v3 definitions and reviewed certificate identities.
+   Verify their immutable artifact bytes/digests, their dependency links and
+   the certificate's scope; neither a closure HEAD nor an old proof capsule
+   substitutes for the actual technical authority.
+2. The exact candidate29 manifest, draft and synthetic source identities/bytes;
+   source code hashes and the **actual called represented operation graph**,
+   operands, branches and copy provenance bound by the certificate. Validate
+   actual inputs against the immutable manifest and preserved seal provenance.
+   A changed parser, interpolation path, source/mapper, reassociation, fusion,
+   substituted object or monkey patch is not cleared by an unchanged label.
+   The actual finite validated returned source object must satisfy the existing
+   A hypothesis and be the object consumed by the mapper; replay cannot supply it.
+3. Exact stored theta0, stored S_theta(0), rational Theta0 endpoints, initial
+   non-angle state/settings and every unchanged stored center uncertainty from
+   the captured certificate. Compare represented values and provenance, not
+   rounded decimals. Changing or recomputing the scale/uncertainty invalidates
+   eligibility; the proof covers all represented angles in **that** Theta0.
+4. Applicable source/code and CPython/math/libm/libc/loader byte/build identities,
+   loaded instructions/constants/wrapper targets, actual selected dispatch and
+   the certificate's bound CPU/feature identity. Establish the required binary64
+   operation semantics and numerical control state in the executing context:
+   RNE ties-even, required SSE/AVX/FMA behavior, DAZ/FTZ off and the recorded
+   x87/feature/OS-state conditions. Only identifiers explicitly declared
+   nonbinding by the existing certificate, such as ASLR base/APIC scheduling
+   number, may differ without altering applicability. Equal version strings,
+   equal output samples or the same dispatch address alone do not prove it.
+
+Check the immutable run-wide bindings before any certificate-dependent Phase B
+partition evaluation; establish the per-execution dispatch/control/input/source
+conditions immediately before and after each affected real evaluation, including
+Q4 variants, and verify the returned-object/graph link before relying on its
+partition result. Revalidate immediately before canonical successful-selection
+recording and future-v2 sealing, and before any later certificate-dependent use.
+Permitted Q4 metadata/index deltas must match their separate committed probe
+binding while leaving the physical numeric graph unchanged.
+
+Eligibility is valid only for the checked execution context and immutable
+binding. Process/thread/runtime migration, resume/reload, module/library/source
+replacement, dispatch or feature changes, numerical-control changes, altered
+inputs/scale/uncertainty, or inability to establish uninterrupted applicability
+invalidates it. Any post-call mismatch invalidates dependent results; a stale
+eligibility digest cannot authorize them. Establish a new matching live record
+before further use; clearing a mismatch is not inferred from archived replay.
+Record the observed mismatch and retained partial evidence as **CONTRACT BLOCKED**;
+stop selection rather than skipping candidates or falling back to v1, sampling,
+a different runtime or assumed alternate-runtime clearance. Missing eligibility
+is an execution block, not a new mathematical defect in the conditional design.
+
+Ordinary Python3.10/SciPy1.15.3 and Python3.11/SciPy1.17.1 baseline CI environments
+remain uncertified by this concrete-runtime proof. They cannot select candidate29
+through A unless an applicable independently reviewed certificate and live
+eligibility are established. No additional mathematical or alternate-runtime
+certificate is required for this **bounded documentation closure**; any future
+execution outside the existing certificate remains blocked pending its own
+separately authorized review, without widening this design's claimed proof.
+
+### 7.3 Canonical pretrajectory record and separate future v2 seal
+
+Before any trajectory routine, the future complete ordered Phase A/B selector
+must persist all original section 4 / PR-C11 fields, all candidate dispositions
+and partial failures, and actual execution provenance. Successful selection
+requires every unchanged initial source, Q2, detectability, domain and conjunctive
+Q4 predicate plus the amended partition obligation and live eligibility.
+Historical isolated feasibility measurements/replay do not execute that walk
+or constitute a successful-selection record. If none pass, CONTRACT BLOCKED;
+after selection, no candidate substitution follows trajectory results.
+
+The canonical record must additionally bind these inseparable fields:
+
+| Field group | Required binding |
+| --- | --- |
+| Technical authority / policy bundle | Actual reviewed technical HEAD, later closure HEAD as separate provenance, exact timestamp/selector/partition-v2/scope-v3 IDs, repository/path/section locators and SHA256 of each referenced artifact's exact UTF-8/LF file bytes **at the reviewed technical HEAD**; canonical policy-bundle digest |
+| Immutable input / original provenance | Original00…27 manifest/history, candidate28 manifest/rejection, candidate29 manifest/draft/source digests, unchanged controls, exact Theta0/stored scale/uncertainty, preserved original v1 seal digests; per-candidate actual call-input hashes |
+| Reviewed proof | Exact runtime-binding record SHA256 `5a2a8ab62faf7729769ea9dd620ffd07635605ae170ef523c91d3ec560c16a67`, cosine record `7c9fc9cc0def92fb3d4f2c850e63e85ce70821aa562fbc1c9a9ab45f5e12b865`, prior geometric record `0b672af90ee94197489522c45ab173834b893a7a47786c196eed7f0478cb4526`, connection record `80abd1b5d16872a67004a0511fdb8ad40c8d04d5e1319635d1b79459b4280897`, unchanged declaration/recipe digests and approved bounded scope |
+| Live applicability / execution | Separate actual runtime-binding and eligibility-record digests, executing code/implementation and loaded binary identities, CPU/selected dispatch/numerical-control observations, context/check sequence and invalidations, actual source object/call and mapper correspondence, Q4 permitted metadata/index inputs and all preflight results |
+
+Policy-bundle and live-eligibility digests use SHA256 of sorted compact ASCII
+JSON, UTF-8 without final newline, finite-only values; encode binary64 leaves
+as exact hexadecimal strings (preserving signed zero), rational endpoints as
+exact numerator/denominator strings. The selection record retains the same
+declared canonical encoding and hashes its complete payload before trajectory
+entry. The cited historical fenced record/recipe file digests retain their
+original final-newline convention. Canonical digests bind content and actual
+recorded observations; they do not by themselves prove live applicability.
+
+A **separate future numerical-implementation-v2 seal** must bind that canonical
+policy bundle, reviewed proof/runtime-binding digests, live runtime/eligibility
+records, selected immutable request and completed initial preflight evidence,
+actual implementation/code/environment/source provenance and existing sealed
+controls/model/load-map/qualification identities. Its eligibility and actual
+payload must be checked by the future prepare/seal validation path. Original
+main-v1 and Q4-variant seals remain byte-unchanged historical initial-only
+provenance, never relabelled v2. No v2 seal is created by this documentation task.
+
+Hash dependencies are acyclic: complete initial preflight and live eligibility,
+then validate/create the future-v2 seal, then write the canonical selection
+record binding that actual selected sealed-request digest, then enter any
+trajectory routine. The v2 seal does not hash the subsequently created selection
+record; no payload contains its own digest. All later evidence must link both
+selection_record_sha256 and the applicable v2 seal. Eligibility invalidation
+prevents stale records/seals authorizing continued use.
+
+### 7.4 Unchanged gates, review limits and reserved execution
+
+Initial source rejection and cause-chain recording, bounds="error", all Q2
+represented residual/row/kappa/rho/factor-two/zero-branch rules, load/work
+detectability, real metadata/index Q4 conjunction, fold/shaft margins, source
+ledger/sample matching and every work ceiling remain unchanged. No new user
+control, source success inference or unbudgeted RHS/aero/Jacobian call is allowed.
+DOP853 A/B independence/levels, fixtures00…29 order, controls, state tolerances,
+C2V-02 arithmetic bridge and trajectory `max e_j<=1` are unchanged; only the
+explicit section 2 C2V-07 returned-time accounting applies upon freeze.
+
+Later callback/domain/budget failures remain failures. The initial A certificate
+does not clear later dense intervals: complete continuous represented contact/
+fold/shaft audits, first-event identity/order/direction, public-time audit extent,
+interior crossings/tangencies and unresolved ordering retain their frozen rules.
+No sampling-only clearance or source/fixture substitution is permitted. Q5,
+runtime/partition characterization and minimum-SciPy evidence remain pending.
+
+This task performs **no** production implementation, executable fixture, new
+source call, ordered selection, trajectory or future v2 seal. An independent
+exact-HEAD reviewer must explicitly approve readiness to freeze the complete
+conditional design, not merely publication or an arithmetic replay. After that
+approval and technical-head checks/CI, a separate **status-only** closure commit
+records the approved technical HEAD without changing any policy, candidate,
+timestamp arithmetic or proof digest; closure-head checks and fresh CI follow.
+No implementation authorization or accepted PR-C evidence follows. PR #81/#84
+remain untouched; ADR-009 is not accepted, `physical_qualification=false`,
+PR-06C unresolved; no GEOM, calibration or experimental-validation promotion.

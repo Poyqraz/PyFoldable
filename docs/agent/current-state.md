@@ -389,3 +389,19 @@ Initial source evidence B is preserved; every-angle BEM-success scope C remains
 unproved and is not inherited from frozen PR-C11. Original v1 FAIL and historical
 v2 BLOCKED remain; candidate29 NOT SELECTED. No new source/trajectory calls,
 ordered selection, v2 seal, freeze or accepted PR-C evidence; qualificationfalse.
+
+## 2026-10-02 cumulative numerical-feasibility implementation closure — proposed
+
+The [authoritative cumulative subsection](../cmm2_numerical_feasibility_amendment.md#7-cumulative-implementation-authority-and-live-eligibility)
+combines the unchanged timestamp policy, append-only00…27,28,29 selector and
+partition v2 explicitly narrowed by geometric scope v3. It specifies exact
+partition precedence, mandatory live eligibility and future canonical selection/
+v2-seal provenance. Status remains **PROPOSED / NOT FROZEN / NOT IMPLEMENTED**
+pending independent exact-HEAD approval explicitly for conditional design freeze
+and technical-head checks/CI; only then may a separate status-only closure follow.
+The approved bounded A mathematics requires no additional certificate here;
+live runtime applicability is reserved for future executable implementation.
+Candidate29 remains unchanged / NOT SELECTED; old v1 FAIL, candidate28 rejection
+and historical v2 BLOCKED remain. No new source calls, selector, trajectories,
+v2 seal or implementation authorization. Main remains RK45/v1; PR81/84 untouched,
+ADR-009 unaccepted and physical_qualification=false.
