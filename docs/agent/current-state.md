@@ -138,12 +138,23 @@ and exhaustion stay separate failures. The ordered C2V09-00…27 preflight
 rejects every candidate before a trajectory metric: 00–25 fail in FoldableBEM
 on the Mach-0 polar, and 26–27 fail in the motor domain. Expected source
 rejection is by exception type. A malformed BEM or mapper return is a contract
-block. No candidate is selected. The expanded record is
-`reports/c2v09_ordered_preflight/selection_record.json`. Its historical digest
-`1c465dae2d835fc85f468636131a2af6bce90220bcbde71c03ebea69c4ad3cf9` is provenance
-for the earlier, smaller record. Push checkout `8978ace` and PR merge checkout
-`c05fe99` share tree `07ff58200f6db56e3db5299dde07cb6fb23e1eee`; runtime
-pass/fail variation is not a source difference. Draft PR #81 is a
+block. No candidate is selected. The corrected record is
+`reports/c2v09_ordered_preflight/selection_record.json`. It binds the full
+critical-fixture manifest `prc_critical_fixture_manifest_v1` at
+`265d531f51f08d45139313cd81b0239de0c2e9dd8926e12ded66d2011d83c1f7`, snapshotted
+from PR #81 head `1fdf213bb991b2f155bf812d837bb4dcb73a8cc8` without importing
+that implementation. Historical digest
+`1c465dae2d835fc85f468636131a2af6bce90220bcbde71c03ebea69c4ad3cf9` is the
+earlier smaller record. Digest
+`457186d5f52a40099acbebfe0e8ffc47eb2a8ee5fd43605ee159ae9c76cd1579` is the
+superseded record that hashed only a shared-mechanism subset under the full
+manifest id. Push checkout `8978ace` and PR merge checkout `c05fe99` share
+tree `07ff58200f6db56e3db5299dde07cb6fb23e1eee`. CI for `be6b85d` failed only
+`test_c2v07_presnap_observer_uses_the_cubic_contact` on both Python 3.10 and
+3.11, with conversion infeasibility. That acceptance test is unchanged and
+awaits a separately reviewed contract amendment. A local pass does not erase
+that certificate. Coefficient replay inputs and the explicit rational image
+are separate records. Draft PR #81 is a
 separate blocked evidence attempt, not accepted PR-C verification. Independent
 CMM-2 numerical verification is not established. ADR-009 is not created or
 accepted; `physical_qualification=false`. PR-06C remains unresolved, with no GEOM

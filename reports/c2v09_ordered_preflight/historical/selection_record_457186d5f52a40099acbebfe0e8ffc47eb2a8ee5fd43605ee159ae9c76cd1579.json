@@ -340,8 +340,7 @@
     ],
     "contract_base_sha": "4cf0d0ea017fa824ba8d4a063ceddd015dae09d6",
     "critical_fixture_manifest_id": "prc_critical_fixture_manifest_v1",
-    "critical_fixture_manifest_sha256": "265d531f51f08d45139313cd81b0239de0c2e9dd8926e12ded66d2011d83c1f7",
-    "critical_fixture_manifest_source_commit": "1fdf213bb991b2f155bf812d837bb4dcb73a8cc8",
+    "critical_fixture_manifest_sha256": "ca64ca282261702b81b6b2e5730ebb95d7db9ea39041d8d83a3d948223195090",
     "detectability": "unmeasured",
     "domain_margin_m": "unmeasured",
     "frozen_controls": {
@@ -370,10 +369,8 @@
     "trajectory_metrics_computed": false
   },
   "historical_selection_record_sha256": "1c465dae2d835fc85f468636131a2af6bce90220bcbde71c03ebea69c4ad3cf9",
-  "manifest_source_commit": "1fdf213bb991b2f155bf812d837bb4dcb73a8cc8",
   "prior_pr_merge_checkout_sha": "c05fe9970eeaf3f8daa9b20b773e3cc7a0b68f5a",
   "prior_push_checkout_sha": "8978acecbd7eabf89a1ead92e90141062081358c",
   "prior_shared_tree_sha": "07ff58200f6db56e3db5299dde07cb6fb23e1eee",
-  "selection_record_sha256": "b569a0480649740cac4c783d3fdcb76a8c913d01ee36ef047f5db9dd669b06c8",
-  "superseded_expanded_selection_record_sha256": "457186d5f52a40099acbebfe0e8ffc47eb2a8ee5fd43605ee159ae9c76cd1579"
+  "selection_record_sha256": "457186d5f52a40099acbebfe0e8ffc47eb2a8ee5fd43605ee159ae9c76cd1579"
 }

@@ -7,13 +7,26 @@ later candidate by itself, and it does not authorize a new polar or fixture.
 
 from __future__ import annotations
 
-import hashlib
 import importlib.util
 import json
 import math
 import struct
-import subprocess
 from pathlib import Path
+
+from tests.c2v09_evidence import (
+    FULL_MANIFEST_ID,
+    FULL_MANIFEST_SHA256,
+    HISTORICAL_SELECTION_RECORD_SHA256,
+    MANIFEST_SOURCE_COMMIT,
+    ROOT,
+    SUPERSEDED_EXPANDED_SELECTION_RECORD_SHA256,
+    assert_matches_pinned_candidate,
+    canonical,
+    checkout_provenance,
+    load_full_manifest,
+    project_executed_candidate,
+    sha256_text,
+)
 
 from pyfoldable.application.cmm2_coupled_transient_service import _build_cmm2_request
 from pyfoldable.core.bem import BEMAnnulusError, BEMConvergenceError
@@ -151,8 +164,12 @@ def _phase_b(sealed):
     }
 
 
-def test_c2v09_ordered_preflight_stops_without_a_trajectory(tmp_path) -> None:
+def negative_preflight_record() -> dict[str, object]:
     tests = _load_service_tests()
+    manifest = load_full_manifest()
+    pinned_candidates = manifest["c2v09_candidates"]
+    assert [row["id"] for row in pinned_candidates] == [f"C2V09-{index:02d}" for index in range(28)]
+    draft_config = tests.CANONICAL.relative_to(ROOT).as_posix()
     rows = []
     selected = None
     status = "CONTRACT BLOCKED"
@@ -171,6 +188,16 @@ def test_c2v09_ordered_preflight_stops_without_a_trajectory(tmp_path) -> None:
                 }
             )
             break
+        draft_inputs = tests._draft_inputs()
+        sealed_context = json.loads(sealed.context_json)
+        if sealed_context["blade_count"] != draft_inputs.blade_count:
+            raise AssertionError("Sealed blade count does not match the declared draft input.")
+        if sealed_context["hinge_radius_m"] != 0.085:
+            raise AssertionError("Sealed hinge radius does not match the declared 85 mm draft input.")
+        assert_matches_pinned_candidate(
+            project_executed_candidate(sealed, draft_inputs, draft_config),
+            pinned_candidates[index],
+        )
         row = {
             "id": identifier,
             "input_sha256": sealed_digest,
@@ -213,31 +240,13 @@ def test_c2v09_ordered_preflight_stops_without_a_trajectory(tmp_path) -> None:
         rows.append(row)
         status = "CONTRACT BLOCKED"
         break
-    manifest = {
-        "id": "prc_critical_fixture_manifest_v1",
-        "shared_mechanism": {
-            "mass_kg": 0.02,
-            "hinge_radius_m": 0.08,
-            "cg_distance_m": 0.03,
-            "hinge_inertia_kg_m2": 2.0e-5,
-            "base_inertia_kg_m2": 1.0e-4,
-            "spring_stiffness_nm_rad": 0.01,
-            "rest_angle_rad": -0.2,
-            "viscous_damping_nm_s_rad": 0.002,
-            "coulomb_torque_nm": 0.001,
-            "transition_velocity_rad_s": 0.05,
-            "lower_stop_rad": -1.2,
-            "upper_stop_rad": 0.2,
-        },
-    }
     controls = CoupledSolverControls()
-    canonical = {
+    canonical_record = {
         "policy": "prc_c2v09_ordered_candidates_v1",
         "contract_base_sha": "4cf0d0ea017fa824ba8d4a063ceddd015dae09d6",
-        "critical_fixture_manifest_id": manifest["id"],
-        "critical_fixture_manifest_sha256": hashlib.sha256(
-            json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")
-        ).hexdigest(),
+        "critical_fixture_manifest_id": FULL_MANIFEST_ID,
+        "critical_fixture_manifest_sha256": FULL_MANIFEST_SHA256,
+        "critical_fixture_manifest_source_commit": MANIFEST_SOURCE_COMMIT,
         "frozen_controls": {
             "rtol": controls.rtol,
             "angle_atol_rad": controls.angle_atol_rad,
@@ -265,41 +274,48 @@ def test_c2v09_ordered_preflight_stops_without_a_trajectory(tmp_path) -> None:
         "trajectory_metrics_computed": False,
         "candidates": rows,
     }
-    payload = json.dumps(canonical, sort_keys=True, separators=(",", ":"))
-    digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
-    repository = Path(__file__).resolve().parents[2]
-    checkout = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repository, text=True).strip()
-    tree = subprocess.check_output(["git", "rev-parse", f"{checkout}^{{tree}}"], cwd=repository, text=True).strip()
+    payload = canonical(canonical_record)
+    digest = sha256_text(payload)
     document = {
-        "canonical": canonical,
+        "canonical": canonical_record,
         "selection_record_sha256": digest,
-        "historical_selection_record_sha256": "1c465dae2d835fc85f468636131a2af6bce90220bcbde71c03ebea69c4ad3cf9",
+        "historical_selection_record_sha256": HISTORICAL_SELECTION_RECORD_SHA256,
+        "superseded_expanded_selection_record_sha256": SUPERSEDED_EXPANDED_SELECTION_RECORD_SHA256,
         "prior_push_checkout_sha": "8978acecbd7eabf89a1ead92e90141062081358c",
         "prior_pr_merge_checkout_sha": "c05fe9970eeaf3f8daa9b20b773e3cc7a0b68f5a",
         "prior_shared_tree_sha": "07ff58200f6db56e3db5299dde07cb6fb23e1eee",
+        "manifest_source_commit": MANIFEST_SOURCE_COMMIT,
     }
-    destination = repository / "reports" / "c2v09_ordered_preflight" / "selection_record.json"
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    evidence = dict(document)
-    evidence["evidence_checkout_sha"] = checkout
-    evidence["pr_source_sha"] = checkout
-    evidence["evidence_tree_sha"] = tree
+    evidence = {
+        "record_kind": "c2v09_preflight_run",
+        "selection_record_sha256": digest,
+        "historical_selection_record_sha256": HISTORICAL_SELECTION_RECORD_SHA256,
+        "superseded_expanded_selection_record_sha256": SUPERSEDED_EXPANDED_SELECTION_RECORD_SHA256,
+    }
+    evidence.update(checkout_provenance(ROOT))
     artifact = Path("/opt/cursor/artifacts/c2v09_preflight.json")
     artifact.parent.mkdir(parents=True, exist_ok=True)
     artifact.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    assert evidence["evidence_checkout_sha"] == checkout
-    assert evidence["evidence_tree_sha"] == tree
-    assert evidence["pr_source_sha"] != evidence["prior_pr_merge_checkout_sha"]
-    assert canonical["trajectory_metrics_computed"] is False
-    assert canonical["selected_index"] is None
+    assert evidence["evidence_checkout_sha"]
+    assert evidence["evidence_tree_sha"]
+    assert evidence["pr_source_sha"] is None
+    assert evidence["push_source_sha"] is None
+    assert evidence["pr_source_sha"] != evidence["evidence_checkout_sha"]
+    assert canonical_record["trajectory_metrics_computed"] is False
+    assert canonical_record["critical_fixture_manifest_sha256"] == FULL_MANIFEST_SHA256
+    assert canonical_record["selected_index"] is None
     assert rows[0]["id"] == "C2V09-00"
     assert rows[0]["disposition"] == "CANDIDATE REJECTED: SOURCE DOMAIN"
     assert len(rows) == 28
     assert selected is None
     assert status == "CONTRACT BLOCKED"
-    assert document["historical_selection_record_sha256"] != digest
-    assert document["prior_shared_tree_sha"] == "07ff58200f6db56e3db5299dde07cb6fb23e1eee"
+    return document
+
+
+def test_c2v09_ordered_preflight_stops_without_a_trajectory() -> None:
+    document = negative_preflight_record()
+    archived = json.loads((ROOT / "reports" / "c2v09_ordered_preflight" / "selection_record.json").read_text(encoding="utf-8"))
+    assert archived == document
 
 
 def test_malformed_bem_output_is_not_an_expected_source_rejection() -> None:

@@ -7,15 +7,21 @@ do not accept the separate PR-C evidence package.
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import importlib.util
+import json
 import math
 import struct
 import sys
+from fractions import Fraction
 from pathlib import Path
 
+import numpy as np
 import pytest
+from scipy.integrate._ivp.radau import RadauDenseOutput
 
 import pyfoldable.dynamics.cmm2_coupled_transient as cmm2_dynamics
+from pyfoldable.dynamics.cmm2_radau_dense import RadauContractFailure, first_radau_contact
 from pyfoldable.dynamics.cmm2_coupled_transient import (
     IMPLEMENTATION_ID,
     IMPLEMENTATION_ID_V1,
@@ -469,49 +475,35 @@ def test_c2v09_first_candidate_is_rejected_by_the_real_source_domain() -> None:
         run_cmm2_coupled_transient(binding)
 
 
-def test_c2v07_certificate_is_conversion_infeasible(tmp_path) -> None:
+def test_c2v07_certificate_is_conversion_infeasible() -> None:
     """Replay the captured accepted step. It is not rescued by a wider allowance."""
-    import json
-
-    import numpy as np
-    from scipy.integrate._ivp.radau import RadauDenseOutput
-
-    from pyfoldable.dynamics.cmm2_radau_dense import RadauContractFailure, first_radau_contact
 
     def hex_float(text: str) -> float:
         return float.fromhex(text)
 
-    certificate = {
-        "failure_class": "conversion_infeasible",
-        "t_old_hex": "0x1.7f9db22d0e567p-1",
-        "t_hex": "0x1.80a3d70a3d711p-1",
-        "h_hex": "0x1.0624dd2f1aa00p-9",
-        "start": 0.7492500000000007,
-        "end": 0.7512500000000008,
-        "origin": 0.0,
-        "last_published": 0.7492500000000007,
-        "y_old_hex": ["-0x1.ffb15b573f0f0p-2", "-0x1.9999999999f5dp-2", "0x1.3fffffffffdecp+5"],
-        "Q_hex": [
-            ["-0x1.a36e2eb1c491ap-11", "0x1.0f6da2e25f3cfp-61", "-0x1.78492e8ed0618p-60"],
-            ["0x1.938f7125ea0e2p-52", "-0x1.f3e51736ddedap-49", "0x1.d93b07ad3e3d8p-50"],
-            ["0x1.84097c574dba7p-50", "0x1.abb3e591b4468p-51", "-0x1.9256b94c1c678p-52"],
-        ],
-        "note": (
-            "Push checkout 8978acecbd7eabf89a1ead92e90141062081358c and PR merge "
-            "checkout c05fe9970eeaf3f8daa9b20b773e3cc7a0b68f5a share tree "
-            "07ff58200f6db56e3db5299dde07cb6fb23e1eee. Runtime pass/fail variation "
-            "is not a source difference."
-        ),
-    }
     repository = Path(__file__).resolve().parents[2]
-    destination = repository / "reports" / "c2v07_representability" / "certificate.json"
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(json.dumps(certificate, indent=2) + "\n", encoding="utf-8")
-    y_old = np.array([hex_float(value) for value in certificate["y_old_hex"]])
-    q_matrix = np.array([[hex_float(value) for value in row] for row in certificate["Q_hex"]])
-    t_old = hex_float(certificate["t_old_hex"])
-    step = hex_float(certificate["h_hex"])
+    replay_path = repository / "reports" / "c2v07_representability" / "coefficient_replay_inputs.json"
+    rational_path = repository / "reports" / "c2v07_representability" / "rational_mathematical_certificate.json"
+    replay = json.loads(replay_path.read_text(encoding="utf-8"))
+    rational = json.loads(rational_path.read_text(encoding="utf-8"))
+    assert replay["record_kind"] == "coefficient_replay_inputs"
+    assert rational["record_kind"] == "explicit_rational_mathematical_certificate"
+    assert rational["method"] == "fractions.Fraction.from_float"
+    assert rational["source_record_sha256"] == hashlib.sha256(replay_path.read_bytes()).hexdigest()
+    assert "not an independent algebraic derivation" in rational["proof"]
+
+    def fraction_text(text: str) -> str:
+        value = Fraction.from_float(hex_float(text))
+        return f"{value.numerator}/{value.denominator}"
+
+    assert rational["t_old"] == fraction_text(replay["t_old_hex"])
+    assert rational["Q"] == [[fraction_text(value) for value in row] for row in replay["Q_hex"]]
+    y_old = np.array([hex_float(value) for value in replay["y_old_hex"]])
+    q_matrix = np.array([[hex_float(value) for value in row] for row in replay["Q_hex"]])
+    t_old = hex_float(replay["t_old_hex"])
+    step = hex_float(replay["h_hex"])
     dense = RadauDenseOutput(t_old, t_old + step, y_old, q_matrix)
+    certificate = replay
 
     class Parameters:
         lower_stop_rad = -0.5
