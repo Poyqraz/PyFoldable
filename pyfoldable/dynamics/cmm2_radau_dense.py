@@ -36,12 +36,24 @@ class RadauDomainExit(RadauContractFailure):
     """The represented cubic left the CMM-2 model domain."""
 
 
+class RecoverableConversionFailure(RadauContractFailure):
+    """This timestamp cannot be certified. Another candidate may be tried."""
+
+
+@dataclass
+class IntervalTerminal:
+    """Shared poison flag for both counters of one accepted interval."""
+
+    message: str = ""
+
+
 @dataclass
 class RootBudget:
     """Shared root-work counter for one accepted interval.
 
     ``refinements`` is the cumulative bisection count of the bracket touched
     most recently. That count survives later helper calls on the same bracket.
+    Exhaustion is terminal for the whole interval.
     """
 
     limit: int
@@ -49,18 +61,28 @@ class RootBudget:
     refinements: int = 0
     bracket_steps: dict = field(default_factory=dict)
     located: dict = field(default_factory=dict)
+    refined_bounds: dict = field(default_factory=dict)
+    terminal: IntervalTerminal = field(default_factory=IntervalTerminal)
+
+    def _refuse_if_terminal(self) -> None:
+        if self.terminal.message:
+            raise RadauContractFailure(self.terminal.message)
 
     def charge(self, count: int = 1) -> None:
+        self._refuse_if_terminal()
         self.used += count
         if self.used > self.limit:
-            raise RadauContractFailure("CMM-2 root-work budget exhausted.")
+            self.terminal.message = "CMM-2 root-work budget exhausted."
+            raise RadauContractFailure(self.terminal.message)
 
     def refine(self, bracket_key) -> None:
+        self._refuse_if_terminal()
         done = self.bracket_steps.get(bracket_key, 0) + 1
         self.bracket_steps[bracket_key] = done
         self.refinements = done
         if done > REFINEMENT_LIMIT:
-            raise RadauContractFailure("CMM-2 root refinement limit exhausted.")
+            self.terminal.message = "CMM-2 root refinement limit exhausted."
+            raise RadauContractFailure(self.terminal.message)
         self.charge()
 
 
@@ -80,7 +102,11 @@ class AcceptedIntervalWork:
         contact_limit: int = CONTACT_WORK_LIMIT,
         domain_limit: int = DOMAIN_WORK_LIMIT,
     ) -> "AcceptedIntervalWork":
-        return AcceptedIntervalWork(RootBudget(contact_limit), RootBudget(domain_limit))
+        terminal = IntervalTerminal()
+        return AcceptedIntervalWork(
+            RootBudget(contact_limit, terminal=terminal),
+            RootBudget(domain_limit, terminal=terminal),
+        )
 
 
 @dataclass(frozen=True)
@@ -911,17 +937,29 @@ def _enclosure_covers(left: Fraction, right: Fraction, xi: Fraction, allowance: 
     return max(abs(xi - left), abs(xi - right)) <= allowance
 
 
+def _root_identity(polynomial, root: _Root):
+    return (tuple(_trim(polynomial)), root.left, root.right, root.exact)
+
+
+def _stored_bounds(polynomial, root: _Root, budget: RootBudget):
+    if root.exact is not None:
+        return root.exact, root.exact
+    return budget.refined_bounds.get(_root_identity(polynomial, root), (root.left, root.right))
+
+
 def _certify_against_root(polynomial, root: _Root, xi: Fraction, budget: RootBudget):
     """Refine the retained bracket until ``xi`` lies in its allowance, or fail."""
     allowance = ROOT_XTOL * (1 + abs(xi))
-    left = root.exact if root.exact is not None else root.left
-    right = root.exact if root.exact is not None else root.right
+    left, right = _stored_bounds(polynomial, root, budget)
+    identity = _root_identity(polynomial, root)
     while not _enclosure_covers(left, right, xi, allowance):
         outside = xi < left or xi > right
         gap = min(abs(xi - left), abs(xi - right))
         if left == right or (outside and gap > allowance):
-            raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
+            raise RecoverableConversionFailure("CMM-2 contact time conversion is unresolved.")
         left, right = _bisect_sign(polynomial, left, right, budget)
+        if root.exact is None:
+            budget.refined_bounds[identity] = (left, right)
     budget.charge()
     return left, right
 
@@ -985,27 +1023,67 @@ def _convert_root(
     ideal = float(t_old + step * seed)
     candidates = _nearby_floats(ideal)
     candidates.sort(key=lambda value: (abs(value - ideal), value))
+    reasons: set[str] = set()
+    start_bound = Fraction.from_float(float(start))
+    end_bound = Fraction.from_float(float(end))
     for relative in candidates:
-        if not math.isfinite(relative) or relative < start or relative > end:
+        budget.charge()
+        if not math.isfinite(relative):
+            reasons.add("conversion")
             continue
         public = float(origin) + relative
         if not math.isfinite(public):
+            reasons.add("conversion")
             continue
         if last_published is not None and not public > float(last_published):
+            reasons.add("conversion")
             continue
         relative_xi = (Fraction.from_float(relative) - t_old) / step
-        public_xi = (Fraction.from_float(public) - Fraction.from_float(float(origin)) - t_old) / step
+        public_elapsed = Fraction.from_float(public) - Fraction.from_float(float(origin))
+        public_xi = (public_elapsed - t_old) / step
+        budget.charge()
+        if not start_bound <= Fraction.from_float(relative) <= end_bound:
+            reasons.add("conversion")
+            continue
+        if not start_bound <= public_elapsed <= end_bound:
+            reasons.add("conversion")
+            continue
         try:
-            _certify_against_root(polynomial, root, relative_xi, budget)
-            _certify_against_root(polynomial, root, public_xi, budget)
-        except RadauContractFailure:
+            left, right = _certify_against_root(polynomial, root, relative_xi, budget)
+            left, right = _certify_against_root(polynomial, root, public_xi, budget)
+        except RecoverableConversionFailure:
+            reasons.add("conversion")
             continue
+        budget.charge()
         if not _rate_allows(rate, relative_xi, velocity_limit, lower):
+            reasons.add("direction")
             continue
+        budget.charge()
         if not _rate_allows(rate, public_xi, velocity_limit, lower):
+            reasons.add("direction")
+            continue
+        span_left = min(left, right, relative_xi, public_xi)
+        span_right = max(left, right, relative_xi, public_xi)
+        angle_root = root.exact is not None and _evaluate(polynomial, root.exact) == 0
+        sign_change = (
+            root.exact is None
+            and _sign(_evaluate(polynomial, root.left)) * _sign(_evaluate(polynomial, root.right)) < 0
+        )
+        identity_polynomial = polynomial if angle_root or sign_change else _derivative(polynomial)
+        distinct_roots = _root_count(identity_polynomial, span_left, span_right, budget)
+        if _evaluate(identity_polynomial, span_left) == 0:
+            distinct_roots += 1
+        if span_right != span_left and _evaluate(identity_polynomial, span_right) == 0:
+            distinct_roots += 1
+        if distinct_roots != 1:
+            reasons.add("identity")
             continue
         return relative, public, relative_xi, public_xi
-    raise RadauContractFailure("CMM-2 contact direction is unresolved.")
+    if reasons == {"direction"}:
+        raise RadauContractFailure("CMM-2 contact direction is unresolved.")
+    if "identity" in reasons and "conversion" not in reasons and "direction" not in reasons:
+        raise RadauContractFailure("CMM-2 contact identity is unresolved.")
+    raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
 
 
 def _order_candidates(candidates, budget: RootBudget):

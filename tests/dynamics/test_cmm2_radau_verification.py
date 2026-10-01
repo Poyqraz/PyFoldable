@@ -230,12 +230,13 @@ def test_c2v07_presnap_observer_uses_the_cubic_contact(monkeypatch) -> None:
     def wrapper(dense, start, end, y0, y1, parameters, controls_arg, **kwargs):
         try:
             hit = real(dense, start, end, y0, y1, parameters, controls_arg, **kwargs)
-        except Exception:
+        except Exception as exc:
             q_matrix = dense.Q
             y_old = dense.y_old
             print(
                 "C2V07_CERTIFICATE",
                 {
+                    "failure": f"{type(exc).__name__}: {exc}",
                     "t_old_hex": float(dense.t_old).hex(),
                     "t_hex": float(dense.t).hex(),
                     "h_hex": float(dense.h).hex(),
@@ -466,3 +467,70 @@ def test_c2v09_first_candidate_is_rejected_by_the_real_source_domain() -> None:
         fresh.aero_evaluator(0.0, *initial)
     with pytest.raises(Cmm2TransientFailure, match="aerodynamic source evaluation failed"):
         run_cmm2_coupled_transient(binding)
+
+
+def test_c2v07_certificate_is_conversion_infeasible(tmp_path) -> None:
+    """Replay the captured accepted step. It is not rescued by a wider allowance."""
+    import json
+
+    import numpy as np
+    from scipy.integrate._ivp.radau import RadauDenseOutput
+
+    from pyfoldable.dynamics.cmm2_radau_dense import RadauContractFailure, first_radau_contact
+
+    def hex_float(text: str) -> float:
+        return float.fromhex(text)
+
+    certificate = {
+        "failure_class": "conversion_infeasible",
+        "t_old_hex": "0x1.7f9db22d0e567p-1",
+        "t_hex": "0x1.80a3d70a3d711p-1",
+        "h_hex": "0x1.0624dd2f1aa00p-9",
+        "start": 0.7492500000000007,
+        "end": 0.7512500000000008,
+        "origin": 0.0,
+        "last_published": 0.7492500000000007,
+        "y_old_hex": ["-0x1.ffb15b573f0f0p-2", "-0x1.9999999999f5dp-2", "0x1.3fffffffffdecp+5"],
+        "Q_hex": [
+            ["-0x1.a36e2eb1c491ap-11", "0x1.0f6da2e25f3cfp-61", "-0x1.78492e8ed0618p-60"],
+            ["0x1.938f7125ea0e2p-52", "-0x1.f3e51736ddedap-49", "0x1.d93b07ad3e3d8p-50"],
+            ["0x1.84097c574dba7p-50", "0x1.abb3e591b4468p-51", "-0x1.9256b94c1c678p-52"],
+        ],
+        "note": (
+            "Push checkout 8978acecbd7eabf89a1ead92e90141062081358c and PR merge "
+            "checkout c05fe9970eeaf3f8daa9b20b773e3cc7a0b68f5a share tree "
+            "07ff58200f6db56e3db5299dde07cb6fb23e1eee. Runtime pass/fail variation "
+            "is not a source difference."
+        ),
+    }
+    repository = Path(__file__).resolve().parents[2]
+    destination = repository / "reports" / "c2v07_representability" / "certificate.json"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(json.dumps(certificate, indent=2) + "\n", encoding="utf-8")
+    y_old = np.array([hex_float(value) for value in certificate["y_old_hex"]])
+    q_matrix = np.array([[hex_float(value) for value in row] for row in certificate["Q_hex"]])
+    t_old = hex_float(certificate["t_old_hex"])
+    step = hex_float(certificate["h_hex"])
+    dense = RadauDenseOutput(t_old, t_old + step, y_old, q_matrix)
+
+    class Parameters:
+        lower_stop_rad = -0.5
+        upper_stop_rad = 0.2
+
+    class Controls:
+        atol = 1.0e-8
+        atol_angular_velocity_rad_s = 1.0e-8
+
+    with pytest.raises(RadauContractFailure, match="conversion") as caught:
+        first_radau_contact(
+            dense,
+            certificate["start"],
+            certificate["end"],
+            dense(certificate["start"]),
+            dense(certificate["end"]),
+            Parameters(),
+            Controls(),
+            origin=certificate["origin"],
+            last_published=certificate["last_published"],
+        )
+    assert "direction" not in str(caught.value)

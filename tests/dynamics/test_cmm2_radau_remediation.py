@@ -747,6 +747,41 @@ def test_producer_exhausts_one_shared_domain_budget(monkeypatch) -> None:
         )
 
 
+def test_refinement_exhaustion_does_not_return_a_later_candidate() -> None:
+    from pyfoldable.dynamics.cmm2_radau_dense import AcceptedIntervalWork
+
+    q_matrix = np.zeros((3, 3))
+    q_matrix[0, 1] = -2.0
+    dense = _dense(1.0, 1.00704, (1.0, -1.0, 40.0), q_matrix)
+    arguments = (
+        dense,
+        1.0,
+        1.00704,
+        dense(1.0),
+        dense(1.00704),
+        _mechanism(0.0, 1.2),
+        _controls(),
+    )
+    work = AcceptedIntervalWork.create()
+    for _index in range(9):
+        hit = first_radau_contact(
+            *arguments,
+            origin=0.0,
+            last_published=1.0,
+            work=work,
+        )
+        assert hit is not None
+        assert work.contact.refinements <= 80
+    key = next(iter(work.contact.bracket_steps))
+    work.contact.bracket_steps[key] = 80
+    work.contact.refinements = 80
+    work.contact.refined_bounds.clear()
+    with pytest.raises(RadauContractFailure, match="refinement"):
+        first_radau_contact(*arguments, origin=0.0, last_published=1.0, work=work)
+    with pytest.raises(RadauContractFailure, match="refinement"):
+        audit_represented_domain(dense, 1.0, 1.00704, deployed_angle=0.0, work=work)
+
+
 def test_interior_shaft_minimum_is_a_domain_exit() -> None:
     q_matrix = np.zeros((3, 3))
     q_matrix[2, 1] = -600.0
