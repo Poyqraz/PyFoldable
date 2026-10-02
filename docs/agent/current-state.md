@@ -166,7 +166,12 @@ C2V-07 while pull-request run `36888462991` passed Python 3.10, both on NumPy
 `36922064664` passed Python 3.10 and failed Python 3.11. Both failures printed
 the same archived cubic. The execution-variation cause remains unknown. A
 passing run does not remove that obstruction. The closed diagnostic record is
-[the C2V-07 execution report](../../reports/c2v07_execution_diagnostic/report.md). Coefficient replay inputs and the explicit rational image
+[the C2V-07 execution report](../../reports/c2v07_execution_diagnostic/report.md).
+The frozen timestamp policy `cmm2_contact_timestamp_quantization_v1_proposed`
+is implemented on this draft only: nearest-even adjacent timestamps, `H*D`
+against the unchanged root-time allowance, and `Q_r`/`Q_p` in the C2V-07
+returned-time check. Candidate selection, partition eligibility, and future-v2
+sealing are not implemented. `physical_qualification=false`. Coefficient replay inputs and the explicit rational image
 are separate records. Draft PR #81 is a
 separate blocked evidence attempt, not accepted PR-C verification. Independent
 CMM-2 numerical verification is not established. ADR-009 is not created or

@@ -20,10 +20,12 @@ def test_archived_failure_replay_is_stable_and_capture_replays_match_live() -> N
     diagnostic = _load()
     original = cmm2_dynamics.first_radau_contact
     archived = diagnostic.archived_failure_interval()
+    historical = "CMM-2 contact time conversion is unresolved."
     first = diagnostic.replay_interval(archived)
     second = diagnostic.replay_interval(archived)
     assert first == second
-    assert "conversion" in first
+    assert historical == "CMM-2 contact time conversion is unresolved."
+    assert first != historical
     captured = diagnostic.capture_c2v07("focused")
     assert cmm2_dynamics.first_radau_contact is original
     assert captured["contacts"]

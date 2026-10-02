@@ -798,10 +798,11 @@ def test_refinement_exhaustion_does_not_return_a_later_candidate() -> None:
         )
         assert hit is not None
         assert work.contact.refinements <= 80
-    key = next(iter(work.contact.bracket_steps))
-    work.contact.bracket_steps[key] = 80
-    work.contact.refinements = 80
-    work.contact.refined_bounds.clear()
+    from pyfoldable.dynamics.cmm2_radau_dense import _refine_sign_change
+
+    with pytest.raises(RadauContractFailure, match="refinement"):
+        while True:
+            _refine_sign_change((Fraction(-1, 3), Fraction(1)), Fraction(0), Fraction(1), work.contact)
     with pytest.raises(RadauContractFailure, match="refinement"):
         first_radau_contact(*arguments, origin=0.0, last_published=1.0, work=work)
     with pytest.raises(RadauContractFailure, match="refinement"):

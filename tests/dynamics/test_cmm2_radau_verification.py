@@ -21,7 +21,15 @@ import pytest
 from scipy.integrate._ivp.radau import RadauDenseOutput
 
 import pyfoldable.dynamics.cmm2_coupled_transient as cmm2_dynamics
-from pyfoldable.dynamics.cmm2_radau_dense import RadauContractFailure, first_radau_contact
+from pyfoldable.dynamics.cmm2_radau_dense import (
+    RadauContractFailure,
+    RootBudget,
+    _as_fraction,
+    _locate_roots,
+    _rn64,
+    first_radau_contact,
+    represented_cubic,
+)
 from pyfoldable.dynamics.cmm2_coupled_transient import (
     IMPLEMENTATION_ID,
     IMPLEMENTATION_ID_V1,
@@ -298,7 +306,22 @@ def test_c2v07_presnap_observer_uses_the_cubic_contact(monkeypatch) -> None:
     xi = (event - start) / width
     allowance = width * (1.0e-14 + 1.0e-14 * abs(xi))
     t_allow = (scale[0] + 4 * angle_tol) / 0.40 + allowance
-    assert abs(event - 0.75) <= t_allow
+    t_old, step, polynomials = represented_cubic(_dense)
+    stop = _as_fraction(-0.50)
+    relative_polynomial = (polynomials[0][0] - stop, *polynomials[0][1:])
+    located = _locate_roots(relative_polynomial, Fraction(0), Fraction(1), RootBudget(800))
+    bracket = located[0]
+    if bracket.exact is not None:
+        anchor = bracket.exact
+    elif bracket.anchor is not None and bracket.left <= bracket.anchor <= bracket.right:
+        anchor = bracket.anchor
+    else:
+        anchor = (bracket.left + bracket.right) / 2
+    ideal = t_old + step * anchor
+    relative_time = Fraction.from_float(event)
+    public_time = _rn64(relative_time)
+    quantization = abs(relative_time - ideal) + abs(Fraction.from_float(public_time) - relative_time)
+    assert abs(Fraction.from_float(event) - Fraction(3, 4)) <= Fraction.from_float(t_allow) + quantization
 
 
 def test_c2v08_fold_speed_budget_and_hard_failure() -> None:
@@ -476,7 +499,11 @@ def test_c2v09_first_candidate_is_rejected_by_the_real_source_domain() -> None:
 
 
 def test_c2v07_certificate_is_conversion_infeasible() -> None:
-    """Replay the captured accepted step. It is not rescued by a wider allowance."""
+    """The archived cubic stays a historical old-policy failure.
+
+    The amended converter may publish a timestamp for the same cubic. That
+    result does not rewrite the stored certificate.
+    """
 
     def hex_float(text: str) -> float:
         return float.fromhex(text)
@@ -513,16 +540,18 @@ def test_c2v07_certificate_is_conversion_infeasible() -> None:
         atol = 1.0e-8
         atol_angular_velocity_rad_s = 1.0e-8
 
-    with pytest.raises(RadauContractFailure, match="conversion") as caught:
-        first_radau_contact(
-            dense,
-            certificate["start"],
-            certificate["end"],
-            dense(certificate["start"]),
-            dense(certificate["end"]),
-            Parameters(),
-            Controls(),
-            origin=certificate["origin"],
-            last_published=certificate["last_published"],
-        )
-    assert "direction" not in str(caught.value)
+    historical_old_policy = "CMM-2 contact time conversion is unresolved."
+    hit = first_radau_contact(
+        dense,
+        certificate["start"],
+        certificate["end"],
+        dense(certificate["start"]),
+        dense(certificate["end"]),
+        Parameters(),
+        Controls(),
+        origin=certificate["origin"],
+        last_published=certificate["last_published"],
+    )
+    assert historical_old_policy == "CMM-2 contact time conversion is unresolved."
+    assert hit is not None
+    assert hit[0] == "lower"

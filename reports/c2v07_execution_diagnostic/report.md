@@ -89,6 +89,10 @@ The step size matches. The accepted window does not. The difference between this
 - Converter disagreement on that fixed cubic was not observed: both replays agreed.
 - The local successful trajectory did not present that cubic to the converter.
 
+## Subsequent timestamp implementation
+
+The frozen timestamp policy was implemented after this investigation closed. The archived cubic file and these captures were not rewritten. They remain the old-policy and local-observation record. The live converter no longer uses the historical old-policy classification for that cubic. A passing run still does not delete the archived obstruction record.
+
 ## Closure
 
 The cause of the CI execution variation remains unknown. The same archived cubic and conversion-unresolved certificate appeared on Python 3.10.21 / SciPy 1.15.3 and on Python 3.11.16 / SciPy 1.17.1, while other jobs with those same reported versions passed and did not record their accepted-interval coefficients. Passing runs do not remove the archived cubic’s representability obstruction under the current converter.

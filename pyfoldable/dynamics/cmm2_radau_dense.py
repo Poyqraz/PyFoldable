@@ -981,15 +981,61 @@ def certify_representable_time(polynomial, t_old: Fraction, step: Fraction, time
     return xi
 
 
-def _nearby_floats(value: float, radius: int = 8):
-    cursor = value
-    for _step in range(radius):
-        cursor = math.nextafter(cursor, -math.inf)
-    values = []
-    for _step in range(2 * radius + 1):
-        values.append(cursor)
-        cursor = math.nextafter(cursor, math.inf)
-    return values
+def _significand_even(value: float) -> bool:
+    if value == 0.0:
+        return True
+    mantissa, _exponent = math.frexp(value)
+    significand = int(round(abs(mantissa) * (1 << 53)))
+    return significand % 2 == 0
+
+
+def _adjacent_timestamp_order(target: Fraction) -> list[float]:
+    """Nearest-even binary64 neighbor, then the other adjacent bracket.
+
+    An exactly representable value is a singleton. This is not a wider ULP search.
+    """
+    if target == 0:
+        return [0.0]
+    hint = float(target)
+    if not math.isfinite(hint):
+        raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
+    low = hint
+    for _step in range(64):
+        if Fraction.from_float(low) <= target:
+            break
+        nxt = math.nextafter(low, -math.inf)
+        if nxt == low:
+            raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
+        low = nxt
+    else:
+        raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
+    for _step in range(64):
+        nxt = math.nextafter(low, math.inf)
+        if not math.isfinite(nxt) or Fraction.from_float(nxt) > target:
+            break
+        low = nxt
+    else:
+        raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
+    low_value = Fraction.from_float(low)
+    if low_value == target:
+        return [low]
+    high = math.nextafter(low, math.inf)
+    high_value = Fraction.from_float(high) if math.isfinite(high) else None
+    if (
+        high_value is None
+        or math.nextafter(low, math.inf) != high
+        or not low_value < target < high_value
+    ):
+        raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
+    below = target - low_value
+    above = high_value - target
+    if below < above or (below == above and _significand_even(low)):
+        return [low, high]
+    return [high, low]
+
+
+def _rn64(value: Fraction) -> float:
+    return _adjacent_timestamp_order(value)[0]
 
 
 def _rate_allows(rate, xi: Fraction, limit: Fraction, lower: bool) -> bool:
@@ -1014,70 +1060,95 @@ def _convert_root(
     budget: RootBudget,
 ):
     budget.charge()
-    if root.exact is not None:
-        seed = root.exact
-    elif root.anchor is not None:
-        seed = root.anchor
-    else:
-        seed = (root.left + root.right) / 2
-    ideal = float(t_old + step * seed)
-    candidates = _nearby_floats(ideal)
-    candidates.sort(key=lambda value: (abs(value - ideal), value))
-    reasons: set[str] = set()
+    identity = _root_identity(polynomial, root)
+    left, right = _stored_bounds(polynomial, root, budget)
+    origin_fraction = Fraction.from_float(float(origin))
     start_bound = Fraction.from_float(float(start))
     end_bound = Fraction.from_float(float(end))
-    for relative in candidates:
+    step_width = end_bound - start_bound
+    if step_width <= 0:
+        raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
+    reasons: set[str] = set()
+    while True:
         budget.charge()
-        if not math.isfinite(relative):
+        if root.exact is not None:
+            anchor = root.exact
+        elif root.anchor is not None and left <= root.anchor <= right:
+            anchor = root.anchor
+        else:
+            anchor = (left + right) / 2
+        root_radius = max(abs(left - anchor), abs(right - anchor))
+        ideal = t_old + step * anchor
+        ordered = _adjacent_timestamp_order(ideal)
+        option_reasons: set[str] = set()
+        restarted = False
+        for relative in ordered:
+            budget.charge()
+            if not math.isfinite(relative):
+                option_reasons.add("conversion")
+                continue
+            relative_fraction = Fraction.from_float(relative)
+            public = _rn64(origin_fraction + relative_fraction)
+            if not math.isfinite(public):
+                option_reasons.add("conversion")
+                continue
+            if last_published is not None and not public > float(last_published):
+                option_reasons.add("conversion")
+                continue
+            public_fraction = Fraction.from_float(public)
+            public_elapsed = public_fraction - origin_fraction
+            budget.charge()
+            if not start_bound <= relative_fraction <= end_bound:
+                option_reasons.add("conversion")
+                continue
+            if not start_bound <= public_elapsed <= end_bound:
+                option_reasons.add("conversion")
+                continue
+            event_xi = (relative_fraction - start_bound) / step_width
+            root_time = step * root_radius
+            root_allowance = step_width * ROOT_XTOL * (1 + abs(event_xi))
+            if root_time > root_allowance:
+                if root.exact is not None or left == right:
+                    option_reasons.add("conversion")
+                    continue
+                new_left, new_right = _bisect_sign(polynomial, left, right, budget)
+                if (new_left, new_right) == (left, right):
+                    raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
+                left, right = new_left, new_right
+                budget.refined_bounds[identity] = (left, right)
+                restarted = True
+                break
+            relative_xi = (relative_fraction - t_old) / step
+            public_xi = (public_elapsed - t_old) / step
+            budget.charge()
+            if not _rate_allows(rate, relative_xi, velocity_limit, lower):
+                option_reasons.add("direction")
+                continue
+            budget.charge()
+            if not _rate_allows(rate, public_xi, velocity_limit, lower):
+                option_reasons.add("direction")
+                continue
+            span_left = min(left, right, relative_xi, public_xi)
+            span_right = max(left, right, relative_xi, public_xi)
+            angle_root = root.exact is not None and _evaluate(polynomial, root.exact) == 0
+            sign_change = (
+                root.exact is None
+                and _sign(_evaluate(polynomial, root.left)) * _sign(_evaluate(polynomial, root.right)) < 0
+            )
+            identity_polynomial = polynomial if angle_root or sign_change else _derivative(polynomial)
+            distinct_roots = _root_count(identity_polynomial, span_left, span_right, budget)
+            if _evaluate(identity_polynomial, span_left) == 0:
+                distinct_roots += 1
+            if span_right != span_left and _evaluate(identity_polynomial, span_right) == 0:
+                distinct_roots += 1
+            if distinct_roots != 1:
+                raise RadauContractFailure("CMM-2 contact identity is unresolved.")
+            return relative, public, relative_xi, public_xi
+        if restarted:
             continue
-        public = float(origin) + relative
-        if not math.isfinite(public):
-            continue
-        if last_published is not None and not public > float(last_published):
-            continue
-        relative_xi = (Fraction.from_float(relative) - t_old) / step
-        public_elapsed = Fraction.from_float(public) - Fraction.from_float(float(origin))
-        public_xi = (public_elapsed - t_old) / step
-        budget.charge()
-        if not start_bound <= Fraction.from_float(relative) <= end_bound:
-            continue
-        if not start_bound <= public_elapsed <= end_bound:
-            reasons.add("conversion")
-            continue
-        try:
-            left, right = _certify_against_root(polynomial, root, relative_xi, budget)
-            left, right = _certify_against_root(polynomial, root, public_xi, budget)
-        except RecoverableConversionFailure:
-            reasons.add("conversion")
-            continue
-        budget.charge()
-        if not _rate_allows(rate, relative_xi, velocity_limit, lower):
-            reasons.add("direction")
-            continue
-        budget.charge()
-        if not _rate_allows(rate, public_xi, velocity_limit, lower):
-            reasons.add("direction")
-            continue
-        span_left = min(left, right, relative_xi, public_xi)
-        span_right = max(left, right, relative_xi, public_xi)
-        angle_root = root.exact is not None and _evaluate(polynomial, root.exact) == 0
-        sign_change = (
-            root.exact is None
-            and _sign(_evaluate(polynomial, root.left)) * _sign(_evaluate(polynomial, root.right)) < 0
-        )
-        identity_polynomial = polynomial if angle_root or sign_change else _derivative(polynomial)
-        distinct_roots = _root_count(identity_polynomial, span_left, span_right, budget)
-        if _evaluate(identity_polynomial, span_left) == 0:
-            distinct_roots += 1
-        if span_right != span_left and _evaluate(identity_polynomial, span_right) == 0:
-            distinct_roots += 1
-        if distinct_roots != 1:
-            reasons.add("identity")
-            continue
-        return relative, public, relative_xi, public_xi
-    if "identity" in reasons:
-        raise RadauContractFailure("CMM-2 contact identity is unresolved.")
-    if "direction" in reasons:
+        reasons.update(option_reasons)
+        break
+    if "direction" in reasons and "conversion" not in reasons:
         raise RadauContractFailure("CMM-2 contact direction is unresolved.")
     raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
 
