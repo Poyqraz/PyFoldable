@@ -196,7 +196,6 @@ def _blocked(root: Path, reason: str) -> LiveEligibilityRecord:
         "loaded cosine instruction bytes",
         "MXCSR",
         "DAZ/FTZ",
-        "selected dispatch",
         "CPU family/model/stepping",
         "CPU features",
         "selected dispatch",
