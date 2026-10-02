@@ -252,7 +252,7 @@ def assess_live_eligibility(
     theta0: tuple[str, str] | None = None,
     uncertainty_hex: tuple[str, ...] | None = None,
     source_sha256: str | None = None,
-    observed_runtime: Mapping[str, object] | None = None,
+    caller_claims: Mapping[str, object] | None = None,
     waive_source_mismatch: bool = False,
     claimed_record: Mapping[str, object] | None = None,
 ) -> LiveEligibilityRecord:
@@ -269,7 +269,7 @@ def assess_live_eligibility(
             theta0=theta0,
             uncertainty_hex=uncertainty_hex,
             source_sha256=source_sha256,
-            observed_runtime=observed_runtime,
+            caller_claims=caller_claims,
             claimed_record=claimed_record,
         )
     except (OSError, RuntimeError, ValueError, KeyError, subprocess.CalledProcessError) as exc:
@@ -294,15 +294,13 @@ def _assess(
     theta0: tuple[str, str] | None,
     uncertainty_hex: tuple[str, ...] | None,
     source_sha256: str | None,
-    observed_runtime: Mapping[str, object] | None,
+    caller_claims: Mapping[str, object] | None,
     claimed_record: Mapping[str, object] | None,
 ) -> LiveEligibilityRecord:
     pinned = load_reviewed_materials(root)
     claimed = pinned if materials is None else materials
     declaration = build_extended_declaration(root)
     observations = observe_execution_context(root)
-    if observed_runtime is not None:
-        observations.update(observed_runtime)
     runtime = pinned.certificate_runtime
     matches: list[str] = []
     mismatches: list[str] = []
@@ -379,6 +377,7 @@ def _assess(
     executing_head = str(observations["executing_head"])
     observations["technical_head"] = TECHNICAL_HEAD
     observations["closure_provenance"] = tuple(closure_provenance)
+    observations["caller_claims"] = dict(caller_claims or {})
 
     _compare_identity("cpython executable", observations["executable_sha256"], runtime["executable_sha256"], matches, mismatches, unestablished)
     _compare_identity("cpython version", observations["python_version"], runtime["python_version"], matches, mismatches, unestablished)

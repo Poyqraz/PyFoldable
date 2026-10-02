@@ -465,6 +465,6 @@ The later preparation slice on this draft pins the append-only declaration
 00…27,28,29 and runs an executable live-eligibility gate. Technical authority
 `fd55fa97676c84c896511765e94561a706252239`, later closure provenance, and the
 executing implementation are separate identities. Missing actual inputs stay
-unestablished. The gate returns CONTRACT BLOCKED when applicability is not
+unestablished. Caller claims do not replace live observations. The gate returns CONTRACT BLOCKED when applicability is not
 established. It does not select, seal, relabel a v1 seal, or enter a trajectory.
 `physical_qualification=false`.

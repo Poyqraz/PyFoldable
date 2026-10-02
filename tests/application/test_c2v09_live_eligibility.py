@@ -124,11 +124,50 @@ def test_mocked_matching_record_is_not_live_evidence() -> None:
     assert report.seal_calls == report.trajectory_calls == 0
 
 
-def test_missing_observation_blocks_without_a_source_call() -> None:
+def test_supplied_dispatch_and_head_claims_cannot_alter_the_live_record() -> None:
     root = _repository()
-    record = assess_live_eligibility(
+    live = assess_live_eligibility(root)
+    dispatch = load_reviewed_materials(root).certificate_runtime["cos_vaddr"]
+    claimed = assess_live_eligibility(
         root,
-        observed_runtime={
+        caller_claims={"selected_dispatch": dispatch, "executing_head": "a" * 40},
+    )
+    assert claimed.observations["caller_claims"]["selected_dispatch"] == dispatch
+    assert claimed.observations["caller_claims"]["executing_head"] == "a" * 40
+    assert claimed.executing_head == live.executing_head
+    assert claimed.observations["executing_head"] == live.observations["executing_head"]
+    assert "selected dispatch" not in claimed.matches
+    assert "selected dispatch" in claimed.unestablished
+    report = run_certificate_dependent(
+        claimed,
+        source=lambda: None,
+        mapper=lambda: None,
+        select=lambda: None,
+        seal=lambda: None,
+        trajectory=lambda: None,
+    )
+    assert report.source_calls == report.mapper_calls == report.selection_calls == 0
+    assert report.seal_calls == report.trajectory_calls == 0
+
+
+def _patch_runtime(monkeypatch, values: dict[str, object]):
+    from pyfoldable.application import c2v09_live_eligibility as gate
+
+    real = gate.observe_execution_context
+
+    def wrapped(root):
+        observed = real(root)
+        observed.update(values)
+        return observed
+
+    monkeypatch.setattr(gate, "observe_execution_context", wrapped)
+
+
+def test_missing_observation_blocks_without_a_source_call(monkeypatch) -> None:
+    root = _repository()
+    _patch_runtime(
+        monkeypatch,
+        {
             "executable_sha256": None,
             "libm_sha256": None,
             "libc_sha256": None,
@@ -137,6 +176,7 @@ def test_missing_observation_blocks_without_a_source_call() -> None:
             "cpu_family_model_stepping": None,
         },
     )
+    record = assess_live_eligibility(root)
     assert record.status == "CONTRACT BLOCKED"
     assert "returned source object" in record.unestablished
     assert "loaded cosine instruction bytes" in record.unestablished
@@ -150,12 +190,15 @@ def test_missing_observation_blocks_without_a_source_call() -> None:
     assert report.source_calls == 0
 
 
-def test_runtime_mismatch_is_recorded_only_when_the_observed_value_differs() -> None:
+def test_runtime_mismatch_is_recorded_only_when_the_observed_value_differs(monkeypatch) -> None:
     root = _repository()
     materials = load_reviewed_materials(root)
     executable = materials.certificate_runtime["executable_sha256"]
-    matched = assess_live_eligibility(root, observed_runtime={"executable_sha256": executable})
-    differed = assess_live_eligibility(root, observed_runtime={"executable_sha256": "ab" * 32})
+    observed = {"executable_sha256": executable}
+    _patch_runtime(monkeypatch, observed)
+    matched = assess_live_eligibility(root)
+    observed["executable_sha256"] = "ab" * 32
+    differed = assess_live_eligibility(root)
     assert "cpython executable" in matched.matches
     assert "cpython executable" not in matched.mismatches
     assert "cpython executable" in differed.mismatches
