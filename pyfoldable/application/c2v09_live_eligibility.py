@@ -17,6 +17,10 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Callable, Mapping
 
+from pyfoldable.application.c2v09_binding_collector import (
+    collect_binding_record,
+    resolve_loaded_cos_vaddr,
+)
 from pyfoldable.application.c2v09_ordered_declaration import (
     CANDIDATE28_MANIFEST_SHA256,
     CANDIDATE29_MANIFEST_SHA256,
@@ -95,8 +99,6 @@ def observe_execution_context(root: Path) -> dict[str, object]:
         "loader_sha256": _file_sha256(_library_path("ld-linux")),
         "cpu_family_model_stepping": _cpu_identity(),
         "fegetround": _fegetround(),
-        "mxcsr": None,
-        "selected_dispatch": None,
         "loaded_cosine_instruction_bytes": None,
         "returned_source_object": None,
     }
@@ -301,6 +303,13 @@ def _assess(
     claimed = pinned if materials is None else materials
     declaration = build_extended_declaration(root)
     observations = observe_execution_context(root)
+    binding = collect_binding_record(root)
+    if "selected_dispatch" not in observations:
+        observations["selected_dispatch"] = resolve_loaded_cos_vaddr()
+    if "mxcsr" not in observations and binding["observations"]["mxcsr"] is not None:
+        observations["mxcsr"] = binding["observations"]["mxcsr"]
+    if "cpu_feature_flags" not in observations:
+        observations["cpu_feature_flags"] = binding["observations"]["cpu_feature_flags"]
     runtime = pinned.certificate_runtime
     matches: list[str] = []
     mismatches: list[str] = []
@@ -309,9 +318,10 @@ def _assess(
         "loaded cosine instruction bytes",
         "MXCSR",
         "DAZ/FTZ",
-        "CPU features",
         "selected dispatch",
     ]
+    if not observations.get("cpu_feature_flags"):
+        unestablished.append("CPU features")
     closure_provenance: list[str] = []
 
     if claimed_record is not None:
@@ -393,12 +403,26 @@ def _assess(
         mismatches.append("CPU family/model/stepping")
     else:
         matches.append("CPU family/model/stepping")
-    if observations["selected_dispatch"] is not None:
+    if observations.get("selected_dispatch") is not None:
         unestablished.remove("selected dispatch")
         if str(observations["selected_dispatch"]) == runtime["cos_vaddr"]:
             matches.append("selected dispatch")
         else:
             mismatches.append("selected dispatch")
+    if observations.get("mxcsr"):
+        unestablished.remove("MXCSR")
+        unestablished.remove("DAZ/FTZ")
+        if str(observations["mxcsr"]).lower() == str(runtime["mxcsr_hex"]).lower():
+            matches.append("MXCSR")
+        else:
+            mismatches.append("MXCSR")
+        control = int(str(observations["mxcsr"]), 16)
+        daz = str(bool(control & 0x40))
+        ftz = str(bool(control & 0x8000))
+        if daz == runtime["mxcsr_daz"] and ftz == runtime["mxcsr_ftz"]:
+            matches.append("DAZ/FTZ")
+        else:
+            mismatches.append("DAZ/FTZ")
 
     if declaration.sha256 != EXTENDED_DECLARATION_SHA256:
         mismatches.append("extended declaration digest")
@@ -411,6 +435,7 @@ def _assess(
         "sealed": False,
         "trajectory_entered": False,
         "declaration_sha256": declaration.sha256,
+        "binding_record": binding,
     }
     context_id = _context_id(observations)
     mismatch_tuple = tuple(mismatches)

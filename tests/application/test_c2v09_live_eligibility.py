@@ -136,8 +136,11 @@ def test_supplied_dispatch_and_head_claims_cannot_alter_the_live_record() -> Non
     assert claimed.observations["caller_claims"]["executing_head"] == "a" * 40
     assert claimed.executing_head == live.executing_head
     assert claimed.observations["executing_head"] == live.observations["executing_head"]
-    assert "selected dispatch" not in claimed.matches
-    assert "selected dispatch" in claimed.unestablished
+    assert claimed.observations["selected_dispatch"] == live.observations.get("selected_dispatch")
+    assert claimed.matches == live.matches
+    assert claimed.unestablished == live.unestablished
+    assert claimed.observations["caller_claims"]["executing_head"] == "a" * 40
+    assert claimed.observations["caller_claims"]["selected_dispatch"] == dispatch
     report = run_certificate_dependent(
         claimed,
         source=lambda: None,
@@ -173,8 +176,15 @@ def test_missing_observation_blocks_without_a_source_call(monkeypatch) -> None:
             "libc_sha256": None,
             "loader_sha256": None,
             "fegetround": None,
+            "mxcsr": None,
             "cpu_family_model_stepping": None,
+            "selected_dispatch": None,
+            "cpu_feature_flags": None,
         },
+    )
+    monkeypatch.setattr(
+        "pyfoldable.application.c2v09_live_eligibility.resolve_loaded_cos_vaddr",
+        lambda: None,
     )
     record = assess_live_eligibility(root)
     assert record.status == "CONTRACT BLOCKED"
@@ -242,8 +252,14 @@ def test_actual_context_is_blocked_and_preserves_partial_observations() -> None:
     assert "Theta0" not in record.matches
     assert "candidate29 source bytes" not in record.matches
     assert "CPU/feature identity" not in record.matches
-    assert "CPU features" in record.unestablished
-    assert "selected dispatch" in record.unestablished
+    if record.observations.get("cpu_feature_flags"):
+        assert "CPU features" not in record.unestablished
+    else:
+        assert "CPU features" in record.unestablished
+    if record.observations.get("selected_dispatch") is None:
+        assert "selected dispatch" in record.unestablished
+    else:
+        assert "selected dispatch" in record.matches or "selected dispatch" in record.mismatches
     assert "original 00-27 manifest" in record.matches
     assert "candidate28 manifest" in record.matches
     assert "candidate29 manifest" in record.matches
