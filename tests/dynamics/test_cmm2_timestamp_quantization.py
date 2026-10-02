@@ -13,7 +13,11 @@ from scipy.integrate._ivp.radau import RadauDenseOutput
 
 from pyfoldable.dynamics.cmm2_radau_dense import (
     RadauContractFailure,
+    RootBudget,
+    _Root,
     _adjacent_timestamp_order,
+    _convert_root,
+    _rn64,
     first_radau_contact,
 )
 
@@ -79,6 +83,35 @@ def test_nonrepresentable_time_uses_nearest_even_then_the_other_neighbor() -> No
     ordered = _adjacent_timestamp_order(midpoint)
     assert ordered == [down, up]
     assert math.nextafter(ordered[0], math.inf) == ordered[1]
+
+
+def test_subnormal_tie_rounds_to_the_even_neighbor() -> None:
+    odd = float.fromhex("0x0.0000000000001p-1022")
+    even = float.fromhex("0x0.0000000000002p-1022")
+    midpoint = (Fraction.from_float(odd) + Fraction.from_float(even)) / 2
+    assert _adjacent_timestamp_order(midpoint)[0] == even
+    assert _rn64(midpoint) == even
+
+
+def test_root_time_uses_the_binary64_allowance_not_a_wider_rational() -> None:
+    radius = (Fraction.from_float(1e-14) + Fraction(1, 10**14)) / 2
+    root = _Root(left=-radius, right=radius, exact=None, anchor=Fraction(0))
+    budget = RootBudget(800)
+    _convert_root(
+        0.0,
+        None,
+        Fraction(0),
+        Fraction(1),
+        root,
+        (Fraction(0), Fraction(1)),
+        (Fraction(0),),
+        Fraction(1, 10**8),
+        True,
+        0.0,
+        1.0,
+        budget,
+    )
+    assert budget.refinements > 0
 
 
 def test_one_third_neighbors_are_the_contract_pair_in_nearest_first_order() -> None:

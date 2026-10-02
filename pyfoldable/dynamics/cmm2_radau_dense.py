@@ -10,6 +10,7 @@ transverse monotone bracket and does not replace a proved rational root.
 from __future__ import annotations
 
 import math
+import struct
 from dataclasses import dataclass, field
 from fractions import Fraction
 
@@ -982,11 +983,8 @@ def certify_representable_time(polynomial, t_old: Fraction, step: Fraction, time
 
 
 def _significand_even(value: float) -> bool:
-    if value == 0.0:
-        return True
-    mantissa, _exponent = math.frexp(value)
-    significand = int(round(abs(mantissa) * (1 << 53)))
-    return significand % 2 == 0
+    """The stored binary64 fraction bit is the significand's least bit."""
+    return struct.pack("<d", value)[0] & 1 == 0
 
 
 def _adjacent_timestamp_order(target: Fraction) -> list[float]:
@@ -1106,7 +1104,9 @@ def _convert_root(
                 continue
             event_xi = (relative_fraction - start_bound) / step_width
             root_time = step * root_radius
-            root_allowance = step_width * ROOT_XTOL * (1 + abs(event_xi))
+            width_float = float(end) - float(start)
+            xi_float = (relative - float(start)) / width_float
+            root_allowance = Fraction.from_float(width_float * (1e-14 + 1e-14 * abs(xi_float)))
             if root_time > root_allowance:
                 if root.exact is not None or left == right:
                     option_reasons.add("conversion")
