@@ -1248,3 +1248,27 @@ and runtime/partition/minimum-SciPy measurements remain pending. Historical
 technical-contract acceptance records above remain unchanged. Draft PR #81
 remains BLOCKED; no independent CMM-2 numerical verification is established.
 ADR-009 is not created or accepted. `physical_qualification` remains false.
+
+## Proposed numerical-feasibility amendment — not frozen
+
+The [numerical-feasibility proposal](cmm2_numerical_feasibility_amendment.md)
+proposes a separately versioned C2V-07 returned-time policy and an appended
+C2V-09 source candidate. Its candidate is not selectable on current evidence.
+Status is PROPOSED / NOT FROZEN / NOT IMPLEMENTED; this contract, existing
+fixture manifest and historical reviews remain unchanged. No PR-C verification
+is established, and Draft PR #81 remains BLOCKED.
+
+Prospective append-only [C2V09-29 declaration](cmm2_c2v09_candidate29_proposal.md) retains candidate28
+and its mapper rejection, adding a first-party synthetic constant terminal
+station under proposed selector v3 (00…27,28,29). Status remains **PROPOSED /
+NOT FROZEN / NOT IMPLEMENTED**. Committed-declaration review precedes any
+initial-only source/preflight measurement; no trajectory, freeze or acceptance
+follows. Main RK45/v1 and unmerged PR81/84 identities are unchanged.
+
+A subsequent [prospective partition-policy declaration](cmm2_c2v09_partition_policy_proposal.md)
+uses unchanged candidate29 and a whole stored-scale angle neighborhood. It
+preserves literal v1 FAIL/raw zeros and every historical capture; no structural
+alias is relabelled as passing v1. The separately versioned proposal and Q4
+successor conjunction are **PROPOSED / NOT FROZEN / NOT IMPLEMENTED**.
+Committed-declaration review precedes any new initial-only assessment; no
+trajectory, ordered selection, v2 seal or acceptance is authorized.
