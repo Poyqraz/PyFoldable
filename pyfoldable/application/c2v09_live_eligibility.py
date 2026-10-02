@@ -10,6 +10,7 @@ from __future__ import annotations
 import ctypes
 import hashlib
 import os
+import secrets
 import subprocess
 import sys
 from dataclasses import dataclass, replace
@@ -19,20 +20,18 @@ from typing import Callable, Mapping
 from pyfoldable.application.c2v09_ordered_declaration import (
     CANDIDATE28_MANIFEST_SHA256,
     CANDIDATE29_MANIFEST_SHA256,
+    EXTENDED_DECLARATION_SHA256,
     ORIGINAL_MANIFEST_SHA256,
     TECHNICAL_HEAD,
     ReviewedMaterials,
     build_extended_declaration,
     load_reviewed_materials,
     sha256_bytes,
-    technical_file_bytes,
 )
 
 
-CERTIFICATE_EXECUTABLE_SHA256 = "fa67443527ed9647f760d807e2a38f26340757123e643c4639cf273ed15d5ea7"
-CERTIFICATE_LIBM_SHA256 = "f06f2ce1f1833df5f41cf13b6447ff07bea993ad9b27297d3428c2f70ab3f0e7"
-CERTIFICATE_PYTHON_VERSION = "3.12.14"
 CONTRACT_BLOCKED = "CONTRACT BLOCKED"
+_PROCESS_NONCE = secrets.token_hex(32)
 
 
 def _git_text(root: Path, *args: str) -> str:
@@ -67,27 +66,53 @@ def _fegetround() -> str | None:
         return None
 
 
+def _cpu_identity() -> tuple[str, str, str] | None:
+    cpuinfo = Path("/proc/cpuinfo")
+    if not cpuinfo.is_file():
+        return None
+    fields: dict[str, str] = {}
+    for line in cpuinfo.read_text(encoding="utf-8", errors="replace").splitlines():
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        fields.setdefault(key.strip(), value.strip())
+    family = fields.get("cpu family")
+    model = fields.get("model")
+    stepping = fields.get("stepping")
+    if family is None or model is None or stepping is None:
+        return None
+    return family, model, stepping
+
+
 def observe_execution_context(root: Path) -> dict[str, object]:
     """Read the executing process. Missing probes stay None."""
-    executable = Path(sys.executable)
-    libm = _library_path("libm.so")
-    libc = _library_path("libc.so")
     return {
         "executing_head": _git_text(root, "rev-parse", "HEAD"),
         "python_version": sys.version.split()[0],
-        "executable_sha256": _file_sha256(executable),
-        "libm_sha256": _file_sha256(libm),
-        "libc_sha256": _file_sha256(libc),
+        "executable_sha256": _file_sha256(Path(sys.executable)),
+        "libm_sha256": _file_sha256(_library_path("libm.so")),
+        "libc_sha256": _file_sha256(_library_path("libc.so")),
+        "loader_sha256": _file_sha256(_library_path("ld-linux")),
+        "cpu_family_model_stepping": _cpu_identity(),
         "fegetround": _fegetround(),
         "mxcsr": None,
+        "selected_dispatch": None,
         "loaded_cosine_instruction_bytes": None,
         "returned_source_object": None,
     }
 
 
 def _token(status: str, mismatches: tuple[str, ...], unestablished: tuple[str, ...], context_id: str, invalidated: bool) -> str:
-    payload = "\n".join((status, context_id, str(invalidated), *mismatches, *unestablished))
+    payload = "\n".join((_PROCESS_NONCE, status, context_id, str(invalidated), *mismatches, *unestablished))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _context_id(observations: Mapping[str, object]) -> str:
+    text = "|".join(
+        str(observations.get(name))
+        for name in ("executable_sha256", "libm_sha256", "libc_sha256", "loader_sha256", "fegetround", "executing_head")
+    )
+    return hashlib.sha256(f"{text}|{os.getpid()}".encode("utf-8")).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -108,12 +133,17 @@ class LiveEligibilityRecord:
     invalidated: bool
     partial_record: Mapping[str, object]
     token: str
+    root: Path
 
     def authentic(self) -> bool:
         return self.token == _token(self.status, self.mismatches, self.unestablished, self.context_id, self.invalidated)
 
     def accept(self, *, context_id: str) -> Acceptance:
-        if context_id != self.context_id:
+        try:
+            current = _context_id(observe_execution_context(self.root))
+        except (OSError, subprocess.CalledProcessError) as exc:
+            return Acceptance(False, f"execution context unavailable: {exc}")
+        if current != self.context_id or context_id != current:
             return Acceptance(False, "stale eligibility context")
         if not self.authentic():
             return Acceptance(False, "not live execution evidence")
@@ -122,31 +152,84 @@ class LiveEligibilityRecord:
         return Acceptance(False, "eligibility is not established")
 
     def check_after(self, *, fegetround: str) -> "LiveEligibilityRecord":
-        observed = self.observations.get("fegetround")
-        if fegetround == (None if observed is None else str(observed)):
+        try:
+            observed = observe_execution_context(self.root)
+            current = _context_id(observed)
+            live_rounding = None if observed.get("fegetround") is None else str(observed.get("fegetround"))
+        except (OSError, subprocess.CalledProcessError):
+            current = ""
+            live_rounding = None
+        recorded = None if self.observations.get("fegetround") is None else str(self.observations.get("fegetround"))
+        changed = current != self.context_id or live_rounding != fegetround or recorded != fegetround
+        if not changed:
             return self
         mismatches = self.mismatches + ("post-call numerical-control change",)
         updated = replace(self, status=CONTRACT_BLOCKED, mismatches=mismatches, invalidated=True, token="")
-        return replace(updated, token=_token(updated.status, updated.mismatches, updated.unestablished, updated.context_id, updated.invalidated))
+        return replace(
+            updated,
+            token=_token(updated.status, updated.mismatches, updated.unestablished, updated.context_id, updated.invalidated),
+        )
 
 
 @dataclass(frozen=True)
 class DependentCallReport:
     record: LiveEligibilityRecord
-    source_calls: int = 0
-    mapper_calls: int = 0
-    selection_calls: int = 0
-    seal_calls: int = 0
-    trajectory_calls: int = 0
+    source_calls: int
+    mapper_calls: int
+    selection_calls: int
+    seal_calls: int
+    trajectory_calls: int
 
 
-def _context_id(observations: Mapping[str, object]) -> str:
-    text = "|".join(
-        str(observations.get(name))
-        for name in ("executable_sha256", "libm_sha256", "fegetround", "executing_head")
+def _blocked(root: Path, reason: str) -> LiveEligibilityRecord:
+    try:
+        observations: Mapping[str, object] = observe_execution_context(root)
+        executing_head = str(observations.get("executing_head") or "")
+        context_id = _context_id(observations)
+    except (OSError, subprocess.CalledProcessError):
+        observations = {}
+        executing_head = ""
+        context_id = "unavailable"
+    mismatches = (f"technical-head artifact bytes unavailable: {reason}",)
+    unestablished = (
+        "returned source object",
+        "loaded cosine instruction bytes",
+        "MXCSR",
+        "DAZ/FTZ",
+        "selected dispatch",
+        "CPU/feature identity",
+        "loader identity",
     )
-    text = f"{text}|{os.getpid()}"
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+    return LiveEligibilityRecord(
+        CONTRACT_BLOCKED,
+        (),
+        mismatches,
+        unestablished,
+        observations,
+        executing_head,
+        context_id,
+        False,
+        {"selection": None, "sealed": False, "trajectory_entered": False, "declaration_sha256": None},
+        _token(CONTRACT_BLOCKED, mismatches, unestablished, context_id, False),
+        root,
+    )
+
+
+def _compare_bytes(name: str, data: bytes, expected: str, matches: list[str], mismatches: list[str]) -> None:
+    if sha256_bytes(data) == expected:
+        matches.append(name)
+        return
+    mismatches.append(f"{name} digest")
+
+
+def _compare_identity(name: str, observed: object, expected: str, matches: list[str], mismatches: list[str], unestablished: list[str]) -> None:
+    if observed is None:
+        unestablished.append(name)
+        return
+    if str(observed) == expected:
+        matches.append(name)
+        return
+    mismatches.append(name)
 
 
 def assess_live_eligibility(
@@ -161,48 +244,71 @@ def assess_live_eligibility(
 ) -> LiveEligibilityRecord:
     """Compare the executing context with the reviewed bindings.
 
-    ``waive_source_mismatch`` is accepted and ignored. A caller cannot waive
-    a source, runtime, scale or artifact mismatch.
+    ``waive_source_mismatch`` is accepted and ignored. Caller-supplied
+    materials are claims. They are compared with the pinned declaration.
     """
     del waive_source_mismatch
-    reviewed = load_reviewed_materials(root) if materials is None else materials
+    try:
+        return _assess(
+            root,
+            materials=materials,
+            theta0=theta0,
+            uncertainty_hex=uncertainty_hex,
+            source_sha256=source_sha256,
+            claimed_record=claimed_record,
+        )
+    except (OSError, RuntimeError, ValueError, KeyError, subprocess.CalledProcessError) as exc:
+        return _blocked(root, str(exc))
+
+
+def _assess(
+    root: Path,
+    *,
+    materials: ReviewedMaterials | None,
+    theta0: tuple[str, str] | None,
+    uncertainty_hex: tuple[str, ...] | None,
+    source_sha256: str | None,
+    claimed_record: Mapping[str, object] | None,
+) -> LiveEligibilityRecord:
+    pinned = load_reviewed_materials(root)
+    claimed = pinned if materials is None else materials
     declaration = build_extended_declaration(root)
     observations = observe_execution_context(root)
+    runtime = pinned.certificate_runtime
     matches: list[str] = []
     mismatches: list[str] = []
-    unestablished: list[str] = ["returned source object", "loaded cosine instruction bytes"]
+    unestablished: list[str] = ["returned source object", "loaded cosine instruction bytes", "MXCSR", "DAZ/FTZ"]
 
     if claimed_record is not None:
         mismatches.append("caller-supplied record is not live execution evidence")
 
-    _compare_bytes("original 00-27 manifest", reviewed.original_bytes, ORIGINAL_MANIFEST_SHA256, matches, mismatches)
-    _compare_bytes("candidate28 manifest", reviewed.candidate28_bytes, CANDIDATE28_MANIFEST_SHA256, matches, mismatches)
-    _compare_bytes("candidate29 manifest", reviewed.candidate29_bytes, CANDIDATE29_MANIFEST_SHA256, matches, mismatches)
+    _compare_bytes("original 00-27 manifest", claimed.original_bytes, ORIGINAL_MANIFEST_SHA256, matches, mismatches)
+    _compare_bytes("candidate28 manifest", claimed.candidate28_bytes, CANDIDATE28_MANIFEST_SHA256, matches, mismatches)
+    _compare_bytes("candidate29 manifest", claimed.candidate29_bytes, CANDIDATE29_MANIFEST_SHA256, matches, mismatches)
 
-    for path, claimed in reviewed.artifact_digests.items():
-        technical = technical_file_bytes(root, path)
-        if claimed != sha256_bytes(technical):
+    for path, pinned_digest in pinned.artifact_digests.items():
+        if claimed.artifact_digests.get(path) != pinned_digest:
             mismatches.append(f"artifact identity {path}")
         else:
             matches.append(f"artifact {path}")
         current = root / path
-        if not current.is_file() or current.read_bytes() != technical:
+        if not current.is_file() or sha256_bytes(current.read_bytes()) != pinned_digest:
             mismatches.append(f"executing artifact bytes differ from technical head {path}")
 
-    supplied_theta = reviewed.theta0 if theta0 is None else theta0
-    if tuple(supplied_theta) != reviewed.theta0:
+    claimed_theta = theta0 if theta0 is not None else claimed.theta0
+    if tuple(claimed_theta) != tuple(pinned.theta0):
         mismatches.append("Theta0 scale binding")
     else:
         matches.append("Theta0")
 
-    if uncertainty_hex is not None and tuple(uncertainty_hex) != reviewed.uncertainty_hex:
+    claimed_uncertainty = uncertainty_hex if uncertainty_hex is not None else claimed.uncertainty_hex
+    if tuple(claimed_uncertainty) != tuple(pinned.uncertainty_hex):
         mismatches.append("stored center uncertainty")
     else:
         matches.append("stored center uncertainty")
 
-    expected_source = reviewed.candidate29_source_sha256
-    supplied_source = expected_source if source_sha256 is None else source_sha256
-    if supplied_source != expected_source:
+    claimed_source = source_sha256 if source_sha256 is not None else claimed.candidate29_source_sha256
+    if claimed_source != pinned.candidate29_source_sha256:
         mismatches.append("candidate29 source hash")
     else:
         matches.append("candidate29 source hash")
@@ -213,32 +319,28 @@ def assess_live_eligibility(
     else:
         matches.append("reviewed technical head")
 
-    if observations["executable_sha256"] != CERTIFICATE_EXECUTABLE_SHA256:
-        mismatches.append("cpython executable")
+    _compare_identity("cpython executable", observations["executable_sha256"], runtime["executable_sha256"], matches, mismatches, unestablished)
+    _compare_identity("cpython version", observations["python_version"], runtime["python_version"], matches, mismatches, unestablished)
+    _compare_identity("libm identity", observations["libm_sha256"], runtime["libm_sha256"], matches, mismatches, unestablished)
+    _compare_identity("libc identity", observations["libc_sha256"], runtime["libc_sha256"], matches, mismatches, unestablished)
+    _compare_identity("loader identity", observations["loader_sha256"], runtime["loader_sha256"], matches, mismatches, unestablished)
+    _compare_identity("fegetround", observations["fegetround"], runtime["fegetround"], matches, mismatches, unestablished)
+    cpu = observations["cpu_family_model_stepping"]
+    expected_cpu = (runtime["cpu_family"], runtime["cpu_model"], runtime["cpu_stepping"])
+    if cpu is None:
+        unestablished.append("CPU/feature identity")
+    elif tuple(cpu) != expected_cpu:
+        mismatches.append("CPU/feature identity")
     else:
-        matches.append("cpython executable")
+        matches.append("CPU/feature identity")
+    if observations["selected_dispatch"] is None:
+        unestablished.append("selected dispatch")
+    elif str(observations["selected_dispatch"]) != runtime["cos_vaddr"]:
+        mismatches.append("selected dispatch")
+    else:
+        matches.append("selected dispatch")
 
-    if observations["python_version"] != CERTIFICATE_PYTHON_VERSION:
-        mismatches.append("cpython version")
-    else:
-        matches.append("cpython version")
-
-    if observations["mxcsr"] is None:
-        unestablished.append("MXCSR")
-    if observations["fegetround"] is None:
-        unestablished.append("fegetround")
-    elif observations["fegetround"] == "0":
-        matches.append("fegetround")
-    else:
-        mismatches.append("fegetround")
-    if observations["libm_sha256"] is None:
-        unestablished.append("libm identity")
-    elif observations["libm_sha256"] != CERTIFICATE_LIBM_SHA256:
-        mismatches.append("libm identity")
-    else:
-        matches.append("libm identity")
-
-    if declaration.sha256 != build_extended_declaration(root).sha256:
+    if declaration.sha256 != EXTENDED_DECLARATION_SHA256:
         mismatches.append("extended declaration digest")
     else:
         matches.append("extended declaration digest")
@@ -253,7 +355,6 @@ def assess_live_eligibility(
     context_id = _context_id(observations)
     mismatch_tuple = tuple(mismatches)
     unestablished_tuple = tuple(unestablished)
-    token = _token(status, mismatch_tuple, unestablished_tuple, context_id, False)
     return LiveEligibilityRecord(
         status,
         tuple(matches),
@@ -264,15 +365,9 @@ def assess_live_eligibility(
         context_id,
         False,
         partial,
-        token,
+        _token(status, mismatch_tuple, unestablished_tuple, context_id, False),
+        root,
     )
-
-
-def _compare_bytes(name: str, data: bytes, expected: str, matches: list[str], mismatches: list[str]) -> None:
-    if sha256_bytes(data) == expected:
-        matches.append(name)
-        return
-    mismatches.append(f"{name} digest")
 
 
 def run_certificate_dependent(
@@ -284,12 +379,16 @@ def run_certificate_dependent(
     seal: Callable[[], object] | None = None,
     trajectory: Callable[[], object] | None = None,
 ) -> DependentCallReport:
-    """Refuse certificate-dependent work unless a live eligible record exists.
-
-    This preparation slice never calls the supplied functions. A forged
-    eligible record is not live evidence.
-    """
-    del source, mapper, select, seal, trajectory
+    """Count certificate-dependent calls. This slice does not invoke them."""
+    refused = (source, mapper, select, seal, trajectory)
+    counts = {name: 0 for name, _callback in zip(("source", "mapper", "selection", "seal", "trajectory"), refused, strict=True)}
     if record.authentic() and record.status == "ELIGIBLE" and not record.invalidated:
         raise RuntimeError("Certificate-dependent execution is not part of this preparation slice.")
-    return DependentCallReport(record)
+    return DependentCallReport(
+        record,
+        counts["source"],
+        counts["mapper"],
+        counts["selection"],
+        counts["seal"],
+        counts["trajectory"],
+    )

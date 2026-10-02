@@ -66,6 +66,22 @@ def test_incorrect_artifact_identity_is_blocked() -> None:
     assert any("artifact" in reason for reason in record.mismatches)
 
 
+def test_claimed_materials_cannot_replace_the_pinned_scale() -> None:
+    root = _repository()
+    materials = load_reviewed_materials(root).with_theta0(("1/2", "1/3"))
+    record = assess_live_eligibility(root, materials=materials)
+    assert record.status == "CONTRACT BLOCKED"
+    assert any("Theta0" in reason for reason in record.mismatches)
+
+
+def test_missing_authority_bytes_are_blocked(tmp_path) -> None:
+    record = assess_live_eligibility(tmp_path)
+    assert record.status == "CONTRACT BLOCKED"
+    assert any("unavailable" in reason for reason in record.mismatches)
+    report = run_certificate_dependent(record, source=lambda: None)
+    assert report.source_calls == 0
+
+
 def test_changed_scale_or_uncertainty_invalidates_eligibility() -> None:
     root = _repository()
     record = assess_live_eligibility(root, theta0=("1/2", "1/3"))
