@@ -173,8 +173,10 @@ against the unchanged root-time allowance, and `Q_r`/`Q_p` in the C2V-07
 returned-time check. Pre-snap angle checks run at both the exact relative
 coordinate and the exact public-relative coordinate before an option is
 accepted. The production domain audit uses the same interval work and extends
-through the retained enclosure. C2V-07 reads that conversion certificate.
-Candidate selection, partition eligibility, and future-v2 sealing are not
+through the retained enclosure. C2V-07 reads that conversion certificate, including
+the final relative and public rounding cells. The exact-1/3 witness must select
+the upper neighbor. Candidate selection, partition eligibility, and future-v2
+sealing are not
 implemented. This draft is not a claim that the amended workflow is complete. `physical_qualification=false`. Coefficient replay inputs and the explicit rational image
 are separate records. Draft PR #81 is a
 separate blocked evidence attempt, not accepted PR-C verification. Independent

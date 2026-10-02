@@ -139,6 +139,31 @@ class TimestampSelectionCertificate:
     q_r: Fraction
     q_p: Fraction
     audit_extent: Fraction
+    relative_cell: "RoundingCell"
+    public_cell: "RoundingCell"
+    relative_target: Fraction
+    public_target: Fraction
+    selected_option: int
+
+
+@dataclass(frozen=True)
+class RoundingCell:
+    """Exact nearest-even cell of one stored binary64 value."""
+
+    value: float
+    lower: Fraction
+    upper: Fraction
+    lower_included: bool
+    upper_included: bool
+
+    def contains(self, target: Fraction) -> bool:
+        if target < self.lower or target > self.upper:
+            return False
+        if target == self.lower:
+            return self.lower_included
+        if target == self.upper:
+            return self.upper_included
+        return True
 
 
 @dataclass(frozen=True)
@@ -1022,6 +1047,49 @@ def _significand_even(value: float) -> bool:
     return struct.pack("<d", value)[0] & 1 == 0
 
 
+def _owns_midpoint(left: float, right: float, candidate: float) -> bool:
+    left_even = _significand_even(left)
+    right_even = _significand_even(right)
+    if left_even == right_even:
+        raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
+    owner = left if left_even else right
+    return owner == candidate
+
+
+def _rounding_cell(value: float) -> RoundingCell:
+    """Cell from the predecessor, the successor, and stored significand parity."""
+    if not math.isfinite(value):
+        raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
+    predecessor = math.nextafter(value, -math.inf)
+    successor = math.nextafter(value, math.inf)
+    if (
+        not math.isfinite(predecessor)
+        or not math.isfinite(successor)
+        or predecessor == value
+        or successor == value
+    ):
+        raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
+    return RoundingCell(
+        value=value,
+        lower=(Fraction.from_float(predecessor) + Fraction.from_float(value)) / 2,
+        upper=(Fraction.from_float(value) + Fraction.from_float(successor)) / 2,
+        lower_included=_owns_midpoint(predecessor, value, value),
+        upper_included=_owns_midpoint(value, successor, value),
+    )
+
+
+def _certify_other_bracket(ordered: list[float], ideal: Fraction, selected: float) -> None:
+    """The second option is the other immediate neighbor, not a nearest cell member."""
+    if len(ordered) != 2 or selected != ordered[1]:
+        raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
+    low = min(ordered)
+    high = max(ordered)
+    if math.nextafter(low, math.inf) != high:
+        raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
+    if not Fraction.from_float(low) < ideal < Fraction.from_float(high):
+        raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
+
+
 def _adjacent_timestamp_order(target: Fraction) -> list[float]:
     """Nearest-even binary64 neighbor, then the other adjacent bracket.
 
@@ -1201,6 +1269,15 @@ def _convert_root(
             if distinct_roots != 1:
                 raise RadauContractFailure("CMM-2 contact identity is unresolved.")
             published_sum = origin_fraction + relative_fraction
+            neighbor_cells = tuple(_rounding_cell(option) for option in ordered)
+            if not neighbor_cells[0].contains(ideal):
+                raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
+            selected_option = ordered.index(relative)
+            if selected_option > 0:
+                _certify_other_bracket(ordered, ideal, relative)
+            public_cell = _rounding_cell(public)
+            if not public_cell.contains(published_sum):
+                raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
             tie_midpoint, tie_owner = _tie_record(ordered)
             audit_extent = max(
                 relative_fraction,
@@ -1229,6 +1306,11 @@ def _convert_root(
                 q_r=abs(relative_fraction - ideal),
                 q_p=abs(public_fraction - published_sum),
                 audit_extent=audit_extent,
+                relative_cell=neighbor_cells[selected_option],
+                public_cell=public_cell,
+                relative_target=ideal,
+                public_target=published_sum,
+                selected_option=selected_option,
             )
         if restarted:
             continue

@@ -298,6 +298,12 @@ def test_c2v07_presnap_observer_uses_the_cubic_contact(monkeypatch) -> None:
     certificate = hit[4]
     assert certificate.selected_relative.hex() == event.hex()
     assert certificate.selected_public.hex() == float(hit[1]).hex()
+    assert certificate.public_cell.contains(certificate.public_target)
+    if certificate.selected_option == 0:
+        assert certificate.relative_cell.contains(certificate.relative_target)
+    else:
+        assert certificate.selected_option == 1
+        assert certificate.selected_relative == certificate.neighbors[1]
     assert certificate.q_p == abs(certificate.public_exact - certificate.published_sum)
     assert certificate.root_time <= certificate.allowance
     xi = (event - start) / width
@@ -549,3 +555,8 @@ def test_c2v07_certificate_is_conversion_infeasible() -> None:
     assert certificate.root_time == Fraction(9007199254741, 2**99)
     assert certificate.q_r == Fraction(30540034973231, 2**99)
     assert certificate.q_p == 0
+    assert certificate.relative_cell.lower == Fraction(13510798882107507, 2**54)
+    assert certificate.relative_cell.upper == Fraction(13510798882107509, 2**54)
+    assert certificate.relative_cell.lower_included and certificate.relative_cell.upper_included
+    assert certificate.relative_cell.contains(certificate.relative_target)
+    assert certificate.public_cell.contains(certificate.public_target)

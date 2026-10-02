@@ -686,28 +686,33 @@ def test_converted_public_time_must_preserve_direction() -> None:
     q_matrix[0, 0] = -1.5
     q_matrix[1, 0] = -3.0
     dense = _dense(0.0, 1.0, (0.5, 1.0 + 2**-17, 40.0), q_matrix)
-    try:
-        hit = first_radau_contact(
-            dense,
-            0.0,
-            1.0,
-            dense(0.0),
-            dense(1.0),
-            _mechanism(0.0, 1.2),
-            _controls(2**-20),
-            origin=0.5,
-            last_published=0.0,
-        )
-    except RadauContractFailure as exc:
-        assert "direction" in str(exc) or "conversion" in str(exc)
-        return
-    public = float(0.5) + hit[1]
-    public_xi = Fraction(public) - Fraction(0.5)
-    relative_xi = Fraction(hit[1])
-    rate_y = Fraction.from_float(1.0 + 2**-17)
-    velocity = Fraction(1, 2**17)
-    assert rate_y + Fraction(-3) * public_xi <= velocity
-    assert rate_y + Fraction(-3) * relative_xi <= velocity
+    hit = first_radau_contact(
+        dense,
+        0.0,
+        1.0,
+        dense(0.0),
+        dense(1.0),
+        _mechanism(0.0, 1.2),
+        _controls(2**-20),
+        origin=0.5,
+        last_published=0.0,
+    )
+    certificate = hit[4]
+    assert certificate.selected_relative.hex() == "0x1.5555555555556p-2"
+    assert certificate.selected_public.hex() == "0x1.aaaaaaaaaaaabp-1"
+    assert certificate.selected_option == 1
+    assert certificate.neighbors[0].hex() == "0x1.5555555555555p-2"
+    assert certificate.relative_target == Fraction(1, 3)
+    assert not certificate.relative_cell.contains(certificate.relative_target)
+    assert certificate.public_cell.contains(certificate.public_target)
+    assert certificate.q_r == Fraction(1, 27021597764222976)
+    assert certificate.q_p == 0
+    limit = Fraction(1, 2**17)
+    rate_0 = Fraction.from_float(1.0 + 2**-17)
+    relative_xi = certificate.relative_exact
+    public_xi = certificate.public_exact - certificate.origin
+    assert rate_0 + Fraction(-3) * relative_xi - limit == Fraction(-1, 2**53)
+    assert rate_0 + Fraction(-3) * public_xi - limit == Fraction(-1, 2**53)
 
 
 def test_timestamp_is_certified_against_the_root_enclosure() -> None:

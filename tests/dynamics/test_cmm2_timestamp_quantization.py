@@ -20,6 +20,7 @@ from pyfoldable.dynamics.cmm2_radau_dense import (
     _adjacent_timestamp_order,
     _convert_root,
     _rn64,
+    _rounding_cell,
     audit_represented_domain,
     first_radau_contact,
 )
@@ -210,6 +211,67 @@ def test_archived_cubic_exposes_the_actual_selection_certificate() -> None:
     assert certificate.allowance == Fraction.from_float(width * (1e-14 + 1e-14 * abs(xi)))
     assert certificate.allowance_width == width
     assert certificate.allowance_xi == xi
+    assert certificate.selected_option == 0
+    assert certificate.relative_cell.lower == Fraction(13510798882107507, 2**54)
+    assert certificate.relative_cell.upper == Fraction(13510798882107509, 2**54)
+    assert certificate.relative_cell.lower_included
+    assert certificate.relative_cell.upper_included
+    assert certificate.relative_cell.contains(certificate.relative_target)
+    assert certificate.public_cell.contains(certificate.public_target)
+
+
+def test_rounding_cells_cover_singleton_exponent_boundary_and_subnormals() -> None:
+    half = _rounding_cell(0.5)
+    assert half.contains(Fraction(1, 2))
+    assert half.lower_included and half.upper_included
+    assert half.lower == (Fraction.from_float(math.nextafter(0.5, 0.0)) + Fraction(1, 2)) / 2
+    assert half.upper == (Fraction(1, 2) + Fraction.from_float(math.nextafter(0.5, math.inf))) / 2
+
+    boundary = _rounding_cell(1.0)
+    assert boundary.lower_included and boundary.upper_included
+    assert Fraction(1) - boundary.lower == Fraction(1, 2**54)
+    assert boundary.upper - Fraction(1) == Fraction(1, 2**53)
+    assert boundary.contains(Fraction(1))
+    successor = math.nextafter(1.0, math.inf)
+    successor_cell = _rounding_cell(successor)
+    assert not successor_cell.lower_included and not successor_cell.upper_included
+    assert not successor_cell.contains(boundary.upper)
+
+    odd = float.fromhex("0x0.0000000000001p-1022")
+    even = float.fromhex("0x0.0000000000002p-1022")
+    midpoint = (Fraction.from_float(odd) + Fraction.from_float(even)) / 2
+    odd_cell = _rounding_cell(odd)
+    even_cell = _rounding_cell(even)
+    assert not odd_cell.lower_included and not odd_cell.upper_included
+    assert even_cell.lower_included and even_cell.upper_included
+    assert even_cell.contains(midpoint)
+    assert not odd_cell.contains(midpoint)
+    zero = _rounding_cell(0.0)
+    assert zero.lower_included and zero.upper_included
+    assert zero.contains(Fraction(0))
+
+
+def test_exact_half_conversion_records_its_singleton_cell() -> None:
+    q_matrix = np.zeros((3, 3))
+    q_matrix[0, 0] = -1.0
+    dense = RadauDenseOutput(0.0, 1.0, np.array([0.5, -1.0, 40.0]), q_matrix)
+    hit = first_radau_contact(
+        dense,
+        0.0,
+        1.0,
+        dense(0.0),
+        dense(1.0),
+        _WideStops(),
+        _Controls(),
+        origin=0.0,
+        last_published=0.0,
+    )
+    certificate = hit[4]
+    assert certificate.neighbors == (0.5,)
+    assert certificate.selected_option == 0
+    assert certificate.relative_target == Fraction(1, 2)
+    assert certificate.relative_cell.contains(certificate.relative_target)
+    assert certificate.public_cell.contains(certificate.public_target)
 
 
 def test_one_third_neighbors_are_the_contract_pair_in_nearest_first_order() -> None:
