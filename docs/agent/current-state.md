@@ -332,3 +332,79 @@ setup or completed measurements are inferred from conversation.
 No repository dump, application refactor, database or vendor-specific automation
 was added to satisfy the documentation structure. Update only affected canonical
 pages as capabilities evolve; keep detailed numeric contracts in their existing files.
+
+## 2026-10-01 numerical-feasibility proposal — not frozen
+
+At main `4cf0d0ea017fa824ba8d4a063ceddd015dae09d6`, CMM-2 still ships
+RK45/v1. The [numerical-feasibility proposal](../cmm2_numerical_feasibility_amendment.md)
+is PROPOSED / NOT FROZEN / NOT IMPLEMENTED. It separates certified root
+accuracy from timestamp quantization and specifies a synthetic C2V09-28 source.
+The initial real BEM passed with that source; mapping rejected incomplete
+station-span coverage, so the candidate is not selected or freeze-ready.
+Draft PR #84 remains BLOCKED; PR #81 remains Draft/BLOCKED and unchanged at
+`1fdf213bb991b2f155bf812d837bb4dcb73a8cc8`. No accepted independent CMM-2
+numerical evidence exists. ADR-009 is not created/accepted and
+`physical_qualification=false`; no GEOM, calibration or experimental promotion.
+Earlier dated snapshots and frozen normative contracts are not rewritten.
+
+Prospective append-only [C2V09-29 declaration](../cmm2_c2v09_candidate29_proposal.md) retains candidate28
+and its mapper rejection, adding a first-party synthetic constant terminal
+station under proposed selector v3 (00…27,28,29). Status remains **PROPOSED /
+NOT FROZEN / NOT IMPLEMENTED**. Committed-declaration review precedes any
+initial-only source/preflight measurement; no trajectory, freeze or acceptance
+follows. Main RK45/v1 and unmerged PR81/84 identities are unchanged.
+
+After separate committed-declaration review, [candidate29 initial preflight](../cmm2_c2v09_candidate29_initial_preflight.md)
+measured source/Q2/detectability/Q4 checks but retained a literal partition
+predicate failure. Candidate29 remains BLOCKED / NOT SELECTED; candidate28
+mapper rejection is preserved. No proposed-candidate trajectory was run,
+no v2 seal exists, and this is not accepted independent numerical evidence.
+
+A subsequent [prospective partition-policy declaration](../cmm2_c2v09_partition_policy_proposal.md)
+uses unchanged candidate29 and a whole stored-scale angle neighborhood. It
+preserves literal v1 FAIL/raw zeros and every historical capture; no structural
+alias is relabelled as passing v1. The separately versioned proposal and Q4
+successor conjunction are **PROPOSED / NOT FROZEN / NOT IMPLEMENTED**.
+Committed-declaration review precedes any new initial-only assessment; no
+trajectory, ordered selection, v2 seal or acceptance is authorized.
+
+The [prospective partition initial assessment](../cmm2_c2v09_partition_initial_assessment.md)
+keeps literal v1 FAIL and unchanged candidate29. Conditional source algebra
+and conjunctive Q4 replay do not close the unresolved actual whole-neighborhood
+runtime/source proof; prospective result BLOCKED / NOT SELECTED. No trajectories,
+ordered selection, v2 seal, freeze or accepted independent numerical evidence.
+
+A [prospective v3 scope/runtime clarification](../cmm2_c2v09_partition_scope_runtime_proposal.md)
+separates geometric ownership over the exact initial angle neighborhood,
+inherited initial source preflight and unproved every-angle BEM success.
+Status PROPOSED / NOT FROZEN / NOT IMPLEMENTED; candidate29 unchanged and
+NOT SELECTED. Historical v2 words/results and literal v1 FAIL remain.
+Independent committed-declaration review precedes concrete-runtime arithmetic
+certification; zero new source/trajectory calls, selection or v2 seal.
+
+The [concrete-runtime geometric certificate](../cmm2_c2v09_partition_runtime_certificate.md)
+proves initial whole-neighborhood geometric scope A for one pinned CPython/math/
+libm/CPU-dispatch/RN environment, conditional on a valid returned source object.
+Initial source evidence B is preserved; every-angle BEM-success scope C remains
+unproved and is not inherited from frozen PR-C11. Original v1 FAIL and historical
+v2 BLOCKED remain; candidate29 NOT SELECTED. No new source/trajectory calls,
+ordered selection, v2 seal, freeze or accepted PR-C evidence; qualificationfalse.
+
+## 2026-10-02 cumulative numerical-feasibility implementation closure — design frozen
+
+The [authoritative cumulative subsection](../cmm2_numerical_feasibility_amendment.md#7-cumulative-implementation-authority-and-live-eligibility)
+combines the unchanged timestamp policy, append-only00…27,28,29 selector and
+partition v2 explicitly narrowed by geometric scope v3. It specifies exact
+partition precedence, mandatory live eligibility and future canonical selection/
+v2-seal provenance. Status is **REVIEWED / FROZEN FOR IMPLEMENTATION — CMM-2
+NUMERICAL FEASIBILITY AMENDMENT**, NOT IMPLEMENTED. Actual technical reviewed
+HEAD `fd55fa97676c84c896511765e94561a706252239` received separate independent
+APPROVE FOR CONTRACT FREEZE; its checks and push/PR baseline CI passed before
+the later status-only closure. That closure HEAD is not the technical review HEAD;
+fresh closure-head CI remains required. Earlier statuses/results remain historical.
+The approved bounded A mathematics requires no additional certificate here;
+live runtime applicability is reserved for future executable implementation.
+Candidate29 remains unchanged / NOT SELECTED; old v1 FAIL, candidate28 rejection
+and historical v2 BLOCKED remain. No new source calls, selector, trajectories,
+v2 seal or implementation authorization. Main remains RK45/v1; PR81/84 untouched,
+ADR-009 unaccepted and physical_qualification=false.

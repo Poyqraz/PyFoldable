@@ -589,3 +589,59 @@ Bu aerodinamik fiziksel kapı açık kalır. Ondan ayrı olarak geometri tarama
 zinciri PR #67–#69 ile duraklatılmıştır ve sonraki model dilimi, henüz
 yazılmamış bağlaşık aero–motor–mekanizma sözleşmesidir. PY-06D2 ve robust
 optimizasyon veri ve doğrulama kapılarının önüne alınmaz.
+
+## 2026-10-01 proposed numerical-feasibility amendment
+
+The [numerical-feasibility proposal](cmm2_numerical_feasibility_amendment.md)
+is PROPOSED / NOT FROZEN / NOT IMPLEMENTED. Main still ships CMM-2 RK45/v1;
+Draft PR #84 Radau/v2 remains BLOCKED. Proposed C2V09-28 reaches real BEM
+but fails mapper span coverage and is not selectable. Kabul edilmiş bağımsız
+sayısal kanıt yoktur. Review, fixture-feasibility resolution and separate
+freeze/implementation authorization precede new trajectories. Draft PR #81
+remains BLOCKED; ADR-009 is not created/accepted; physical qualification
+remains false. Historical phase and acceptance records are unchanged.
+
+Prospective append-only [C2V09-29 declaration](cmm2_c2v09_candidate29_proposal.md) retains candidate28
+and its mapper rejection, adding a first-party synthetic constant terminal
+station under proposed selector v3 (00…27,28,29). Status remains **PROPOSED /
+NOT FROZEN / NOT IMPLEMENTED**. Committed-declaration review precedes any
+initial-only source/preflight measurement; no trajectory, freeze or acceptance
+follows. Main RK45/v1 and unmerged PR81/84 identities are unchanged.
+
+After separate committed-declaration review, [candidate29 initial preflight](cmm2_c2v09_candidate29_initial_preflight.md)
+measured source/Q2/detectability/Q4 checks but retained a literal partition
+predicate failure. Candidate29 remains BLOCKED / NOT SELECTED; candidate28
+mapper rejection is preserved. No proposed-candidate trajectory was run,
+no v2 seal exists, and this is not accepted independent numerical evidence.
+
+A subsequent [prospective partition-policy declaration](cmm2_c2v09_partition_policy_proposal.md)
+uses unchanged candidate29 and a whole stored-scale angle neighborhood. It
+preserves literal v1 FAIL/raw zeros and every historical capture; no structural
+alias is relabelled as passing v1. The separately versioned proposal and Q4
+successor conjunction are **PROPOSED / NOT FROZEN / NOT IMPLEMENTED**.
+Committed-declaration review precedes any new initial-only assessment; no
+trajectory, ordered selection, v2 seal or acceptance is authorized.
+
+The [prospective partition initial assessment](cmm2_c2v09_partition_initial_assessment.md)
+keeps literal v1 FAIL and unchanged candidate29. Conditional source algebra
+and conjunctive Q4 replay do not close the unresolved actual whole-neighborhood
+runtime/source proof; prospective result BLOCKED / NOT SELECTED. No trajectories,
+ordered selection, v2 seal, freeze or accepted independent numerical evidence.
+
+## 2026-10-02 cumulative feasibility-design closure — design frozen
+
+The [cumulative implementation subsection](cmm2_numerical_feasibility_amendment.md#7-cumulative-implementation-authority-and-live-eligibility)
+is **REVIEWED / FROZEN FOR IMPLEMENTATION — CMM-2 NUMERICAL FEASIBILITY AMENDMENT**,
+NOT IMPLEMENTED. Technical reviewed HEAD `fd55fa97676c84c896511765e94561a706252239`
+received independent APPROVE FOR CONTRACT FREEZE and passed its documentation
+checks and push/PR baseline CI before the separate status-only closure; fresh
+closure-head CI is still required. It binds the unchanged timestamp
+proposal, append-only selector00…27,28,29 and partition v2 narrowed by scope v3,
+with mandatory **live** certificate/runtime eligibility before future successful
+selection and separate-v2 sealing. Archived replay or baseline CI cannot supply
+that eligibility. Earlier declarations/results above remain historical; design
+freeze does not establish selection, trajectories or PR-C verification.
+Candidate29 NOT SELECTED; literal v1 FAIL and historical v2 BLOCKED preserved.
+Kabul edilmiş bağımsız sayısal kanıt yoktur. Main RK45/v1, pending Q5/runtime/
+minimum-SciPy work and qualification boundaries remain; no implementation,
+ADR-009 acceptance or physical qualification follows.
