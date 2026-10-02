@@ -197,7 +197,9 @@ def _blocked(root: Path, reason: str) -> LiveEligibilityRecord:
         "MXCSR",
         "DAZ/FTZ",
         "selected dispatch",
-        "CPU/feature identity",
+        "CPU family/model/stepping",
+        "CPU features",
+        "selected dispatch",
         "loader identity",
     )
     return LiveEligibilityRecord(
@@ -232,6 +234,18 @@ def _compare_identity(name: str, observed: object, expected: str, matches: list[
     mismatches.append(name)
 
 
+def _technical_authority_bytes(root: Path, path: str) -> bytes | None:
+    """Load one artifact at the frozen technical HEAD. Absence is not a mismatch."""
+    try:
+        return subprocess.check_output(
+            ["git", "show", f"{TECHNICAL_HEAD}:{path}"],
+            cwd=root,
+            stderr=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
 def assess_live_eligibility(
     root: Path,
     *,
@@ -239,6 +253,7 @@ def assess_live_eligibility(
     theta0: tuple[str, str] | None = None,
     uncertainty_hex: tuple[str, ...] | None = None,
     source_sha256: str | None = None,
+    observed_runtime: Mapping[str, object] | None = None,
     waive_source_mismatch: bool = False,
     claimed_record: Mapping[str, object] | None = None,
 ) -> LiveEligibilityRecord:
@@ -255,10 +270,22 @@ def assess_live_eligibility(
             theta0=theta0,
             uncertainty_hex=uncertainty_hex,
             source_sha256=source_sha256,
+            observed_runtime=observed_runtime,
             claimed_record=claimed_record,
         )
     except (OSError, RuntimeError, ValueError, KeyError, subprocess.CalledProcessError) as exc:
         return _blocked(root, str(exc))
+
+
+def _classify_actual(name: str, supplied, pinned_value, matches: list[str], mismatches: list[str], unestablished: list[str], mismatch_text: str) -> None:
+    """Pinned defaults are not live observations."""
+    if supplied is None:
+        unestablished.append(name)
+        return
+    if supplied != pinned_value:
+        mismatches.append(mismatch_text)
+        return
+    matches.append(name)
 
 
 def _assess(
@@ -268,16 +295,27 @@ def _assess(
     theta0: tuple[str, str] | None,
     uncertainty_hex: tuple[str, ...] | None,
     source_sha256: str | None,
+    observed_runtime: Mapping[str, object] | None,
     claimed_record: Mapping[str, object] | None,
 ) -> LiveEligibilityRecord:
     pinned = load_reviewed_materials(root)
     claimed = pinned if materials is None else materials
     declaration = build_extended_declaration(root)
     observations = observe_execution_context(root)
+    if observed_runtime is not None:
+        observations.update(observed_runtime)
     runtime = pinned.certificate_runtime
     matches: list[str] = []
     mismatches: list[str] = []
-    unestablished: list[str] = ["returned source object", "loaded cosine instruction bytes", "MXCSR", "DAZ/FTZ"]
+    unestablished: list[str] = [
+        "returned source object",
+        "loaded cosine instruction bytes",
+        "MXCSR",
+        "DAZ/FTZ",
+        "CPU features",
+        "selected dispatch",
+    ]
+    closure_provenance: list[str] = []
 
     if claimed_record is not None:
         mismatches.append("caller-supplied record is not live execution evidence")
@@ -291,33 +329,57 @@ def _assess(
             mismatches.append(f"artifact identity {path}")
         else:
             matches.append(f"artifact {path}")
+        loaded = _technical_authority_bytes(root, path)
+        if loaded is None:
+            unestablished.append(f"technical authority {path}")
+        elif sha256_bytes(loaded) != pinned_digest:
+            mismatches.append(f"technical authority {path}")
+        else:
+            matches.append(f"technical authority {path}")
         current = root / path
-        if not current.is_file() or sha256_bytes(current.read_bytes()) != pinned_digest:
-            mismatches.append(f"executing artifact bytes differ from technical head {path}")
+        if current.is_file() and sha256_bytes(current.read_bytes()) != pinned_digest:
+            closure_provenance.append(path)
 
-    claimed_theta = theta0 if theta0 is not None else claimed.theta0
-    if tuple(claimed_theta) != tuple(pinned.theta0):
-        mismatches.append("Theta0 scale binding")
-    else:
-        matches.append("Theta0")
-
-    claimed_uncertainty = uncertainty_hex if uncertainty_hex is not None else claimed.uncertainty_hex
-    if tuple(claimed_uncertainty) != tuple(pinned.uncertainty_hex):
-        mismatches.append("stored center uncertainty")
-    else:
-        matches.append("stored center uncertainty")
-
-    claimed_source = source_sha256 if source_sha256 is not None else claimed.candidate29_source_sha256
-    if claimed_source != pinned.candidate29_source_sha256:
-        mismatches.append("candidate29 source hash")
-    else:
-        matches.append("candidate29 source hash")
+    supplied_theta = theta0
+    if supplied_theta is None and materials is not None and materials.theta0 != pinned.theta0:
+        supplied_theta = materials.theta0
+    _classify_actual(
+        "Theta0",
+        None if supplied_theta is None else tuple(supplied_theta),
+        tuple(pinned.theta0),
+        matches,
+        mismatches,
+        unestablished,
+        "Theta0 scale binding",
+    )
+    supplied_uncertainty = uncertainty_hex
+    if supplied_uncertainty is None and materials is not None and materials.uncertainty_hex != pinned.uncertainty_hex:
+        supplied_uncertainty = materials.uncertainty_hex
+    _classify_actual(
+        "stored center uncertainty",
+        None if supplied_uncertainty is None else tuple(supplied_uncertainty),
+        tuple(pinned.uncertainty_hex),
+        matches,
+        mismatches,
+        unestablished,
+        "stored center uncertainty",
+    )
+    supplied_source = source_sha256
+    if supplied_source is None and materials is not None and materials.candidate29_source_sha256 != pinned.candidate29_source_sha256:
+        supplied_source = materials.candidate29_source_sha256
+    _classify_actual(
+        "candidate29 source bytes",
+        supplied_source,
+        pinned.candidate29_source_sha256,
+        matches,
+        mismatches,
+        unestablished,
+        "candidate29 source hash",
+    )
 
     executing_head = str(observations["executing_head"])
-    if executing_head != TECHNICAL_HEAD:
-        mismatches.append("reviewed technical head")
-    else:
-        matches.append("reviewed technical head")
+    observations["technical_head"] = TECHNICAL_HEAD
+    observations["closure_provenance"] = tuple(closure_provenance)
 
     _compare_identity("cpython executable", observations["executable_sha256"], runtime["executable_sha256"], matches, mismatches, unestablished)
     _compare_identity("cpython version", observations["python_version"], runtime["python_version"], matches, mismatches, unestablished)
@@ -328,17 +390,17 @@ def _assess(
     cpu = observations["cpu_family_model_stepping"]
     expected_cpu = (runtime["cpu_family"], runtime["cpu_model"], runtime["cpu_stepping"])
     if cpu is None:
-        unestablished.append("CPU/feature identity")
+        unestablished.append("CPU family/model/stepping")
     elif tuple(cpu) != expected_cpu:
-        mismatches.append("CPU/feature identity")
+        mismatches.append("CPU family/model/stepping")
     else:
-        matches.append("CPU/feature identity")
-    if observations["selected_dispatch"] is None:
-        unestablished.append("selected dispatch")
-    elif str(observations["selected_dispatch"]) != runtime["cos_vaddr"]:
-        mismatches.append("selected dispatch")
-    else:
-        matches.append("selected dispatch")
+        matches.append("CPU family/model/stepping")
+    if observations["selected_dispatch"] is not None:
+        unestablished.remove("selected dispatch")
+        if str(observations["selected_dispatch"]) == runtime["cos_vaddr"]:
+            matches.append("selected dispatch")
+        else:
+            mismatches.append("selected dispatch")
 
     if declaration.sha256 != EXTENDED_DECLARATION_SHA256:
         mismatches.append("extended declaration digest")

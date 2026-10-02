@@ -126,12 +126,41 @@ def test_mocked_matching_record_is_not_live_evidence() -> None:
 
 def test_missing_observation_blocks_without_a_source_call() -> None:
     root = _repository()
-    record = assess_live_eligibility(root)
+    record = assess_live_eligibility(
+        root,
+        observed_runtime={
+            "executable_sha256": None,
+            "libm_sha256": None,
+            "libc_sha256": None,
+            "loader_sha256": None,
+            "fegetround": None,
+            "cpu_family_model_stepping": None,
+        },
+    )
     assert record.status == "CONTRACT BLOCKED"
     assert "returned source object" in record.unestablished
     assert "loaded cosine instruction bytes" in record.unestablished
+    assert "cpython executable" in record.unestablished
+    assert "cpython executable" not in record.mismatches
+    assert "CPU family/model/stepping" in record.unestablished
+    assert "CPU features" in record.unestablished
+    assert "selected dispatch" in record.unestablished
+    assert "MXCSR" in record.unestablished
     report = run_certificate_dependent(record, source=lambda: (_ for _ in ()).throw(AssertionError("called")))
     assert report.source_calls == 0
+
+
+def test_runtime_mismatch_is_recorded_only_when_the_observed_value_differs() -> None:
+    root = _repository()
+    materials = load_reviewed_materials(root)
+    executable = materials.certificate_runtime["executable_sha256"]
+    matched = assess_live_eligibility(root, observed_runtime={"executable_sha256": executable})
+    differed = assess_live_eligibility(root, observed_runtime={"executable_sha256": "ab" * 32})
+    assert "cpython executable" in matched.matches
+    assert "cpython executable" not in matched.mismatches
+    assert "cpython executable" in differed.mismatches
+    assert matched.status == differed.status == "CONTRACT BLOCKED"
+    assert run_certificate_dependent(matched, source=lambda: None).source_calls == 0
 
 
 def test_stale_context_and_post_call_change_reject_the_record() -> None:
@@ -160,16 +189,23 @@ def test_actual_context_is_blocked_and_preserves_partial_observations() -> None:
         trajectory=lambda: None,
     )
     assert record.status == "CONTRACT BLOCKED"
-    assert record.executing_head != TECHNICAL_HEAD
-    assert "reviewed technical head" in record.mismatches
-    assert "cpython executable" in record.mismatches
+    assert record.observations["technical_head"] == TECHNICAL_HEAD
+    assert record.observations["executing_head"] == record.executing_head
+    assert "reviewed technical head" not in record.mismatches
+    assert not any("executing artifact bytes differ" in reason for reason in record.mismatches)
+    assert "Theta0" in record.unestablished
+    assert "stored center uncertainty" in record.unestablished
+    assert "candidate29 source bytes" in record.unestablished
+    assert "Theta0" not in record.matches
+    assert "candidate29 source bytes" not in record.matches
+    assert "CPU/feature identity" not in record.matches
+    assert "CPU features" in record.unestablished
+    assert "selected dispatch" in record.unestablished
     assert "original 00-27 manifest" in record.matches
     assert "candidate28 manifest" in record.matches
     assert "candidate29 manifest" in record.matches
     assert record.observations["python_version"]
-    assert record.observations["executable_sha256"] != (
-        "fa67443527ed9647f760d807e2a38f26340757123e643c4639cf273ed15d5ea7"
-    )
+    assert record.observations["executable_sha256"]
     assert report.source_calls == 0
     assert report.mapper_calls == 0
     assert report.selection_calls == 0

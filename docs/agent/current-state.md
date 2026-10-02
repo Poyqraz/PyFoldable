@@ -462,8 +462,9 @@ v2 seal or implementation authorization. Main remains RK45/v1; PR81/84 untouched
 ADR-009 unaccepted and physical_qualification=false.
 
 The later preparation slice on this draft pins the append-only declaration
-00…27,28,29 and runs an executable live-eligibility gate. The gate reads the
-reviewed technical HEAD `fd55fa97676c84c896511765e94561a706252239` and the
-executing process. It returns CONTRACT BLOCKED when applicability is not
+00…27,28,29 and runs an executable live-eligibility gate. Technical authority
+`fd55fa97676c84c896511765e94561a706252239`, later closure provenance, and the
+executing implementation are separate identities. Missing actual inputs stay
+unestablished. The gate returns CONTRACT BLOCKED when applicability is not
 established. It does not select, seal, relabel a v1 seal, or enter a trajectory.
 `physical_qualification=false`.
