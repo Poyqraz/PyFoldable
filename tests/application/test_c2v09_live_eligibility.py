@@ -252,10 +252,7 @@ def test_actual_context_is_blocked_and_preserves_partial_observations() -> None:
     assert "Theta0" not in record.matches
     assert "candidate29 source bytes" not in record.matches
     assert "CPU/feature identity" not in record.matches
-    if record.observations.get("cpu_feature_flags"):
-        assert "CPU features" not in record.unestablished
-    else:
-        assert "CPU features" in record.unestablished
+    assert "CPU features" in record.unestablished
     if record.observations.get("selected_dispatch") is None:
         assert "selected dispatch" in record.unestablished
     else:

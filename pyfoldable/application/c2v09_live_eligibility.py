@@ -318,10 +318,9 @@ def _assess(
         "loaded cosine instruction bytes",
         "MXCSR",
         "DAZ/FTZ",
+        "CPU features",
         "selected dispatch",
     ]
-    if not observations.get("cpu_feature_flags"):
-        unestablished.append("CPU features")
     closure_provenance: list[str] = []
 
     if claimed_record is not None:

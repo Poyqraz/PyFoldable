@@ -243,13 +243,7 @@ def collect_binding_record(root: Path) -> dict[str, object]:
                 constant_rows.append({"vaddr": vaddr, "classification": "NOT ESTABLISHED"})
                 continue
             expected = bytes.fromhex(str(spec["little_endian_bytes_hex"]))
-            observed = None
-            for candidate in (libm_path, str(executable)):
-                if candidate is None:
-                    continue
-                observed = read_loaded_vaddr(candidate, int(vaddr, 16), len(expected))
-                if observed is not None:
-                    break
+            observed = None if libm_path is None else read_loaded_vaddr(libm_path, int(vaddr, 16), len(expected))
             classification = _classify_bytes(f"loaded constant {vaddr}", observed, expected, matches, mismatches, missing)
             constant_rows.append({"vaddr": str(vaddr), "classification": classification})
 
