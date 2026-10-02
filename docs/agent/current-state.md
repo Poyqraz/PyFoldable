@@ -468,3 +468,18 @@ executing implementation are separate identities. Missing actual inputs stay
 unestablished. Caller claims do not replace live observations. The gate returns CONTRACT BLOCKED when applicability is not
 established. It does not select, seal, relabel a v1 seal, or enter a trajectory.
 `physical_qualification=false`.
+
+## 2026-10-02 strength-aware radial hinge assessment — proposal only
+
+The [separate design proposal](../strength_aware_radial_hinge_assessment_proposal.md)
+is **PROPOSED / NOT IMPLEMENTED**, based on main
+`a5286cc6d80ea0130bd3bdc87d2b42277c499900`. It scopes a first candidate dossier
+to one actual 250 mm blade and one declared joint design; their real identities,
+sections, directional PA-CF evidence, load cases/limits and structural results
+must be supplied. Legacy scaled mass/midpoint CG/reference-scaled thrust are not
+structural evidence. A 13-inch diameter remains a separate scenario.
+Existing GEOM-01, active BEM and PR-09 boundaries are preserved; missing clearance
+or physical evidence cannot select a safe winner. CAD/material/test preparation
+can proceed alongside CMM-2 verification without changing PR #81/#84 or their
+contracts. No runs, CAD edits, new gates, freeze, ADR-009 acceptance or physical
+qualification follow this documentation proposal.
