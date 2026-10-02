@@ -504,6 +504,14 @@ kadar `blocked_waiting_for_real_structural_inputs` olarak kalır. Ayrıntılar
 [PR-09 yürütme planı](pr09_fea_contract_execution_plan.md) ve
 [kanıt raporundadır](../reports/pr09_fea_contract_evidence.md).
 
+**Ayrı tasarım önerisi — PROPOSED / NOT IMPLEMENTED:**
+[Dayanımı gözeten radyal menteşe konumu değerlendirmesi](strength_aware_radial_hinge_assessment_proposal.md)
+250 mm proje tabanında tek gerçek pal ve tek beyan edilmiş bağlantı için sınırlı,
+adaya bağlı geometri/kütle/aerodinamik/yük-vakası/FEA kanıt dosyası önerir.
+13 inç ayrı senaryodur. CAD, yönsel PA-CF kuponları ve deney hazırlığı CMM-2
+doğrulamasıyla paralel ilerleyebilir; bu öneri çözüm çalıştırmaz, PR-09/GEOM
+kapılarını değiştirmez ve güvenli aday seçimi veya fiziksel nitelik vermez.
+
 ### PR-10 — deneysel doğrulama
 
 İtki/tork/devir/elektrik gücü veri şeması, sensör kalibrasyonu, sıfır kayması,
