@@ -768,7 +768,7 @@ def solve_cmm2_transient(request: Cmm2TransientRequest) -> Cmm2TransientResult:
                 except RadauContractFailure as exc:
                     raise Cmm2TransientFailure(str(exc)) from exc
                 if hit:
-                    name, event_time, event_state, _pre_snap = hit
+                    name, event_time, event_state, _pre_snap, _selection = hit
                     event_omega = _finite_failure("contact shaft speed", dense(event_time)[2])
                     if event_omega < OMEGA_MIN or abs(event_state[0]) >= FOLD_LIMIT_RAD:
                         raise Cmm2DomainExit(

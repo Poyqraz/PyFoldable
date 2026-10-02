@@ -21,15 +21,7 @@ import pytest
 from scipy.integrate._ivp.radau import RadauDenseOutput
 
 import pyfoldable.dynamics.cmm2_coupled_transient as cmm2_dynamics
-from pyfoldable.dynamics.cmm2_radau_dense import (
-    RadauContractFailure,
-    RootBudget,
-    _as_fraction,
-    _locate_roots,
-    _rn64,
-    first_radau_contact,
-    represented_cubic,
-)
+from pyfoldable.dynamics.cmm2_radau_dense import first_radau_contact
 from pyfoldable.dynamics.cmm2_coupled_transient import (
     IMPLEMENTATION_ID,
     IMPLEMENTATION_ID_V1,
@@ -303,25 +295,18 @@ def test_c2v07_presnap_observer_uses_the_cubic_contact(monkeypatch) -> None:
     contact_scale = max(1.0, abs(-0.50), *angles)
     angle_tol = max(8 * controls.angle_atol_rad, 2 * math.ulp(contact_scale))
     assert abs(float(pre_snap[0]) - (-0.50)) <= 4 * angle_tol
+    certificate = hit[4]
+    assert certificate.selected_relative.hex() == event.hex()
+    assert certificate.selected_public.hex() == float(hit[1]).hex()
+    assert certificate.q_p == abs(certificate.public_exact - certificate.published_sum)
+    assert certificate.root_time <= certificate.allowance
     xi = (event - start) / width
-    allowance = width * (1.0e-14 + 1.0e-14 * abs(xi))
-    t_allow = (scale[0] + 4 * angle_tol) / 0.40 + allowance
-    t_old, step, polynomials = represented_cubic(_dense)
-    stop = _as_fraction(-0.50)
-    relative_polynomial = (polynomials[0][0] - stop, *polynomials[0][1:])
-    located = _locate_roots(relative_polynomial, Fraction(0), Fraction(1), RootBudget(800))
-    bracket = located[0]
-    if bracket.exact is not None:
-        anchor = bracket.exact
-    elif bracket.anchor is not None and bracket.left <= bracket.anchor <= bracket.right:
-        anchor = bracket.anchor
-    else:
-        anchor = (bracket.left + bracket.right) / 2
-    ideal = t_old + step * anchor
-    relative_time = Fraction.from_float(event)
-    public_time = _rn64(relative_time)
-    quantization = abs(relative_time - ideal) + abs(Fraction.from_float(public_time) - relative_time)
-    assert abs(Fraction.from_float(event) - Fraction(3, 4)) <= Fraction.from_float(t_allow) + quantization
+    allowance = Fraction.from_float(width * (1.0e-14 + 1.0e-14 * abs(xi)))
+    assert certificate.allowance == allowance
+    assert certificate.allowance_width == width
+    assert certificate.allowance_xi == xi
+    frozen = Fraction.from_float((scale[0] + 4 * angle_tol) / 0.40) + allowance
+    assert abs(Fraction.from_float(event) - Fraction(3, 4)) <= frozen + certificate.q_r + certificate.q_p
 
 
 def test_c2v08_fold_speed_budget_and_hard_failure() -> None:
@@ -555,3 +540,12 @@ def test_c2v07_certificate_is_conversion_infeasible() -> None:
     assert historical_old_policy == "CMM-2 contact time conversion is unresolved."
     assert hit is not None
     assert hit[0] == "lower"
+    certificate = hit[4]
+    archived_upper = float.fromhex("0x1.7fffffffff83ap-1")
+    assert certificate.selected_relative.hex() == archived_upper.hex()
+    assert certificate.selected_public.hex() == archived_upper.hex()
+    assert certificate.z == Fraction(52776558117645, 140737488355328)
+    assert certificate.radius == Fraction(1, 2**47)
+    assert certificate.root_time == Fraction(9007199254741, 2**99)
+    assert certificate.q_r == Fraction(30540034973231, 2**99)
+    assert certificate.q_p == 0

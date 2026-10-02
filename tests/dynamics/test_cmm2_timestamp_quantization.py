@@ -12,12 +12,15 @@ import pytest
 from scipy.integrate._ivp.radau import RadauDenseOutput
 
 from pyfoldable.dynamics.cmm2_radau_dense import (
+    AcceptedIntervalWork,
     RadauContractFailure,
+    RadauDomainExit,
     RootBudget,
     _Root,
     _adjacent_timestamp_order,
     _convert_root,
     _rn64,
+    audit_represented_domain,
     first_radau_contact,
 )
 
@@ -112,6 +115,101 @@ def test_root_time_uses_the_binary64_allowance_not_a_wider_rational() -> None:
         budget,
     )
     assert budget.refinements > 0
+
+
+class _WideStops:
+    lower_stop_rad = 0.0
+    upper_stop_rad = 1.2
+
+
+def test_public_relative_presnap_rejects_the_large_origin_witness() -> None:
+    q_matrix = np.zeros((3, 3))
+    q_matrix[0, 0] = -1.0
+    dense = RadauDenseOutput(0.0, 1.0, np.array([0.501, -1.0, 40.0]), q_matrix)
+    origin = 2.0**44
+    with pytest.raises(RadauContractFailure, match="pre-snap"):
+        first_radau_contact(
+            dense,
+            0.0,
+            1.0,
+            dense(0.0),
+            dense(1.0),
+            _WideStops(),
+            _Controls(),
+            origin=origin,
+            last_published=origin,
+        )
+
+
+def test_retained_enclosure_extent_is_a_domain_exit() -> None:
+    q_matrix = np.zeros((3, 3))
+    q_matrix[0, 1] = -1.0
+    q_matrix[2, 0] = -1.0
+    dense = RadauDenseOutput(
+        0.0,
+        1.0,
+        np.array([0.6, -1.0, float.fromhex("0x1.67e3eb57cc763p+3")]),
+        q_matrix,
+    )
+    work = AcceptedIntervalWork.create()
+    hit = first_radau_contact(
+        dense,
+        0.0,
+        1.0,
+        dense(0.0),
+        dense(1.0),
+        _WideStops(),
+        _Controls(),
+        origin=0.0,
+        last_published=0.0,
+        work=work,
+    )
+    assert hit is not None
+    retained_right = Fraction(54507394858725, 2**46)
+    assert hit[4].audit_extent == retained_right
+    assert work.contact.required_audit_time == retained_right
+    contact_used = work.contact.used
+    with pytest.raises(RadauDomainExit):
+        audit_represented_domain(
+            dense,
+            0.0,
+            hit[1],
+            deployed_angle=0.0,
+            origin=0.0,
+            evaluation_time=hit[1],
+            work=work,
+        )
+    assert work.contact.used == contact_used
+    assert work.domain.used > 0
+
+
+def test_archived_cubic_exposes_the_actual_selection_certificate() -> None:
+    replay, dense = _archived_dense()
+    hit = first_radau_contact(
+        dense,
+        replay["start"],
+        replay["end"],
+        dense(replay["start"]),
+        dense(replay["end"]),
+        _Parameters(),
+        _Controls(),
+        origin=replay["origin"],
+        last_published=replay["last_published"],
+    )
+    certificate = hit[4]
+    selected = float.fromhex("0x1.7fffffffff83ap-1")
+    assert certificate.selected_relative.hex() == selected.hex()
+    assert certificate.selected_public.hex() == selected.hex()
+    assert certificate.z == Fraction(52776558117645, 140737488355328)
+    assert certificate.radius == Fraction(1, 2**47)
+    assert certificate.root_time == Fraction(9007199254741, 2**99)
+    assert certificate.q_r == Fraction(30540034973231, 2**99)
+    assert certificate.q_p == 0
+    width = replay["end"] - replay["start"]
+    xi = (selected - replay["start"]) / width
+    assert certificate.allowance == Fraction.from_float(width * (1e-14 + 1e-14 * abs(xi)))
+    assert certificate.allowance_width == width
+    assert certificate.allowance_xi == xi
 
 
 def test_one_third_neighbors_are_the_contract_pair_in_nearest_first_order() -> None:

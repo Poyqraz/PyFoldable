@@ -63,6 +63,7 @@ class RootBudget:
     bracket_steps: dict = field(default_factory=dict)
     located: dict = field(default_factory=dict)
     refined_bounds: dict = field(default_factory=dict)
+    required_audit_time: Fraction | None = None
     terminal: IntervalTerminal = field(default_factory=IntervalTerminal)
 
     def _refuse_if_terminal(self) -> None:
@@ -108,6 +109,36 @@ class AcceptedIntervalWork:
             RootBudget(contact_limit, terminal=terminal),
             RootBudget(domain_limit, terminal=terminal),
         )
+
+
+@dataclass(frozen=True)
+class TimestampSelectionCertificate:
+    """Actual timestamp choice recorded by one successful conversion.
+
+    The enclosure, anchor, allowance arguments and publication arithmetic are
+    the values that conversion used. A later root solve is not this record.
+    """
+
+    enclosure: tuple[Fraction, Fraction]
+    z: Fraction
+    radius: Fraction
+    step: Fraction
+    root_time: Fraction
+    allowance_width: float
+    allowance_xi: float
+    allowance: Fraction
+    neighbors: tuple[float, ...]
+    tie_midpoint: Fraction | None
+    tie_owner: float | None
+    selected_relative: float
+    selected_public: float
+    origin: Fraction
+    relative_exact: Fraction
+    public_exact: Fraction
+    published_sum: Fraction
+    q_r: Fraction
+    q_p: Fraction
+    audit_extent: Fraction
 
 
 @dataclass(frozen=True)
@@ -722,6 +753,10 @@ def audit_represented_domain(
         end_x = _extend_exact_relative(
             t_old, step, end_x, Fraction.from_float(float(evaluation_time)), dense
         )
+    if work is not None and work.contact.required_audit_time is not None:
+        end_x = _extend_exact_relative(
+            t_old, step, end_x, work.contact.required_audit_time, dense
+        )
     if work is None:
         work = AcceptedIntervalWork.create(domain_limit=work_limit)
     budget = work.domain
@@ -1036,6 +1071,22 @@ def _rn64(value: Fraction) -> float:
     return _adjacent_timestamp_order(value)[0]
 
 
+def _tie_record(ordered: list[float]) -> tuple[Fraction | None, float | None]:
+    if len(ordered) < 2:
+        return None, None
+    low = min(ordered)
+    high = max(ordered)
+    midpoint = (Fraction.from_float(low) + Fraction.from_float(high)) / 2
+    owner = low if _significand_even(low) else high
+    return midpoint, owner
+
+
+def _presnap_angle_allows(polynomial, xi: Fraction, angle_tol: float) -> bool:
+    """Exact stop-relative angle at one coordinate, before any stop snap."""
+    limit = Fraction.from_float(4.0 * float(angle_tol))
+    return abs(_evaluate(polynomial, xi)) <= limit
+
+
 def _rate_allows(rate, xi: Fraction, limit: Fraction, lower: bool) -> bool:
     value = _evaluate(rate, xi)
     if lower:
@@ -1056,6 +1107,7 @@ def _convert_root(
     start: float,
     end: float,
     budget: RootBudget,
+    angle_tol: float | None = None,
 ):
     budget.charge()
     identity = _root_identity(polynomial, root)
@@ -1128,6 +1180,11 @@ def _convert_root(
             if not _rate_allows(rate, public_xi, velocity_limit, lower):
                 option_reasons.add("direction")
                 continue
+            if angle_tol is not None and not all(
+                _presnap_angle_allows(polynomial, xi, angle_tol) for xi in (relative_xi, public_xi)
+            ):
+                option_reasons.add("pre-snap")
+                continue
             span_left = min(left, right, relative_xi, public_xi)
             span_right = max(left, right, relative_xi, public_xi)
             angle_root = root.exact is not None and _evaluate(polynomial, root.exact) == 0
@@ -1143,11 +1200,42 @@ def _convert_root(
                 distinct_roots += 1
             if distinct_roots != 1:
                 raise RadauContractFailure("CMM-2 contact identity is unresolved.")
-            return relative, public, relative_xi, public_xi
+            published_sum = origin_fraction + relative_fraction
+            tie_midpoint, tie_owner = _tie_record(ordered)
+            audit_extent = max(
+                relative_fraction,
+                public_elapsed,
+                t_old + step * left,
+                t_old + step * right,
+            )
+            return TimestampSelectionCertificate(
+                enclosure=(left, right),
+                z=anchor,
+                radius=root_radius,
+                step=step,
+                root_time=root_time,
+                allowance_width=width_float,
+                allowance_xi=xi_float,
+                allowance=root_allowance,
+                neighbors=tuple(ordered),
+                tie_midpoint=tie_midpoint,
+                tie_owner=tie_owner,
+                selected_relative=relative,
+                selected_public=public,
+                origin=origin_fraction,
+                relative_exact=relative_fraction,
+                public_exact=public_fraction,
+                published_sum=published_sum,
+                q_r=abs(relative_fraction - ideal),
+                q_p=abs(public_fraction - published_sum),
+                audit_extent=audit_extent,
+            )
         if restarted:
             continue
         reasons.update(option_reasons)
         break
+    if "pre-snap" in reasons and "conversion" not in reasons and "direction" not in reasons:
+        raise RadauContractFailure("CMM-2 pre-snap contact angle is outside tolerance.")
     if "direction" in reasons and "conversion" not in reasons:
         raise RadauContractFailure("CMM-2 contact direction is unresolved.")
     raise RadauContractFailure("CMM-2 contact time conversion is unresolved.")
@@ -1189,7 +1277,8 @@ def first_radau_contact(
     """Return the earliest proved stop contact, or None.
 
     The returned angle is the snapped stop. ``pre_snap`` is the dense state at
-    the converted relative time, before that snap is published.
+    the converted relative time, before that snap is published. The fifth value
+    is the conversion certificate for that selected option.
     """
     _require_in_step(dense, float(start), float(end))
     t_old, step, polynomials = represented_cubic(dense)
@@ -1268,7 +1357,7 @@ def first_radau_contact(
         lower = name == "lower"
         _angle_tol, velocity_tol = _scale_and_tolerances(stop, angles, float(end) - float(start), controls)
         relative_polynomial = _trim((theta[0] - _as_fraction(stop), *theta[1:]))
-        relative_time, public, _relative_xi, _public_xi = _convert_root(
+        certificate = _convert_root(
             origin,
             last_published,
             t_old,
@@ -1281,15 +1370,19 @@ def first_radau_contact(
             float(start),
             float(end),
             budget,
+            angle_tol,
         )
-        converted.append((public, relative_time, name, stop, angle_tol, root))
+        converted.append(
+            (certificate.selected_public, certificate.selected_relative, name, stop, angle_tol, root, certificate)
+        )
     if len({item[0] for item in converted}) != len(converted):
         raise RadauContractFailure("CMM-2 distinct contacts collapsed to one time.")
     public_order = [item[0] for item in converted]
     if public_order != sorted(public_order):
         raise RadauContractFailure("CMM-2 contact order is unresolved.")
-    _public, relative_time, name, stop, angle_tol, _root = converted[0]
+    _public, relative_time, name, stop, angle_tol, _root, certificate = converted[0]
     pre_snap = dense(relative_time)
     if abs(float(pre_snap[0]) - stop) > 4 * angle_tol:
         raise RadauContractFailure("CMM-2 pre-snap contact angle is outside tolerance.")
-    return name, relative_time, (stop, float(pre_snap[1])), pre_snap
+    budget.required_audit_time = certificate.audit_extent
+    return name, relative_time, (stop, float(pre_snap[1])), pre_snap, certificate

@@ -170,8 +170,12 @@ passing run does not remove that obstruction. The closed diagnostic record is
 The frozen timestamp policy `cmm2_contact_timestamp_quantization_v1_proposed`
 is implemented on this draft only: nearest-even adjacent timestamps, `H*D`
 against the unchanged root-time allowance, and `Q_r`/`Q_p` in the C2V-07
-returned-time check. Candidate selection, partition eligibility, and future-v2
-sealing are not implemented. `physical_qualification=false`. Coefficient replay inputs and the explicit rational image
+returned-time check. Pre-snap angle checks run at both the exact relative
+coordinate and the exact public-relative coordinate before an option is
+accepted. The production domain audit uses the same interval work and extends
+through the retained enclosure. C2V-07 reads that conversion certificate.
+Candidate selection, partition eligibility, and future-v2 sealing are not
+implemented. This draft is not a claim that the amended workflow is complete. `physical_qualification=false`. Coefficient replay inputs and the explicit rational image
 are separate records. Draft PR #81 is a
 separate blocked evidence attempt, not accepted PR-C verification. Independent
 CMM-2 numerical verification is not established. ADR-009 is not created or
