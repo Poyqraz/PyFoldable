@@ -3,6 +3,8 @@
 Status: **PROPOSED / NOT IMPLEMENTED**. This documentation-only proposal is not
 a frozen contract, implementation authorization or qualified design.
 Inspection base: `a5286cc6d80ea0130bd3bdc87d2b42277c499900`.
+Parent-blade design-intent clarification base:
+`c2b267f1e1536e205c5d7ac3c05c2a8ab227533d` (merged proposal PR #86).
 
 The question is where to divide an actual blade into fixed and movable parts,
 given its section geometry and one declared joint design. A shorter tip can
@@ -64,6 +66,53 @@ surface/hardware thickness can add restrictions. Partial travel must be explicit
 declared and reviewed as a different endpoint, not substituted for full stow.
 
 ## 3. Smallest useful first deliverable
+
+### Parent blade and deployed correspondence
+
+One original blade is the accepted reference **for this study**. Its presumed
+optimality is a scoped study assumption at a declared operating condition, not
+independently validated global optimality. Record the parent CAD/section/profile
+source identities, revision/hashes and the assumed objective, RPM, inflow and
+environment with their source; these actual inputs remain unsupplied. The 7100 RPM
+project target alone does not identify that condition or prove the assumption.
+
+The fixed and moving portions are complementary cuts of that same parent blade.
+Use global shaft-based radius r and tip-local span s=r-r_h: outside explicitly
+declared joint modifications, the tip inherits c_tip(s)=c0(r_h+s) and
+beta_tip(s)=beta0(r_h+s), over s in [0,R-r_h]. Do not replay the parent root
+distribution, reset twist at the cut or rescale span. Preserve original radial
+station correspondence, chord, twist, section geometry and open-pose placement.
+Local airfoil identity describes a section profile, not the complete 3D blade:
+section scale/orientation, sweep, rake, stacking and placement also require
+parent correspondence. A shared airfoil name does not prove matching surfaces.
+
+Declare hinge-axis and hardware offsets separately from actual displacement of
+the deployed aerodynamic surface. Record radial/tangential/axial translation
+components, rotation components and conventions, reference points, units and
+shaft/parent/fixed/tip/joint frames, with deployed transforms between them.
+A hardware offset may preserve the nominal parent surface; it does not establish
+that preservation. Report the transformed surface's position/orientation
+deviations, joint gaps, steps and protrusions explicitly, with supplied CAD or
+as-built uncertainty. No CAD tolerances are invented here. Existing BEM does not
+capture these joint features, and zero-offset planar GEOM-01 does not clear a new
+offset topology; unsupported representations remain unsupported.
+
+The next practical CAD comparison is the untouched original versus the
+cut/rejoined **deployed assembly at each of the two declared hinge positions**.
+Require parent/child lineage for both cuts and assemblies; map each child station
+back to its original global radius, section and orientation; compare open-pose
+surfaces in a common declared frame. Itemize every joint-region removal/addition,
+gap, step, protrusion and placement deviation separately from inherited geometry,
+including unresolved regions and measurement uncertainty. This is a CAD evidence
+request, not CAD creation or a numerical acceptance gate in this amendment.
+
+A duplicated-root/twist-reset arrangement may be retained only as an optional
+comparison control with its own geometry identity and departures from the parent.
+Its greater performance loss is a hypothesis requiring matched operating
+conditions, analysis/settings or experiments with uncertainty; it is not a
+result or the default fixed/moving construction.
+
+### Candidate dossier
 
 Prepare one **250 mm actual-blade / declared-joint candidate dossier**. The blade
 and joint design identities must be supplied; they are currently missing, not
@@ -183,7 +232,7 @@ thrust cannot compensate for structural failure.
 
 | Bounded workstream | Deliverable and dependency | Completion boundary |
 | --- | --- | --- |
-| CAD/joint preparation | Actual 250 mm blade revision, one joint declaration and two placement/section records; requires engineering source data | Unit/frame/source traceability and attachment coverage, retaining infeasible/missing regions. No CAD alteration in this PR. |
+| CAD/joint preparation | Actual 250 mm parent blade, one joint declaration and original-versus-cut/rejoined deployed comparison at two placements; requires engineering source data | Parent/child radial/section/orientation lineage, transforms and explicit joint-region differences, plus attachment coverage; retain infeasible/missing regions. No CAD alteration in this PR. |
 | Material/manufacturing | Process declaration, directional coupon/test plan and later measured card; alongside CAD and CMM-2 | Raw/process-linked evidence and reviewed allowable derivation for each claimed mode; otherwise blocked. |
 | Geometry/aerodynamic dossier | Candidate ledger using existing supported paths; actual geometry and suitable polars required | Identified results/failures, unchanged budgets, explicit coverage; screening only. No runs in this PR. |
 | Structural preparation/review | Five-case matrix, approved limits and later real ANSYS bundles; depends on CAD, material and traceable loads | Independent candidate FEA review with converged matching results and unresolved modes; not experimental selection. |
