@@ -503,6 +503,16 @@ from checkout `123fe281a220f3c0de9dfa5d4b47504438662362` and tree
 `2e86b38282da5d7515e63cdf323283d884bad7e1`. PR #81 and PR #84 stay untouched
 by this delta.
 
+## 2026-10-03 one-runtime cosine path certificate
+
+The [separate certificate](../cmm2_c2v09_one_runtime_cosine_path_certificate.md)
+follows the Python math wrapper's own PLT GOT to the selected cosine target.
+An independent libm symbol lookup is not that evidence. The historical CPython
+wrapper address argument does not apply to this executable. Changed Python
+graph correspondence and the returned source object stay outside this
+certificate. `physical_qualification=false`. This is not eligibility evidence.
+PR #81 and PR #84 stay unmerged into main.
+
 ## 2026-10-02 strength-aware radial hinge assessment — proposal only
 
 The [separate design proposal](../strength_aware_radial_hinge_assessment_proposal.md)
