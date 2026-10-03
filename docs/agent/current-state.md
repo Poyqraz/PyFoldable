@@ -470,3 +470,23 @@ IMPLEMENTED here. The broader proposal remains PROPOSED / NOT IMPLEMENTED.
 Station equality does not establish complete solids, clearance, strength or a
 safe winner. Physical/material/test evidence remains necessary for the relevant
 claims; physical_qualification=false, ADR-009 unaccepted, PR #81/#84 unchanged.
+
+
+## 2026-10-03 bounded internal parent/two-cut generator — separate Draft implementation
+
+PR #88 station reporting and CAD-independent documentation merged without freezing
+the broader PROPOSED / NOT IMPLEMENTED hinge assessment. The subsequent authorized
+[generator service/example](../parent_blade_station_generation.md) realizes one
+identified internal parent through the existing draft/profile/station services,
+then copies stored global SI radii, chord/twist and coordinate identity for two
+declared complementary cuts. Explicit original-index mappings and parent canonical
+hash lineage feed the unchanged comparison report. Earlier "next slice not
+implemented" statements above describe their historical increments.
+
+The new Draft slice retains missing hinge/end stations, signed coverage and
+insufficient-child diagnostics; no interpolation, padding, root/twist replay or
+child scaling occurs. External CAD/STEP is not required. Demonstrations are synthetic
+software checks. Complete 3D solids, joint offsets/transforms, mass properties,
+clearance, strength and safe winner remain unestablished. No solver/source/trajectory
+run or numerical gate change follows. Broader proposal remains PROPOSED / NOT
+IMPLEMENTED; physical_qualification=false, ADR-009 unaccepted, PR #81/#84/#89 untouched.

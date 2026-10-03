@@ -122,6 +122,11 @@ strength/clearance/experimental requirements of the broader proposal remain due.
 
 ## Next bounded CAD-independent slice (proposed only)
 
+Historical PR #88 declaration below is preserved. The subsequently authorized
+[internal parent/two-cut implementation](parent_blade_station_generation.md) now
+implements this bounded station-input slice in a separate Draft PR. It does not
+implement complete blade/joint solids or the broader assessment proposal.
+
 After separate implementation authorization, add one small service/example that
 generates the reporting inputs directly from an internally defined design. Reuse
 [design drafts](../pyfoldable/application/design_draft.py), the existing
