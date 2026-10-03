@@ -423,3 +423,17 @@ or physical evidence cannot select a safe winner. CAD/material/test preparation
 can proceed alongside CMM-2 verification without changing PR #81/#84 or their
 contracts. No runs, CAD edits, new gates, freeze, ADR-009 acceptance or physical
 qualification follow this documentation proposal.
+
+## 2026-10-02 radial hinge proposal — parent-blade intent clarification
+
+The [existing proposal](../strength_aware_radial_hinge_assessment_proposal.md#parent-blade-and-deployed-correspondence)
+remains **PROPOSED / NOT IMPLEMENTED**. One original blade is the study reference;
+presumed optimality needs a declared condition/source and is not validated global
+optimality. Complementary fixed/moving cuts inherit the parent's global radial
+sections, chord, twist and deployed placement. The next CAD comparison binds
+parent/child lineage and joint-region differences at both hinge positions.
+Hardware offsets and deployed surface displacement are distinct declarations;
+new offset topology is not cleared by planar GEOM-01 or existing BEM. Actual CAD,
+conditions and strength evidence remain required. The duplicated-root/twist-reset
+control and its greater-loss hypothesis are optional and unmeasured. No runs,
+new gates, freeze or qualification follows; PR #81/#84 contracts are unchanged.
