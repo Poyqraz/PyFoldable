@@ -1,0 +1,178 @@
+{
+  "declaration_id": "mixed_profile_parent_endpoint_model_v1",
+  "status": "PROPOSED / NOT FROZEN / NOT IMPLEMENTED",
+  "authority": {
+    "proposal_head": "1bbd9ccac876d5d612d2ac19e0cc16d492623e99",
+    "main": "988a8524c4a8814eeee54071a86b6da67f0b150b"
+  },
+  "endpoints": [
+    {
+      "role": "A",
+      "identity": "UIUC E63 reference coordinates",
+      "source_url": "https://m-selig.ae.illinois.edu/ads/coord/e63.dat",
+      "retrieved_local_date": "2026-10-04",
+      "format": "selig",
+      "asset": {
+        "bytes": 1312,
+        "points": 61,
+        "raw_sha256": "eb90138d5e0b2476c99e431651475e3a6b058872b368e0793e3b5e0383988f9d",
+        "source_order_f64_sha256": "5c8316a732ff959242b981df54ac61e9f7d041e2f2d8a006e0da2756c624e593",
+        "normalized_candidate_sha256": "87e28637ac162d9deeb1dcb2ae90acae067c4b3081d100caddf1841947e3ecb1",
+        "xmin": "0x1.205bc01a36e2fp-11",
+        "xmax": "0x1.0000000000000p+0",
+        "chord": "0x1.ffb7e90ff9724p-1",
+        "leading_y": "-0x1.719f7f8ca8199p-10"
+      },
+      "normalization": "pinned airfoil.py _normalize, source row order retained; no rotate/repair/reverse",
+      "permission_status": "UNRESOLVED; no per-file redistribution grant established; local assessment only",
+      "raw_or_full_derived_asset_in_git": false
+    },
+    {
+      "role": "B",
+      "identity": "UIUC tabulated NACA4412 reference substitute; not APC12",
+      "source_url": "https://m-selig.ae.illinois.edu/ads/coord/naca4412.dat",
+      "retrieved_local_date": "2026-10-04",
+      "format": "selig",
+      "asset": {
+        "bytes": 693,
+        "points": 35,
+        "raw_sha256": "5c86886f667266f29a5f3a0a48505b9b25ea10539d8a112486c62bf3a5bbd6ad",
+        "source_order_f64_sha256": "139420a465db2e6ffdf55007795f454dd1345577a81cf2b8183eafb694595d74",
+        "normalized_candidate_sha256": "139420a465db2e6ffdf55007795f454dd1345577a81cf2b8183eafb694595d74",
+        "xmin": "0x0.0p+0",
+        "xmax": "0x1.0000000000000p+0",
+        "chord": "0x1.0000000000000p+0",
+        "leading_y": "0x0.0p+0"
+      },
+      "normalization": "pinned airfoil.py _normalize, source row order retained; no rotate/repair/reverse",
+      "permission_status": "UNRESOLVED; no per-file redistribution grant established; local assessment only",
+      "raw_or_full_derived_asset_in_git": false
+    }
+  ],
+  "source": {
+    "identity": "APC 13x55MR-PERF.PE0 v2025-1001; simulation date 2026-02-24",
+    "source_url": "https://www.apcprop.com/propeller-technical-data/",
+    "source_and_scalar_identities": {
+      "source_sha256": "2972e1b99215f2eb052e586e48cc59730cbfd4f08c6627ea7461a8afa150c30f",
+      "rows": 51,
+      "columns": 14,
+      "retained_table_sha256": "84621877a55558634f92fcf53b3a7d5d17f7be7926c2068137b8ac6051bf911f",
+      "six_scalars_sha256": "3e8a6164e691719dbacf0e14139456a3084f18505e263fc983bbb8762e1f733c",
+      "domain_first_index": 10,
+      "domain_last_index": 50,
+      "domain_start_m": 0.025908,
+      "domain_start_hex": "0x1.a87a072d1aeb4p-6",
+      "domain_end_m": 0.16446499999999997,
+      "domain_end_hex": "0x1.50d306a2b1704p-3",
+      "inch_constant_hex": "0x1.a027525460aa6p-6",
+      "degree_constant_hex": "0x1.1df46a2529d39p-6",
+      "a_hex": "0x1.80f12c27a6373p-4",
+      "b_hex": "0x1.381d7dbf487fdp-3",
+      "source_a_hex": "0x1.80f12c27a6373p-4",
+      "source_b_hex": "0x1.381d7dbf487fcp-3",
+      "hinges_hex": [
+        "0x1.a027525460aa6p-4",
+        "0x1.04189374bc6a8p-3"
+      ]
+    },
+    "private_vendor_data": true,
+    "retained_columns": 14,
+    "generated_domain_source_indices": [
+      10,
+      50
+    ],
+    "domain_extension_beyond_footer": "EXPLICIT GENERATED MODEL CHOICE; source applicability unchanged",
+    "nominal_diameter_m_hex": "0x1.521ff2e48e8a7p-2",
+    "project_250_mm_baseline": "SEPARATE; not rescaled",
+    "scalar_json_keys": [
+      "index",
+      "r",
+      "c",
+      "beta",
+      "tau",
+      "Y",
+      "Z"
+    ],
+    "scalar_units": {
+      "r": "m",
+      "c": "m",
+      "beta": "rad, supplied TWIST",
+      "tau": "dimensionless, assumed vertical t/c target",
+      "Y": "m, assumed stacking-line tangential offset",
+      "Z": "m, assumed stacking-line axial offset"
+    }
+  },
+  "model": {
+    "radial_domain_m_hex": [
+      "0x1.a87a072d1aeb4p-6",
+      "0x1.50d306a2b1704p-3"
+    ],
+    "scalar_law": "stored knot fast path; exact rational piecewise-linear target between stored binary64 knots; no extrapolation",
+    "transition_anchor_m_hex": [
+      "0x1.80f12c27a6373p-4",
+      "0x1.381d7dbf487fdp-3"
+    ],
+    "anchor_authority": "nearest binary64 of proposal decimal SI literals; source conversion at b differs by one ULP and is retained separately",
+    "blend_law": "w=0 before a; w=1 after b; q=(r-a)/(b-a), w=3q^2-2q^3 inside",
+    "common_grid": "exact union of normalized upper/lower x breakpoints of both endpoints, sorted by rational value; no near-equality merging",
+    "section_law": "m=(1-w)m_A+w*m_B; h=(1-w)h_A+w*h_B; d=max_union_grid(2h); v=m +/- tau*h/d",
+    "frame": "e_r cross e_t = e_z; deployed section plane radial projection r; positive twist from e_t to e_z",
+    "stack_fraction_hex": "0x1.0000000000000p-2",
+    "placement_law": "proposal section 5 P with declared Y/Z stacking offsets; generated assumption, not recovered APC convention",
+    "hinge_m_hex": [
+      "0x1.a027525460aa6p-4",
+      "0x1.04189374bc6a8p-3"
+    ],
+    "children": "fixed r<=rh; tip r>=rh; optional s uses r=rh+s; one shared generated hinge section; source gaps remain",
+    "baseline": {
+      "hardware_offset_m_hex": [
+        "0x0.0p+0",
+        "0x0.0p+0",
+        "0x0.0p+0"
+      ],
+      "hinge_axis": "positive shaft e_z",
+      "deployed_transforms": "identity for both children",
+      "joint_modification_status": "UNDEFINED / NOT GENERATED / NOT ASSESSED; zero geometric baseline is not actual hardware evidence"
+    },
+    "trailing_edge": "preserve actual endpoint gaps/cusps; generate upper/lower surface sheets only; no TE strip, caps or solid"
+  },
+  "limits": {
+    "source_bytes": 2097152,
+    "each_coordinate_asset_bytes": 262144,
+    "source_station_rows": 64,
+    "each_endpoint_coordinate_pairs": 256,
+    "common_x_breakpoints": 512,
+    "radial_breakpoints_and_requested_sections": 68,
+    "coordinate_output_points": 69632,
+    "serialized_output_bytes": 16777216,
+    "shared_exact_rational_operations": 20000000,
+    "per_integer_bit_length": 65536,
+    "trig_series_terms_initial": 80,
+    "trig_series_terms_max": 128,
+    "radial_m_bounds": [
+      0,
+      0.2
+    ],
+    "chord_m_bounds": "0 < c <= 0.2",
+    "twist_rad_abs_max": 4,
+    "thickness_ratio_bounds": "0 < tau <= 1",
+    "sweep_rake_m_abs_max": 0.2,
+    "normalized_ordinate_abs_max": 1,
+    "retry_policy": "no reset, no fallback; exhaustion BLOCKED"
+  },
+  "numerical_policy": {
+    "reference": "exact rational PWL/blend/thickness from the captured normalized/scalar binary64 inputs; ideal real sin/cos placement",
+    "output": "unique binary64 nearest ties-even rounding cell for each exact-reference scalar/complete P coordinate, with derived enclosure; copied knots retain signed zeros",
+    "knot_inheritance": "copy stored values directly; children share same parent evaluator/hinge output; no independent recomputation or twist reset",
+    "proof": "exact cellwise branch/gap and convex blend certificates; positive scalar endpoint bounds; finite maxima over PWL breakpoints; no sampling-only continuous claims",
+    "trig_plan": "future exact rational Taylor enclosures for |beta|<=4, even/odd sums with Lagrange remainders; propagate through complete P before unique-cell rounding; bounded refinement, unresolved BLOCKED",
+    "gate_policy": "no fitted epsilon, new physical/numerical acceptance threshold or GEOM/CMM promotion",
+    "zero_sign": "copied knots retain stored sign; newly evaluated exact-zero outputs use positive zero"
+  },
+  "implementation_hashes": {
+    "pyfoldable/core/airfoil.py": "3079f8cafe962556064efe74f7b9c22ceaae59bfaa5f063bb8a7ab1d2905b196",
+    "pyfoldable/core/models.py": "fec0b429c5201a7e7565205df756d00d344a5d5dd94703b7775d4b74ce17b853",
+    "pyfoldable/core/apc_pe0.py": "e256dae2fc525f4d5ab07a8ae46d394a5ca6351a7cbc9ddf3fdbd0ced1d7e6ca",
+    "pyfoldable/application/apc_pe0_geometry_report.py": "e9b4da0eab63bb3ea28645bdc5930fbc79ba640b6a57f304592fad803f066e32"
+  }
+}
