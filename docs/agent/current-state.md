@@ -481,6 +481,23 @@ stay separate. The canonical digest covers only its payload. A clean checkout of
 That blocked observation is not eligibility evidence. The gate returns
 CONTRACT BLOCKED when applicability is not established. It does not select,
 seal, relabel a v1 seal, or enter a trajectory. `physical_qualification=false`.
+The coordinator approved that collector preparation at
+`e4e81fc4fcff7c3bc94b3c75e4f1ca5638be40a3`. That approval is not full PR #84
+approval and is not live eligibility.
+
+## 2026-10-03 actual-runtime applicability delta — blocked
+
+The [separate delta](../cmm2_c2v09_actual_runtime_applicability_delta.md)
+inspects this execution environment. Technical authority
+`fd55fa97676c84c896511765e94561a706252239`, the executing checkout, and the
+observation digest stay separate. Historical v1 FAIL, v2 BLOCKED, candidate28
+rejection, and candidate29 NOT SELECTED remain. Scope A and the cosine
+arithmetic path do not transfer here. The resolved libm symbol is not the
+Python wrapper or the selected call target. Changed CMM-2 files and the new
+dense, declaration, eligibility, and collector modules require explicit
+binding. Missing runtime evidence stays blocked. Status **CONTRACT BLOCKED**.
+This is not eligibility evidence. `physical_qualification=false`. Baseline CI
+does not establish eligibility. PR #81 and PR #84 stay untouched by this delta.
 
 ## 2026-10-02 strength-aware radial hinge assessment — proposal only
 
