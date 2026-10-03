@@ -511,7 +511,12 @@ An independent libm symbol lookup is not that evidence. The historical CPython
 wrapper address argument does not apply to this executable. Changed Python
 graph correspondence and the returned source object stay outside this
 certificate. `physical_qualification=false`. This is not eligibility evidence.
-PR #81 and PR #84 stay unmerged into main.
+The bind-now observation is
+[reports/c2v09_cosine_path_certificate/observation.json](../../reports/c2v09_cosine_path_certificate/observation.json),
+from checkout `171f0fb36544e7ca743afc225dc22bec4555ed73`. The selected libm
+body matches the historical body and the historical validity predicate holds;
+the historical CPython wrapper addresses do not apply. PR #81 and PR #84 stay
+unmerged into main.
 
 ## 2026-10-02 strength-aware radial hinge assessment — proposal only
 
