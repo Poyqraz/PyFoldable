@@ -193,7 +193,7 @@ def test_complete_51_row_synthetic_table_is_not_a_vendor_demonstration():
 
 
 def test_unbound_header_units_are_visible_without_invented_binding():
-    raw=TOY.replace(TOY.splitlines()[4],b'Unit definitions supplied in separate prose; no positional unit row')
+    raw=TOY.replace(TOY.splitlines()[4]+b'\n',b'')+b' UNITS NOTE: definitions supplied in separate prose; no positional unit row\n'
     d=json.loads(report(raw).canonical_json)
     assert 'SOURCE_UNIT_HEADER_BINDING_UNRESOLVED' in d['diagnostics']
     assert all(c['supplied_unit'] is None for c in d['columns'])
@@ -229,3 +229,48 @@ def test_nonnumeric_row_inside_identified_table_is_not_metadata():
     (b'BLADES: 2',b'BLADES: 2.0000000000000000001')])
 def test_review_followup_section_header_and_exact_blade_integer(old,new):
     with pytest.raises(PE0ReportError):report(TOY.replace(old,new))
+
+
+# Vendor label syntax only; every numeric value remains the invented six-inch toy.
+VENDOR_HEADER = b'STATION CHORD PITCH PITCH PITCH SWEEP(Y) RAKE(Z) THICKNESS TWIST MAX-THICK CROSS-SECTION ZHIGH CGY CGZ'
+VENDOR_UNITS = b'(IN) (IN) (QUOTED) (LE-TE) (PRATHER) (IN) (IN) RATIO (DEG) (IN) (IN**2) (IN) (IN) (IN)'
+
+
+def vendor_syntax_toy():
+    return TOY.replace(TOY.splitlines()[3],VENDOR_HEADER).replace(TOY.splitlines()[4],VENDOR_UNITS)
+
+
+@pytest.mark.parametrize('units_present',[True,False])
+def test_vendor_boundary_rejects_malformed_first_station_without_numeric_clue(units_present):
+    raw=vendor_syntax_toy()
+    if not units_present:raw=raw.replace(VENDOR_UNITS+b'\n',b'')
+    raw=raw.replace(TOY.splitlines()[5],b'INVALID ROW DATA')
+    with pytest.raises(PE0ReportError,match='inside station table'):report(raw)
+
+
+def test_vendor_unit_and_column_spellings_preserve_measurement_labels():
+    d=json.loads(report(vendor_syntax_toy()).canonical_json)
+    assert d['parent']['station_count']==6
+    assert d['parent']['source_column_header']==VENDOR_HEADER.decode().split()
+    assert [c['supplied_unit'] for c in d['columns']]==VENDOR_UNITS.decode().split()
+    assert 'SOURCE_UNIT_HEADER_BINDING_UNRESOLVED' not in d['diagnostics']
+    assert 'SOURCE_COLUMN_HEADER_BINDING_PARTIAL_OR_UNRESOLVED' not in d['diagnostics']
+    assert d['parent']['rows'][0]['si']['twist_rad']==math.radians(30.)
+
+
+@pytest.mark.parametrize('header_suffix',[b' EXTRA',b''])
+def test_partial_or_extra_header_cannot_excuse_thickness_twist_contradiction(header_suffix):
+    header=VENDOR_HEADER.replace(b'THICKNESS TWIST',b'TWIST THICKNESS')
+    header=header+header_suffix if header_suffix else header.removesuffix(b' CGZ')
+    with pytest.raises(PE0ReportError,match='column position'):report(vendor_syntax_toy().replace(VENDOR_HEADER,header))
+
+
+@pytest.mark.parametrize('label',['RADIUS','HUBRAD','HUBTRA','BLADES'])
+@pytest.mark.parametrize('duplicate',[True,False])
+def test_known_footer_empty_value_and_duplicate_are_not_metadata(label,duplicate):
+    raw=TOY
+    if not duplicate:
+        line=next(l for l in raw.splitlines() if l.strip().startswith(label.encode()+b':'))
+        raw=raw.replace(line,b' '+label.encode()+b':')
+    else:raw+=b' '+label.encode()+b':\n'
+    with pytest.raises(PE0ReportError,match='Duplicate|Missing scalar'):report(raw)

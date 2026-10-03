@@ -20,12 +20,14 @@ MAX_PE0_BYTES = 1024 * 1024
 MAX_STATIONS = 1024
 COLUMN_KEYS = ('station', 'chord', 'pitch_1', 'pitch_2', 'pitch_3', 'sweep',
     'rake', 'thickness_ratio', 'twist', 'max_thickness', 'section_area', 'zhigh', 'cgy', 'cgz')
-_FOOTER = re.compile(r'^\s*(RADIUS|HUBRAD|HUBTRA|BLADES):\s*(\S+)')
+_FOOTER = re.compile(r'^\s*(RADIUS|HUBRAD|HUBTRA|BLADES):\s*(.*)$')
 _AIRFOIL = re.compile(r'^\s*AIRFOIL\d+:\s*([0-9.]+)\s*,\s*(\S+)', re.I)
 _HEADER_ALIASES = ({'STATION'}, {'CHORD'}, {'PITCH','PITCH_A','PITCH_1'},
-    {'PITCH','PITCH_B','PITCH_2'}, {'PITCH','PITCH_C','PITCH_3'}, {'SWEEP'},
-    {'RAKE'}, {'THICKNESS','THICKNESS_RATIO'}, {'TWIST'}, {'MAX_THICK','MAX-THICK'},
+    {'PITCH','PITCH_B','PITCH_2'}, {'PITCH','PITCH_C','PITCH_3'}, {'SWEEP','SWEEP(Y)'},
+    {'RAKE','RAKE(Z)'}, {'THICKNESS','THICKNESS_RATIO'}, {'TWIST'}, {'MAX_THICK','MAX-THICK'},
     {'AREA','CROSS-SECTION'}, {'ZHIGH'}, {'CGY'}, {'CGZ'})
+_HEADER_POSITIONS = {name:position for position,names in enumerate(_HEADER_ALIASES)
+    for name in names if name != 'PITCH'}
 
 
 class PE0ReportError(ValueError):
@@ -77,32 +79,34 @@ def _source_table(lines):
             if header is not None or upper[:2] != ['STATION', 'CHORD']:
                 raise PE0ReportError('Conflicting or repeated STATION/CHORD header.')
             header = parts
-            if len(parts) == 14:
-                positions = {'STATION':0, 'CHORD':1, 'PITCH_A':2, 'PITCH_1':2,
-                    'PITCH_B':3, 'PITCH_2':3, 'PITCH_C':4, 'PITCH_3':4,
-                    'SWEEP':5, 'RAKE':6, 'THICKNESS':7, 'THICKNESS_RATIO':7,
-                    'TWIST':8, 'MAX_THICK':9, 'MAX-THICK':9, 'AREA':10,
-                    'CROSS-SECTION':10, 'ZHIGH':11, 'CGY':12, 'CGZ':13}
-                for index, name in enumerate(upper):
-                    if ((name in positions and positions[name] != index)
-                            or (name == 'PITCH' and index not in (2,3,4))):
-                        raise PE0ReportError('Conflicting named PE0 column position.')
+            for index, name in enumerate(upper):
+                if ((name in _HEADER_POSITIONS and _HEADER_POSITIONS[name] != index)
+                        or (name == 'PITCH' and index not in (2,3,4))):
+                    raise PE0ReportError('Conflicting named PE0 column position.')
+            # The header establishes the boundary before any numeric station,
+            # independently of whether a positional units row is supplied.
+            table_open = True
         match = _FOOTER.match(line)
         if match:
-            key, token = match.groups()
+            key, remainder = match.groups()
             if key in footer:
                 raise PE0ReportError('Duplicate scalar footer field.')
+            if not remainder.strip():
+                raise PE0ReportError('Missing scalar footer value.')
+            token = remainder.split()[0]
             if re.fullmatch(r'(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)', token) is None:
                 raise PE0ReportError('Unsupported complete footer number; no prefix truncation.')
             footer[key] = token
         if re.match(r'^\s*AIRFOIL\d*\s*:', line, re.I) and not _AIRFOIL.match(line):
             raise PE0ReportError('Malformed airfoil transition declaration.')
-        is_units = bool(parts) and all(p.startswith('(') and p.endswith(')') for p in parts)
+        is_units = bool(parts) and all((p.startswith('(') and p.endswith(')'))
+            or p.upper() == 'RATIO' for p in parts)
         if is_units and len(parts) == 14:
             if units is not None:
                 raise PE0ReportError('Ambiguous repeated units row.')
             units = parts
-            if (upper[0], upper[1], upper[7], upper[8]) != ('(IN)', '(IN)', '(RATIO)', '(DEG)'):
+            if ((upper[0], upper[1], upper[8]) != ('(IN)', '(IN)', '(DEG)')
+                    or upper[7] not in ('RATIO','(RATIO)')):
                 raise PE0ReportError('Units disagree with supported PE0 radius/chord/thickness/TWIST layout.')
             table_open = True
         numeric = []

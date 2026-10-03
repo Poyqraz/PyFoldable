@@ -508,3 +508,18 @@ software tests. No APC archive/full derivative is vendored or silently downloade
 This Draft slice does not establish BEM performance, strength, optimum hinge or
 qualification. The broader proposal remains PROPOSED / NOT IMPLEMENTED;
 physical_qualification=false, ADR-009 unaccepted, C2V-09 and PR #81/#84/#91 untouched.
+
+
+### 2026-10-03 subsequent supplied genuine PE0 execution — Draft PR #92
+
+The earlier unavailable-demonstration paragraph is a historical availability record.
+The user subsequently supplied the genuine member in a private execution package.
+The repaired [adapter receipt](../local_apc_pe0_geometry_reporting.md#2026-10-03-supplied-genuine-member--repaired-execution)
+records verified member identity, 51 complete rows, retained terminal station and
+unchanged copied indices 0–27 / 28–50 and 0–33 / 34–50 at the two declared hinges.
+Header boundaries, recognized contradictions at any length and empty/duplicate
+scalar footers now fail closed. Missing hinge rows and unresolved section geometry
+remain explicit. Vendor bytes/full reports remain outside public Git history.
+This Draft geometry-reporting repair performs no BEM/FEA/trajectory or qualification
+promotion; broader proposal PROPOSED / NOT IMPLEMENTED, physical_qualification=false.
+C2V-09 and PR #81/#84/#91 remain untouched; ADR-009 remains unaccepted.

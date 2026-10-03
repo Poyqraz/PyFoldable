@@ -25,17 +25,26 @@ exact decimal-integer BLADES and represented footer/row correspondence with that
 Unsupported integer-to-binary64/core correspondence fails rather than rounding the count. Unsupported
 footer exponent/suffix syntax is rejected rather than accepted by a numeric-prefix
 match. Malformed rows, including a bad first cell or nonnumeric text in the active
-station region, cannot silently disappear into metadata. Conflicting recognized column positions (including section thickness/area and
-centroid fields) and duplicate scalar footers fail. Error paths produce no report; CLI exits 2.
+station region, cannot silently disappear into metadata. The recognized
+STATION/CHORD header establishes that boundary before the first numeric row,
+even when no positional units row is supplied. Conflicting recognized column positions (including section thickness/area and
+centroid fields) fail for every header length; partial-binding diagnostics cannot
+excuse contradictions. Known scalar-footer labels are detected before values: an
+empty first value or empty duplicate fails. Complete-number and exact-integer
+checks remain unchanged. Error paths produce no report; CLI exits 2.
 
 Every row keeps its original zero-based parent index, source line/line number,
 number lexemes and all 14 numeric values. Fixed-layout field keys are:
 `station`, `chord`, `pitch_1`, `pitch_2`, `pitch_3`, `sweep`, `rake`,
 `thickness_ratio`, `twist`, `max_thickness`, `section_area`, `zhigh`, `cgy`, `cgz`.
-The three pitch fields remain distinct: their adjusted/geometric/angular meanings
-and units come from the retained source header/definitions; none replaces TWIST.
+The three pitch fields remain distinct. Their supplied measurement labels and
+definitions are preserved without inventing dimensional meanings; none replaces TWIST.
 Nonstation lines preserve all supplied labels, units, definitions and footer text.
-A recognized 14-cell parenthesized unit row binds units by position. Absent or
+Recognized vendor labels include `SWEEP(Y)`, `RAKE(Z)`, `MAX-THICK` and
+`CROSS-SECTION`. A recognized 14-cell positional row accepts either bare `RATIO`
+or `(RATIO)` in the thickness slot. The compatibility JSON field `supplied_unit`
+preserves each source cell literally: `(QUOTED)`, `(LE-TE)` and `(PRATHER)` are
+measurement labels, not inferred physical units. Absent or
 partially labeled headers remain explicit unresolved-binding diagnostics; the
 report does not invent missing unit/definition cells. SI radius/chord/TWIST use the
 existing core PE0 inch/degree layout (`in * 0.0254`, `math.radians(TWIST)`) and record
@@ -123,6 +132,56 @@ and `[0,1,2,3] / [4,5]`. It is a software demonstration, not APC evidence.
 Regression scope includes units/footer/header mismatch, malformed/omitted rows,
 source hashes, supplied TWIST, distinct pitch fields, deterministic copying,
 missing/insufficient rows, retained definitions and unsupported section comparison.
+
+### 2026-10-03 supplied genuine member — repaired execution
+
+This later execution supersedes the availability limitation above without changing
+that historical record. The attached private `APC13x55MR_PR92_genuine_run.zip`
+supplied `input/13x55MR-PERF.PE0`; its member SHA-256 was independently verified as
+`2972e1b99215f2eb052e586e48cc59730cbfd4f08c6627ea7461a8afa150c30f`.
+The original vendor archive was not supplied here; its pinned identity remains
+coordinator-declared provenance, not a new archive verification claim. The supplied
+pre-repair reports/witnesses are historical evidence, not repaired outputs.
+
+The real, unmocked `report_pe0_geometry` call used
+`source_reference="caller-supplied APC 13x5.5MR PE0 v2025-1001"`,
+`member_name="PE0-FILES_WEB/13x55MR-PERF.PE0"`, the pinned original archive digest
+as declared provenance, and the verified member digest as `expected_sha256`.
+It used nominal diameter `0.3302 m` and
+global hinge radii `0.1016 m` / `0.127 m`. Runtime: CPython 3.12.14, Clang 22.1.3,
+Linux 6.18.44 x86_64 with glibc 2.39. All 51 rows / 14 fields, source lexemes and
+values were checked against the actual local member; terminal station `6.4750 in`
+was retained. Direct inherited rows and every numeric value were identical,
+including binary64 SI fields. Header and unit bindings were recognized; no
+measurement label was reinterpreted as a dimensional pitch unit.
+
+| Global hinge radius | Fixed original indices | Tip original indices | Hinge station |
+| --- | --- | --- | --- |
+| 101.6 mm | 0–27 (28 rows) | 28–50 (23 rows) | Absent, explicit gap |
+| 127.0 mm | 0–33 (34 rows) | 34–50 (17 rows) | Absent, explicit gap |
+
+Fresh digests for this execution (canonical JSON excludes the stdout newline):
+
+- Report SHA-256: `201de87a8fc8ccbeb37aba103e512b4f8de77730db0e69e814ab969e711f0026`.
+- Parent SHA-256: `f4f4d8f7a7c3b7d1c23577fcb520ba5d73b2e5cbbe1c29569f5f85e59c518bb5`.
+- Adapter implementation SHA-256: `e9b4da0eab63bb3ea28645bdc5930fbc79ba640b6a57f304592fad803f066e32`.
+- Unchanged core parser SHA-256: `e256dae2fc525f4d5ab07a8ae46d394a5ca6351a7cbc9ddf3fdbd0ced1d7e6ca`.
+- Unchanged core models SHA-256: `fec0b429c5201a7e7565205df756d00d344a5d5dd94703b7775d4b74ce17b853`.
+
+Repaired negative witnesses on private in-memory copies reject malformed first
+stations, contradictory 13/15-token headers and empty duplicate scalar footers.
+Synthetic TDD observed 13 failing new checks / 31 passing prior checks, then
+94 affected/parser/generator/comparison/licensing checks passed after repair.
+The missing-single-footer cases already rejected at the old final completeness
+check; they now reject immediately at their known labels with a missing-value reason.
+
+Remaining diagnostics: unresolved section coordinates/transition geometry,
+differing radius conventions and last station beyond footer RADIUS. E63/APC12
+declarations, the vendor equivalence statement and thickness-scaling text remain
+retained and unqualified. Full input, derived JSON/table and private witness inputs
+stay outside public Git history. This receipt is geometry retention/copy evidence,
+not experimental performance, BEM, FEA, trajectory, joint strength or hinge selection.
+`physical_qualification=false`; broader proposal PROPOSED / NOT IMPLEMENTED.
 
 ## Primary references and evidence limits
 
