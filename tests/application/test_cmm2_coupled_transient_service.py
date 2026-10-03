@@ -87,26 +87,27 @@ RESISTING = 9.9
 SERVICE = "pyfoldable.application.cmm2_coupled_transient_service"
 
 
-def _draft():
-    return build_design_draft(
-        CANONICAL,
-        DesignDraftInputs(
-            diameter="220 mm",
-            hub_radius="16 mm",
-            hinge_radius="85 mm",
-            blade_count=3,
-            airfoil_id="NACA0012",
-            chord_scale=1.0,
-            twist_scale=1.0,
-            preview_fold_angle="-60 deg",
-            angular_speed="4000 rpm",
-            forward_speed="4 m/s",
-            air_density="1.18 kg/m^3",
-            dynamic_viscosity="1.79e-5 Pa*s",
-            temperature="20 degC",
-            pressure="100 kPa",
-        ),
+def _draft_inputs() -> DesignDraftInputs:
+    return DesignDraftInputs(
+        diameter="220 mm",
+        hub_radius="16 mm",
+        hinge_radius="85 mm",
+        blade_count=3,
+        airfoil_id="NACA0012",
+        chord_scale=1.0,
+        twist_scale=1.0,
+        preview_fold_angle="-60 deg",
+        angular_speed="4000 rpm",
+        forward_speed="4 m/s",
+        air_density="1.18 kg/m^3",
+        dynamic_viscosity="1.79e-5 Pa*s",
+        temperature="20 degC",
+        pressure="100 kPa",
     )
+
+
+def _draft():
+    return build_design_draft(CANONICAL, _draft_inputs())
 
 
 def _mass(distance: float = 0.01, mass: float = 0.01) -> TipMassDistribution:
@@ -642,6 +643,7 @@ _EXPECTED_IMPLEMENTATION_MANIFEST = (
     "pyfoldable/application/mechanism_binding.py",
     "pyfoldable/application/folding_mechanism.py",
     "pyfoldable/dynamics/cmm2_coupled_transient.py",
+    "pyfoldable/dynamics/cmm2_radau_dense.py",
     "pyfoldable/dynamics/coupled_transient.py",
     "pyfoldable/dynamics/mechanism_transient.py",
     "pyfoldable/dynamics/mechanism_contracts.py",
@@ -688,11 +690,11 @@ def test_implementation_file_manifest_covers_direct_calculation_path(monkeypatch
         "pyfoldable/core/airfoil.py",
     }
     assert required <= set(_EXPECTED_IMPLEMENTATION_MANIFEST)
-    assert len(_EXPECTED_IMPLEMENTATION_MANIFEST) == 21
+    assert len(_EXPECTED_IMPLEMENTATION_MANIFEST) == 22
     _install(monkeypatch)
     document = json.loads(run_cmm2_coupled_transient(_binding()).report_json)
     published = document["implementation_files_sha256"]
-    assert len(published) == 21
+    assert len(published) == 22
     assert set(published) == set(_EXPECTED_IMPLEMENTATION_MANIFEST)
     for path in _EXPECTED_IMPLEMENTATION_MANIFEST:
         digest = hashlib.sha256((ROOT / path).read_bytes()).hexdigest()

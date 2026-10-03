@@ -1,0 +1,7 @@
+{
+  "coefficient_replay_inputs": "coefficient_replay_inputs.json",
+  "historical_replay_file": "historical/certificate.json",
+  "note": "historical/certificate.json stores the same replay inputs under the earlier name certificate. It is not the rational mathematical certificate.",
+  "rational_mathematical_certificate": "rational_mathematical_certificate.json",
+  "record_kind": "c2v07_representability_index"
+}

@@ -122,9 +122,11 @@ independent review and merge in PR #78.
 REVIEWED / FROZEN FOR IMPLEMENTATION — CMM-2 RADAU AMENDMENT at technical
 reviewed head `2ec4da9acdccc7508fab7c33f289ec9771b2ea65`. Freezing approves
 that design. It does not authorize production implementation or establish
-PR-C verification. Current production remains RK45/v1. The frozen amendment
-governs a separately authorized future CMM-2 v2 implementation. Radau is not
-implemented. That future numerical-implementation v2 would need its own
+PR-C verification. This unmerged draft contains numerical v2, the certified-root
+repair, and `pyfoldable/dynamics/cmm2_radau_dense.py` in the implementation
+manifest. It remains Draft/BLOCKED. Shipped main
+`4cf0d0ea017fa824ba8d4a063ceddd015dae09d6` remains RK45/v1. Archived v1 seals
+are not relabeled. The v2 implementation keeps its own
 implementation identity and source-bound seals, while preserving
 model/qualification identity, actual-call budgets, ledger/sample matching and
 Q4 bit identity. The accepted PR-B provenance above remains unchanged.
