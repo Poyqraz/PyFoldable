@@ -363,6 +363,7 @@ def prepare_cosine_path_certificate(root: Path) -> dict[str, object]:
                 "independent_cdll_is_evidence": False,
                 "plt_stub": hex(stub_runtime),
                 "plt_stub_bytes_hex": stub.hex(),
+                "plt_jmp_bytes_hex": None,
             }
         else:
             got_pointer = _read_qword(got)
@@ -375,6 +376,7 @@ def prepare_cosine_path_certificate(root: Path) -> dict[str, object]:
             )
             selected["plt_stub"] = hex(stub_runtime)
             selected["plt_stub_bytes_hex"] = stub.hex()
+            selected["plt_jmp_bytes_hex"] = stub[prefix:prefix + 6].hex()
             selected["got_slot"] = hex(got)
             owner = None if got_pointer is None else _runtime_owner(got_pointer)
             if selected["classification"] == "OBSERVED" and (owner is None or owner[3] == path):

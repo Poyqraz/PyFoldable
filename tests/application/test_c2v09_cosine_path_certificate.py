@@ -160,7 +160,7 @@ def test_persisted_path_certificate_recomputes() -> None:
     assert payload["loaded_body"]["matches_historical_body"] is True
     assert payload["loaded_body"]["sha256"] == HISTORICAL_BODY_SHA256
     assert payload["loaded_body"]["elf_vaddr"] == "0x7bad0"
-    assert payload["selected_call_target"]["plt_stub_bytes_hex"] == "ff25f28b6000"
+    assert payload["selected_call_target"]["plt_jmp_bytes_hex"] == "ff25f28b6000"
     assert payload["python_wrapper"]["loaded_wrapper_matches_elf"] is True
     assert payload["python_wrapper"]["disassembly_source"].startswith("objdump")
     assert payload["numerical_controls_and_features"]["required_bits_ok"] is True
