@@ -467,9 +467,16 @@ The later preparation slice on this draft pins the append-only declaration
 executing implementation are separate identities. Missing actual inputs stay
 unestablished. Caller claims do not replace live observations. A zero-source-call
 binding collector records historical capsules, executing dependency file
-identities, and the reviewed graph separately from loaded bytes. The gate returns CONTRACT BLOCKED when applicability is not
-established. It does not select, seal, relabel a v1 seal, or enter a trajectory.
-`physical_qualification=false`.
+identities, and the reviewed graph separately from loaded bytes.
+`ctypes.CDLL(libm).cos` is the resolved libm cos symbol. Wrapper and
+selected-call dispatch stay unestablished, and a matching symbol lookup does
+not remove that blocker. The certificate's 21 source paths keep historical and
+current file hashes, including the changed CMM-2 service and solver. The dense,
+declaration, eligibility and collector modules have no invented historical
+match. File identity, loaded-code identity and operation-graph applicability
+stay separate. The canonical digest covers only its payload. The gate returns
+CONTRACT BLOCKED when applicability is not established. It does not select,
+seal, relabel a v1 seal, or enter a trajectory. `physical_qualification=false`.
 
 ## 2026-10-02 strength-aware radial hinge assessment — proposal only
 

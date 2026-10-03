@@ -304,12 +304,14 @@ def _assess(
     declaration = build_extended_declaration(root)
     observations = observe_execution_context(root)
     binding = collect_binding_record(root)
+    payload = binding["canonical_payload"]
+    observations["resolved_libm_cos_symbol"] = resolve_loaded_cos_vaddr()
     if "selected_dispatch" not in observations:
-        observations["selected_dispatch"] = resolve_loaded_cos_vaddr()
-    if "mxcsr" not in observations and binding["observations"]["mxcsr"] is not None:
-        observations["mxcsr"] = binding["observations"]["mxcsr"]
+        observations["selected_dispatch"] = None
+    if "mxcsr" not in observations and payload["observations"]["mxcsr"] is not None:
+        observations["mxcsr"] = payload["observations"]["mxcsr"]
     if "cpu_feature_flags" not in observations:
-        observations["cpu_feature_flags"] = binding["observations"]["cpu_feature_flags"]
+        observations["cpu_feature_flags"] = payload["observations"]["cpu_feature_flags"]
     runtime = pinned.certificate_runtime
     matches: list[str] = []
     mismatches: list[str] = []

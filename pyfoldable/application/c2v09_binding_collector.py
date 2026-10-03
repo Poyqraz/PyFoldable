@@ -32,6 +32,20 @@ LIMITATIONS = (
     "CPU feature labels do not establish dispatch",
     "caller claims are excluded from observations",
     "unavailable ranges stay NOT ESTABLISHED",
+    "resolved libm cos symbol is not wrapper or selected-call dispatch",
+    "file identity is not loaded-code identity or operation-graph applicability",
+    "a blocked observation is a recorded outcome, not eligibility evidence",
+)
+DIGEST_SCOPE = (
+    "SHA-256 of the section 7.3 canonical bytes of canonical_payload only. "
+    "canonical_sha256 and digest_scope are outside that payload."
+)
+CERTIFICATE_SOURCE_COUNT = 21
+UNHISTORICAL_MODULES = (
+    ("dense", "pyfoldable/dynamics/cmm2_radau_dense.py"),
+    ("declaration", "pyfoldable/application/c2v09_ordered_declaration.py"),
+    ("eligibility", "pyfoldable/application/c2v09_live_eligibility.py"),
+    ("collector", "pyfoldable/application/c2v09_binding_collector.py"),
 )
 
 
@@ -107,7 +121,7 @@ def read_loaded_vaddr(path: str, vaddr: int, length: int) -> bytes | None:
 
 
 def resolve_loaded_cos_vaddr() -> str | None:
-    """ELF virtual address of the resolved libm cos body. CPU flags are not used."""
+    """Virtual address of ctypes.CDLL(libm).cos. This is not wrapper dispatch."""
     path = _library_path("libm.so")
     if path is None:
         return None
@@ -185,6 +199,72 @@ def _numerical_controls() -> dict[str, str | None]:
     return result
 
 
+def _json_body(text: str, index: int) -> str:
+    parts = text.split("```json\n")
+    if len(parts) <= index + 1:
+        raise RuntimeError(f"Reviewed certificate is missing JSON fence {index}.")
+    return parts[index + 1].split("```", 1)[0]
+
+
+def _current_file_sha(root: Path, relative: str) -> str | None:
+    if not relative or relative.startswith("/") or "\\" in relative or ".." in Path(relative).parts:
+        return None
+    path = root / relative
+    if not path.is_file():
+        return None
+    return sha256_bytes(path.read_bytes())
+
+
+def _identity_row(path: str, historical: str | None, current: str | None, file_identity: str) -> dict[str, object]:
+    return {
+        "path": path,
+        "historical_sha256": historical,
+        "current_file_sha256": current,
+        "file_identity": file_identity,
+        "loaded_code_identity": "NOT ESTABLISHED",
+        "operation_graph_applicability": "NOT ESTABLISHED",
+    }
+
+
+def _python_inventory(root: Path) -> dict[str, object]:
+    certificate = (root / "docs/cmm2_c2v09_partition_runtime_certificate.md").read_text(encoding="utf-8")
+    body = _json_body(certificate, 2)
+    if sha256_bytes(body.encode("utf-8")) != CONNECTION_RECORD_SHA256:
+        raise RuntimeError("Connection record does not match the reviewed digest.")
+    parsed = json.loads(body)
+    rows = parsed.get("source_code_hashes")
+    if not isinstance(rows, list) or len(rows) != CERTIFICATE_SOURCE_COUNT:
+        raise RuntimeError("Certificate source inventory is not the reviewed 21 paths.")
+    certificate_sources = []
+    for row in rows:
+        if not isinstance(row, dict) or not isinstance(row.get("path"), str) or not isinstance(row.get("sha256"), str):
+            raise RuntimeError("Certificate source row is incomplete.")
+        path = row["path"]
+        historical = row["sha256"]
+        current = _current_file_sha(root, path)
+        if current is None:
+            file_identity = "NOT ESTABLISHED"
+        elif current == historical:
+            file_identity = "MATCH"
+        else:
+            file_identity = "MISMATCH"
+        certificate_sources.append(_identity_row(path, historical, current, file_identity))
+    modules = []
+    for role, path in UNHISTORICAL_MODULES:
+        current = _current_file_sha(root, path)
+        file_identity = "NO HISTORICAL RECORD" if current is not None else "NOT ESTABLISHED"
+        modules.append({"role": role, **_identity_row(path, None, current, file_identity)})
+    return {
+        "certificate_sources": certificate_sources,
+        "modules_without_historical_record": modules,
+        "identity_separation": {
+            "file_identity": "historical file hash compared with current file bytes",
+            "loaded_code_identity": "NOT ESTABLISHED",
+            "operation_graph_applicability": "NOT ESTABLISHED",
+        },
+    }
+
+
 def _binding(root: Path) -> dict[str, object]:
     text = (root / "docs/cmm2_c2v09_partition_runtime_certificate.md").read_text(encoding="utf-8")
     body = text.split("```json\n", 1)[1].split("```", 1)[0]
@@ -221,12 +301,13 @@ def collect_binding_record(root: Path) -> dict[str, object]:
     flags = _cpu_feature_flags()
     resolved = resolve_loaded_cos_vaddr()
     expected_vaddr = str(binding["resolved_cos_body_vaddr"])
+    missing.append("wrapper/selected-call dispatch")
     if resolved is None:
-        missing.append("resolved cos dispatch")
+        missing.append("resolved libm cos symbol")
     elif resolved == expected_vaddr:
-        matches.append("resolved cos dispatch")
+        matches.append("resolved libm cos symbol")
     else:
-        mismatches.append("resolved cos dispatch")
+        mismatches.append("resolved libm cos symbol")
 
     expected_body = bytes.fromhex(str(binding["resolved_cos_body_bytes_hex"]))
     loaded_body = None
@@ -276,9 +357,17 @@ def collect_binding_record(root: Path) -> dict[str, object]:
         additional.append({"name": name, "file": getattr(module, "__file__", None)})
 
     thread_id = str(threading.get_native_id()) if hasattr(threading, "get_native_id") else str(threading.get_ident())
-    record = {
+    payload = {
+        "outcome": "recorded partial observation",
+        "eligibility_evidence": False,
+        "physical_qualification": False,
         "checkout_sha": _git_text(root, "rev-parse", "HEAD"),
         "tree_sha": _git_text(root, "rev-parse", "HEAD^{tree}"),
+        "runtime": {
+            "python_version": sys.version.split()[0],
+            "platform": platform.platform(),
+            "executable": str(executable),
+        },
         "historical_capsules": {
             "runtime_binding_sha256": RUNTIME_BINDING_SHA256,
             "cosine_record_sha256": COSINE_RECORD_SHA256,
@@ -302,8 +391,10 @@ def collect_binding_record(root: Path) -> dict[str, object]:
             },
             "additional": additional,
         },
+        "python_dependency_inventory": _python_inventory(root),
         "observations": {
-            "resolved_cos_vaddr": resolved,
+            "resolved_libm_cos_symbol_vaddr": resolved,
+            "wrapper_selected_call_dispatch": None,
             "loaded_cos_body": body_class,
             "loaded_constants": constant_rows,
             "cpu_feature_flags": flags,
@@ -321,5 +412,8 @@ def collect_binding_record(root: Path) -> dict[str, object]:
         "limitations": list(LIMITATIONS),
         "source_callbacks": 0,
     }
-    record["canonical_sha256"] = sha256_bytes(canonical_bytes(record))
-    return record
+    return {
+        "digest_scope": DIGEST_SCOPE,
+        "canonical_payload": payload,
+        "canonical_sha256": sha256_bytes(canonical_bytes(payload)),
+    }

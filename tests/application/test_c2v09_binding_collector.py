@@ -13,14 +13,34 @@ from pyfoldable.application.c2v09_live_eligibility import (
     assess_live_eligibility,
     run_certificate_dependent,
 )
+from pyfoldable.application.c2v09_ordered_declaration import canonical_bytes, sha256_bytes
 
 
 def _repository() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+def _body(record: dict) -> dict:
+    payload = record.get("canonical_payload")
+    if isinstance(payload, dict):
+        return payload
+    return record
+
+
+CHANGED_CMM2_SOURCES = (
+    "pyfoldable/application/cmm2_coupled_transient_service.py",
+    "pyfoldable/dynamics/cmm2_coupled_transient.py",
+)
+UNHISTORICAL_MODULES = {
+    "dense": "pyfoldable/dynamics/cmm2_radau_dense.py",
+    "declaration": "pyfoldable/application/c2v09_ordered_declaration.py",
+    "eligibility": "pyfoldable/application/c2v09_live_eligibility.py",
+    "collector": "pyfoldable/application/c2v09_binding_collector.py",
+}
+
+
 def test_collector_separates_capsules_dependencies_and_graph() -> None:
-    record = collect_binding_record(_repository())
+    record = _body(collect_binding_record(_repository()))
     assert record["historical_capsules"]["runtime_binding_sha256"]
     assert "file_sha256" not in record["historical_capsules"]
     assert record["executing_dependencies"]["libm"]["file_sha256"]
@@ -30,6 +50,12 @@ def test_collector_separates_capsules_dependencies_and_graph() -> None:
     assert "file hashes do not establish loaded instructions" in record["limitations"]
     assert "CPU feature labels do not establish dispatch" in record["limitations"]
     assert record["source_callbacks"] == 0
+    assert record["eligibility_evidence"] is False
+    assert record["physical_qualification"] is False
+    assert record["outcome"] == "recorded partial observation"
+    assert record["runtime"]["python_version"]
+    assert record["runtime"]["executable"]
+    assert "not eligibility evidence" in " ".join(record["limitations"])
 
 
 def test_unreadable_instruction_range_is_not_established(monkeypatch) -> None:
@@ -37,7 +63,7 @@ def test_unreadable_instruction_range_is_not_established(monkeypatch) -> None:
         "pyfoldable.application.c2v09_binding_collector.read_loaded_vaddr",
         lambda *_args, **_kwargs: None,
     )
-    record = collect_binding_record(_repository())
+    record = _body(collect_binding_record(_repository()))
     assert record["observations"]["loaded_cos_body"] == "NOT ESTABLISHED"
     assert "loaded certificate cos body" not in record["classifications"]["matches"]
     assert "loaded certificate cos body" in record["classifications"]["not_established"]
@@ -48,7 +74,7 @@ def test_different_loaded_bytes_are_a_mismatch(monkeypatch) -> None:
         "pyfoldable.application.c2v09_binding_collector.read_loaded_vaddr",
         lambda *_args, **_kwargs: b"\x00",
     )
-    record = collect_binding_record(_repository())
+    record = _body(collect_binding_record(_repository()))
     assert record["observations"]["loaded_cos_body"] == "MISMATCH"
     assert "loaded certificate cos body" in record["classifications"]["mismatches"]
 
@@ -62,11 +88,100 @@ def test_cpu_flags_do_not_invent_dispatch(monkeypatch) -> None:
         "pyfoldable.application.c2v09_binding_collector._cpu_feature_flags",
         lambda: ["avx", "fma"],
     )
-    record = collect_binding_record(_repository())
+    record = _body(collect_binding_record(_repository()))
     assert record["observations"]["cpu_feature_flags"] == ["avx", "fma"]
-    assert record["observations"]["resolved_cos_vaddr"] is None
+    assert record["observations"]["resolved_libm_cos_symbol_vaddr"] is None
+    assert record["observations"]["wrapper_selected_call_dispatch"] is None
     assert record["observations"]["loaded_dispatch_inferred_from_cpu"] is False
-    assert "resolved cos dispatch" in record["classifications"]["not_established"]
+    assert "resolved libm cos symbol" in record["classifications"]["not_established"]
+    assert "wrapper/selected-call dispatch" in record["classifications"]["not_established"]
+    assert "resolved cos dispatch" not in record["classifications"]["not_established"]
+
+
+def test_matching_libm_symbol_does_not_establish_wrapper_dispatch(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "pyfoldable.application.c2v09_binding_collector.resolve_loaded_cos_vaddr",
+        lambda: "0x7bad0",
+    )
+    record = _body(collect_binding_record(_repository()))
+    classes = record["classifications"]
+    assert record["observations"]["resolved_libm_cos_symbol_vaddr"] == "0x7bad0"
+    assert record["observations"]["wrapper_selected_call_dispatch"] is None
+    assert "resolved libm cos symbol" in classes["matches"]
+    assert "resolved cos dispatch" not in classes["matches"]
+    assert "wrapper/selected-call dispatch" in classes["not_established"]
+    assert "wrapper/selected-call dispatch" not in classes["matches"]
+    assert "wrapper/selected-call dispatch" not in classes["mismatches"]
+
+
+def test_matching_lookup_does_not_clear_the_eligibility_blocker(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "pyfoldable.application.c2v09_live_eligibility.resolve_loaded_cos_vaddr",
+        lambda: "0x7bad0",
+    )
+    monkeypatch.setattr(
+        "pyfoldable.application.c2v09_binding_collector.resolve_loaded_cos_vaddr",
+        lambda: "0x7bad0",
+    )
+    record = assess_live_eligibility(_repository())
+    assert "selected dispatch" in record.unestablished
+    assert "selected dispatch" not in record.matches
+    assert "selected dispatch" not in record.mismatches
+    assert record.observations.get("selected_dispatch") is None
+    report = run_certificate_dependent(record, source=lambda: None, trajectory=lambda: None)
+    assert report.source_calls == report.trajectory_calls == 0
+
+
+def test_certificate_sources_keep_file_identity_apart_from_loaded_code() -> None:
+    root = _repository()
+    inventory = _body(collect_binding_record(root))["python_dependency_inventory"]
+    sources = inventory["certificate_sources"]
+    assert len(sources) == 21
+    by_path = {row["path"]: row for row in sources}
+    assert len(by_path) == 21
+    for path in CHANGED_CMM2_SOURCES:
+        assert path in by_path
+    for path, row in by_path.items():
+        current = sha256_bytes((root / path).read_bytes())
+        assert row["historical_sha256"]
+        assert row["current_file_sha256"] == current
+        assert row["file_identity"] == ("MATCH" if row["historical_sha256"] == current else "MISMATCH")
+        assert row["loaded_code_identity"] == "NOT ESTABLISHED"
+        assert row["operation_graph_applicability"] == "NOT ESTABLISHED"
+        assert row["file_identity"] != row["loaded_code_identity"]
+    for path in CHANGED_CMM2_SOURCES:
+        assert by_path[path]["file_identity"] == "MISMATCH"
+
+
+def test_new_modules_have_no_invented_historical_match() -> None:
+    root = _repository()
+    record = _body(collect_binding_record(root))
+    certificate_paths = {row["path"] for row in record["python_dependency_inventory"]["certificate_sources"]}
+    rows = {row["role"]: row for row in record["python_dependency_inventory"]["modules_without_historical_record"]}
+    assert set(rows) == set(UNHISTORICAL_MODULES)
+    for role, path in UNHISTORICAL_MODULES.items():
+        row = rows[role]
+        current = sha256_bytes((root / path).read_bytes())
+        assert row["path"] == path
+        assert path not in certificate_paths
+        assert row["historical_sha256"] is None
+        assert row["current_file_sha256"] == current
+        assert row["historical_sha256"] != current
+        assert row["file_identity"] == "NO HISTORICAL RECORD"
+        assert row["loaded_code_identity"] == "NOT ESTABLISHED"
+        assert row["operation_graph_applicability"] == "NOT ESTABLISHED"
+
+
+def test_digest_covers_only_the_canonical_payload() -> None:
+    record = collect_binding_record(_repository())
+    payload = record["canonical_payload"]
+    assert "canonical_sha256" not in payload
+    assert "digest_scope" not in payload
+    assert "canonical_payload" in record["digest_scope"]
+    assert record["canonical_sha256"] == sha256_bytes(canonical_bytes(payload))
+    assert sha256_bytes(canonical_bytes(record)) != record["canonical_sha256"]
+    assert payload["eligibility_evidence"] is False
+    assert payload["physical_qualification"] is False
 
 
 def test_collector_does_not_call_source_mapper_or_trajectory() -> None:
@@ -75,7 +190,7 @@ def test_collector_does_not_call_source_mapper_or_trajectory() -> None:
     assert "bem" not in text
     assert "mapper" not in text
     assert "trajectory" not in text
-    record = collect_binding_record(_repository())
+    record = _body(collect_binding_record(_repository()))
     report = run_certificate_dependent(
         assess_live_eligibility(_repository()),
         source=lambda: None,
