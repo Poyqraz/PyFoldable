@@ -512,6 +512,10 @@ adaya bağlı geometri/kütle/aerodinamik/yük-vakası/FEA kanıt dosyası öner
 birleştirilmiş açık geometrisini özgün pal ile eşler; radyal kesit/twist eşleşmesi,
 dönüşümler ve bağlantı bölgesi farkları açıkça kaydedilir. Ana palın varsayılan
 optimumluğu yalnız beyan edilmiş çalışma koşuluna bağlı çalışma varsayımıdır.
+Dar [istasyon karşılaştırma raporu](parent_blade_station_comparison.md) ayrı Draft
+uygulama dilimidir: kaynak bağlı açık eşleme ve sayısal farklar raporlanır;
+tam 3B yüzey, bağlantı boşluğu/dayanımı veya güvenli aday kanıtı değildir.
+Geniş tasarım önerisi PROPOSED / NOT IMPLEMENTED olarak kalır.
 13 inç ayrı senaryodur. CAD, yönsel PA-CF kuponları ve deney hazırlığı CMM-2
 doğrulamasıyla paralel ilerleyebilir; bu öneri çözüm çalıştırmaz, PR-09/GEOM
 kapılarını değiştirmez ve güvenli aday seçimi veya fiziksel nitelik vermez.
