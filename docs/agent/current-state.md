@@ -523,3 +523,22 @@ remain explicit. Vendor bytes/full reports remain outside public Git history.
 This Draft geometry-reporting repair performs no BEM/FEA/trajectory or qualification
 promotion; broader proposal PROPOSED / NOT IMPLEMENTED, physical_qualification=false.
 C2V-09 and PR #81/#84/#91 remain untouched; ADR-009 remains unaccepted.
+
+
+### 2026-10-03 merged PE0 reporting and prospective mixed-profile parent scope
+
+PR #92 is merged on main `988a8524c4a8814eeee54071a86b6da67f0b150b`. Its bounded
+source reporting and genuine receipt supersede the current-status meaning of the
+earlier Draft/unavailable records above; those historical records remain intact.
+This is source retention/copying, not mixed-profile surface reconstruction.
+
+The [new continuous parent geometry proposal](../generated_mixed_profile_parent_geometry_contract.md)
+is **PROPOSED / NOT IMPLEMENTED**. It declares future generated sections/surfaces
+as distinct from manufacturer records and as-built evidence; complementary children
+inherit global chord/twist/profile functions without a distal reset. Missing source
+hinge rows remain missing even if a future generated function evaluates there.
+Transition, thickness, sweep/rake placement and coordinate rights are explicit
+model choices/pending evidence. No surface/solver execution, freeze or strength
+acceptance; external CAD/STEP remains optional. 13-inch and 250 mm scenarios stay
+separate. PR #81/#84/#91 and C2V-09 unchanged; `physical_qualification=false`,
+ADR-009 unaccepted, unknown clearance/physical gates preserved.

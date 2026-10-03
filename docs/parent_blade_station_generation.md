@@ -119,3 +119,12 @@ cover exact copying/lineage, one parent build, deterministic outputs/replay, inv
 positions/profile identities, unsupported source topology, recorded controls,
 separate joint records and missing endpoints/rows. CI checks software behavior,
 not hardware safety, physical qualification or a selected hinge winner.
+
+
+## Prospective continuous mixed-profile scope
+
+The [separate parent section/surface proposal](generated_mixed_profile_parent_geometry_contract.md)
+is **PROPOSED / NOT IMPLEMENTED**. It specifies a future continuous generated
+parent method, with explicit blend/thickness/placement choices and shared hinge
+evaluation. This sparse-table service keeps its no-interpolation/single-profile
+boundaries and recorded gaps; it does not claim that new scope is implemented.
