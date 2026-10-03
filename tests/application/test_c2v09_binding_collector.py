@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import subprocess
 from pathlib import Path
 
 from pyfoldable.application.c2v09_binding_collector import (
@@ -182,6 +184,42 @@ def test_digest_covers_only_the_canonical_payload() -> None:
     assert sha256_bytes(canonical_bytes(record)) != record["canonical_sha256"]
     assert payload["eligibility_evidence"] is False
     assert payload["physical_qualification"] is False
+
+
+def test_persisted_partial_record_recomputes_and_is_not_eligibility() -> None:
+    root = _repository()
+    document = json.loads((root / "reports/c2v09_binding_observation/partial_record.json").read_text(encoding="utf-8"))
+    payload = document["canonical_payload"]
+    assert "canonical_sha256" not in payload
+    assert "digest_scope" not in payload
+    assert "canonical_payload" in document["digest_scope"]
+    assert document["canonical_sha256"] == sha256_bytes(canonical_bytes(payload))
+    assert sha256_bytes(canonical_bytes(document)) != document["canonical_sha256"]
+    assert payload["outcome"] == "recorded partial observation"
+    assert payload["eligibility_evidence"] is False
+    assert payload["physical_qualification"] is False
+    assert payload["source_callbacks"] == 0
+    assert payload["runtime"]["python_version"]
+    assert payload["runtime"]["executable"]
+    assert payload["observations"]["wrapper_selected_call_dispatch"] is None
+    assert "wrapper/selected-call dispatch" in payload["classifications"]["not_established"]
+    assert "not eligibility evidence" in " ".join(payload["limitations"])
+    checkout = payload["checkout_sha"]
+    tree = subprocess.check_output(["git", "rev-parse", f"{checkout}^{{tree}}"], cwd=root, text=True).strip()
+    assert payload["tree_sha"] == tree
+    subprocess.check_call(["git", "merge-base", "--is-ancestor", checkout, "HEAD"], cwd=root)
+    by_path = {row["path"]: row for row in payload["python_dependency_inventory"]["certificate_sources"]}
+    assert len(by_path) == 21
+    for path in CHANGED_CMM2_SOURCES:
+        assert by_path[path]["file_identity"] == "MISMATCH"
+        assert by_path[path]["loaded_code_identity"] == "NOT ESTABLISHED"
+        assert by_path[path]["operation_graph_applicability"] == "NOT ESTABLISHED"
+    roles = {row["role"]: row for row in payload["python_dependency_inventory"]["modules_without_historical_record"]}
+    assert set(roles) == set(UNHISTORICAL_MODULES)
+    for role, path in UNHISTORICAL_MODULES.items():
+        assert roles[role]["path"] == path
+        assert roles[role]["historical_sha256"] is None
+        assert roles[role]["file_identity"] == "NO HISTORICAL RECORD"
 
 
 def test_collector_does_not_call_source_mapper_or_trajectory() -> None:

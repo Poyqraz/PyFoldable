@@ -474,7 +474,11 @@ not remove that blocker. The certificate's 21 source paths keep historical and
 current file hashes, including the changed CMM-2 service and solver. The dense,
 declaration, eligibility and collector modules have no invented historical
 match. File identity, loaded-code identity and operation-graph applicability
-stay separate. The canonical digest covers only its payload. The gate returns
+stay separate. The canonical digest covers only its payload. A clean checkout of
+`1126373dc4e4131ff153e9269871ec2fc0a71efa` (tree
+`18ddaae626652f8b1944fa1842eb23a28f437ac0`) produced the partial record
+[reports/c2v09_binding_observation/partial_record.json](../../reports/c2v09_binding_observation/partial_record.json).
+That blocked observation is not eligibility evidence. The gate returns
 CONTRACT BLOCKED when applicability is not established. It does not select,
 seal, relabel a v1 seal, or enter a trajectory. `physical_qualification=false`.
 
