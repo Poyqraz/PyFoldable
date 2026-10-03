@@ -518,6 +518,14 @@ Its probe checked CPUID leaf 7 after that leaf overwrote the OSXSAVE register, a
 [reports/c2v09_cosine_path_certificate/repaired_observation.json](../../reports/c2v09_cosine_path_certificate/repaired_observation.json),
 from checkout `319c10ae22e55891ad8552d8741664c8ef7f7f38`. Checkout, tree, probe, and implementation identities are recorded separately. The selected libm body matches the historical body under the repaired guard and wrapper prerequisite. The historical CPython wrapper addresses do not apply. This is not eligibility evidence. PR #81 and PR #84 stay unmerged into main.
 
+The later enforcement slice keeps seven unhistorical nodes in one ordered
+inventory: dense, declaration, eligibility, collector, applicability, cosine
+certificate, and the probe C source. The C source hash is not a compiled or
+loaded native identity. Historical file MATCH is file identity only. The two
+changed CMM-2 paths stay mismatches on the eligibility gate. Missing or
+malformed inventory stays unestablished. `eligibility_evidence=false` and
+`physical_qualification=false`. No dependent call is enabled.
+
 ## 2026-10-02 strength-aware radial hinge assessment — proposal only
 
 The [separate design proposal](../strength_aware_radial_hinge_assessment_proposal.md)

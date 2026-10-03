@@ -42,11 +42,16 @@ DIGEST_SCOPE = (
 )
 CERTIFICATE_SOURCE_COUNT = 21
 UNHISTORICAL_MODULES = (
-    ("dense", "pyfoldable/dynamics/cmm2_radau_dense.py"),
-    ("declaration", "pyfoldable/application/c2v09_ordered_declaration.py"),
-    ("eligibility", "pyfoldable/application/c2v09_live_eligibility.py"),
-    ("collector", "pyfoldable/application/c2v09_binding_collector.py"),
+    ("dense", "pyfoldable/dynamics/cmm2_radau_dense.py", "python_source"),
+    ("declaration", "pyfoldable/application/c2v09_ordered_declaration.py", "python_source"),
+    ("eligibility", "pyfoldable/application/c2v09_live_eligibility.py", "python_source"),
+    ("collector", "pyfoldable/application/c2v09_binding_collector.py", "python_source"),
+    ("applicability", "pyfoldable/application/c2v09_runtime_applicability.py", "python_source"),
+    ("cosine_certificate", "pyfoldable/application/c2v09_cosine_path_certificate.py", "python_source"),
+    ("probe_source", "pyfoldable/application/c2v09_cosine_path_probe.c", "c_source"),
 )
+if len({path for _role, path, _kind in UNHISTORICAL_MODULES}) != len(UNHISTORICAL_MODULES):
+    raise RuntimeError("Unhistorical inventory paths are not unique.")
 
 
 def _git_text(root: Path, *args: str) -> str | None:
@@ -215,12 +220,21 @@ def _current_file_sha(root: Path, relative: str) -> str | None:
     return sha256_bytes(path.read_bytes())
 
 
-def _identity_row(path: str, historical: str | None, current: str | None, file_identity: str) -> dict[str, object]:
+def _identity_row(
+    path: str,
+    historical: str | None,
+    current: str | None,
+    file_identity: str,
+    identity_kind: str,
+) -> dict[str, object]:
+    native = "NOT ESTABLISHED" if identity_kind == "c_source" else "NOT A COMPILED IMAGE"
     return {
         "path": path,
         "historical_sha256": historical,
         "current_file_sha256": current,
         "file_identity": file_identity,
+        "identity_kind": identity_kind,
+        "compiled_loaded_native_identity": native,
         "loaded_code_identity": "NOT ESTABLISHED",
         "operation_graph_applicability": "NOT ESTABLISHED",
     }
@@ -248,12 +262,12 @@ def _python_inventory(root: Path) -> dict[str, object]:
             file_identity = "MATCH"
         else:
             file_identity = "MISMATCH"
-        certificate_sources.append(_identity_row(path, historical, current, file_identity))
+        certificate_sources.append(_identity_row(path, historical, current, file_identity, "python_source"))
     modules = []
-    for role, path in UNHISTORICAL_MODULES:
+    for role, path, kind in UNHISTORICAL_MODULES:
         current = _current_file_sha(root, path)
         file_identity = "NO HISTORICAL RECORD" if current is not None else "NOT ESTABLISHED"
-        modules.append({"role": role, **_identity_row(path, None, current, file_identity)})
+        modules.append({"role": role, **_identity_row(path, None, current, file_identity, kind)})
     return {
         "certificate_sources": certificate_sources,
         "modules_without_historical_record": modules,

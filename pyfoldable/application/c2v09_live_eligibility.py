@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Callable, Mapping
 
 from pyfoldable.application.c2v09_binding_collector import (
+    UNHISTORICAL_MODULES,
     collect_binding_record,
     resolve_loaded_cos_vaddr,
 )
@@ -289,6 +290,80 @@ def _classify_actual(name: str, supplied, pinned_value, matches: list[str], mism
     matches.append(name)
 
 
+def _inventory_unestablished(unestablished: list[str]) -> None:
+    if "python dependency inventory" not in unestablished:
+        unestablished.append("python dependency inventory")
+
+
+def _row_ready(row: object) -> bool:
+    if not isinstance(row, dict) or not isinstance(row.get("path"), str) or not row["path"]:
+        return False
+    return row.get("file_identity") in {"MATCH", "MISMATCH", "NOT ESTABLISHED", "NO HISTORICAL RECORD"}
+
+
+def _enforce_source_inventory(payload: object, matches: list[str], mismatches: list[str], unestablished: list[str]) -> None:
+    """File hashes classify files only. They do not clear loaded code, graph, or eligibility."""
+    if not isinstance(payload, dict):
+        _inventory_unestablished(unestablished)
+        return
+    inventory = payload.get("python_dependency_inventory")
+    if not isinstance(inventory, dict):
+        _inventory_unestablished(unestablished)
+        return
+    sources = inventory.get("certificate_sources")
+    modules = inventory.get("modules_without_historical_record")
+    if not isinstance(sources, list) or not isinstance(modules, list):
+        _inventory_unestablished(unestablished)
+        return
+    seen: set[str] = set()
+    for row in sources:
+        if not _row_ready(row) or row["file_identity"] == "NO HISTORICAL RECORD":
+            _inventory_unestablished(unestablished)
+            return
+        path = row["path"]
+        if path in seen:
+            _inventory_unestablished(unestablished)
+            return
+        seen.add(path)
+        identity = row["file_identity"]
+        if identity == "MATCH":
+            matches.append(f"historical source file identity {path}")
+        elif identity == "MISMATCH":
+            mismatches.append(f"historical source file {path}")
+        else:
+            unestablished.append(f"historical source file identity {path}")
+        unestablished.append(f"loaded-code identity {path}")
+        unestablished.append(f"operation-graph applicability {path}")
+    recorded: dict[str, dict] = {}
+    for row in modules:
+        if not _row_ready(row) or not isinstance(row.get("role"), str):
+            _inventory_unestablished(unestablished)
+            return
+        path = row["path"]
+        if path in recorded or path in seen:
+            _inventory_unestablished(unestablished)
+            return
+        recorded[path] = row
+    for role, path, kind in UNHISTORICAL_MODULES:
+        row = recorded.get(path)
+        if row is None or row.get("role") != role or row.get("historical_sha256") is not None:
+            unestablished.append(f"no historical applicability clearance {path}")
+            if row is not None and row.get("historical_sha256") is not None:
+                mismatches.append(f"invented historical clearance {path}")
+            continue
+        if row.get("file_identity") == "MATCH":
+            mismatches.append(f"invented historical clearance {path}")
+        unestablished.append(f"no historical applicability clearance {path}")
+        unestablished.append(f"loaded-code identity {path}")
+        unestablished.append(f"operation-graph applicability {path}")
+        if kind == "c_source":
+            unestablished.append(f"compiled loaded native identity {path}")
+            if row.get("compiled_loaded_native_identity") == "MATCH":
+                mismatches.append(f"invented native clearance {path}")
+    if set(recorded) != {path for _role, path, _kind in UNHISTORICAL_MODULES}:
+        _inventory_unestablished(unestablished)
+
+
 def _assess(
     root: Path,
     *,
@@ -429,6 +504,8 @@ def _assess(
         mismatches.append("extended declaration digest")
     else:
         matches.append("extended declaration digest")
+
+    _enforce_source_inventory(payload, matches, mismatches, unestablished)
 
     status = CONTRACT_BLOCKED if mismatches or unestablished else "ELIGIBLE"
     partial = {
