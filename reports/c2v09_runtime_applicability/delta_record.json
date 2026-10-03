@@ -70,6 +70,15 @@
           "operation_graph_applicability": "NOT ESTABLISHED",
           "path": "pyfoldable/application/c2v09_binding_collector.py",
           "role": "collector"
+        },
+        {
+          "current_file_sha256": "d42d1367adcf2f80be94fb465e5dcfb139acf6f0ece2a53c2c856d57765fcbbe",
+          "file_identity": "NO HISTORICAL RECORD",
+          "historical_sha256": null,
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/application/c2v09_runtime_applicability.py",
+          "role": "applicability"
         }
       ],
       "unchanged_file_hash_still_unbound": [
@@ -225,7 +234,8 @@
           "operation_graph_applicability": "NOT ESTABLISHED",
           "path": "pythrust/propulsion/models.py"
         }
-      ]
+      ],
+      "unresolved_certificate_sources": []
     },
     "fresh_certification_required": [
       {
@@ -437,14 +447,15 @@
     ],
     "identities": {
       "executing_implementation": {
-        "checkout_sha": "17f2517e85f258571a525e8681201f1fbaf8e7cc",
+        "checkout_sha": "123fe281a220f3c0de9dfa5d4b47504438662362",
         "role": "executing implementation",
-        "tree_sha": "a9030d0d1a353c4c735a85e0b6211b1129eda42d"
+        "tree_sha": "2e86b38282da5d7515e63cdf323283d884bad7e1"
       },
       "observation": {
-        "collector_canonical_sha256": "23abd95d27c480e346be523937855d0f43e6c2cf042a3f27774bf8f756d8e2d1",
-        "collector_checkout_sha": "17f2517e85f258571a525e8681201f1fbaf8e7cc",
-        "collector_tree_sha": "a9030d0d1a353c4c735a85e0b6211b1129eda42d",
+        "collector_canonical_sha256": "e0254a1ed7281bb2aec306f1a7d5d311b866b0f3ce098b315a83f5aa22a813f0",
+        "collector_checkout_sha": "123fe281a220f3c0de9dfa5d4b47504438662362",
+        "collector_thread_id": "208793",
+        "collector_tree_sha": "2e86b38282da5d7515e63cdf323283d884bad7e1",
         "preserved_partial_record": {
           "canonical_sha256": "dff8108fe30854b8647d8e022dcf1c9521ee3a4d824e5d292ae0fd8eaa07d820",
           "checkout_sha": "1126373dc4e4131ff153e9269871ec2fc0a71efa",
@@ -461,6 +472,14 @@
       },
       "technical_authority": {
         "head": "fd55fa97676c84c896511765e94561a706252239",
+        "pinned_artifact_sha256": {
+          "docs/cmm2_c2v09_candidate29_proposal.md": "d49dccd482e3c5ec71d78cd92968620fdd118c64888eabcdcd45149484e9d884",
+          "docs/cmm2_c2v09_partition_initial_assessment.md": "eba42e24e8f5d128ccb218f3fad1d6d983aa5a8b22784a81ae0c351b379cf666",
+          "docs/cmm2_c2v09_partition_policy_proposal.md": "c563fddc5774d1a4ecfc2ae7961dc05915e04a1185e5ccb43084870db8a1d0d2",
+          "docs/cmm2_c2v09_partition_runtime_certificate.md": "d0c9196a747ad2e49f94bb264e33bca95eec0a20e1bc900dc1bd5442d0ef5b35",
+          "docs/cmm2_c2v09_partition_scope_runtime_proposal.md": "b15665e115628c850e1f877891a8c5099404be0e6c1b206ce7a63f1901dd189c",
+          "docs/cmm2_numerical_feasibility_amendment.md": "372179bda248811450a33c2beacf8c9ce930a05add3cc58bfe58fec82e99c59a"
+        },
         "role": "technical authority"
       }
     },
@@ -475,6 +494,11 @@
         "name": "cosine arithmetic path",
         "reason": "a resolved libm symbol is not the Python wrapper or the selected call target"
       }
+    ],
+    "observation_limitations": [
+      "the collector digest embeds the process thread id and is not reconstructed by a later run",
+      "a resolved libm symbol is not the Python wrapper or the selected call target",
+      "baseline CI is not eligibility evidence"
     ],
     "outcome": "actual-runtime applicability delta",
     "physical_qualification": false,
@@ -523,6 +547,6 @@
       }
     ]
   },
-  "canonical_sha256": "ae508400486d1e118c1915787fdbea16b2c4df75497f59ccc11de5f5c228b6ca",
+  "canonical_sha256": "bf204698dcc75cb5b5de32147702952a6ad85ef1cbb4644bc3f0afa5b186c931",
   "digest_scope": "SHA-256 of the section 7.3 canonical bytes of canonical_payload only. canonical_sha256 and digest_scope are outside that payload."
 }

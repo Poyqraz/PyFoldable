@@ -50,8 +50,8 @@ No dependent source call is authorized by this delta.
 
 ## Concrete observation
 
-Committed checkout `17f2517e85f258571a525e8681201f1fbaf8e7cc`, tree
-`a9030d0d1a353c4c735a85e0b6211b1129eda42d`, produced
+Committed checkout `123fe281a220f3c0de9dfa5d4b47504438662362`, tree
+`2e86b38282da5d7515e63cdf323283d884bad7e1`, produced
 [reports/c2v09_runtime_applicability/delta_record.json](../reports/c2v09_runtime_applicability/delta_record.json).
 Technical authority stayed `fd55fa97676c84c896511765e94561a706252239`.
 This process resolved the libm cos symbol at `0x7bad0` and did not establish

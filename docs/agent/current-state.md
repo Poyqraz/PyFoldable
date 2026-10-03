@@ -499,8 +499,8 @@ binding. Missing runtime evidence stays blocked. Status **CONTRACT BLOCKED**.
 This is not eligibility evidence. `physical_qualification=false`. Baseline CI
 does not establish eligibility. The concrete record is
 [reports/c2v09_runtime_applicability/delta_record.json](../../reports/c2v09_runtime_applicability/delta_record.json),
-from checkout `17f2517e85f258571a525e8681201f1fbaf8e7cc` and tree
-`a9030d0d1a353c4c735a85e0b6211b1129eda42d`. PR #81 and PR #84 stay untouched
+from checkout `123fe281a220f3c0de9dfa5d4b47504438662362` and tree
+`2e86b38282da5d7515e63cdf323283d884bad7e1`. PR #81 and PR #84 stay untouched
 by this delta.
 
 ## 2026-10-02 strength-aware radial hinge assessment — proposal only
