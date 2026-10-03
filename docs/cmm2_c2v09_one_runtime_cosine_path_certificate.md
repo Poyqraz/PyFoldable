@@ -19,8 +19,8 @@ The historical certificate file is unchanged.
 
 ## Concrete observation
 
-Committed checkout `171f0fb36544e7ca743afc225dc22bec4555ed73`, tree
-`91226cd9f07d5663834fa96a2d8e32d3b1abcd5e`, started with `LD_BIND_NOW=1`,
+Committed checkout `f343a9b206b0169e96bf5e66548ee08d257c3806`, tree
+`8ba778104fcb3fd0498948cc1c91924c75ac0494`, started with `LD_BIND_NOW=1`,
 produced
 [reports/c2v09_cosine_path_certificate/observation.json](../reports/c2v09_cosine_path_certificate/observation.json).
 Its digest is outside the payload. Runtime load addresses in that file are
@@ -49,9 +49,10 @@ not executable `fa67443527ed9647f760d807e2a38f26340757123e643c4639cf273ed15d5ea7
 and this wrapper is not the certified `mov`/`jmp math_1` thunk.
 
 In this process the independent libm symbol address happened to equal the GOT
-qword. That equality is not the evidence. The probe source hash equals the
-historical probe.c hash
-`210ae89edcf9ec3b872ddee4ae4f5e79d0b04eba1aec1bea46f652d6fb132677`.
+qword. That equality is not the evidence. Loaded wrapper bytes match the ELF
+bytes at `0x62e430`. The decoded PLT jump is `ff 25 f2 8b 60 00`. The probe is
+the historical reader with `xgetbv` guarded by the OSXSAVE bit, SHA256
+`8a8fe2c2b1eb60cea016acec26d50fdcd902ee33ec57b81efa6273cb7fb3aaba`.
 
 If the GOT still points at the PLT resolver, the selected target is missing.
 Obtain it by starting the same interpreter with `LD_BIND_NOW=1` and rereading

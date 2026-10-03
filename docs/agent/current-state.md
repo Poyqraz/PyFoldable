@@ -513,7 +513,7 @@ graph correspondence and the returned source object stay outside this
 certificate. `physical_qualification=false`. This is not eligibility evidence.
 The bind-now observation is
 [reports/c2v09_cosine_path_certificate/observation.json](../../reports/c2v09_cosine_path_certificate/observation.json),
-from checkout `171f0fb36544e7ca743afc225dc22bec4555ed73`. The selected libm
+from checkout `f343a9b206b0169e96bf5e66548ee08d257c3806`. The selected libm
 body matches the historical body and the historical validity predicate holds;
 the historical CPython wrapper addresses do not apply. PR #81 and PR #84 stay
 unmerged into main.
