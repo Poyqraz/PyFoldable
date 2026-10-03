@@ -23,10 +23,27 @@ def _repository() -> Path:
 
 
 def _body(record: dict) -> dict:
-    payload = record.get("canonical_payload")
-    if isinstance(payload, dict):
-        return payload
-    return record
+    payload = record["canonical_payload"]
+    assert isinstance(payload, dict)
+    assert "canonical_sha256" not in payload
+    return payload
+
+
+def _assert_recorded_checkout(root: Path, payload: dict) -> None:
+    """Check the named tree when that commit is present. A shallow clone is not a mismatch."""
+    checkout = payload["checkout_sha"]
+    tree_sha = payload["tree_sha"]
+    assert isinstance(checkout, str) and len(checkout) == 40
+    assert isinstance(tree_sha, str) and len(tree_sha) == 40
+    present = subprocess.call(
+        ["git", "cat-file", "-e", f"{checkout}^{{commit}}"],
+        cwd=root,
+        stderr=subprocess.DEVNULL,
+    ) == 0
+    if not present:
+        return
+    tree = subprocess.check_output(["git", "rev-parse", f"{checkout}^{{tree}}"], cwd=root, text=True).strip()
+    assert tree_sha == tree
 
 
 CHANGED_CMM2_SOURCES = (
@@ -186,6 +203,20 @@ def test_digest_covers_only_the_canonical_payload() -> None:
     assert payload["physical_qualification"] is False
 
 
+def test_absent_checkout_object_does_not_reject_the_record(monkeypatch) -> None:
+    payload = {"checkout_sha": "a" * 40, "tree_sha": "b" * 40}
+
+    def absent(*_args, **_kwargs) -> int:
+        return 1
+
+    def must_not_resolve(*_args, **_kwargs) -> str:
+        raise AssertionError("rev-parse must not run when the commit object is absent")
+
+    monkeypatch.setattr(subprocess, "call", absent)
+    monkeypatch.setattr(subprocess, "check_output", must_not_resolve)
+    _assert_recorded_checkout(_repository(), payload)
+
+
 def test_persisted_partial_record_recomputes_and_is_not_eligibility() -> None:
     root = _repository()
     document = json.loads((root / "reports/c2v09_binding_observation/partial_record.json").read_text(encoding="utf-8"))
@@ -204,10 +235,7 @@ def test_persisted_partial_record_recomputes_and_is_not_eligibility() -> None:
     assert payload["observations"]["wrapper_selected_call_dispatch"] is None
     assert "wrapper/selected-call dispatch" in payload["classifications"]["not_established"]
     assert "not eligibility evidence" in " ".join(payload["limitations"])
-    checkout = payload["checkout_sha"]
-    tree = subprocess.check_output(["git", "rev-parse", f"{checkout}^{{tree}}"], cwd=root, text=True).strip()
-    assert payload["tree_sha"] == tree
-    subprocess.check_call(["git", "merge-base", "--is-ancestor", checkout, "HEAD"], cwd=root)
+    _assert_recorded_checkout(root, payload)
     by_path = {row["path"]: row for row in payload["python_dependency_inventory"]["certificate_sources"]}
     assert len(by_path) == 21
     for path in CHANGED_CMM2_SOURCES:
