@@ -546,3 +546,32 @@ new offset topology is not cleared by planar GEOM-01 or existing BEM. Actual CAD
 conditions and strength evidence remain required. The duplicated-root/twist-reset
 control and its greater-loss hypothesis are optional and unmeasured. No runs,
 new gates, freeze or qualification follows; PR #81/#84 contracts are unchanged.
+
+
+## 2026-10-03 — PR #91 repair handoff transport
+
+The uploaded repair bundle and mailbox bind original code-observation commit
+`319c10ae22e55891ad8552d8741664c8ef7f7f38` (tree
+`fff000b4c4bc9c7a4d64a5b3030f675ee3ede3fb`) and original record commit
+`07717b86220bc9d385aa95c30b190be0d3d78bf0` (tree
+`94271c2c4b9f40f1c40b32e64bf58e5aa5942bc1`). They are separate from GitHub
+Git Data transport commits, whose author/date metadata produce new identities.
+The two original file trees are preserved exactly before a separate test/status
+portability delta. Neither original SHA is relabelled as a remotely tested HEAD.
+
+The repaired-record regression always verifies the executing probe and Python
+implementation bytes against the immutable repaired-observation source hashes.
+It additionally verifies the original observation commit's source blobs and
+tree when that object is available, using an explicit repository working
+directory. Missing archival Git history does not waive either current-source
+hash check. Three regression checks cover absent history, source drift under
+absent history, and available-history checks in the explicit repository.
+
+Historical and repaired observation files remain byte-for-byte unchanged; the
+original recorded process/checkout/runtime identities remain historical. No
+production source, numerical contract, timestamp closure, fixture, workflow or
+qualification gate changes in the portability delta. PR #91 remains Draft and
+unmerged; fresh CI must cover the actual published transport HEAD. Publication
+and baseline CI do not establish C2V-09 live eligibility, initial preflight,
+selection, a v2 seal, accepted PR-C evidence, ADR-009 or physical qualification.
+`eligibility_evidence=false`; `physical_qualification=false`.

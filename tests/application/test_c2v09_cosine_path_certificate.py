@@ -495,6 +495,32 @@ def test_historical_observation_bytes_and_limitations_stay_recorded() -> None:
     assert "8a8fe2c2b1eb60cea016acec26d50fdcd902ee33ec57b81efa6273cb7fb3aaba" in document
 
 
+def _assert_repaired_sources(root: Path) -> None:
+    """Bind source bytes even when the archived observation commit is absent.
+
+    Git Data transport and shallow checkouts need not contain the original
+    observation commit. Its identifiers remain archival; current source hashes
+    are mandatory, with additional original-object checks whenever available.
+    """
+    sources = {
+        "pyfoldable/application/c2v09_cosine_path_probe.c": REPAIRED_PROBE,
+        "pyfoldable/application/c2v09_cosine_path_certificate.py": REPAIRED_IMPLEMENTATION,
+    }
+    for relative, expected in sources.items():
+        assert sha256_bytes((root / relative).read_bytes()) == expected
+    present = subprocess.call(
+        ["git", "cat-file", "-e", f"{REPAIRED_CHECKOUT}^{{commit}}"],
+        cwd=root,
+        stderr=subprocess.DEVNULL,
+    ) == 0
+    if not present:
+        return
+    for relative, expected in sources.items():
+        archived = subprocess.check_output(["git", "show", f"{REPAIRED_CHECKOUT}:{relative}"], cwd=root)
+        assert sha256_bytes(archived) == expected
+    _assert_recorded_checkout(root, REPAIRED_CHECKOUT, REPAIRED_TREE)
+
+
 def test_repaired_observation_keeps_separate_identities() -> None:
     root = _repository()
     path = root / "reports/c2v09_cosine_path_certificate/repaired_observation.json"
@@ -508,14 +534,7 @@ def test_repaired_observation_keeps_separate_identities() -> None:
     assert payload["probe_source_sha256"] == REPAIRED_PROBE
     assert payload["implementation_sha256"] == REPAIRED_IMPLEMENTATION
     assert len({REPAIRED_CHECKOUT, REPAIRED_TREE, REPAIRED_PROBE, REPAIRED_IMPLEMENTATION}) == 4
-    probe = subprocess.check_output(["git", "show", f"{REPAIRED_CHECKOUT}:pyfoldable/application/c2v09_cosine_path_probe.c"])
-    implementation = subprocess.check_output(
-        ["git", "show", f"{REPAIRED_CHECKOUT}:pyfoldable/application/c2v09_cosine_path_certificate.py"]
-    )
-    assert sha256_bytes(probe) == REPAIRED_PROBE
-    assert sha256_bytes(implementation) == REPAIRED_IMPLEMENTATION
-    tree = subprocess.check_output(["git", "rev-parse", f"{REPAIRED_CHECKOUT}^{{tree}}"], cwd=root, text=True).strip()
-    assert tree == REPAIRED_TREE
+    _assert_repaired_sources(root)
     assert payload["libm_body_argument"] == "APPLIES"
     assert payload["historical_cpython_wrapper_argument"] == "DOES NOT APPLY"
     assert payload["python_wrapper"]["loaded_wrapper_matches_elf"] is True
@@ -532,3 +551,52 @@ def test_repaired_observation_keeps_separate_identities() -> None:
     assert "319c10ae22e55891ad8552d8741664c8ef7f7f38" in (
         root / "docs/cmm2_c2v09_one_runtime_cosine_path_certificate.md"
     ).read_text(encoding="utf-8")
+
+
+def _copy_repaired_sources(root: Path) -> None:
+    for name in ("c2v09_cosine_path_probe.c", "c2v09_cosine_path_certificate.py"):
+        relative = Path("pyfoldable/application") / name
+        destination = root / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes((_repository() / relative).read_bytes())
+
+
+def test_repaired_sources_remain_checked_without_archived_git_history(tmp_path: Path) -> None:
+    _copy_repaired_sources(tmp_path)
+    subprocess.run(["git", "init", "--quiet", str(tmp_path)], check=True)
+    _assert_repaired_sources(tmp_path)
+
+
+def test_repaired_source_drift_fails_without_archived_git_history(tmp_path: Path) -> None:
+    _copy_repaired_sources(tmp_path)
+    subprocess.run(["git", "init", "--quiet", str(tmp_path)], check=True)
+    source = tmp_path / "pyfoldable/application/c2v09_cosine_path_probe.c"
+    source.write_bytes(source.read_bytes() + b"\n/* drift */\n")
+    with pytest.raises(AssertionError):
+        _assert_repaired_sources(tmp_path)
+
+
+def test_available_archived_sources_use_the_explicit_repository(tmp_path: Path, monkeypatch) -> None:
+    _copy_repaired_sources(tmp_path)
+    seen = []
+
+    def present(args, *, cwd, stderr):
+        assert cwd == tmp_path
+        assert args == ["git", "cat-file", "-e", f"{REPAIRED_CHECKOUT}^{{commit}}"]
+        return 0
+
+    def archived(args, *, cwd, text=False):
+        assert cwd == tmp_path
+        seen.append(args)
+        if args[1] == "rev-parse":
+            assert text is True
+            return REPAIRED_TREE + "\n"
+        assert args[:2] == ["git", "show"]
+        checkout, relative = args[2].split(":", 1)
+        assert checkout == REPAIRED_CHECKOUT
+        return (tmp_path / relative).read_bytes()
+
+    monkeypatch.setattr(subprocess, "call", present)
+    monkeypatch.setattr(subprocess, "check_output", archived)
+    _assert_repaired_sources(tmp_path)
+    assert len(seen) == 3
