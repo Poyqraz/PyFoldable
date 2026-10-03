@@ -14,6 +14,7 @@ from pyfoldable.application.c2v09_ordered_declaration import (
 )
 from pyfoldable.application.c2v09_runtime_applicability import (
     CERTIFICATE_FILE_SHA256,
+    CERTIFICATE_PATH,
     PARTIAL_RECORD_FILE_SHA256,
     prepare_applicability_delta,
 )
@@ -125,6 +126,7 @@ def test_identities_and_symbol_stay_separate(monkeypatch) -> None:
     )
     identities = payload["identities"]
     assert identities["technical_authority"]["head"] == TECHNICAL_HEAD
+    assert identities["technical_authority"]["pinned_artifact_sha256"][CERTIFICATE_PATH] == CERTIFICATE_FILE_SHA256
     assert identities["executing_implementation"]["checkout_sha"] == _git(root, "rev-parse", "HEAD")
     assert identities["executing_implementation"]["tree_sha"] == _git(root, "rev-parse", "HEAD^{tree}")
     assert identities["technical_authority"]["head"] != identities["executing_implementation"]["checkout_sha"]
@@ -190,13 +192,19 @@ def test_equal_file_hash_still_requires_fresh_certification(monkeypatch) -> None
     assert fresh["Python math wrapper target"]["classification"] == "NOT ESTABLISHED"
     assert payload["status"] == "CONTRACT BLOCKED"
     assert payload["eligibility_evidence"] is False
+    binding["canonical_payload"]["observations"]["mxcsr"] = "0x01fa0"
+    payload = _payload(prepare_applicability_delta(root))
+    fresh = {row["name"]: row for row in payload["fresh_certification_required"]}
+    assert fresh["MXCSR"]["classification"] == "OBSERVED EQUAL"
+    assert fresh["MXCSR"]["certification"] == "FRESH CERTIFICATION REQUIRED"
 
 
 def test_changed_and_new_dependencies_require_explicit_binding(monkeypatch) -> None:
     root = _repository()
+    binding = _fake_binding()
     monkeypatch.setattr(
         "pyfoldable.application.c2v09_runtime_applicability.collect_binding_record",
-        lambda _root: _fake_binding(),
+        lambda _root: binding,
     )
     payload = _payload(prepare_applicability_delta(root))
     changed = {row["path"]: row for row in payload["explicit_binding_required"]["changed_certificate_sources"]}
@@ -210,6 +218,21 @@ def test_changed_and_new_dependencies_require_explicit_binding(monkeypatch) -> N
     unbound = {row["path"]: row for row in payload["explicit_binding_required"]["unchanged_file_hash_still_unbound"]}
     assert unbound["pyfoldable/core/units.py"]["loaded_code_identity"] == "NOT ESTABLISHED"
     assert unbound["pyfoldable/core/units.py"]["operation_graph_applicability"] == "NOT ESTABLISHED"
+    binding["canonical_payload"]["python_dependency_inventory"]["certificate_sources"].append(
+        {
+            "path": "pyfoldable/core/missing.py",
+            "historical_sha256": "77" * 32,
+            "current_file_sha256": None,
+            "file_identity": "NOT ESTABLISHED",
+            "loaded_code_identity": "NOT ESTABLISHED",
+            "operation_graph_applicability": "NOT ESTABLISHED",
+        }
+    )
+    payload = _payload(prepare_applicability_delta(root))
+    changed = {row["path"] for row in payload["explicit_binding_required"]["changed_certificate_sources"]}
+    unresolved = {row["path"] for row in payload["explicit_binding_required"]["unresolved_certificate_sources"]}
+    assert "pyfoldable/core/missing.py" not in changed
+    assert "pyfoldable/core/missing.py" in unresolved
 
 
 def test_live_environment_is_blocked_without_rewriting_preserved_records() -> None:
@@ -224,8 +247,16 @@ def test_live_environment_is_blocked_without_rewriting_preserved_records() -> No
     changed = {row["path"] for row in payload["explicit_binding_required"]["changed_certificate_sources"]}
     assert "pyfoldable/application/cmm2_coupled_transient_service.py" in changed
     assert "pyfoldable/dynamics/cmm2_coupled_transient.py" in changed
-    roles = {row["role"] for row in payload["explicit_binding_required"]["new_modules"]}
-    assert roles == {"dense", "declaration", "eligibility", "collector"}
+    roles = {row["role"]: row for row in payload["explicit_binding_required"]["new_modules"]}
+    assert set(roles) == {"dense", "declaration", "eligibility", "collector", "applicability"}
+    applicability = roles["applicability"]
+    assert applicability["path"] == "pyfoldable/application/c2v09_runtime_applicability.py"
+    assert applicability["historical_sha256"] is None
+    assert applicability["current_file_sha256"] == sha256_bytes(
+        (root / applicability["path"]).read_bytes()
+    )
+    assert applicability["file_identity"] == "NO HISTORICAL RECORD"
+    assert "thread id" in " ".join(payload["observation_limitations"])
     assert sha256_bytes((root / "docs/cmm2_c2v09_partition_runtime_certificate.md").read_bytes()) == before_certificate
     assert sha256_bytes((root / "reports/c2v09_binding_observation/partial_record.json").read_bytes()) == before_partial
     record = prepare_applicability_delta(root)
@@ -272,6 +303,7 @@ def test_persisted_delta_recomputes_and_stays_blocked() -> None:
     assert payload["source_callbacks"] == 0
     identities = payload["identities"]
     assert identities["technical_authority"]["head"] == TECHNICAL_HEAD
+    assert identities["technical_authority"]["pinned_artifact_sha256"][CERTIFICATE_PATH] == CERTIFICATE_FILE_SHA256
     assert identities["technical_authority"]["head"] != identities["executing_implementation"]["checkout_sha"]
     assert identities["observation"]["preserved_partial_record"]["file_sha256"] == PARTIAL_RECORD_FILE_SHA256
     assert identities["observation"]["preserved_partial_record"]["canonical_sha256"] == "dff8108fe30854b8647d8e022dcf1c9521ee3a4d824e5d292ae0fd8eaa07d820"
@@ -287,7 +319,9 @@ def test_persisted_delta_recomputes_and_stays_blocked() -> None:
     assert "pyfoldable/application/cmm2_coupled_transient_service.py" in changed
     assert "pyfoldable/dynamics/cmm2_coupled_transient.py" in changed
     roles = {row["role"] for row in payload["explicit_binding_required"]["new_modules"]}
-    assert {"dense", "declaration", "eligibility", "collector"} <= roles
+    assert {"dense", "declaration", "eligibility", "collector", "applicability"} <= roles
+    assert payload["identities"]["observation"]["collector_thread_id"]
+    assert "thread id" in " ".join(payload["observation_limitations"])
 
 
 def test_delta_text_does_not_call_source_mapper_or_trajectory() -> None:

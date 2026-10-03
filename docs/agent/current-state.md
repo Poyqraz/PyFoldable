@@ -481,8 +481,8 @@ stay separate. The canonical digest covers only its payload. A clean checkout of
 That blocked observation is not eligibility evidence. The gate returns
 CONTRACT BLOCKED when applicability is not established. It does not select,
 seal, relabel a v1 seal, or enter a trajectory. `physical_qualification=false`.
-The coordinator approved that collector preparation at
-`e4e81fc4fcff7c3bc94b3c75e4f1ca5638be40a3`. That approval is not full PR #84
+This delta starts from that collector preparation at
+`e4e81fc4fcff7c3bc94b3c75e4f1ca5638be40a3`. That HEAD is not full PR #84
 approval and is not live eligibility.
 
 ## 2026-10-03 actual-runtime applicability delta — blocked

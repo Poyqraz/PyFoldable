@@ -20,6 +20,7 @@ from pyfoldable.application.c2v09_ordered_declaration import (
     COSINE_RECORD_SHA256,
     PRIOR_GEOMETRIC_RECORD_SHA256,
     RUNTIME_BINDING_SHA256,
+    TECHNICAL_ARTIFACT_SHA256,
     TECHNICAL_HEAD,
     canonical_bytes,
     load_reviewed_materials,
@@ -32,6 +33,12 @@ CERTIFICATE_FILE_SHA256 = "d0c9196a747ad2e49f94bb264e33bca95eec0a20e1bc900dc1bd5
 PARTIAL_RECORD_PATH = "reports/c2v09_binding_observation/partial_record.json"
 PARTIAL_RECORD_FILE_SHA256 = "11808a792b95cc3dec44e3d906cecba37ba8650336237438df81d60454992d4f"
 PARTIAL_RECORD_CANONICAL_SHA256 = "dff8108fe30854b8647d8e022dcf1c9521ee3a4d824e5d292ae0fd8eaa07d820"
+SELF_MODULE_PATH = "pyfoldable/application/c2v09_runtime_applicability.py"
+OBSERVATION_LIMITATIONS = (
+    "the collector digest embeds the process thread id and is not reconstructed by a later run",
+    "a resolved libm symbol is not the Python wrapper or the selected call target",
+    "baseline CI is not eligibility evidence",
+)
 CONTRACT_BLOCKED = "CONTRACT BLOCKED"
 FRESH = "FRESH CERTIFICATION REQUIRED"
 DIGEST_SCOPE = (
@@ -54,10 +61,22 @@ def _read_preserved(root: Path, relative: str, expected: str) -> bytes:
     return data
 
 
-def _file_classification(observed: object, expected: str) -> str:
+def _equality_classification(observed: object, expected: str) -> str:
     if not isinstance(observed, str) or not observed:
         return "NOT ESTABLISHED"
     if observed == expected:
+        return "OBSERVED EQUAL"
+    return "MISMATCH"
+
+
+def _register_classification(observed: object, expected: str) -> str:
+    if not isinstance(observed, str) or not observed:
+        return "NOT ESTABLISHED"
+    try:
+        equal = int(observed, 16) == int(expected, 16)
+    except ValueError:
+        return "NOT ESTABLISHED"
+    if equal:
         return "OBSERVED EQUAL"
     return "MISMATCH"
 
@@ -91,14 +110,27 @@ def prepare_applicability_delta(root: Path, *, caller_claims: Mapping[str, objec
 
     changed = []
     unchanged = []
+    unresolved = []
     for row in collected["python_dependency_inventory"]["certificate_sources"]:
         if row["file_identity"] == "MISMATCH":
             changed.append(dict(row))
         elif row["file_identity"] == "MATCH":
             unchanged.append(dict(row))
         else:
-            changed.append(dict(row))
+            unresolved.append(dict(row))
     new_modules = [dict(row) for row in collected["python_dependency_inventory"]["modules_without_historical_record"]]
+    self_hash = sha256_bytes((root / SELF_MODULE_PATH).read_bytes())
+    new_modules.append(
+        {
+            "role": "applicability",
+            "path": SELF_MODULE_PATH,
+            "historical_sha256": None,
+            "current_file_sha256": self_hash,
+            "file_identity": "NO HISTORICAL RECORD",
+            "loaded_code_identity": "NOT ESTABLISHED",
+            "operation_graph_applicability": "NOT ESTABLISHED",
+        }
+    )
 
     executable = dependencies["executable"]["file_sha256"]
     libm = dependencies["libm"]["file_sha256"]
@@ -109,25 +141,25 @@ def prepare_applicability_delta(root: Path, *, caller_claims: Mapping[str, objec
             "CPython executable identity",
             executable,
             runtime["executable_sha256"],
-            _file_classification(executable, runtime["executable_sha256"]),
+            _equality_classification(executable, runtime["executable_sha256"]),
         ),
         _fresh(
             "libm file identity",
             libm,
             runtime["libm_sha256"],
-            _file_classification(libm, runtime["libm_sha256"]),
+            _equality_classification(libm, runtime["libm_sha256"]),
         ),
         _fresh(
             "libc file identity",
             libc,
             runtime["libc_sha256"],
-            _file_classification(libc, runtime["libc_sha256"]),
+            _equality_classification(libc, runtime["libc_sha256"]),
         ),
         _fresh(
             "loader file identity",
             loader,
             runtime["loader_sha256"],
-            _file_classification(loader, runtime["loader_sha256"]),
+            _equality_classification(loader, runtime["loader_sha256"]),
         ),
         _fresh("Python math wrapper target", None, runtime["cos_vaddr"], "NOT ESTABLISHED"),
         _fresh("selected call target", None, runtime["cos_vaddr"], "NOT ESTABLISHED"),
@@ -143,15 +175,13 @@ def prepare_applicability_delta(root: Path, *, caller_claims: Mapping[str, objec
             "fegetround",
             observations.get("fegetround"),
             runtime["fegetround"],
-            _file_classification(observations.get("fegetround"), runtime["fegetround"]),
+            _equality_classification(observations.get("fegetround"), runtime["fegetround"]),
         ),
         _fresh(
             "MXCSR",
             observations.get("mxcsr"),
             runtime["mxcsr_hex"],
-            _file_classification(str(observations.get("mxcsr")).lower(), str(runtime["mxcsr_hex"]).lower())
-            if observations.get("mxcsr")
-            else "NOT ESTABLISHED",
+            _register_classification(observations.get("mxcsr"), runtime["mxcsr_hex"]),
         ),
     ]
     payload = {
@@ -164,6 +194,7 @@ def prepare_applicability_delta(root: Path, *, caller_claims: Mapping[str, objec
             "technical_authority": {
                 "role": "technical authority",
                 "head": TECHNICAL_HEAD,
+                "pinned_artifact_sha256": dict(TECHNICAL_ARTIFACT_SHA256),
             },
             "executing_implementation": {
                 "role": "executing implementation",
@@ -173,6 +204,7 @@ def prepare_applicability_delta(root: Path, *, caller_claims: Mapping[str, objec
             "observation": {
                 "role": "observation",
                 "collector_canonical_sha256": binding["canonical_sha256"],
+                "collector_thread_id": observations.get("thread_id"),
                 "collector_checkout_sha": collected["checkout_sha"],
                 "collector_tree_sha": collected["tree_sha"],
                 "runtime": collected["runtime"],
@@ -241,9 +273,11 @@ def prepare_applicability_delta(root: Path, *, caller_claims: Mapping[str, objec
         ],
         "explicit_binding_required": {
             "changed_certificate_sources": changed,
+            "unresolved_certificate_sources": unresolved,
             "new_modules": new_modules,
             "unchanged_file_hash_still_unbound": unchanged,
         },
+        "observation_limitations": list(OBSERVATION_LIMITATIONS),
         "fresh_certification_required": fresh,
         "byte_comparisons_are_not_certification": {
             "loaded_cos_body": observations.get("loaded_cos_body"),
