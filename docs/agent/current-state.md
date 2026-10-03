@@ -490,3 +490,21 @@ software checks. Complete 3D solids, joint offsets/transforms, mass properties,
 clearance, strength and safe winner remain unestablished. No solver/source/trajectory
 run or numerical gate change follows. Broader proposal remains PROPOSED / NOT
 IMPLEMENTED; physical_qualification=false, ADR-009 unaccepted, PR #81/#84/#89 untouched.
+
+
+## 2026-10-03 local PE0 geometry reports — separate bounded Draft implementation
+
+PR #90 merged at `23399a55e404d58e5bfbb5c512afd748c776c3a3` with the
+reviewed station-generator tree and successful main CI, without freezing the broader
+hinge assessment. The [local PE0 adapter](../local_apc_pe0_geometry_reporting.md)
+now reports all source columns/rows, source definitions and separate nominal/footer/
+terminal radius conventions, then copies two complementary cuts with parent indices
+and lineage. Mixed-profile/transition coordinate comparison stays unsupported; no
+single-profile blade shortcut, interpolation, rescaling or twist reset is used.
+
+The requested APC 13x5.5MR member was not available for a genuine local demonstration.
+Its pinned identity and coordinator facts remain separate from first-party synthetic
+software tests. No APC archive/full derivative is vendored or silently downloaded.
+This Draft slice does not establish BEM performance, strength, optimum hinge or
+qualification. The broader proposal remains PROPOSED / NOT IMPLEMENTED;
+physical_qualification=false, ADR-009 unaccepted, C2V-09 and PR #81/#84/#91 untouched.

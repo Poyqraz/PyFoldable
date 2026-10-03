@@ -12,6 +12,11 @@ parser and screening example accept bytes supplied locally by a user and record 
 source URL, version, date, and SHA-256 identity. APC source terms remain controlling;
 the Project license does not grant rights to download, reproduce, or redistribute APC
 material. APC product names and marks belong to their respective owner.
+The [local PE0 geometry-reporting adapter](docs/local_apc_pe0_geometry_reporting.md)
+also consumes caller-supplied bytes only. Its complete source reports are local
+derivatives subject to those terms; the public tests use invented first-party
+values, and neither the APC archive nor a full derived station dataset is vendored.
+
 
 - Geometry index: <https://www.apcprop.com/propeller-technical-data/>
 - Source terms: <https://www.apcprop.com/terms-conditions/>
