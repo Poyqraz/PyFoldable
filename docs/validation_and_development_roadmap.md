@@ -489,6 +489,11 @@ BEM'in model-form hatasını ayırmak için kullanılır.
 
 ### PR-09 — yapısal ve mekanik doğrulama
 
+**2026-10-03 kapsam açıklaması:** Aşağıdaki SolidWorks/ANSYS değişim planı dış
+doğrulama yolunun tarihsel kapsamıdır; PyFoldable kullanımının evrensel CAD/STEP
+önkoşulu değildir. Birincil ürün yolu iç tanımlı/üretilmiş parametrik pal ve bağlantı
+geometrisidir. Bu açıklama PR-09'un gerçek yapısal kanıt sözleşmesini değiştirmez.
+
 SolidWorks ana geometrisi için revizyonlu CAD değişim sözleşmesi oluşturulur. ANSYS
 ile pal, kök, pim, kilit ve stop temasları; maksimum devir/açılma geçişi ve dengesizlik
 yüklerinde incelenir. Statik emniyet, deplasman, temas basıncı, yorulma ve doğal
@@ -506,9 +511,9 @@ kadar `blocked_waiting_for_real_structural_inputs` olarak kalır. Ayrıntılar
 
 **Ayrı tasarım önerisi — PROPOSED / NOT IMPLEMENTED:**
 [Dayanımı gözeten radyal menteşe konumu değerlendirmesi](strength_aware_radial_hinge_assessment_proposal.md)
-250 mm proje tabanında tek gerçek pal ve tek beyan edilmiş bağlantı için sınırlı,
+250 mm proje tabanında kimliği belirli tek pal tasarımı ve tek beyan edilmiş bağlantı için sınırlı,
 adaya bağlı geometri/kütle/aerodinamik/yük-vakası/FEA kanıt dosyası önerir.
-İlk CAD karşılaştırması aynı ana palın iki menteşe konumunda kesilip yeniden
+İlk geometri karşılaştırması aynı ana palın iki menteşe konumunda kesilip yeniden
 birleştirilmiş açık geometrisini özgün pal ile eşler; radyal kesit/twist eşleşmesi,
 dönüşümler ve bağlantı bölgesi farkları açıkça kaydedilir. Ana palın varsayılan
 optimumluğu yalnız beyan edilmiş çalışma koşuluna bağlı çalışma varsayımıdır.
@@ -516,7 +521,14 @@ Dar [istasyon karşılaştırma raporu](parent_blade_station_comparison.md) ayr�
 uygulama dilimidir: kaynak bağlı açık eşleme ve sayısal farklar raporlanır;
 tam 3B yüzey, bağlantı boşluğu/dayanımı veya güvenli aday kanıtı değildir.
 Geniş tasarım önerisi PROPOSED / NOT IMPLEMENTED olarak kalır.
-13 inç ayrı senaryodur. CAD, yönsel PA-CF kuponları ve deney hazırlığı CMM-2
+Birincil yol dış CAD/STEP gerektirmeyen iç parametrik tasarımdır; dış referans/içe
+aktarım, üretim CAD dışa aktarımı ve dış doğrulama isteğe bağlı yollardır. Kimliği
+belirli üretilmiş tasarım ilk dosyayı sağlayabilir; beyan edilmiş geometri üretilmiş
+fiziksel numune/as-built kanıtı değildir. [Sonraki dar dilim](parent_blade_station_comparison.md#next-bounded-cad-independent-slice-proposed-only)
+iki beyan edilmiş menteşe konumunda tamamlayıcı istasyon paketlerini aynı iç ana
+tasarımdan üretip rapora beslemeyi önerir; henüz uygulanmadı. Eksik/uyumsuz geometri
+açık kalır; tam katı, boşluk veya dayanım kanıtı türetilmez.
+13 inç ayrı senaryodur. Parametrik tasarım, yönsel PA-CF kuponları ve deney hazırlığı CMM-2
 doğrulamasıyla paralel ilerleyebilir; bu öneri çözüm çalıştırmaz, PR-09/GEOM
 kapılarını değiştirmez ve güvenli aday seçimi veya fiziksel nitelik vermez.
 
@@ -581,6 +593,11 @@ Tarihli PR-06–PR-12 sırası korunur. Güncel bilimsel sıra bu tablonun yerin
 sırasını değiştirmez.
 
 ## İşbirliği sınırları
+
+2026-10-03 açıklaması: iç parametrik geometri birincil ürün yoludur; aşağıdaki
+SolidWorks rolü isteğe bağlı dış referans/üretim/değişim yoludur. Dış dosya
+bulunmaması istasyon raporlama veya tanımlı tasarım hazırlığını engellemez;
+bu durum fiziksel doğrulama kapılarını kaldırmaz.
 
 - **PyFoldable:** kanonik SI girdileri, çözüm sözleşmeleri, otomatik regresyonlar,
   model-form varsayımları ve kanıt paketlerinin bütünlüğü.

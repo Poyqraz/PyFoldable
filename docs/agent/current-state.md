@@ -449,3 +449,24 @@ software checks. The broader radial-hinge proposal remains PROPOSED / NOT
 IMPLEMENTED; complete 3D equivalence, clearance, strength and safe selection are
 unestablished. No source solver, FEA or trajectory runs, design freeze, ADR-009
 acceptance or physical qualification follows. PR #81/#84 remain separate.
+
+## 2026-10-03 superseding product clarification — CAD-independent primary workflow
+
+This clarification supersedes the external-native-CAD-first wording in the dated
+2026-10-02 hinge proposal snapshots above, without rewriting their historical
+claims. PyFoldable must operate from internally defined/generated parametric blade
+and joint geometry. External CAD/STEP reference/import, manufacturing CAD export
+and external validation are optional routes, not universal entry prerequisites.
+An identified generated design can support the first dossier; declared geometry
+and source lineage remain distinct from manufactured/as-built evidence.
+
+Current draft/station/profile services and PR #88 station reporting do not supply
+a complete parametric blade/joint solid generator. The [next bounded proposal](../parent_blade_station_comparison.md#next-bounded-cad-independent-slice-proposed-only)
+would generate complementary station bundles at two declared hinge positions from
+one immutable internal parent and feed them directly to the comparison service.
+It preserves global radii, chord/twist/profile inheritance and joint declarations;
+unsupported geometry and missing inputs stay explicit. That generator is NOT
+IMPLEMENTED here. The broader proposal remains PROPOSED / NOT IMPLEMENTED.
+Station equality does not establish complete solids, clearance, strength or a
+safe winner. Physical/material/test evidence remains necessary for the relevant
+claims; physical_qualification=false, ADR-009 unaccepted, PR #81/#84 unchanged.

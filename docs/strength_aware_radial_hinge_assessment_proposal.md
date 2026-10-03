@@ -6,7 +6,17 @@ Inspection base: `a5286cc6d80ea0130bd3bdc87d2b42277c499900`.
 Parent-blade design-intent clarification base:
 `c2b267f1e1536e205c5d7ac3c05c2a8ab227533d` (merged proposal PR #86).
 
-The question is where to divide an actual blade into fixed and movable parts,
+**2026-10-03 superseding product clarification:** PyFoldable must operate without
+externally supplied CAD/STEP. The primary workflow is internally defined/generated
+parametric blade and joint geometry. External CAD/STEP reference/import and
+manufacturing CAD export/external validation are optional routes, not universal
+entry prerequisites. This supersedes the earlier native SolidWorks/STEP-first
+wording; dated records remain historical. Existing drafts/stations/profile services
+support declared blade geometry, not an already delivered complete blade/joint
+solid generator or arbitrary CAD importer. A generated design is not a manufactured
+specimen; actual material/process and as-built evidence remain separate.
+
+The question is where to divide an identified parent blade into fixed and movable parts,
 given its section geometry and one declared joint design. A shorter tip can
 reduce moving mass yet place the attachment in a thinner section; neither fact
 alone establishes fracture resistance. The first useful result is a traceable
@@ -53,8 +63,8 @@ are different declarations, not silently interpreted as this convention.
 | Separate 13-inch diameter, 10+3 inches equivalent | 10/13 | 127.0 | 38.1 | D=330.2 mm, R=165.1 mm |
 
 These are unit/ratio arithmetic, not manufactured candidates or screening results.
-The 13-inch scenario needs its own real blade, hub, motor/operating envelope,
-joint, material and acceptance declarations. Do not scale 250 mm CAD, tip mass,
+The 13-inch scenario needs its own identified blade design, hub, motor/operating envelope,
+joint, material and acceptance declarations. Do not scale 250 mm geometry, tip mass,
 polars, targets or evidence into it. A 254 mm benchmark is also distinct from
 the 250 mm project rotor.
 
@@ -71,7 +81,7 @@ declared and reviewed as a different endpoint, not substituted for full stow.
 
 One original blade is the accepted reference **for this study**. Its presumed
 optimality is a scoped study assumption at a declared operating condition, not
-independently validated global optimality. Record the parent CAD/section/profile
+independently validated global optimality. Record the parent parametric/section/profile
 source identities, revision/hashes and the assumed objective, RPM, inflow and
 environment with their source; these actual inputs remain unsupplied. The 7100 RPM
 project target alone does not identify that condition or prove the assumption.
@@ -92,19 +102,21 @@ components, rotation components and conventions, reference points, units and
 shaft/parent/fixed/tip/joint frames, with deployed transforms between them.
 A hardware offset may preserve the nominal parent surface; it does not establish
 that preservation. Report the transformed surface's position/orientation
-deviations, joint gaps, steps and protrusions explicitly, with supplied CAD or
-as-built uncertainty. No CAD tolerances are invented here. Existing BEM does not
+deviations, joint gaps, steps and protrusions explicitly, distinguishing nominal
+generated values, supplied uncertainty and measured as-built values. No manufacturing
+tolerances are invented here. Existing BEM does not
 capture these joint features, and zero-offset planar GEOM-01 does not clear a new
 offset topology; unsupported representations remain unsupported.
 
-The next practical CAD comparison is the untouched original versus the
+The next practical geometry comparison is the unchanged generated parent versus the
 cut/rejoined **deployed assembly at each of the two declared hinge positions**.
 Require parent/child lineage for both cuts and assemblies; map each child station
 back to its original global radius, section and orientation; compare open-pose
 surfaces in a common declared frame. Itemize every joint-region removal/addition,
 gap, step, protrusion and placement deviation separately from inherited geometry,
-including unresolved regions and measurement uncertainty. This is a CAD evidence
-request, not CAD creation or a numerical acceptance gate in this amendment.
+including unresolved regions and declared or measured uncertainty. It may use
+internal parametric definitions; external CAD is optional. This is an evidence
+request, not geometry generation or a numerical acceptance gate in this amendment.
 
 A duplicated-root/twist-reset arrangement may be retained only as an optional
 comparison control with its own geometry identity and departures from the parent.
@@ -114,10 +126,12 @@ result or the default fixed/moving construction.
 
 ### Candidate dossier
 
-Prepare one **250 mm actual-blade / declared-joint candidate dossier**. The blade
-and joint design identities must be supplied; they are currently missing, not
-inferred from canonical examples. Begin with two explicitly declared radial
-locations motivated by the 8:5 and 10:3 proportions, subject to real station and
+Prepare one **250 mm identified-blade-design / declared-joint candidate dossier**.
+It may describe an internally generated design, with parameters, generation method/
+version, profile coordinates, units/frames and revision/digests. A study-specific
+blade/joint identity is still required; canonical examples are not manufactured
+evidence. Begin with two explicitly declared radial locations motivated by the
+8:5 and 10:3 proportions, subject to declared station and
 attachment coverage. This is a bounded comparison, not an optimization sweep.
 
 Keep the same blade source revision and joint architecture/materials/nominal
@@ -132,27 +146,30 @@ frame, uncertainty and evidence scope for each supplied value:
 
 | Candidate field group | Required content / explicit unavailable reason |
 | --- | --- |
-| Radial position and actual section | D,R,b,h,L and h-b; hinge axis/offset/travel; local chord, twist, actual thickness distribution, walls/skins, internal voids/infill and remaining net ligament after attachment cuts. Actual CAD sections/tolerances, not thickness ratio alone. |
+| Radial position and declared section | D,R,b,h,L and h-b; hinge axis/offset/travel; local chord, twist, section thickness distribution, walls/skins, internal voids/infill and remaining net ligament after attachment cuts. Bind identified generated geometry/sections and parameters; separately identify manufacturing tolerances and as-built evidence or their absence. Thickness ratio alone is insufficient. |
 | Joint and load path | Pin/shaft, lug/clevis, bearing/bush, fastener/retention, lock and stop dimensions, fits, fillets, hole edge distances, contact and permitted movement; fixed/moving members and force/moment transfer. Declare absent components explicitly. |
-| Movable mass properties | Candidate-specific blade-plus-moving-hardware mass, 3D CG and inertia tensor in declared frames, hinge-axis inertia, methods and uncertainty; reconcile CAD integration with measured mass/CG/inertia when available. No linear span scaling, midpoint CG or uniform-density replacement for unknown printed construction. |
+| Movable mass properties | Candidate-specific blade-plus-moving-hardware mass, 3D CG and inertia tensor in declared frames, hinge-axis inertia, methods and uncertainty; distinguish geometry-linked integration using declared evidenced density/construction from measured mass/CG/inertia. Missing material/construction inputs remain missing. No linear span scaling, midpoint CG or uniform-density replacement for unknown printed construction. |
 | Folded geometry | Centerline bound, chord-inclusive preview and supported candidate-specific GEOM-04 evidence separately; entire declared travel, hub/interblade/hardware scope, manufacturing fit variation, exclusions and unresolved shared-hinge contact. No endpoint-only mesh claim of continuous CAD clearance. |
 | Aerodynamic screening | Exact candidate draft/stations/profile and polar sources, operating condition, BEM settings/domain/coverage, annulus/rotor outputs or failure reasons. Joint-induced shape/gaps absent from BEM remain model limitations. |
-| Structural evidence | Candidate CAD/material/load-source/result linkage for five PR-09 cases, mesh/convergence/force balance and metric/limit evidence; reviewer findings and missing-input reasons. |
+| Structural evidence | Candidate geometry/material/load-source/result linkage for five PR-09 cases, mesh/convergence/force balance and metric/limit evidence; reviewer findings and missing-input reasons. Optional external solver/CAD routes retain their own evidence contracts. |
 | Decision scope | Separate screening, candidate structural-review and experimental-support states; failed/unknown/unsupported fields retained. No composite safety score or automatic safe winner. |
 
 The first dossier may be complete as an **evidence inventory with blocked rows**
-while FEA/tests are absent. It must still identify an actual blade and joint and
+while FEA/tests are absent. It must still identify a blade design and joint and
 retain available geometry; a placeholder-only table is not the geometry-linked
 deliverable. Structural acceptance and selection are separate later milestones.
 
-## 4. Required real inputs before structural claims
+## 4. Geometry definitions and evidence required for structural claims
 
-- **CAD/sections:** revision-controlled native SolidWorks and/or faithful STEP
-  export, source permission, hashes, units, shaft/blade/hinge/build frames,
-  hub attachment, relevant full span and section cuts around each joint, internal
-  construction and as-built deviations. Coordinate/station exports identify their
-  CAD parent and extraction method. Chord/airfoil stations alone do not establish
-  a solid, bore ligament or printable attachment.
+- **Geometry/sections:** primary input is an identified internal parametric
+  blade/joint definition: parameters, generator/method identity, revision/hashes,
+  units, shaft/blade/hinge/build frames, hub attachment, full-span support, joint
+  sections and internal construction. Record unresolved solids/sections explicitly.
+  Native SolidWorks/STEP is an optional reference/import or downstream export,
+  with source permission, identity and extraction/transform records when used;
+  it is not a universal prerequisite. Separately record manufacturing tolerances
+  and measured as-built deviations when available. Chord/airfoil stations alone
+  do not establish a solid, bore ligament or printable attachment.
 - **PA-CF process and material:** actual filament grade/batch, conditioning,
   moisture/temperature range, machine/nozzle, layer height, roads/perimeters,
   infill, raster/build directions and post-processing. Coupons represent these
@@ -233,28 +250,32 @@ thrust cannot compensate for structural failure.
 The separately authorized [station comparison reporting slice](parent_blade_station_comparison.md)
 provides a service/CLI for explicit parent-child station correspondence only.
 Code in its Draft PR does not implement the broader proposal or establish the
-requested complete deployed CAD comparison; this proposal remains **PROPOSED /
-NOT IMPLEMENTED**. Actual 3D geometry, joint offsets/differences, mass properties,
+requested complete deployed geometry comparison; this proposal remains **PROPOSED /
+NOT IMPLEMENTED**. Complete 3D geometry, joint offsets/differences, mass properties,
 clearance, strength and experimental selection still require the evidence above.
 
 | Bounded workstream | Deliverable and dependency | Completion boundary |
 | --- | --- | --- |
-| CAD/joint preparation | Actual 250 mm parent blade, one joint declaration and original-versus-cut/rejoined deployed comparison at two placements; requires engineering source data | Parent/child radial/section/orientation lineage, transforms and explicit joint-region differences, plus attachment coverage; retain infeasible/missing regions. No CAD alteration in this PR. |
+| Parametric blade/joint preparation | Identified internal 250 mm parent design, one joint declaration and parent-versus-cut/rejoined deployed comparison at two placements; external CAD optional | Parent/child radial/section/orientation lineage, transforms and explicit joint-region differences, plus attachment coverage; distinguish generated declarations from as-built evidence and retain infeasible/missing regions. No generator implementation in this increment. |
 | Material/manufacturing | Process declaration, directional coupon/test plan and later measured card; alongside CAD and CMM-2 | Raw/process-linked evidence and reviewed allowable derivation for each claimed mode; otherwise blocked. |
-| Geometry/aerodynamic dossier | Candidate ledger using existing supported paths; actual geometry and suitable polars required | Identified results/failures, unchanged budgets, explicit coverage; screening only. No runs in this PR. |
-| Structural preparation/review | Five-case matrix, approved limits and later real ANSYS bundles; depends on CAD, material and traceable loads | Independent candidate FEA review with converged matching results and unresolved modes; not experimental selection. |
+| Geometry/aerodynamic dossier | Candidate ledger using existing supported paths; identified declared geometry and suitable polars required | Identified results/failures, unchanged budgets, explicit coverage; screening only. No runs in this PR. |
+| Structural preparation/review | Five-case matrix, approved limits and later actual analysis evidence; depends on adequate geometry, material and traceable loads | Independent candidate FEA review with converged matching results and unresolved modes; external ANSYS/PR-09 route optional for product operation and keeps its existing contract when used. Not experimental selection. |
 | Experimental preparation/evidence | Calibrated component/rotor plans and later raw measurements; reviewed specimen/process/load/test limits required | Scoped comparisons with uncertainty; selection requires all applicable evidence, not a weighted proxy score. |
 | CMM-2 verification, separately continuing | Existing PR #81/#84 and frozen contracts govern their own work | No bypass or acceptance from this proposal. Dynamic load claims require independently adequate evidence; CAD/coupon/static preparation need not wait for CMM-2 completion. |
 
-No calendar estimates or predicted performance are supplied. CAD, material
+The [next bounded station-generation proposal](parent_blade_station_comparison.md#next-bounded-cad-independent-slice-proposed-only)
+starts with an identified internal draft and coordinate-bound profile; it does
+not require external CAD or implement complete joint solids.
+
+No calendar estimates or predicted performance are supplied. Parametric design, material
 coupons, load-case/test planning and identities can proceed in parallel; that
 concurrency is not permission to execute solvers or hardware tests in this task.
 Future execution/implementation requires a separately reviewed bounded scope.
 
 This documentation increment completes with the proposal, roadmap/status links,
 independent exact-HEAD review and normal document/CI checks recorded in its Draft
-PR. The future first deliverable completes only when an actual blade/joint are
-identified and every candidate field has real scoped evidence or a specific
+PR. The future first deliverable completes only when a blade design/joint are
+identified and every candidate field has scoped declared or measured evidence or a specific
 reason/owner/dependency for missing evidence. Reviewers can compare positions and
 identify the next experiment without implying structural acceptance.
 
