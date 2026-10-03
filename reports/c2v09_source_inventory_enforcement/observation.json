@@ -1,0 +1,53 @@
+{
+  "canonical_payload": {
+    "accept_refused": true,
+    "checkout_sha": "4c1b2c7145eeb0a78c3e4f95da568ef6092f52fb",
+    "eligibility_evidence": false,
+    "historical_source_file_identity_matches": [
+      "historical source file identity pyfoldable/application/coupled_transient_service.py",
+      "historical source file identity pyfoldable/application/folding_mechanism.py",
+      "historical source file identity pyfoldable/application/mechanism_binding.py",
+      "historical source file identity pyfoldable/core/airfoil.py",
+      "historical source file identity pyfoldable/core/bem.py",
+      "historical source file identity pyfoldable/core/bem_rotor.py",
+      "historical source file identity pyfoldable/core/config.py",
+      "historical source file identity pyfoldable/core/foldable_aero_load.py",
+      "historical source file identity pyfoldable/core/foldable_rotor.py",
+      "historical source file identity pyfoldable/core/models.py",
+      "historical source file identity pyfoldable/core/motor_bem_coupling.py",
+      "historical source file identity pyfoldable/core/polar.py",
+      "historical source file identity pyfoldable/core/polar_spanwise.py",
+      "historical source file identity pyfoldable/core/rotational_augmentation.py",
+      "historical source file identity pyfoldable/core/units.py",
+      "historical source file identity pyfoldable/dynamics/coupled_transient.py",
+      "historical source file identity pyfoldable/dynamics/mechanism_contracts.py",
+      "historical source file identity pyfoldable/dynamics/mechanism_transient.py",
+      "historical source file identity pythrust/propulsion/models.py"
+    ],
+    "historical_source_file_mismatches": [
+      "historical source file pyfoldable/application/cmm2_coupled_transient_service.py",
+      "historical source file pyfoldable/dynamics/cmm2_coupled_transient.py"
+    ],
+    "loaded_code_unestablished_for_units": true,
+    "mapper_callbacks": 0,
+    "new_nodes_without_historical_clearance": [
+      "pyfoldable/dynamics/cmm2_radau_dense.py",
+      "pyfoldable/application/c2v09_ordered_declaration.py",
+      "pyfoldable/application/c2v09_live_eligibility.py",
+      "pyfoldable/application/c2v09_binding_collector.py",
+      "pyfoldable/application/c2v09_runtime_applicability.py",
+      "pyfoldable/application/c2v09_cosine_path_certificate.py",
+      "pyfoldable/application/c2v09_cosine_path_probe.c"
+    ],
+    "outcome": "zero-call source-inventory enforcement observation",
+    "physical_qualification": false,
+    "seal_callbacks": 0,
+    "selection_callbacks": 0,
+    "source_callbacks": 0,
+    "status": "CONTRACT BLOCKED",
+    "trajectory_callbacks": 0,
+    "tree_sha": "05b84a28d1cb6726ab9b0702b0a5a6f27f2e8dae"
+  },
+  "canonical_sha256": "8bd172f3705a0369589d023adb679674ff37b837321bdf024a0218435e4b95ff",
+  "digest_scope": "SHA-256 of the section 7.3 canonical bytes of canonical_payload only. canonical_sha256 and digest_scope are outside that payload."
+}

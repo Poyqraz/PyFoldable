@@ -524,7 +524,11 @@ certificate, and the probe C source. The C source hash is not a compiled or
 loaded native identity. Historical file MATCH is file identity only. The two
 changed CMM-2 paths stay mismatches on the eligibility gate. Missing or
 malformed inventory stays unestablished. `eligibility_evidence=false` and
-`physical_qualification=false`. No dependent call is enabled.
+`physical_qualification=false`. No dependent call is enabled. A separate
+zero-call observation is
+[reports/c2v09_source_inventory_enforcement/observation.json](../../reports/c2v09_source_inventory_enforcement/observation.json),
+from checkout `4c1b2c7145eeb0a78c3e4f95da568ef6092f52fb`. It does not replace
+the historical cosine or binding observations.
 
 ## 2026-10-02 strength-aware radial hinge assessment — proposal only
 

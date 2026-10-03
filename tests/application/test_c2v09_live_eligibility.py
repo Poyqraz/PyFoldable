@@ -6,6 +6,9 @@ A unit-test double is not live execution evidence.
 
 from __future__ import annotations
 
+import json
+import subprocess
+
 from pyfoldable.application.c2v09_live_eligibility import (
     assess_live_eligibility,
     load_reviewed_materials,
@@ -18,6 +21,8 @@ from pyfoldable.application.c2v09_ordered_declaration import (
     ORIGINAL_MANIFEST_SHA256,
     TECHNICAL_HEAD,
     build_extended_declaration,
+    canonical_bytes,
+    sha256_bytes,
 )
 
 
@@ -347,6 +352,34 @@ def test_malformed_inventory_stays_unestablished(monkeypatch) -> None:
     assert "python dependency inventory" in record.unestablished
     assert record.status == "CONTRACT BLOCKED"
     _refused(record)
+
+
+def test_inventory_observation_is_a_separate_blocked_record() -> None:
+    root = _repository()
+    document = json.loads(
+        (root / "reports/c2v09_source_inventory_enforcement/observation.json").read_text(encoding="utf-8")
+    )
+    payload = document["canonical_payload"]
+    assert "canonical_sha256" not in payload
+    assert document["canonical_sha256"] == sha256_bytes(canonical_bytes(payload))
+    assert payload["eligibility_evidence"] is False
+    assert payload["physical_qualification"] is False
+    assert payload["status"] == "CONTRACT BLOCKED"
+    assert payload["source_callbacks"] == payload["mapper_callbacks"] == payload["trajectory_callbacks"] == 0
+    assert payload["historical_source_file_mismatches"] == [
+        f"historical source file {path}" for path in _CHANGED
+    ]
+    assert payload["new_nodes_without_historical_clearance"] == list(_NEW_NODES)
+    assert payload["loaded_code_unestablished_for_units"] is True
+    checkout = payload["checkout_sha"]
+    present = subprocess.call(
+        ["git", "cat-file", "-e", f"{checkout}^{{commit}}"],
+        cwd=root,
+        stderr=subprocess.DEVNULL,
+    ) == 0
+    if present:
+        tree = subprocess.check_output(["git", "rev-parse", f"{checkout}^{{tree}}"], cwd=root, text=True).strip()
+        assert payload["tree_sha"] == tree
 
 
 def test_claims_replay_and_waiver_cannot_clear_source_obligations() -> None:
