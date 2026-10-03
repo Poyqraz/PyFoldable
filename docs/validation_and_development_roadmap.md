@@ -517,16 +517,18 @@ adaya bağlı geometri/kütle/aerodinamik/yük-vakası/FEA kanıt dosyası öner
 birleştirilmiş açık geometrisini özgün pal ile eşler; radyal kesit/twist eşleşmesi,
 dönüşümler ve bağlantı bölgesi farkları açıkça kaydedilir. Ana palın varsayılan
 optimumluğu yalnız beyan edilmiş çalışma koşuluna bağlı çalışma varsayımıdır.
-Dar [istasyon karşılaştırma raporu](parent_blade_station_comparison.md) ayrı Draft
-uygulama dilimidir: kaynak bağlı açık eşleme ve sayısal farklar raporlanır;
+Dar [istasyon karşılaştırma raporu](parent_blade_station_comparison.md) ayrı
+birleştirilmiş uygulama dilimidir: kaynak bağlı açık eşleme ve sayısal farklar raporlanır;
 tam 3B yüzey, bağlantı boşluğu/dayanımı veya güvenli aday kanıtı değildir.
 Geniş tasarım önerisi PROPOSED / NOT IMPLEMENTED olarak kalır.
 Birincil yol dış CAD/STEP gerektirmeyen iç parametrik tasarımdır; dış referans/içe
 aktarım, üretim CAD dışa aktarımı ve dış doğrulama isteğe bağlı yollardır. Kimliği
 belirli üretilmiş tasarım ilk dosyayı sağlayabilir; beyan edilmiş geometri üretilmiş
-fiziksel numune/as-built kanıtı değildir. [Sonraki dar dilim](parent_blade_station_comparison.md#next-bounded-cad-independent-slice-proposed-only)
-iki beyan edilmiş menteşe konumunda tamamlayıcı istasyon paketlerini aynı iç ana
-tasarımdan üretip rapora beslemeyi önerir; henüz uygulanmadı. Eksik/uyumsuz geometri
+fiziksel numune/as-built kanıtı değildir. [Ayrı dar üretici uygulaması](parent_blade_station_generation.md) yeni Draft PR
+içinde iki beyan edilmiş menteşe konumunda tamamlayıcı istasyon paketlerini tek
+sabit iç ana istasyon tablosundan doğrudan kopyalayıp rapora besler.
+Eksik menteşe/uç satırları boşluk olarak, yetersiz çocuk satırları tanı olarak kalır;
+interpolasyon, twist sıfırlama veya çocuk ölçekleme yapılmaz. Eksik/uyumsuz geometri
 açık kalır; tam katı, boşluk veya dayanım kanıtı türetilmez.
 13 inç ayrı senaryodur. Parametrik tasarım, yönsel PA-CF kuponları ve deney hazırlığı CMM-2
 doğrulamasıyla paralel ilerleyebilir; bu öneri çözüm çalıştırmaz, PR-09/GEOM

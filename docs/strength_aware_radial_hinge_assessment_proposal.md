@@ -247,6 +247,14 @@ thrust cannot compensate for structural failure.
 
 ## 6. Parallel work, dependencies and completion criteria
 
+Subsequent bounded software status: station comparison reporting merged in PR #88;
+the [internal parent/two-cut generator](parent_blade_station_generation.md) is a
+separate Draft implementation of station inputs only. It copies one immutable
+parent realization with explicit lineage and retains sparse-table gaps. It does
+not implement this broader proposal, complete deployed solids, strength evidence
+or selection. The original incremental scope statements below remain historical.
+
+
 The separately authorized [station comparison reporting slice](parent_blade_station_comparison.md)
 provides a service/CLI for explicit parent-child station correspondence only.
 Code in its Draft PR does not implement the broader proposal or establish the
