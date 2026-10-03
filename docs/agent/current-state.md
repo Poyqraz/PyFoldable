@@ -437,3 +437,15 @@ new offset topology is not cleared by planar GEOM-01 or existing BEM. Actual CAD
 conditions and strength evidence remain required. The duplicated-root/twist-reset
 control and its greater-loss hypothesis are optional and unmeasured. No runs,
 new gates, freeze or qualification follows; PR #81/#84 contracts are unchanged.
+
+## 2026-10-03 bounded parent-blade station reporting — separate Draft implementation
+
+The [station comparison service/CLI](../parent_blade_station_comparison.md) reports
+explicit source-bound parent/fixed/tip correspondence in one declared deployed
+shaft frame. It retains original global radius, chord/twist/profile values,
+differences, gaps and separate joint declarations; no interpolation, rescaling,
+twist reset or arbitrary transform support is inferred. Tests are synthetic
+software checks. The broader radial-hinge proposal remains PROPOSED / NOT
+IMPLEMENTED; complete 3D equivalence, clearance, strength and safe selection are
+unestablished. No source solver, FEA or trajectory runs, design freeze, ADR-009
+acceptance or physical qualification follows. PR #81/#84 remain separate.

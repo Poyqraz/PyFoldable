@@ -79,179 +79,251 @@ project target alone does not identify that condition or prove the assumption.
 The fixed and moving portions are complementary cuts of that same parent blade.
 Use global shaft-based radius r and tip-local span s=r-r_h: outside explicitly
 declared joint modifications, the tip inherits c_tip(s)=c0(r_h+s) and
-beta_tip(s)=beta0(r_h+s), over s in [0,R-r_h]. Do not replay the parent root
-distribution, reset twist at the cut or rescale span. Preserve original radial
-station correspondence, chord, twist, section geometry and open-pose placement.
-Local airfoil identity describes a section profile, not the complete 3D blade:
-section scale/orientation, sweep, rake, stacking and placement also require
-parent correspondence. A shared airfoil name does not prove matching surfaces.
+beta_tip(s)=beta0(r_h+s), over s in [0,R-r_h]. Do not replay the parent ro…13730 tokens truncated…ri-uçuş kapsamı %46/%20,6'dan %100/%100'e çıktı. Tam zarf artık proxy
+  modelin CT/CP'yi sırasıyla %26,40/%28,28 eksik tahmin ettiğini gösterdi. Kullanıcı-
+  yerel, SHA sabitlenmiş güncel APC PE0 geometrisiyle proxy taraması toplam CT/CP
+  WMAPE'yi %16,23/%16,98'e indirdi; ancak CT biası −%14,07, ileri-uçuş CT/CP WMAPE
+  %25,68/%23,19 ve temsili spanwise polar kanıtı hâlâ kapı dışıdır. Bu nedenle PR-06D
+  fiziksel doğruluk iddiası blokludur; ancak bu başarısız karar açıkça korunarak
+  yazılım temeli başlatılmıştır. Ayrıntı [geometri/polar remediation](pr06c_geometry_polar_remediation.md)
+  ve [kritik kapı review](pr06c_critical_gate_review.md) belgelerindedir. Temsili polar
+  statüsü artık koordinat/provider sürümü, tam solver sorgu zarfı ve iki-capture
+  promotion kaydı olmadan üretilemez. Snel-1993 düzeltmesi varsayılan tam no-op ve
+  açık provenance ile eklendi; proxy ablation statik hatayı azaltırken ileri-uçuş
+  hatasını kapatmadığı için fiziksel niteleme iddiası oluşturmadı.
+- **PR-06D — katlanır geometri bağlantısı (yazılım temeli aktif).** Typed açılma
+  durumu, menteşe sınırı, etkin yarıçap ve malzeme-istasyonu projeksiyonu rotor
+  çözücüsüne taşındı. Tam açık yol, donmuş UIUC matrisindeki 50/50 propulsif noktada
+  sabit çözücüyle bit düzeyinde aynı sonuç verdi (maksimum |ΔT| ve |ΔQ| = 0).
+  Geçersiz/çökmüş durumlar kapalı biçimde hata veriyor; polar kimliği malzeme
+  yarıçapıyla taşınıyor ve sonuçlar nominal/etkin geometri provenance'ı içeriyor.
+  Bu [sabit-limit kanıtı](../reports/pr06d_fixed_limit_equivalence.md) yalnız yazılım
+  eşdeğerliğidir; katlanmış durumun fiziksel doğruluğu PR-06C geçmeden nitelikli değildir.
+  Açılma duyarlılığı yazılım adımı da tamamlandı: donmuş 50 propulsif nokta üzerinde
+  0/15/30/45/60 derece için 250 vakalık eksiksiz tarama üretildi ve tam açık uç yeniden
+  birebir doğrulandı. Sonuç [açılma taraması](../reports/pr06d_opening_sensitivity.md)
+  içinde `screening_only_until_pr06c_passes` olarak kilitlidir; tasarım kararı veya
+  fiziksel niteleme değildir.
 
-Declare hinge-axis and hardware offsets separately from actual displacement of
-the deployed aerodynamic surface. Record radial/tangential/axial translation
-components, rotation components and conventions, reference points, units and
-shaft/parent/fixed/tip/joint frames, with deployed transforms between them.
-A hardware offset may preserve the nominal parent surface; it does not establish
-that preservation. Report the transformed surface's position/orientation
-deviations, joint gaps, steps and protrusions explicitly, with supplied CAD or
-as-built uncertainty. No CAD tolerances are invented here. Existing BEM does not
-capture these joint features, and zero-offset planar GEOM-01 does not clear a new
-offset topology; unsupported representations remain unsupported.
+  Acar'ın 2025 mafsallı uç-pervane BEM çalışması da yöntem kanıtı olarak tersine
+  mühendislikle incelendi. Otuz bir sayısal nokta işaret güvenli rejim denetimine,
+  birleşik tip-akış bağıntısına ve verim fail-closed kurallarına dönüştürüldü. Ayrı
+  bir uç rotoru ile katlanan ana-pal devamı aynı fiziksel topoloji olmadığı için
+  makale sonuçları PR-06D doğrulama hedefi yapılmadı. Ayrıntılar
+  [Acar 2025 review belgesindedir](pr06d_acar_2025_reverse_engineering.md).
 
-The next practical CAD comparison is the untouched original versus the
-cut/rejoined **deployed assembly at each of the two declared hinge positions**.
-Require parent/child lineage for both cuts and assemblies; map each child station
-back to its original global radius, section and orientation; compare open-pose
-surfaces in a common declared frame. Itemize every joint-region removal/addition,
-gap, step, protrusion and placement deviation separately from inherited geometry,
-including unresolved regions and measurement uncertainty. This is a CAD evidence
-request, not CAD creation or a numerical acceptance gate in this amendment.
+Yayımlanmış APC 10x4.7 CFD taraması da makine-okunur bir kapsam sözleşmesine bağlandı.
+ICAS Fluent SST k-omega sonuçları, aynı UIUC statik CP noktalarında yeniden hesaplanan
+en çok %1,27 hata gösterirken mevcut analitik-proxy BEM yolu yaklaşık %10,22 ve %19,86
+eksik kalıyor. Bu bulgu eşikleri değiştirmiyor; temsili Reynolds-duyarlı polar zincirini
+öncelikli tutuyor. Ayrıntılar [yayımlanmış CFD review](../reports/pr06c_published_cfd_review.md)
+ve [bağımsız ANSYS isterinde](independent_aerodynamic_review_request.md) kayıtlıdır.
 
-A duplicated-root/twist-reset arrangement may be retained only as an optional
-comparison control with its own geometry identity and departures from the parent.
-Its greater performance loss is a hypothesis requiring matched operating
-conditions, analysis/settings or experiments with uncertainty; it is not a
-result or the default fixed/moving construction.
+PR-06A'nın denklemsel temeli Mark Drela'nın
+[QPROP formulation](https://web.mit.edu/drela/Public/web/qprop/qprop_theory.pdf)
+notudur. Daha geniş çalışma rejimleri ve garantili kök bulma tasarımı için Andrew
+Ning'in [BEM solution method](https://scholarsarchive.byu.edu/facpub/1673/) çalışması
+PR-06B/06C'de referans alınacaktır.
 
-### Candidate dossier
+PR-06A/06B denklem, sayısal davranış ve kapsam incelemesi
+[PR-06 foundation review](pr06_foundation_review.md) belgesinde kayıtlıdır.
+PR-04–PR-06 retrospektifi, benchmark kararı ve lisans sınırı
+[retrospective review](pr04_pr06_retrospective_review.md) belgesindedir.
 
-Prepare one **250 mm actual-blade / declared-joint candidate dossier**. The blade
-and joint design identities must be supplied; they are currently missing, not
-inferred from canonical examples. Begin with two explicitly declared radial
-locations motivated by the 8:5 and 10:3 proportions, subject to real station and
-attachment coverage. This is a bounded comparison, not an optimization sweep.
+### PR-07 — tam bağlı motor–pervane çözümü
 
-Keep the same blade source revision and joint architecture/materials/nominal
-attachment specification. Each placement needs its own assembly/cut/attachment
-revision and evidence identity. If that design cannot fit a section, retain the
-failure; do not covertly resize the pin, thicken the blade, relocate holes or
-replace the joint to make a candidate pass. Any later change is separately
-declared and invalidates dependent evidence.
+Motor tork eğrisi, gerilim/akım sınırları ve pervane torku ortak bir devir noktasında
+çözülür. Kabul kapısı; enerji/tork kalıntısı, çoklu başlangıçtan aynı çözüm ve ölçülmüş
+en az bir motor–pervane eşleşmesiyle korelasyondur.
 
-Every candidate row must contain these fields, with source, revision/hash, units,
-frame, uncertainty and evidence scope for each supplied value:
+**Yazılım/nümerik kapı tamamlandı.** Global RPM taraması benzersiz ortak kökü bulur;
+birden fazla kökü, köksüz aralığı, geçersiz aerodinamik yükü ve elektriksel sınır
+ihlallerini kapalı biçimde raporlar. Sabit veya katlanır BEM çözücüsü her aday RPM'de
+yeni çalışma koşuluyla çağrılır. Beş donmuş analitik yük vakasında tork, gerilim ve
+şaft-enerji kalıntıları ile üç ayrı başlangıç kontrolü geçmiştir. Bu kanıt yalnız
+yazılım davranışını niteler; fiziksel kapı ölçülmüş motor–pervane korelasyonu gelene
+kadar `pending_measured_correlation` durumundadır. Ayrıntılar
+[PR-07 yürütme planı](pr07_fully_coupled_execution_plan.md) ve
+[kanıt raporundadır](../reports/pr07_fully_coupled_evidence.md).
 
-| Candidate field group | Required content / explicit unavailable reason |
-| --- | --- |
-| Radial position and actual section | D,R,b,h,L and h-b; hinge axis/offset/travel; local chord, twist, actual thickness distribution, walls/skins, internal voids/infill and remaining net ligament after attachment cuts. Actual CAD sections/tolerances, not thickness ratio alone. |
-| Joint and load path | Pin/shaft, lug/clevis, bearing/bush, fastener/retention, lock and stop dimensions, fits, fillets, hole edge distances, contact and permitted movement; fixed/moving members and force/moment transfer. Declare absent components explicitly. |
-| Movable mass properties | Candidate-specific blade-plus-moving-hardware mass, 3D CG and inertia tensor in declared frames, hinge-axis inertia, methods and uncertainty; reconcile CAD integration with measured mass/CG/inertia when available. No linear span scaling, midpoint CG or uniform-density replacement for unknown printed construction. |
-| Folded geometry | Centerline bound, chord-inclusive preview and supported candidate-specific GEOM-04 evidence separately; entire declared travel, hub/interblade/hardware scope, manufacturing fit variation, exclusions and unresolved shared-hinge contact. No endpoint-only mesh claim of continuous CAD clearance. |
-| Aerodynamic screening | Exact candidate draft/stations/profile and polar sources, operating condition, BEM settings/domain/coverage, annulus/rotor outputs or failure reasons. Joint-induced shape/gaps absent from BEM remain model limitations. |
-| Structural evidence | Candidate CAD/material/load-source/result linkage for five PR-09 cases, mesh/convergence/force balance and metric/limit evidence; reviewer findings and missing-input reasons. |
-| Decision scope | Separate screening, candidate structural-review and experimental-support states; failed/unknown/unsupported fields retained. No composite safety score or automatic safe winner. |
+### PR-08 — CFD korelasyonu
 
-The first dossier may be complete as an **evidence inventory with blocked rows**
-while FEA/tests are absent. It must still identify an actual blade and joint and
-retain available geometry; a placeholder-only table is not the geometry-linked
-deliverable. Structural acceptance and selection are separate later milestones.
+Önce doğrulama vakaları ve otomatik geometri/çalışma koşulu aktarımı, sonra ağ ve
+zaman-adımı bağımsızlığı yapılır. ANSYS çalışması; sürüm, ağ metrikleri, sınır
+koşulları ve yakınsama geçmişiyle kanıt paketi üretmelidir. CFD, deneyin yerine değil
+BEM'in model-form hatasını ayırmak için kullanılır.
 
-## 4. Required real inputs before structural claims
+### PR-09 — yapısal ve mekanik doğrulama
 
-- **CAD/sections:** revision-controlled native SolidWorks and/or faithful STEP
-  export, source permission, hashes, units, shaft/blade/hinge/build frames,
-  hub attachment, relevant full span and section cuts around each joint, internal
-  construction and as-built deviations. Coordinate/station exports identify their
-  CAD parent and extraction method. Chord/airfoil stations alone do not establish
-  a solid, bore ligament or printable attachment.
-- **PA-CF process and material:** actual filament grade/batch, conditioning,
-  moisture/temperature range, machine/nozzle, layer height, roads/perimeters,
-  infill, raster/build directions and post-processing. Coupons represent these
-  processes and material axes. Supply density, directional elastic/shear response
-  and Poisson coupling, tension/compression/shear allowables including interlayer
-  behavior, and applicable bearing, net-section/shear-out, notch and fatigue data
-  for declared modes/duty/environment. Record raw tests, repeats, uncertainty and
-  allowable derivation. Missing directional properties block the affected claim;
-  a generic datasheet or the minimal orthotropic schema property list is not a
-  complete 3D material model.
-- **Joint:** actual pin/fastener/bush/lock/stop materials and characterization,
-  dimensions/tolerances, surface/fit/preload, retention/contact/friction assumptions,
-  attachment fabrication, assembly and inspection records. Adhesive properties
-  apply only if adhesive is part of the joint. Minimum wall/trailing-edge
-  declarations are manufacturing inputs, not fracture limits.
-- **Loads and limits:** declared speed/overspeed scope, operating/environment
-  envelope, imbalance magnitude/direction, deployment/stop history and duty cycle,
-  each with source and uncertainty. Engineering owners approve safety-factor/
-  allowable margins, displacement, bearing/contact pressure, fatigue life and
-  modal separation limits before judging results. Missing limits remain missing;
-  this PR supplies no numerical values or new gates.
+SolidWorks ana geometrisi için revizyonlu CAD değişim sözleşmesi oluşturulur. ANSYS
+ile pal, kök, pim, kilit ve stop temasları; maksimum devir/açılma geçişi ve dengesizlik
+yüklerinde incelenir. Statik emniyet, deplasman, temas basıncı, yorulma ve doğal
+frekans kapıları ayrı raporlanır.
 
-Attachment sections require evaluation of net-section tension, bending/torsion,
-bearing, shear-out, pin shear/bending, local stress concentration, interlayer
-failure and fatigue as applicable. Local thickness is one input, never a
-stand-alone safety predictor. Nonapplicable modes need explicit load-path reasons.
+**Yazılım/hazırlık kapısı tamamlandı.** CAD revizyonu ve SHA-256 kimliği,
+izotropik/ortotropik malzeme kapsamı, beş zorunlu yük vakası, üç seviyeli mesh
+yakınsaması, kuvvet dengesi, birim kontrollü sonuç metrikleri ve proje tarafından
+tanımlanacak kabul limitleri fail-closed sözleşmeye bağlandı. Birinci-taraf sentetik
+fixture yalnız doğrulayıcının davranışını kanıtlar. Gerçek proje durumu; revizyonlu
+CAD, PA-CF/pim/kilit/stop malzeme kartları, onaylı limitler ve ANSYS sonuçları gelene
+kadar `blocked_waiting_for_real_structural_inputs` olarak kalır. Ayrıntılar
+[PR-09 yürütme planı](pr09_fea_contract_execution_plan.md) ve
+[kanıt raporundadır](../reports/pr09_fea_contract_evidence.md).
 
-## 5. Screening, FEA review and experimental selection
+**Ayrı tasarım önerisi — PROPOSED / NOT IMPLEMENTED:**
+[Dayanımı gözeten radyal menteşe konumu değerlendirmesi](strength_aware_radial_hinge_assessment_proposal.md)
+250 mm proje tabanında tek gerçek pal ve tek beyan edilmiş bağlantı için sınırlı,
+adaya bağlı geometri/kütle/aerodinamik/yük-vakası/FEA kanıt dosyası önerir.
+İlk CAD karşılaştırması aynı ana palın iki menteşe konumunda kesilip yeniden
+birleştirilmiş açık geometrisini özgün pal ile eşler; radyal kesit/twist eşleşmesi,
+dönüşümler ve bağlantı bölgesi farkları açıkça kaydedilir. Ana palın varsayılan
+optimumluğu yalnız beyan edilmiş çalışma koşuluna bağlı çalışma varsayımıdır.
+Dar [istasyon karşılaştırma raporu](parent_blade_station_comparison.md) ayrı Draft
+uygulama dilimidir: kaynak bağlı açık eşleme ve sayısal farklar raporlanır;
+tam 3B yüzey, bağlantı boşluğu/dayanımı veya güvenli aday kanıtı değildir.
+Geniş tasarım önerisi PROPOSED / NOT IMPLEMENTED olarak kalır.
+13 inç ayrı senaryodur. CAD, yönsel PA-CF kuponları ve deney hazırlığı CMM-2
+doğrulamasıyla paralel ilerleyebilir; bu öneri çözüm çalıştırmaz, PR-09/GEOM
+kapılarını değiştirmez ve güvenli aday seçimi veya fiziksel nitelik vermez.
 
-**Geometry-linked screening:** later authorized use may reuse GEOM-01 and
-candidate-bound GEOM-04 within supported topology. Its `surface_path_clearance`
-and `interblade_clearance` gates remain unknown unless the existing opt-in
-negative policy establishes False; readiness is not True.
-`full_propeller_clearance` remains null. Unsupported actual joint solids or
-unresolved tolerances remain missing evidence, not substituted previews.
+### PR-10 — deneysel doğrulama
 
-Reuse active BEM analysis for the actual supported fully-open candidate, with
-matching profile/coordinate identity, explicit source domain and settings. The
-existing chord/twist search does not vary hinge radius; later comparison of
-separately identified drafts must not pretend the adapter has new axes. If
-external open geometry is identical, rotor screening totals can be identical
-while movable loads and attachment demands differ; this does not imply equal
-strength. Preserve bounds/error behavior and budgets. Domain gaps or failed
-solves cannot be filled with proxy loads. Total thrust or shaft torque alone
-cannot define a local joint load case.
+İtki/tork/devir/elektrik gücü veri şeması, sensör kalibrasyonu, sıfır kayması,
+tekrarlı ölçüm ve belirsizlik yayılımı sürümlenir. En az bir sabit referans pervane ve
+katlanır prototip aynı düzenekte ölçülür; BEM ve CFD farkları belirsizlik bantlarıyla
+raporlanır.
 
-**Candidate FEA review:** reuse the PR-09 evidence boundary for:
+**Yazılım/hazırlık kapısı tamamlandı.** Yedi zorunlu sensör kanalı; sertifika
+kimliği, SHA-256, geçerlilik aralığı ve standart belirsizlikle bağlandı. Sabit referans
+ve katlanır prototip rolleri, en az üç tekrar, ham veri kimliği, deney öncesi/sonrası
+sıfır kayması ve Type-A + kalibrasyon + drift belirsizlik yayılımı fail-closed olarak
+uygulandı. Sentetik fixture yalnız şema ve matematiği doğrular. Fiziksel kapı gerçek
+kalibrasyon kayıtları ve ham tekrar ölçümleri gelene kadar
+`blocked_waiting_for_calibrated_raw_measurements` durumundadır. Ayrıntılar
+[PR-10 yürütme planı](pr10_experiment_contract_execution_plan.md) ve
+[kanıt raporundadır](../reports/pr10_experiment_contract_evidence.md). UIUC APC Slow
+Flyer 10x4.7 için 60 noktalı yayımlanmış harici referans ve bağımsız aynı-pervane
+Morgado/Pascoa yöntem karşılaştırması bağlandı. Bunlar model/doğrulama bağlamıdır;
+proje katlanır prototipinin kalibrasyonlu ham ölçümü sayılmaz.
 
-| Existing required case | Candidate-specific preparation needed |
-| --- | --- |
-| Maximum-RPM steady centrifugal/aerodynamic | Distributed mass and section load mapping, frame/sign/lever-arm consistency, reactions and attachment paths; independently check resultant force/moment and avoid double-counting centrifugal loads. |
-| Peak opening-stop transient/contact | Traceable pre-impact state, drive/stop compliance and contact history with uncertainty. CMM-2 screening terminal first contact does not compute impact/bounce/stop stress. No invented impact peak or accepted PR-C claim. |
-| Maximum-RPM imbalance | Declared eccentric mass/vector/phase and speed, load path/support model; perfect balance is not assumed to clear the case. |
-| Modal separation over speed envelope | Actual assembly stiffness, prestress, constraints and relevant excitation orders; not a generic free-blade frequency or guessed margin. |
-| Fatigue of blade/hinge/pin/lock/stop | Declared repeated-load spectrum, environment/process-specific fatigue evidence, local failure modes and uncertainty. |
+PR-10 karar zarfı PY-06A için v2'ye yükseltilmiş; manifest SHA-256 ile her run'ın
+ham-veri, tasarım, tarih ve özet kimliği kalıcı hale getirilmiştir. Test-stand
+manifest şeması v1 kalır. Eski karar nesneleri Python çağrıları açısından
+oluşturulabilir olsa da kimlik alanları olmadan PY-06A karşılaştırmasına alınmaz.
 
-Retain PR-09's at-least-three mesh levels, convergence history, force balance,
-units, matching identities and rejection of nonconvergence/warnings. Its current
-validator checks declared properties/metrics/limits and CAD/material/result
-fields; it does not certify CAD authenticity, physical load mapping, complete
-anisotropic failure coverage or experimental validity. Bind external load
-artifacts, material-card bytes, solver/version/settings and full case
-correspondence for independent engineering review. Numerical policies remain
-unchanged; this supplements review evidence, not executable schema.
+### PR-11 — robust çok amaçlı optimizasyon
 
-**Experimentally supported selection:** only later authorized tests of the actual
-process/assembly can support selection. Plan directional and attachment coupons,
-dimensional/mass-property checks, static joint tests, declared deployment/stop
-and cyclic tests, and matched rotor/stand measurements with calibrated sensors,
-repeats and uncertainty under the [PR-10 boundary](pr10_experiment_contract_execution_plan.md).
-Test scope/limits and appropriate containment are reviewed before hardware runs.
-Candidate FEA review or a synthetic validator pass does not qualify the rotor.
-No selection while required physical evidence or clearance is unknown; favorable
-thrust cannot compensate for structural failure.
+**PR-11A yazılım altyapısının ilk dilimi (PY-04A)** sınırlı deterministik tarama,
+aktif taslak BEM adaptörü ve UI ile uygulandı. Daha geniş/adaptif/Pareto arama
+yöntemleri henüz uygulanmadı. **PR-11B fiziksel tasarım
+kararı** ise aşağıdaki doğrulama koşullarına bağlı kalır.
 
-## 6. Parallel work, dependencies and completion criteria
+Yalnız doğrulanmış çalışma zarfında; itki/verim, katlanmış hacim, gerilme, ömür,
+motor sınırları ve üretim toleransları birlikte optimize edilir. Pareto adayları CFD,
+FEA ve deney kapılarından geçmeden önerilen tasarım olmaz.
 
-| Bounded workstream | Deliverable and dependency | Completion boundary |
+### PR-12 — karar paketi ve sürümleme
+
+Girdi kimlikleri, solver sürümleri, ham veri, belirsizlik, karşılaştırma ve tasarım
+kararı tek bir tekrar üretilebilir raporda bağlanır. Temiz ortamda yeniden üretim ve
+arşiv bütünlüğü sürüm kapısıdır.
+
+## Yakın dönem yürütme sırası ve kapılar
+
+| Sıra | Teslimat | Tamamlanma kapısı |
 | --- | --- | --- |
-| CAD/joint preparation | Actual 250 mm parent blade, one joint declaration and original-versus-cut/rejoined deployed comparison at two placements; requires engineering source data | Parent/child radial/section/orientation lineage, transforms and explicit joint-region differences, plus attachment coverage; retain infeasible/missing regions. No CAD alteration in this PR. |
-| Material/manufacturing | Process declaration, directional coupon/test plan and later measured card; alongside CAD and CMM-2 | Raw/process-linked evidence and reviewed allowable derivation for each claimed mode; otherwise blocked. |
-| Geometry/aerodynamic dossier | Candidate ledger using existing supported paths; actual geometry and suitable polars required | Identified results/failures, unchanged budgets, explicit coverage; screening only. No runs in this PR. |
-| Structural preparation/review | Five-case matrix, approved limits and later real ANSYS bundles; depends on CAD, material and traceable loads | Independent candidate FEA review with converged matching results and unresolved modes; not experimental selection. |
-| Experimental preparation/evidence | Calibrated component/rotor plans and later raw measurements; reviewed specimen/process/load/test limits required | Scoped comparisons with uncertainty; selection requires all applicable evidence, not a weighted proxy score. |
-| CMM-2 verification, separately continuing | Existing PR #81/#84 and frozen contracts govern their own work | No bypass or acceptance from this proposal. Dynamic load claims require independently adequate evidence; CAD/coupon/static preparation need not wait for CMM-2 completion. |
+| 1 | PR-06A yerel annulus çözücüsü | Tamamlandı: hover, denklem kalıntısı, loss-model ve açık kapsam regresyonları |
+| 2 | PR-06B rotor integrasyonu | Tamamlandı: radyal yakınsama, yük/toplam tutarlılığı ve provenance |
+| 3 | PR-06C referans benchmark | Nihai kapı kodu ve yeniden üretilebilir karar tamamlandı; donmuş fixture/politika geçiyor, gerçek E63→APC12 sağlayıcı zinciri, ileri-uçuş doğruluğu ve bağımsız model-form review başarısız |
+| 4 | PR-06D katlanır bağlantı | **Yazılım taraması tamamlandı:** sabit-limit ve 250-vaka açılma duyarlılığı kanıtı mevcut; fiziksel nitelikli açılma duyarlılığı PR-06C'ye bağlı |
+| 5 | PR-07 motor bağlantısı | **Sayısal kapı tamamlandı:** tork/gerilim/enerji dengesi, benzersiz kök ve çoklu başlangıç; fiziksel kapı ölçüm korelasyonunu bekliyor |
+| 6 | PR-08/09 CFD ve FEA | PR-08 CFD gerçek ANSYS çıktısını bekliyor; PR-09 yazılım/hazırlık sözleşmesi tamamlandı, gerçek yapısal kanıt bekleniyor |
+| 7 | PR-10 deney | Yazılım/hazırlık ve kamuya açık aynı-pervane referans temeli tamamlandı; kalibrasyonlu gerçek sabit/katlanır ham ölçümler bekleniyor |
+| 8 | PY-06 karşılaştırma | A/B1/C sırasıyla PR #54/#55/#56 ile birleştirildi; D1 gözlem karşılaştırması uygulandı; D2 gerçek veri ve tanımlanabilirlik kapısını bekliyor |
+| 9 | PR-11/12 optimizasyon ve sürüm | Robust Pareto kararı ve temiz yeniden üretim. Doğrulanmış modelden önce nihai tasarım optimizasyonu değildir |
 
-No calendar estimates or predicted performance are supplied. CAD, material
-coupons, load-case/test planning and identities can proceed in parallel; that
-concurrency is not permission to execute solvers or hardware tests in this task.
-Future execution/implementation requires a separately reviewed bounded scope.
+Tarihli PR-06–PR-12 sırası korunur. Güncel bilimsel sıra bu tablonun yerine
+[sıralı teknik fazlar](#sirali-teknik-fazlar) bölümündedir. UI-05B arayüz
+sırasını değiştirmez.
 
-This documentation increment completes with the proposal, roadmap/status links,
-independent exact-HEAD review and normal document/CI checks recorded in its Draft
-PR. The future first deliverable completes only when an actual blade/joint are
-identified and every candidate field has real scoped evidence or a specific
-reason/owner/dependency for missing evidence. Reviewers can compare positions and
-identify the next experiment without implying structural acceptance.
+## İşbirliği sınırları
 
-Keep `physical_qualification=false`, PR-06C unresolved and GEOM unknown/False
-states. No ADR-009 acceptance, calibration, experimental-validation promotion,
-design freeze or merge follows. Existing normative contracts, numerical
-thresholds and historical records are preserved.
+- **PyFoldable:** kanonik SI girdileri, çözüm sözleşmeleri, otomatik regresyonlar,
+  model-form varsayımları ve kanıt paketlerinin bütünlüğü.
+- **SolidWorks:** revizyonlu CAD ana modeli, üretilebilir geometri, kütle özellikleri
+  ve değişim formatı; geometri değişikliği analiz kimliğini değiştirmelidir.
+- **ANSYS:** açık solver/ağ/sınır koşulu kaydı, yakınsama ve bağımsızlık çalışmaları;
+  yalnız ekran görüntüsü doğrulama kanıtı sayılmaz.
+- **Deney:** kalibrasyon kayıtları, ham veri, çevre koşulları, tekrarlar ve belirsizlik
+  bütçesi; işlenmiş özet ham verinin yerini alamaz.
+
+## Karar özeti
+
+Gerçek polar regresyonları temel veri hattının tekrar üretilebilirliğini kontrol altına
+aldı; PR-06A/06B kod ve integrasyon temelini kurdu. PR-06C düzeltmesi ileri uçuşta
+yerel negatif yüklenen annulus dalını tamamladı ve tüm propulsif noktaları çözdü.
+Kritik yol artık **tested blade'i temsil eden E63→APC12 spanwise, Reynolds-duyarlı polar kanıtı**,
+**dönel/model-form hata düzeltmesi** ve **bağımsız aerodinamik review**dur. Aynı
+dondurulmuş UIUC fixture/politika üzerindeki tüm kapılar geçmeden PR-06D'nin fiziksel
+doğruluk iddiasına veya nitelikli açılma duyarlılığına ilerlenmez. Sabit-limit yazılım
+eşdeğerliği bu sınırı değiştirmeden PR-06D uygulama aşamasına giriş sağlamıştır.
+Bu aerodinamik fiziksel kapı açık kalır. Ondan ayrı olarak geometri tarama
+zinciri PR #67–#69 ile duraklatılmıştır ve sonraki model dilimi, henüz
+yazılmamış bağlaşık aero–motor–mekanizma sözleşmesidir. PY-06D2 ve robust
+optimizasyon veri ve doğrulama kapılarının önüne alınmaz.
+
+## 2026-10-01 proposed numerical-feasibility amendment
+
+The [numerical-feasibility proposal](cmm2_numerical_feasibility_amendment.md)
+is PROPOSED / NOT FROZEN / NOT IMPLEMENTED. Main still ships CMM-2 RK45/v1;
+Draft PR #84 Radau/v2 remains BLOCKED. Proposed C2V09-28 reaches real BEM
+but fails mapper span coverage and is not selectable. Kabul edilmiş bağımsız
+sayısal kanıt yoktur. Review, fixture-feasibility resolution and separate
+freeze/implementation authorization precede new trajectories. Draft PR #81
+remains BLOCKED; ADR-009 is not created/accepted; physical qualification
+remains false. Historical phase and acceptance records are unchanged.
+
+Prospective append-only [C2V09-29 declaration](cmm2_c2v09_candidate29_proposal.md) retains candidate28
+and its mapper rejection, adding a first-party synthetic constant terminal
+station under proposed selector v3 (00…27,28,29). Status remains **PROPOSED /
+NOT FROZEN / NOT IMPLEMENTED**. Committed-declaration review precedes any
+initial-only source/preflight measurement; no trajectory, freeze or acceptance
+follows. Main RK45/v1 and unmerged PR81/84 identities are unchanged.
+
+After separate committed-declaration review, [candidate29 initial preflight](cmm2_c2v09_candidate29_initial_preflight.md)
+measured source/Q2/detectability/Q4 checks but retained a literal partition
+predicate failure. Candidate29 remains BLOCKED / NOT SELECTED; candidate28
+mapper rejection is preserved. No proposed-candidate trajectory was run,
+no v2 seal exists, and this is not accepted independent numerical evidence.
+
+A subsequent [prospective partition-policy declaration](cmm2_c2v09_partition_policy_proposal.md)
+uses unchanged candidate29 and a whole stored-scale angle neighborhood. It
+preserves literal v1 FAIL/raw zeros and every historical capture; no structural
+alias is relabelled as passing v1. The separately versioned proposal and Q4
+successor conjunction are **PROPOSED / NOT FROZEN / NOT IMPLEMENTED**.
+Committed-declaration review precedes any new initial-only assessment; no
+trajectory, ordered selection, v2 seal or acceptance is authorized.
+
+The [prospective partition initial assessment](cmm2_c2v09_partition_initial_assessment.md)
+keeps literal v1 FAIL and unchanged candidate29. Conditional source algebra
+and conjunctive Q4 replay do not close the unresolved actual whole-neighborhood
+runtime/source proof; prospective result BLOCKED / NOT SELECTED. No trajectories,
+ordered selection, v2 seal, freeze or accepted independent numerical evidence.
+
+## 2026-10-02 cumulative feasibility-design closure — design frozen
+
+The [cumulative implementation subsection](cmm2_numerical_feasibility_amendment.md#7-cumulative-implementation-authority-and-live-eligibility)
+is **REVIEWED / FROZEN FOR IMPLEMENTATION — CMM-2 NUMERICAL FEASIBILITY AMENDMENT**,
+NOT IMPLEMENTED. Technical reviewed HEAD `fd55fa97676c84c896511765e94561a706252239`
+received independent APPROVE FOR CONTRACT FREEZE and passed its documentation
+checks and push/PR baseline CI before the separate status-only closure; fresh
+closure-head CI is still required. It binds the unchanged timestamp
+proposal, append-only selector00…27,28,29 and partition v2 narrowed by scope v3,
+with mandatory **live** certificate/runtime eligibility before future successful
+selection and separate-v2 sealing. Archived replay or baseline CI cannot supply
+that eligibility. Earlier declarations/results above remain historical; design
+freeze does not establish selection, trajectories or PR-C verification.
+Candidate29 NOT SELECTED; literal v1 FAIL and historical v2 BLOCKED preserved.
+Kabul edilmiş bağımsız sayısal kanıt yoktur. Main RK45/v1, pending Q5/runtime/
+minimum-SciPy work and qualification boundaries remain; no implementation,
+ADR-009 acceptance or physical qualification follows.
