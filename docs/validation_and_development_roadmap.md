@@ -530,6 +530,12 @@ sabit iç ana istasyon tablosundan doğrudan kopyalayıp rapora besler.
 Eksik menteşe/uç satırları boşluk olarak, yetersiz çocuk satırları tanı olarak kalır;
 interpolasyon, twist sıfırlama veya çocuk ölçekleme yapılmaz. Eksik/uyumsuz geometri
 açık kalır; tam katı, boşluk veya dayanım kanıtı türetilmez.
+[Yerel PE0 kaynak-geometri raporu](local_apc_pe0_geometry_reporting.md) ayrı Draft
+uygulamada tüm kaynak satır/sütunlarını ve nominal/footer/son-istasyon yarıçaplarını
+korur; iki kesim aynı saklı satırları kopyalar. Karma profil ve bilinmeyen geçiş
+geometrisi karşılaştırması desteklenmiş sayılmaz. Gerçek APC 13x5.5MR dosyası yerel
+gösterim için bulunamadı; sentetik yazılım testi üretici sonucu yerine geçmez.
+BEM, dayanım, optimum menteşe veya fiziksel nitelik iddiası yoktur.
 13 inç ayrı senaryodur. Parametrik tasarım, yönsel PA-CF kuponları ve deney hazırlığı CMM-2
 doğrulamasıyla paralel ilerleyebilir; bu öneri çözüm çalıştırmaz, PR-09/GEOM
 kapılarını değiştirmez ve güvenli aday seçimi veya fiziksel nitelik vermez.
