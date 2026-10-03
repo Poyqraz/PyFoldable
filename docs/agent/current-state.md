@@ -511,12 +511,12 @@ An independent libm symbol lookup is not that evidence. The historical CPython
 wrapper address argument does not apply to this executable. Changed Python
 graph correspondence and the returned source object stay outside this
 certificate. `physical_qualification=false`. This is not eligibility evidence.
-The bind-now observation is
+The bind-now file
 [reports/c2v09_cosine_path_certificate/observation.json](../../reports/c2v09_cosine_path_certificate/observation.json),
-from checkout `f343a9b206b0169e96bf5e66548ee08d257c3806`. The selected libm
-body matches the historical body and the historical validity predicate holds;
-the historical CPython wrapper addresses do not apply. PR #81 and PR #84 stay
-unmerged into main.
+from checkout `f343a9b206b0169e96bf5e66548ee08d257c3806`, is historical evidence.
+Its probe checked CPUID leaf 7 after that leaf overwrote the OSXSAVE register, and it calculated the libm body argument before comparing loaded wrapper bytes. Those bytes matched on that run, and leaf 7 ECX bit 27 happened to be set. The repaired observation is
+[reports/c2v09_cosine_path_certificate/repaired_observation.json](../../reports/c2v09_cosine_path_certificate/repaired_observation.json),
+from checkout `319c10ae22e55891ad8552d8741664c8ef7f7f38`. Checkout, tree, probe, and implementation identities are recorded separately. The selected libm body matches the historical body under the repaired guard and wrapper prerequisite. The historical CPython wrapper addresses do not apply. This is not eligibility evidence. PR #81 and PR #84 stay unmerged into main.
 
 ## 2026-10-02 strength-aware radial hinge assessment — proposal only
 

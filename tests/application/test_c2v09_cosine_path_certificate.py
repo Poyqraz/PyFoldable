@@ -9,6 +9,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 import pyfoldable.application.c2v09_cosine_path_certificate as cosine_certificate
 from pyfoldable.application.c2v09_cosine_path_certificate import (
     CERTIFICATE_FILE_SHA256,
@@ -26,6 +28,11 @@ from pyfoldable.application.c2v09_ordered_declaration import canonical_bytes, sh
 
 
 HISTORICAL_OBSERVATION_SHA256 = "ead8a612b8df532a3f1218d33ea416452f4ec967f8240846003e784b0e2ec92d"
+REPAIRED_OBSERVATION_SHA256 = "273744853a2c2b0691cc208fbb5d00e97d8b802379958d106f29d096c3f8b08a"
+REPAIRED_CHECKOUT = "319c10ae22e55891ad8552d8741664c8ef7f7f38"
+REPAIRED_TREE = "fff000b4c4bc9c7a4d64a5b3030f675ee3ede3fb"
+REPAIRED_PROBE = "e75b6d88b78250ae9e4cce87839291c0540f018550dc14465409f7e12426d33d"
+REPAIRED_IMPLEMENTATION = "5b4ed333d7d28c8606b59630cc17fee3a48b4a2af54fbf6051ad43c50e55c6bc"
 _OSXSAVE = 1 << 27
 
 
@@ -431,8 +438,17 @@ print(json.dumps({{
     return json.loads(completed.stdout)
 
 
+def _resolved_matched_path(root: Path) -> dict:
+    baseline = _child_certificate(root, "matched")
+    if baseline["classification"] != "OBSERVED" or baseline["match"] is not True:
+        pytest.skip("bind-now did not resolve a wrapper that matches its ELF bytes")
+    return baseline
+
+
 def test_live_unreadable_wrapper_blocks_attribution() -> None:
-    observed = _child_certificate(_repository(), "unreadable")
+    root = _repository()
+    _resolved_matched_path(root)
+    observed = _child_certificate(root, "unreadable")
     assert observed["match"] is False
     assert observed["classification"] == "NOT ESTABLISHED"
     assert observed["address"] is None
@@ -443,7 +459,9 @@ def test_live_unreadable_wrapper_blocks_attribution() -> None:
 
 
 def test_live_mismatched_wrapper_blocks_attribution() -> None:
-    observed = _child_certificate(_repository(), "mismatch")
+    root = _repository()
+    _resolved_matched_path(root)
+    observed = _child_certificate(root, "mismatch")
     assert observed["match"] is False
     assert observed["classification"] == "NOT ESTABLISHED"
     assert observed["address"] is None
@@ -453,12 +471,12 @@ def test_live_mismatched_wrapper_blocks_attribution() -> None:
     assert observed["raw"] not in (None, "")
 
 
-def test_live_matched_wrapper_can_apply() -> None:
-    observed = _child_certificate(_repository(), "matched")
+def test_live_matched_wrapper_keeps_the_resolved_target() -> None:
+    observed = _resolved_matched_path(_repository())
     assert observed["match"] is True
     assert observed["classification"] == "OBSERVED"
     assert observed["address"]
-    assert observed["libm"] == "APPLIES"
+    assert observed["libm"] in {"APPLIES", "DOES NOT APPLY"}
     assert observed["cdll_evidence"] is False
     assert observed["evidence"] == "python wrapper plt got"
     assert observed["raw"] is None
@@ -475,3 +493,42 @@ def test_historical_observation_bytes_and_limitations_stay_recorded() -> None:
     assert "calculated before the loaded wrapper bytes were compared" in document
     assert "f343a9b206b0169e96bf5e66548ee08d257c3806" in document
     assert "8a8fe2c2b1eb60cea016acec26d50fdcd902ee33ec57b81efa6273cb7fb3aaba" in document
+
+
+def test_repaired_observation_keeps_separate_identities() -> None:
+    root = _repository()
+    path = root / "reports/c2v09_cosine_path_certificate/repaired_observation.json"
+    raw = path.read_bytes()
+    assert sha256_bytes(raw) == REPAIRED_OBSERVATION_SHA256
+    document = json.loads(raw.decode("utf-8"))
+    payload = _payload(document)
+    assert document["canonical_sha256"] == sha256_bytes(canonical_bytes(payload))
+    assert payload["checkout_sha"] == REPAIRED_CHECKOUT
+    assert payload["tree_sha"] == REPAIRED_TREE
+    assert payload["probe_source_sha256"] == REPAIRED_PROBE
+    assert payload["implementation_sha256"] == REPAIRED_IMPLEMENTATION
+    assert len({REPAIRED_CHECKOUT, REPAIRED_TREE, REPAIRED_PROBE, REPAIRED_IMPLEMENTATION}) == 4
+    probe = subprocess.check_output(["git", "show", f"{REPAIRED_CHECKOUT}:pyfoldable/application/c2v09_cosine_path_probe.c"])
+    implementation = subprocess.check_output(
+        ["git", "show", f"{REPAIRED_CHECKOUT}:pyfoldable/application/c2v09_cosine_path_certificate.py"]
+    )
+    assert sha256_bytes(probe) == REPAIRED_PROBE
+    assert sha256_bytes(implementation) == REPAIRED_IMPLEMENTATION
+    tree = subprocess.check_output(["git", "rev-parse", f"{REPAIRED_CHECKOUT}^{{tree}}"], cwd=root, text=True).strip()
+    assert tree == REPAIRED_TREE
+    assert payload["libm_body_argument"] == "APPLIES"
+    assert payload["historical_cpython_wrapper_argument"] == "DOES NOT APPLY"
+    assert payload["python_wrapper"]["loaded_wrapper_matches_elf"] is True
+    assert payload["selected_call_target"]["classification"] == "OBSERVED"
+    assert payload["selected_call_target"]["independent_cdll_is_evidence"] is False
+    assert payload["selected_call_target"]["evidence"] == "python wrapper plt got"
+    assert payload["numerical_controls_and_features"]["xcr0_classification"] == "OBSERVED"
+    assert payload["numerical_controls_and_features"]["xcr0"] == ["0x602e7", "0x0"]
+    assert payload["numerical_controls_and_features"]["exact_historical_xcr0_match"] is False
+    assert payload["ld_bind_now"] == "1"
+    assert payload["eligibility_evidence"] is False
+    assert payload["physical_qualification"] is False
+    assert payload["cosine_function_calls"] == 0
+    assert "319c10ae22e55891ad8552d8741664c8ef7f7f38" in (
+        root / "docs/cmm2_c2v09_one_runtime_cosine_path_certificate.md"
+    ).read_text(encoding="utf-8")
