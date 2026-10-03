@@ -9,7 +9,9 @@ from pathlib import Path
 from pyfoldable.application.c2v09_cosine_path_certificate import (
     CERTIFICATE_FILE_SHA256,
     HISTORICAL_BODY_SHA256,
+    UNPARSED_STUB_METHOD,
     classify_selected_call,
+    libm_body_verdict,
     plt_got_address,
     prepare_cosine_path_certificate,
 )
@@ -29,7 +31,52 @@ def _payload(record: dict) -> dict:
 def test_plt_got_is_the_rip_relative_slot() -> None:
     stub = bytes.fromhex("ff25f28b6000")
     assert plt_got_address(stub, 0x4207E0) == 0xA293D8
+    endbr = b"\xf3\x0f\x1e\xfa" + stub
+    assert plt_got_address(endbr, 0x4207E0 - 4) == 0xA293D8
     assert plt_got_address(b"\x90\x90\x90\x90\x90\x90", 0x4207E0) is None
+    assert "does not repair an unrecognized stub" in UNPARSED_STUB_METHOD
+
+
+def test_missing_loaded_bytes_block_instead_of_refuting_the_argument() -> None:
+    blocked = libm_body_verdict(
+        selected_observed=True,
+        features_observed=True,
+        body_sha=None,
+        constant_rows=[],
+        required_bits=True,
+        body_vaddr=None,
+        historical_vaddr="0x7bad0",
+    )
+    unread_constants = libm_body_verdict(
+        selected_observed=True,
+        features_observed=True,
+        body_sha=HISTORICAL_BODY_SHA256,
+        constant_rows=[{"classification": "NOT ESTABLISHED"}],
+        required_bits=True,
+        body_vaddr="0x7bad0",
+        historical_vaddr="0x7bad0",
+    )
+    shifted = libm_body_verdict(
+        selected_observed=True,
+        features_observed=True,
+        body_sha=HISTORICAL_BODY_SHA256,
+        constant_rows=[{"classification": "MATCH"}],
+        required_bits=True,
+        body_vaddr="0x8000",
+        historical_vaddr="0x7bad0",
+    )
+    applies = libm_body_verdict(
+        selected_observed=True,
+        features_observed=True,
+        body_sha=HISTORICAL_BODY_SHA256,
+        constant_rows=[{"classification": "MATCH"}],
+        required_bits=True,
+        body_vaddr="0x7bad0",
+        historical_vaddr="0x7bad0",
+    )
+    assert blocked == unread_constants == "BLOCKED"
+    assert shifted == "DOES NOT APPLY"
+    assert applies == "APPLIES"
 
 
 def test_unresolved_plt_is_not_replaced_by_cdll() -> None:
@@ -113,6 +160,9 @@ def test_persisted_path_certificate_recomputes() -> None:
     assert payload["loaded_body"]["matches_historical_body"] is True
     assert payload["loaded_body"]["sha256"] == HISTORICAL_BODY_SHA256
     assert payload["loaded_body"]["elf_vaddr"] == "0x7bad0"
+    assert payload["selected_call_target"]["plt_stub_bytes_hex"] == "ff25f28b6000"
+    assert payload["python_wrapper"]["loaded_wrapper_matches_elf"] is True
+    assert payload["python_wrapper"]["disassembly_source"].startswith("objdump")
     assert payload["numerical_controls_and_features"]["required_bits_ok"] is True
     assert payload["numerical_controls_and_features"]["exact_historical_xcr0_match"] is False
     assert payload["ld_bind_now"] == "1"
