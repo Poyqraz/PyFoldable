@@ -50,9 +50,20 @@ and this wrapper is not the certified `mov`/`jmp math_1` thunk.
 
 In this process the independent libm symbol address happened to equal the GOT
 qword. That equality is not the evidence. Loaded wrapper bytes match the ELF
-bytes at `0x62e430`. The decoded PLT jump is `ff 25 f2 8b 60 00`. The probe is
-the historical reader with `xgetbv` guarded by the OSXSAVE bit, SHA256
-`8a8fe2c2b1eb60cea016acec26d50fdcd902ee33ec57b81efa6273cb7fb3aaba`.
+bytes at `0x62e430`. The decoded PLT jump is `ff 25 f2 8b 60 00`. Probe source
+SHA256 `8a8fe2c2b1eb60cea016acec26d50fdcd902ee33ec57b81efa6273cb7fb3aaba`.
+
+## Historical observation limitations
+
+`reports/c2v09_cosine_path_certificate/observation.json` stays historical
+evidence from checkout `f343a9b206b0169e96bf5e66548ee08d257c3806` and tree
+`8ba778104fcb3fd0498948cc1c91924c75ac0494`. It is not the repaired certificate.
+
+Limitation: CPUID leaf 7 overwrites the register checked for OSXSAVE. OSXSAVE belongs to CPUID leaf 1 ECX, which that probe had already stored. Leaf 7 ECX on that run was `0x1b415f5e`, so bit 27 happened to be set and XGETBV did execute. That coincidence is not proof the guard was correct.
+
+Limitation: a skipped XGETBV left its output slots unwritten. The Python buffer is zeroed first, so an unavailable XCR0 could be published as register zero.
+
+Limitation: the libm body argument was calculated before the loaded wrapper bytes were compared with the ELF bytes used for disassembly. Those bytes matched in this run, so the APPLIES result was not produced from a mismatch. The match was not a prerequisite.
 
 If the GOT still points at the PLT resolver, the selected target is missing.
 Obtain it by starting the same interpreter with `LD_BIND_NOW=1` and rereading

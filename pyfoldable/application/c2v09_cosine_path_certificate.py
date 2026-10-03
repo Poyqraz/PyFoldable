@@ -32,6 +32,7 @@ HISTORICAL_BODY_SHA256 = "f7a54037fbab80cbbf5a2c6954284f47330d936b103a0beac05913
 HISTORICAL_EXECUTABLE_SHA256 = "fa67443527ed9647f760d807e2a38f26340757123e643c4639cf273ed15d5ea7"
 HISTORICAL_BODY_LENGTH = 0x155
 PROBE_SOURCE = "pyfoldable/application/c2v09_cosine_path_probe.c"
+IMPLEMENTATION_SOURCE = "pyfoldable/application/c2v09_cosine_path_certificate.py"
 UNPARSED_STUB_METHOD = (
     "The PLT stub is not jmp [rip+disp32], with or without a leading endbr64. "
     "Disassemble that stub and record its GOT encoding. LD_BIND_NOW does not repair an unrecognized stub."
@@ -41,6 +42,59 @@ DIGEST_SCOPE = (
     "canonical_sha256 and digest_scope are outside that payload."
 )
 _CALL = re.compile(r"^\s*[0-9a-f]+:.*\bcall\s+([0-9a-f]+)\s+<([^>]+)>", re.IGNORECASE)
+
+
+def xcr0_read_permitted(leaf1_ecx: int, leaf7_ecx: int) -> bool:
+    """XGETBV is permitted only when CPUID leaf 1 ECX OSXSAVE is set.
+
+    The leaf 7 ECX argument is accepted so a set bit 27 there cannot be mistaken
+    for OSXSAVE. It does not authorize the instruction.
+    """
+    del leaf7_ecx
+    return (int(leaf1_ecx) & (1 << 27)) != 0
+
+
+def attribute_loaded_wrapper(
+    *,
+    raw_selected: dict[str, object],
+    loaded_wrapper: bytes | None,
+    elf_wrapper: bytes | None,
+    body_sha: str | None,
+    constant_rows: list[dict[str, object]],
+    features_observed: bool,
+    required_bits: bool,
+    body_vaddr: str | None,
+    historical_vaddr: str,
+) -> dict[str, object]:
+    """Certify a disk PLT/GOT path only after the executing wrapper matches that ELF.
+
+    A missing or different loaded wrapper leaves a resolved GOT pointer as a raw
+    observation. It is not that wrapper's selected target, and the libm body
+    argument stays blocked. An unresolved PLT result is left unchanged.
+    """
+    matches = loaded_wrapper is not None and elf_wrapper is not None and loaded_wrapper == elf_wrapper
+    selected = dict(raw_selected)
+    if not matches and selected.get("classification") == "OBSERVED":
+        selected["raw_got_pointer"] = selected.get("address")
+        selected["classification"] = "NOT ESTABLISHED"
+        selected["address"] = None
+        selected["method"] = (
+            "Loaded math.cos wrapper bytes are missing or do not match the ELF bytes used for disassembly. "
+            "The GOT qword remains a raw observation and is not certified as that wrapper's selected target."
+        )
+    return {
+        "loaded_wrapper_matches_elf": matches,
+        "selected_call_target": selected,
+        "libm_body_argument": libm_body_verdict(
+            selected_observed=matches and selected.get("classification") == "OBSERVED",
+            features_observed=features_observed,
+            body_sha=body_sha,
+            constant_rows=constant_rows,
+            required_bits=required_bits,
+            body_vaddr=body_vaddr,
+            historical_vaddr=historical_vaddr,
+        ),
+    }
 
 
 def plt_got_address(stub: bytes, stub_address: int) -> int | None:
@@ -210,6 +264,15 @@ def _calls_symbol(disassembly: str, name: str) -> bool:
     return any(match.group(2).startswith(name) for line in disassembly.splitlines() if (match := _CALL.match(line)))
 
 
+def _readable_process_bytes(address: int, length: int) -> bytes | None:
+    if _runtime_owner(address) is None:
+        return None
+    try:
+        return ctypes.string_at(address, length)
+    except (OSError, ValueError):
+        return None
+
+
 def _read_qword(address: int) -> int | None:
     if _runtime_owner(address) is None:
         return None
@@ -285,18 +348,22 @@ def _feature_record(words: list[int] | None, rounding: str | None) -> dict[str, 
         }
     mxcsr = words[0]
     ecx = words[4]
-    xcr0 = words[10]
-    required = (
-        (mxcsr & 0xE040) == 0
-        and (mxcsr & 0x1F80) == 0x1F80
-        and rounding == "0"
-        and (ecx & (1 << 12)) != 0
-        and (ecx & (1 << 27)) != 0
-        and (ecx & (1 << 28)) != 0
-        and (xcr0 & 6) == 6
-    )
-    return {
-        "classification": "OBSERVED",
+    permitted = xcr0_read_permitted(ecx, words[8])
+    xcr0 = words[10] if permitted else None
+    required = False
+    if xcr0 is not None:
+        required = (
+            (mxcsr & 0xE040) == 0
+            and (mxcsr & 0x1F80) == 0x1F80
+            and rounding == "0"
+            and (ecx & (1 << 12)) != 0
+            and (ecx & (1 << 27)) != 0
+            and (ecx & (1 << 28)) != 0
+            and (xcr0 & 6) == 6
+        )
+    record: dict[str, object] = {
+        "classification": "OBSERVED" if permitted else "NOT ESTABLISHED",
+        "xcr0_classification": "OBSERVED" if permitted else "NOT ESTABLISHED",
         "required_bits_ok": required,
         "mxcsr": hex(mxcsr),
         "mxcsr_rounding": "nearest ties-to-even" if ((mxcsr >> 13) & 3) == 0 else "not nearest ties-to-even",
@@ -306,14 +373,21 @@ def _feature_record(words: list[int] | None, rounding: str | None) -> dict[str, 
         "fegetround": rounding,
         "cpuid_leaf1": [hex(word) for word in words[2:6]],
         "cpuid_leaf7_sub0": [hex(word) for word in words[6:10]],
-        "xcr0": [hex(words[10]), hex(words[11])],
+        "xcr0": None if xcr0 is None else [hex(words[10]), hex(words[11])],
         "avx": bool(ecx & (1 << 28)),
         "fma": bool(ecx & (1 << 12)),
         "osxsave": bool(ecx & (1 << 27)),
-        "xcr0_xmm_ymm": (xcr0 & 6) == 6,
-        "exact_historical_xcr0_match": [hex(words[10]), hex(words[11])] == ["0xe7", "0x0"],
+        "xcr0_xmm_ymm": None if xcr0 is None else (xcr0 & 6) == 6,
+        "exact_historical_xcr0_match": False if xcr0 is None else [hex(words[10]), hex(words[11])] == ["0xe7", "0x0"],
         "thread_id": thread_id,
     }
+    if not permitted:
+        record["method"] = (
+            "CPUID leaf 1 ECX OSXSAVE is clear, so XGETBV was not executed. "
+            "Leaf 7 ECX bit 27 does not authorize XGETBV. "
+            "The XCR0 register was not observed, and a zeroed output slot is not register zero."
+        )
+    return record
 
 
 def prepare_cosine_path_certificate(root: Path) -> dict[str, object]:
@@ -409,15 +483,6 @@ def prepare_cosine_path_certificate(root: Path) -> dict[str, object]:
     words = _probe_words(root / PROBE_SOURCE)
     rounding = _fegetround()
     features = _feature_record(words, rounding)
-    libm_argument = libm_body_verdict(
-        selected_observed=selected["classification"] == "OBSERVED",
-        features_observed=features["classification"] == "OBSERVED",
-        body_sha=body_sha,
-        constant_rows=constants,
-        required_bits=features["required_bits_ok"] is True,
-        body_vaddr=body_vaddr,
-        historical_vaddr=historical_vaddr,
-    )
     executable = Path(sys.executable).resolve()
     executable_sha = sha256_bytes(executable.read_bytes()) if executable.is_file() else None
     if executable_sha == HISTORICAL_EXECUTABLE_SHA256:
@@ -426,12 +491,21 @@ def prepare_cosine_path_certificate(root: Path) -> dict[str, object]:
         wrapper_argument = "BLOCKED"
     else:
         wrapper_argument = "DOES NOT APPLY"
-    loaded_wrapper = None
-    if wrapper is not None and _runtime_owner(wrapper) is not None:
-        loaded_wrapper = ctypes.string_at(wrapper, 0xC0)
-    elf_wrapper = None
-    if located is not None:
-        elf_wrapper = _elf_bytes(located[0], located[1], 0xC0)
+    loaded_wrapper = None if wrapper is None else _readable_process_bytes(wrapper, 0xC0)
+    elf_wrapper = None if located is None else _elf_bytes(located[0], located[1], 0xC0)
+    attributed = attribute_loaded_wrapper(
+        raw_selected=selected,
+        loaded_wrapper=loaded_wrapper,
+        elf_wrapper=elf_wrapper,
+        body_sha=body_sha,
+        constant_rows=constants,
+        features_observed=features["classification"] == "OBSERVED",
+        required_bits=features["required_bits_ok"] is True,
+        body_vaddr=body_vaddr,
+        historical_vaddr=historical_vaddr,
+    )
+    selected = attributed["selected_call_target"]
+    libm_argument = attributed["libm_body_argument"]
     payload = {
         "status": "ONE RUNTIME PATH CERTIFICATE",
         "eligibility_evidence": False,
@@ -454,7 +528,7 @@ def prepare_cosine_path_certificate(root: Path) -> dict[str, object]:
             "disassembly_source": "objdump of the on-disk ELF; loaded bytes are compared separately",
             "disassembly": disassembly,
             "loaded_wrapper_sha256": None if loaded_wrapper is None else sha256_bytes(loaded_wrapper),
-            "loaded_wrapper_matches_elf": loaded_wrapper is not None and loaded_wrapper == elf_wrapper,
+            "loaded_wrapper_matches_elf": attributed["loaded_wrapper_matches_elf"],
         },
         "selected_call_target": selected,
         "loaded_body": {
@@ -474,6 +548,7 @@ def prepare_cosine_path_certificate(root: Path) -> dict[str, object]:
         ),
         "historical_body_sha256": HISTORICAL_BODY_SHA256,
         "probe_source_sha256": sha256_bytes((root / PROBE_SOURCE).read_bytes()),
+        "implementation_sha256": sha256_bytes((root / IMPLEMENTATION_SOURCE).read_bytes()),
     }
     return {
         "digest_scope": DIGEST_SCOPE,
