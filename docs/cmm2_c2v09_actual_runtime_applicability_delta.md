@@ -47,3 +47,16 @@ observations are recorded and still require fresh certification. Missing
 evidence stays blocked.
 
 No dependent source call is authorized by this delta.
+
+## Concrete observation
+
+Clean checkout `17f2517e85f258571a525e8681201f1fbaf8e7cc`, tree
+`a9030d0d1a353c4c735a85e0b6211b1129eda42d`, produced
+[reports/c2v09_runtime_applicability/delta_record.json](../reports/c2v09_runtime_applicability/delta_record.json).
+Technical authority stayed `fd55fa97676c84c896511765e94561a706252239`.
+This process resolved the libm cos symbol at `0x7bad0` and did not establish
+the Python wrapper or the selected call target. CPython, libm, libc, and
+loader file identities differ from the historical certificate. `fegetround`
+and MXCSR were observed equal to the historical control values; that equality
+is not certification. The record's digest is outside its payload. Status
+remains **CONTRACT BLOCKED**.

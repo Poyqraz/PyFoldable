@@ -1,0 +1,528 @@
+{
+  "canonical_payload": {
+    "baseline_ci_is_eligibility": false,
+    "byte_comparisons_are_not_certification": {
+      "loaded_cos_body": "MATCH",
+      "reason": "a byte comparison at a historical virtual address does not certify this runtime"
+    },
+    "caller_claims": {},
+    "dispatch_separation": {
+      "python_math_wrapper_target": null,
+      "resolved_libm_cos_symbol_vaddr": "0x7bad0",
+      "selected_call_target": null,
+      "symbol_establishes_selected_call": false,
+      "symbol_establishes_wrapper": false,
+      "symbol_matches_certificate_vaddr": true
+    },
+    "eligibility_evidence": false,
+    "explicit_binding_required": {
+      "changed_certificate_sources": [
+        {
+          "current_file_sha256": "909a53cde402f00100ad77c6ab85657dd85406efdfe4396b2352d62ff13125b3",
+          "file_identity": "MISMATCH",
+          "historical_sha256": "1efbcb0ab9769063ce7e059a779abf3570aedf35c070a679cb0c2c8e9dc9f74a",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/application/cmm2_coupled_transient_service.py"
+        },
+        {
+          "current_file_sha256": "8d0e58fc4ba8c3bf4887d0557165340c2f24dedd32444b4c517ff296f449cffc",
+          "file_identity": "MISMATCH",
+          "historical_sha256": "f120cd1ec0c329721f962abe95f16ec30fd56a1fda70f855b2991a0678736de1",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/dynamics/cmm2_coupled_transient.py"
+        }
+      ],
+      "new_modules": [
+        {
+          "current_file_sha256": "15794671c73499092a96d445ed3643b8cbd59608c2b33d6b8d40b1788869ead8",
+          "file_identity": "NO HISTORICAL RECORD",
+          "historical_sha256": null,
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/dynamics/cmm2_radau_dense.py",
+          "role": "dense"
+        },
+        {
+          "current_file_sha256": "584189753855f7c22728c3e1147b86bd37447fc181ce6e84586805d76653e873",
+          "file_identity": "NO HISTORICAL RECORD",
+          "historical_sha256": null,
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/application/c2v09_ordered_declaration.py",
+          "role": "declaration"
+        },
+        {
+          "current_file_sha256": "52a3c2f4b0670fcb817471dd77f05e290add03502057feed3c8e6f28e1eaf857",
+          "file_identity": "NO HISTORICAL RECORD",
+          "historical_sha256": null,
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/application/c2v09_live_eligibility.py",
+          "role": "eligibility"
+        },
+        {
+          "current_file_sha256": "f195474d5607329f64cca07234a264f26df248f627329605c1d55cd5ba39a37d",
+          "file_identity": "NO HISTORICAL RECORD",
+          "historical_sha256": null,
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/application/c2v09_binding_collector.py",
+          "role": "collector"
+        }
+      ],
+      "unchanged_file_hash_still_unbound": [
+        {
+          "current_file_sha256": "5a249daf8eff06ac0a9ad36e33a74bd49292e738da5322c760ed56e5b109eade",
+          "file_identity": "MATCH",
+          "historical_sha256": "5a249daf8eff06ac0a9ad36e33a74bd49292e738da5322c760ed56e5b109eade",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/application/coupled_transient_service.py"
+        },
+        {
+          "current_file_sha256": "0657ff62ea98e57ed92fb91c0c00bac414c05c69a627a589a86c2ae449448859",
+          "file_identity": "MATCH",
+          "historical_sha256": "0657ff62ea98e57ed92fb91c0c00bac414c05c69a627a589a86c2ae449448859",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/application/folding_mechanism.py"
+        },
+        {
+          "current_file_sha256": "7314deffe0eecd91280cabd60dd043ca9916049f7dee542bd5fa292939e83055",
+          "file_identity": "MATCH",
+          "historical_sha256": "7314deffe0eecd91280cabd60dd043ca9916049f7dee542bd5fa292939e83055",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/application/mechanism_binding.py"
+        },
+        {
+          "current_file_sha256": "3079f8cafe962556064efe74f7b9c22ceaae59bfaa5f063bb8a7ab1d2905b196",
+          "file_identity": "MATCH",
+          "historical_sha256": "3079f8cafe962556064efe74f7b9c22ceaae59bfaa5f063bb8a7ab1d2905b196",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/core/airfoil.py"
+        },
+        {
+          "current_file_sha256": "4ca509127e6eedb5f124bfd12ba5192c1fc2a2de87219c7a15d0e373e5d1119a",
+          "file_identity": "MATCH",
+          "historical_sha256": "4ca509127e6eedb5f124bfd12ba5192c1fc2a2de87219c7a15d0e373e5d1119a",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/core/bem.py"
+        },
+        {
+          "current_file_sha256": "7df94790f8e23ca749bc2bcb741e0afbf4e93a6881f1b9b0253b4e278b326fc3",
+          "file_identity": "MATCH",
+          "historical_sha256": "7df94790f8e23ca749bc2bcb741e0afbf4e93a6881f1b9b0253b4e278b326fc3",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/core/bem_rotor.py"
+        },
+        {
+          "current_file_sha256": "bc55d40533c9dc634064484be83f589be8cecf5715b2d4a9f60989265764b0fe",
+          "file_identity": "MATCH",
+          "historical_sha256": "bc55d40533c9dc634064484be83f589be8cecf5715b2d4a9f60989265764b0fe",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/core/config.py"
+        },
+        {
+          "current_file_sha256": "ffc815e101ed6d9cdb24fa9581585ea03eb2b048960fadb87d4ed3a89657b6bc",
+          "file_identity": "MATCH",
+          "historical_sha256": "ffc815e101ed6d9cdb24fa9581585ea03eb2b048960fadb87d4ed3a89657b6bc",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/core/foldable_aero_load.py"
+        },
+        {
+          "current_file_sha256": "da2e6b694d59311463941d1551ee215c54bab24a6e92e79fd4d94713f6bb02a1",
+          "file_identity": "MATCH",
+          "historical_sha256": "da2e6b694d59311463941d1551ee215c54bab24a6e92e79fd4d94713f6bb02a1",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/core/foldable_rotor.py"
+        },
+        {
+          "current_file_sha256": "fec0b429c5201a7e7565205df756d00d344a5d5dd94703b7775d4b74ce17b853",
+          "file_identity": "MATCH",
+          "historical_sha256": "fec0b429c5201a7e7565205df756d00d344a5d5dd94703b7775d4b74ce17b853",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/core/models.py"
+        },
+        {
+          "current_file_sha256": "9c06d9d42e90970df585b7e250981e41c497d19b9e0269a349d04e63646d670b",
+          "file_identity": "MATCH",
+          "historical_sha256": "9c06d9d42e90970df585b7e250981e41c497d19b9e0269a349d04e63646d670b",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/core/motor_bem_coupling.py"
+        },
+        {
+          "current_file_sha256": "839fdb78e3ec57452d743c6bb2a997c4c2635a320bf0c181fb5efa6fc66c731d",
+          "file_identity": "MATCH",
+          "historical_sha256": "839fdb78e3ec57452d743c6bb2a997c4c2635a320bf0c181fb5efa6fc66c731d",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/core/polar.py"
+        },
+        {
+          "current_file_sha256": "fb97b4886a1bd04cff808d940ba2dbcdaf1732ec989236ff9a2beeae8c69cfa8",
+          "file_identity": "MATCH",
+          "historical_sha256": "fb97b4886a1bd04cff808d940ba2dbcdaf1732ec989236ff9a2beeae8c69cfa8",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/core/polar_spanwise.py"
+        },
+        {
+          "current_file_sha256": "8730fa755175f529ada1be7dba58b0ff1c2198e9128a448359aea1e3563f9f7a",
+          "file_identity": "MATCH",
+          "historical_sha256": "8730fa755175f529ada1be7dba58b0ff1c2198e9128a448359aea1e3563f9f7a",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/core/rotational_augmentation.py"
+        },
+        {
+          "current_file_sha256": "aee9da530eb4de2d435661a5c73c450ec60e118f995ce6379a1b7f077cbbd208",
+          "file_identity": "MATCH",
+          "historical_sha256": "aee9da530eb4de2d435661a5c73c450ec60e118f995ce6379a1b7f077cbbd208",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/core/units.py"
+        },
+        {
+          "current_file_sha256": "db9a73474afcd83b6874533d2efec9bbfef25f86b5350840565c0ed73afa56c0",
+          "file_identity": "MATCH",
+          "historical_sha256": "db9a73474afcd83b6874533d2efec9bbfef25f86b5350840565c0ed73afa56c0",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/dynamics/coupled_transient.py"
+        },
+        {
+          "current_file_sha256": "236ef2c3ec7577e49ac34747e47cb42a823574b7880cd93b7a3b0f775e19fe67",
+          "file_identity": "MATCH",
+          "historical_sha256": "236ef2c3ec7577e49ac34747e47cb42a823574b7880cd93b7a3b0f775e19fe67",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/dynamics/mechanism_contracts.py"
+        },
+        {
+          "current_file_sha256": "290cc2a928afca84a50c120e5e012019b67a8c8f53c1a3efe122a023a3efec67",
+          "file_identity": "MATCH",
+          "historical_sha256": "290cc2a928afca84a50c120e5e012019b67a8c8f53c1a3efe122a023a3efec67",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/dynamics/mechanism_transient.py"
+        },
+        {
+          "current_file_sha256": "6223b9e22087da4d450473ba7c84dd4562a94462d16084cc60026c2360f8b750",
+          "file_identity": "MATCH",
+          "historical_sha256": "6223b9e22087da4d450473ba7c84dd4562a94462d16084cc60026c2360f8b750",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pythrust/propulsion/models.py"
+        }
+      ]
+    },
+    "fresh_certification_required": [
+      {
+        "certificate_value": "fa67443527ed9647f760d807e2a38f26340757123e643c4639cf273ed15d5ea7",
+        "certification": "FRESH CERTIFICATION REQUIRED",
+        "classification": "MISMATCH",
+        "name": "CPython executable identity",
+        "observed": "e50d468e8b0adfb05733f5b87b3cff34829c4a8c1aea50c865aa8bdfe4bb150f"
+      },
+      {
+        "certificate_value": "f06f2ce1f1833df5f41cf13b6447ff07bea993ad9b27297d3428c2f70ab3f0e7",
+        "certification": "FRESH CERTIFICATION REQUIRED",
+        "classification": "MISMATCH",
+        "name": "libm file identity",
+        "observed": "1b87a1a50b496cfead2b0ad134c2ff536705c82608db240c7e8aa48d6c0e4217"
+      },
+      {
+        "certificate_value": "511f825ee075610ac9c0f7f91e2c13de2000d0f7b859f6461137e809a0a009d0",
+        "certification": "FRESH CERTIFICATION REQUIRED",
+        "classification": "MISMATCH",
+        "name": "libc file identity",
+        "observed": "d8db8739a1633c972cec6a4fe0566bdcec6fd088f98723492ab0361f66238f75"
+      },
+      {
+        "certificate_value": "6222a16be7f2d458d6870efe6e715fc0c8d45766fb79cf7dcc3125538d703e28",
+        "certification": "FRESH CERTIFICATION REQUIRED",
+        "classification": "MISMATCH",
+        "name": "loader file identity",
+        "observed": "1cd555ac46b7887edeaf3c42aac5408c8135e52f6b37870da2cf82d5fe14e829"
+      },
+      {
+        "certificate_value": "0x7bad0",
+        "certification": "FRESH CERTIFICATION REQUIRED",
+        "classification": "NOT ESTABLISHED",
+        "name": "Python math wrapper target",
+        "observed": null
+      },
+      {
+        "certificate_value": "0x7bad0",
+        "certification": "FRESH CERTIFICATION REQUIRED",
+        "classification": "NOT ESTABLISHED",
+        "name": "selected call target",
+        "observed": null
+      },
+      {
+        "certificate_value": "certificate CPUID/XCR0 binding",
+        "certification": "FRESH CERTIFICATION REQUIRED",
+        "classification": "NOT ESTABLISHED",
+        "name": "CPU feature and CPUID/XCR0 identity",
+        "observed": [
+          "fpu",
+          "vme",
+          "de",
+          "pse",
+          "tsc",
+          "msr",
+          "pae",
+          "mce",
+          "cx8",
+          "apic",
+          "sep",
+          "mtrr",
+          "pge",
+          "mca",
+          "cmov",
+          "pat",
+          "pse36",
+          "clflush",
+          "dts",
+          "mmx",
+          "fxsr",
+          "sse",
+          "sse2",
+          "ss",
+          "ht",
+          "syscall",
+          "nx",
+          "pdpe1gb",
+          "rdtscp",
+          "lm",
+          "constant_tsc",
+          "pebs",
+          "bts",
+          "rep_good",
+          "nopl",
+          "xtopology",
+          "nonstop_tsc",
+          "cpuid",
+          "tsc_known_freq",
+          "pni",
+          "pclmulqdq",
+          "dtes64",
+          "vmx",
+          "ssse3",
+          "fma",
+          "cx16",
+          "pcid",
+          "sse4_1",
+          "sse4_2",
+          "x2apic",
+          "movbe",
+          "popcnt",
+          "tsc_deadline_timer",
+          "aes",
+          "xsave",
+          "avx",
+          "f16c",
+          "rdrand",
+          "hypervisor",
+          "lahf_lm",
+          "abm",
+          "3dnowprefetch",
+          "cpuid_fault",
+          "ssbd",
+          "ibrs",
+          "ibpb",
+          "stibp",
+          "ibrs_enhanced",
+          "tpr_shadow",
+          "flexpriority",
+          "ept",
+          "vpid",
+          "ept_ad",
+          "fsgsbase",
+          "tsc_adjust",
+          "bmi1",
+          "avx2",
+          "smep",
+          "bmi2",
+          "erms",
+          "invpcid",
+          "avx512f",
+          "avx512dq",
+          "rdseed",
+          "adx",
+          "smap",
+          "avx512ifma",
+          "clflushopt",
+          "clwb",
+          "avx512cd",
+          "sha_ni",
+          "avx512bw",
+          "avx512vl",
+          "xsaveopt",
+          "xsavec",
+          "xgetbv1",
+          "xsaves",
+          "avx_vnni",
+          "avx512_bf16",
+          "wbnoinvd",
+          "arat",
+          "vnmi",
+          "avx512vbmi",
+          "umip",
+          "pku",
+          "ospke",
+          "avx512_vbmi2",
+          "gfni",
+          "vaes",
+          "vpclmulqdq",
+          "avx512_vnni",
+          "avx512_bitalg",
+          "avx512_vpopcntdq",
+          "rdpid",
+          "bus_lock_detect",
+          "cldemote",
+          "movdiri",
+          "movdir64b",
+          "fsrm",
+          "md_clear",
+          "serialize",
+          "tsxldtrk",
+          "amx_bf16",
+          "avx512_fp16",
+          "amx_tile",
+          "amx_int8",
+          "flush_l1d",
+          "arch_capabilities"
+        ]
+      },
+      {
+        "certificate_value": "valid returned source object",
+        "certification": "FRESH CERTIFICATION REQUIRED",
+        "classification": "NOT ESTABLISHED",
+        "name": "returned source object",
+        "observed": null
+      },
+      {
+        "certificate_value": "certified represented operation graph",
+        "certification": "FRESH CERTIFICATION REQUIRED",
+        "classification": "NOT ESTABLISHED",
+        "name": "operation-graph applicability",
+        "observed": null
+      },
+      {
+        "certificate_value": "0",
+        "certification": "FRESH CERTIFICATION REQUIRED",
+        "classification": "OBSERVED EQUAL",
+        "name": "fegetround",
+        "observed": "0"
+      },
+      {
+        "certificate_value": "0x1fa0",
+        "certification": "FRESH CERTIFICATION REQUIRED",
+        "classification": "OBSERVED EQUAL",
+        "name": "MXCSR",
+        "observed": "0x1fa0"
+      }
+    ],
+    "identities": {
+      "executing_implementation": {
+        "checkout_sha": "17f2517e85f258571a525e8681201f1fbaf8e7cc",
+        "role": "executing implementation",
+        "tree_sha": "a9030d0d1a353c4c735a85e0b6211b1129eda42d"
+      },
+      "observation": {
+        "collector_canonical_sha256": "23abd95d27c480e346be523937855d0f43e6c2cf042a3f27774bf8f756d8e2d1",
+        "collector_checkout_sha": "17f2517e85f258571a525e8681201f1fbaf8e7cc",
+        "collector_tree_sha": "a9030d0d1a353c4c735a85e0b6211b1129eda42d",
+        "preserved_partial_record": {
+          "canonical_sha256": "dff8108fe30854b8647d8e022dcf1c9521ee3a4d824e5d292ae0fd8eaa07d820",
+          "checkout_sha": "1126373dc4e4131ff153e9269871ec2fc0a71efa",
+          "file_sha256": "11808a792b95cc3dec44e3d906cecba37ba8650336237438df81d60454992d4f",
+          "path": "reports/c2v09_binding_observation/partial_record.json",
+          "tree_sha": "18ddaae626652f8b1944fa1842eb23a28f437ac0"
+        },
+        "role": "observation",
+        "runtime": {
+          "executable": "/workspace/venv/bin/python",
+          "platform": "Linux-6.12.94+-x86_64-with-glibc2.39",
+          "python_version": "3.12.3"
+        }
+      },
+      "technical_authority": {
+        "head": "fd55fa97676c84c896511765e94561a706252239",
+        "role": "technical authority"
+      }
+    },
+    "not_transferred_to_this_execution": [
+      {
+        "live_applicability": "NOT TRANSFERRED",
+        "name": "scope A geometric certificate",
+        "reason": "the archived geometric result remains conditional on its original runtime and a valid returned source object"
+      },
+      {
+        "live_applicability": "NOT TRANSFERRED",
+        "name": "cosine arithmetic path",
+        "reason": "a resolved libm symbol is not the Python wrapper or the selected call target"
+      }
+    ],
+    "outcome": "actual-runtime applicability delta",
+    "physical_qualification": false,
+    "source_callbacks": 0,
+    "status": "CONTRACT BLOCKED",
+    "transferred_historical_results": [
+      {
+        "live_applicability": "TRANSFERRED AS HISTORICAL RESULT",
+        "name": "original v1 partition",
+        "result": "FAIL"
+      },
+      {
+        "live_applicability": "TRANSFERRED AS HISTORICAL RESULT",
+        "name": "historical v2",
+        "result": "BLOCKED"
+      },
+      {
+        "live_applicability": "TRANSFERRED AS HISTORICAL RESULT",
+        "name": "candidate28",
+        "result": "CANDIDATE REJECTED: SOURCE DOMAIN / NOT SELECTED"
+      },
+      {
+        "live_applicability": "TRANSFERRED AS HISTORICAL RESULT",
+        "name": "candidate29",
+        "result": "NOT SELECTED"
+      },
+      {
+        "live_applicability": "HISTORICAL IDENTITY ONLY",
+        "name": "runtime binding record",
+        "sha256": "5a2a8ab62faf7729769ea9dd620ffd07635605ae170ef523c91d3ec560c16a67"
+      },
+      {
+        "live_applicability": "HISTORICAL IDENTITY ONLY",
+        "name": "cosine record",
+        "sha256": "7c9fc9cc0def92fb3d4f2c850e63e85ce70821aa562fbc1c9a9ab45f5e12b865"
+      },
+      {
+        "live_applicability": "HISTORICAL IDENTITY ONLY",
+        "name": "prior geometric record",
+        "sha256": "0b672af90ee94197489522c45ab173834b893a7a47786c196eed7f0478cb4526"
+      },
+      {
+        "live_applicability": "HISTORICAL IDENTITY ONLY",
+        "name": "connection record",
+        "sha256": "80abd1b5d16872a67004a0511fdb8ad40c8d04d5e1319635d1b79459b4280897"
+      }
+    ]
+  },
+  "canonical_sha256": "ae508400486d1e118c1915787fdbea16b2c4df75497f59ccc11de5f5c228b6ca",
+  "digest_scope": "SHA-256 of the section 7.3 canonical bytes of canonical_payload only. canonical_sha256 and digest_scope are outside that payload."
+}

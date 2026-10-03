@@ -233,6 +233,63 @@ def test_live_environment_is_blocked_without_rewriting_preserved_records() -> No
     assert sha256_bytes(canonical_bytes(record)) != record["canonical_sha256"]
 
 
+def _assert_recorded_checkout(root: Path, checkout: str, tree_sha: str) -> None:
+    assert isinstance(checkout, str) and len(checkout) == 40
+    assert isinstance(tree_sha, str) and len(tree_sha) == 40
+    present = subprocess.call(
+        ["git", "cat-file", "-e", f"{checkout}^{{commit}}"],
+        cwd=root,
+        stderr=subprocess.DEVNULL,
+    ) == 0
+    if not present:
+        return
+    tree = subprocess.check_output(["git", "rev-parse", f"{checkout}^{{tree}}"], cwd=root, text=True).strip()
+    assert tree_sha == tree
+
+
+def test_absent_delta_checkout_does_not_reject_the_record(monkeypatch) -> None:
+    def absent(*_args, **_kwargs) -> int:
+        return 1
+
+    def must_not_resolve(*_args, **_kwargs) -> str:
+        raise AssertionError("rev-parse must not run when the commit object is absent")
+
+    monkeypatch.setattr(subprocess, "call", absent)
+    monkeypatch.setattr(subprocess, "check_output", must_not_resolve)
+    _assert_recorded_checkout(_repository(), "a" * 40, "b" * 40)
+
+
+def test_persisted_delta_recomputes_and_stays_blocked() -> None:
+    root = _repository()
+    document = json.loads((root / "reports/c2v09_runtime_applicability/delta_record.json").read_text(encoding="utf-8"))
+    payload = _payload(document)
+    assert document["canonical_sha256"] == sha256_bytes(canonical_bytes(payload))
+    assert sha256_bytes(canonical_bytes(document)) != document["canonical_sha256"]
+    assert payload["status"] == "CONTRACT BLOCKED"
+    assert payload["eligibility_evidence"] is False
+    assert payload["physical_qualification"] is False
+    assert payload["baseline_ci_is_eligibility"] is False
+    assert payload["source_callbacks"] == 0
+    identities = payload["identities"]
+    assert identities["technical_authority"]["head"] == TECHNICAL_HEAD
+    assert identities["technical_authority"]["head"] != identities["executing_implementation"]["checkout_sha"]
+    assert identities["observation"]["preserved_partial_record"]["file_sha256"] == PARTIAL_RECORD_FILE_SHA256
+    assert identities["observation"]["preserved_partial_record"]["canonical_sha256"] == "dff8108fe30854b8647d8e022dcf1c9521ee3a4d824e5d292ae0fd8eaa07d820"
+    _assert_recorded_checkout(
+        root,
+        identities["executing_implementation"]["checkout_sha"],
+        identities["executing_implementation"]["tree_sha"],
+    )
+    assert payload["dispatch_separation"]["python_math_wrapper_target"] is None
+    assert payload["dispatch_separation"]["selected_call_target"] is None
+    assert payload["dispatch_separation"]["symbol_establishes_wrapper"] is False
+    changed = {row["path"] for row in payload["explicit_binding_required"]["changed_certificate_sources"]}
+    assert "pyfoldable/application/cmm2_coupled_transient_service.py" in changed
+    assert "pyfoldable/dynamics/cmm2_coupled_transient.py" in changed
+    roles = {row["role"] for row in payload["explicit_binding_required"]["new_modules"]}
+    assert {"dense", "declaration", "eligibility", "collector"} <= roles
+
+
 def test_delta_text_does_not_call_source_mapper_or_trajectory() -> None:
     source = _repository() / "pyfoldable/application/c2v09_runtime_applicability.py"
     text = source.read_text(encoding="utf-8")
