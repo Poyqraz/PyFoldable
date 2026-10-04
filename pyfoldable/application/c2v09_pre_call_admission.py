@@ -242,8 +242,40 @@ def _verified_operands(root: Path) -> dict[str, object]:
         },
         "live_initial_request_object": "NOT ESTABLISHED",
     }
-    payload["digest"] = sha256_bytes(canonical_bytes(payload))
+    payload["digest"] = operand_payload_digest(payload)
     return payload
+
+
+def operand_payload_digest(payload: Mapping[str, object]) -> str | None:
+    """Digest of the operand payload. The digest field itself is excluded."""
+    if not isinstance(payload, Mapping):
+        return None
+    body = {key: value for key, value in payload.items() if key != "digest"}
+    try:
+        digest = sha256_bytes(canonical_bytes(body))
+    except (TypeError, ValueError):
+        return None
+    if len(digest) != 64:
+        return None
+    return digest
+
+
+def _valid_digest(value: object) -> bool:
+    return isinstance(value, str) and len(value) == 64 and all(character in "0123456789abcdef" for character in value)
+
+
+def retained_operands_match(retained: object, fresh: object) -> bool:
+    """Retained payload, its stored digest, and the fresh operands must be the same."""
+    if not isinstance(retained, Mapping) or not isinstance(fresh, Mapping):
+        return False
+    if retained.get("classification") != "VERIFIED" or fresh.get("classification") != "VERIFIED":
+        return False
+    stored = retained.get("digest")
+    fresh_digest = fresh.get("digest")
+    recomputed = operand_payload_digest(retained)
+    if not _valid_digest(stored) or not _valid_digest(fresh_digest) or not _valid_digest(recomputed):
+        return False
+    return recomputed == stored == fresh_digest
 
 
 def _certificate_obligations(root: Path) -> dict[str, object] | None:
@@ -477,6 +509,7 @@ class PreCallAdmission:
     pid: int
     thread_id: str
     observation: PreCallObservation | None = None
+    working_amendment_copy: dict[str, object] = field(default_factory=dict)
     authorizes_execution: bool = False
     eligibility_evidence: bool = False
     physical_qualification: bool = False
@@ -496,11 +529,33 @@ class AdmissionRevalidation:
     authorizes_execution: bool = False
     eligibility_evidence: bool = False
     physical_qualification: bool = False
+    scope: str = "direct-node binding and retained operand checks"
+    native_control_continuity: str = "NOT ESTABLISHED"
+    transitive_loaded_code_identity: str = "NOT ESTABLISHED"
+    geometric_applicability: str = "NOT ESTABLISHED"
+    post_return_correspondence: str = "POST-RETURN ONLY"
 
     def __post_init__(self) -> None:
         self.authorizes_execution = False
         self.eligibility_evidence = False
         self.physical_qualification = False
+        self.scope = "direct-node binding and retained operand checks"
+        self.native_control_continuity = "NOT ESTABLISHED"
+        self.transitive_loaded_code_identity = "NOT ESTABLISHED"
+        self.geometric_applicability = "NOT ESTABLISHED"
+        self.post_return_correspondence = "POST-RETURN ONLY"
+
+
+def _amendment_note(executing: Mapping[str, str], technical_verified: bool) -> dict[str, object]:
+    path = "docs/cmm2_numerical_feasibility_amendment.md"
+    relation = str(executing.get(path, "NOT ESTABLISHED"))
+    return {
+        "path": path,
+        "bytes_versus_technical_head_pin": relation,
+        "difference_role": "INFORMATIONAL STATUS-ONLY" if relation == "MISMATCH" else "NONE",
+        "requires_new_runtime_certificate": False,
+        "technical_head_bytes": "VERIFIED" if technical_verified else "NOT ESTABLISHED",
+    }
 
 
 def _invalid(root: Path, *, claims: Mapping[str, object], reason: str, observation: PreCallObservation | None = None) -> PreCallAdmission:
@@ -536,6 +591,7 @@ def _invalid(root: Path, *, claims: Mapping[str, object], reason: str, observati
         os.getpid(),
         _thread_id(),
         observation,
+        _amendment_note(executing, bundle is not None and reason != "authority"),
         direct_identity="NOT ESTABLISHED",
     )
 
@@ -579,6 +635,7 @@ def _operand_rejected(root: Path, claims: Mapping[str, object], executing: dict[
         os.getpid(),
         _thread_id(),
         None,
+        _amendment_note(executing, bundle is not None),
     )
 
 
@@ -619,7 +676,7 @@ def prepare_pre_call_admission(
         declaration_sha = build_extended_declaration(root).sha256
     except (OSError, RuntimeError, ValueError, KeyError, TypeError, AttributeError):
         declaration_sha = None
-    binding_invalid = again.get("digest") != operands["digest"] or checked.classification != "REVALIDATED"
+    binding_invalid = not retained_operands_match(operands, again) or checked.classification != "REVALIDATED"
     invalidated = bundle_sha is None or binding_invalid
     prepared_map = {
         "policy_bundle_sha256": bundle_sha,
@@ -648,6 +705,7 @@ def prepare_pre_call_admission(
         observation.pid,
         observation.thread_id,
         observation,
+        _amendment_note(executing, bundle is not None),
         direct_identity=observation.loaded_implementation_identity,
     )
 
@@ -689,22 +747,51 @@ def revalidate_pre_call_admission(value: object) -> AdmissionRevalidation:
     """A JSON record is not this process's observation."""
     if not isinstance(value, PreCallAdmission) or value.observation is None:
         return AdmissionRevalidation("NOT ESTABLISHED")
+    if value.classification != "ZERO-CALL PREPARATION":
+        return AdmissionRevalidation("INVALIDATED")
     if value.pid != os.getpid() or value.thread_id != _thread_id():
         return AdmissionRevalidation("INVALIDATED")
     checked = revalidate_pre_call_binding(value.observation)
     if checked.classification != "REVALIDATED" or value.observation.source_root is None:
         return AdmissionRevalidation("INVALIDATED")
-    again = _verified_operands(Path(value.observation.source_root))
-    if again.get("digest") != value.verified_operands.get("digest"):
+    fresh = _verified_operands(Path(value.observation.source_root))
+    if not retained_operands_match(value.verified_operands, fresh):
         return AdmissionRevalidation("INVALIDATED")
     return AdmissionRevalidation("REVALIDATED")
 
 
+_OPERAND_ROWS = {
+    "Theta0",
+    "stored uncertainties",
+    "stored scale",
+    "initial declaration state",
+    "candidate29 manifest bytes",
+    "candidate29 draft bytes",
+    "candidate29 source identity",
+}
+
+
 def persistent_pre_call_admission(admission: PreCallAdmission) -> dict[str, object]:
-    """Serialize identities only. Live observations stay in the process."""
+    """Serialize identities only. A stale operand digest is not published as VERIFIED."""
+    fresh: object = {"classification": "NOT ESTABLISHED", "digest": None}
+    if admission.observation is not None and admission.observation.source_root is not None:
+        fresh = _verified_operands(Path(admission.observation.source_root))
+    consistent = admission.classification == "ZERO-CALL PREPARATION" and retained_operands_match(admission.verified_operands, fresh)
+    operands = {key: value for key, value in admission.verified_operands.items() if key != "initial_declaration_state"}
+    initial = admission.verified_operands.get("initial_declaration_state")
+    matrix = [dict(row) for row in admission.obligation_matrix]
+    classification = admission.classification
+    if not consistent:
+        classification = "INVALIDATED"
+        operands["classification"] = "NOT ESTABLISHED"
+        operands["digest"] = None
+        initial = "NOT ESTABLISHED"
+        for row in matrix:
+            if row.get("name") in _OPERAND_ROWS:
+                row["classification"] = "NOT ESTABLISHED"
     payload = {
         "outcome": "zero-call pre-call admission preparation",
-        "classification": admission.classification,
+        "classification": classification,
         "authorizes_execution": False,
         "eligibility_evidence": False,
         "physical_qualification": False,
@@ -716,19 +803,16 @@ def persistent_pre_call_admission(admission: PreCallAdmission) -> dict[str, obje
         "policy_bundle": admission.policy_bundle,
         "policy_bundle_sha256": admission.policy_bundle_sha256,
         "executing_authority_copies": admission.executing_authority_copies,
-        "verified_operands": {
-            key: value
-            for key, value in admission.verified_operands.items()
-            if key != "initial_declaration_state"
-        },
-        "initial_declaration_state": admission.verified_operands.get("initial_declaration_state"),
+        "working_amendment_copy": admission.working_amendment_copy,
+        "verified_operands": operands,
+        "initial_declaration_state": initial,
         "declaration_sha256": admission.declaration_sha256,
         "caller_claims": admission.caller_claims,
         "caller_claims_role": admission.caller_claims_role,
         "checked_coverage": admission.checked_coverage,
         "native_comparison": admission.native_comparison,
         "historical_source_mismatches": list(admission.historical_source_mismatches),
-        "obligation_matrix": admission.obligation_matrix,
+        "obligation_matrix": matrix,
         "revalidation_classification": admission.revalidation_classification,
         "direct_identity": admission.direct_identity,
         "dependent_counters": admission.dependent_counters,

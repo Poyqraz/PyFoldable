@@ -281,6 +281,70 @@ def test_live_admission_preserves_runtime_mismatches() -> None:
     assert "pyfoldable/application/cmm2_coupled_transient_service.py" in prepared.historical_source_mismatches
     executing = prepared.executing_authority_copies
     assert executing["docs/cmm2_numerical_feasibility_amendment.md"] == "MISMATCH"
+    assert prepared.working_amendment_copy["difference_role"] == "INFORMATIONAL STATUS-ONLY"
+    assert prepared.working_amendment_copy["requires_new_runtime_certificate"] is False
+    if prepared.policy_bundle_sha256:
+        assert prepared.working_amendment_copy["technical_head_bytes"] == "VERIFIED"
+
+
+def _mutate(prepared, key: str, value: object) -> None:
+    prepared.verified_operands[key] = value
+
+
+def test_unchanged_preparation_revalidates_operand_and_direct_node_checks_only() -> None:
+    prepared = _prepare()
+    checked = revalidate_pre_call_admission(prepared)
+    assert checked.classification == "REVALIDATED"
+    assert checked.authorizes_execution is False
+    assert checked.scope == "direct-node binding and retained operand checks"
+    assert checked.native_control_continuity == "NOT ESTABLISHED"
+    assert checked.transitive_loaded_code_identity == "NOT ESTABLISHED"
+    assert checked.geometric_applicability == "NOT ESTABLISHED"
+    assert checked.post_return_correspondence == "POST-RETURN ONLY"
+    published = admission.persistent_pre_call_admission(prepared)
+    assert published["canonical_payload"]["classification"] == "ZERO-CALL PREPARATION"
+    assert published["canonical_payload"]["verified_operands"]["classification"] == "VERIFIED"
+
+
+def test_stale_digest_does_not_keep_mutated_operands_verified() -> None:
+    fields = {
+        "theta0": ["1/2", "1/2"],
+        "uncertainty_hex": ["0x0"],
+        "stored_scale_hex": "0x0",
+    }
+    for key, value in fields.items():
+        prepared = _prepare()
+        _mutate(prepared, key, value)
+        assert revalidate_pre_call_admission(prepared).classification == "INVALIDATED"
+        published = admission.persistent_pre_call_admission(prepared)
+        assert published["canonical_payload"]["classification"] == "INVALIDATED"
+        assert published["canonical_payload"]["verified_operands"]["classification"] != "VERIFIED"
+    prepared = _prepare()
+    prepared.verified_operands["initial_declaration_state"]["bounds"] = "mutated"
+    assert revalidate_pre_call_admission(prepared).classification == "INVALIDATED"
+    published = admission.persistent_pre_call_admission(prepared)
+    assert published["canonical_payload"]["verified_operands"]["classification"] != "VERIFIED"
+
+
+def test_recomputed_or_missing_digest_cannot_authorize_wrong_operands() -> None:
+    prepared = _prepare()
+    prepared.verified_operands["theta0"] = ["1/2", "1/2"]
+    prepared.verified_operands["digest"] = admission.operand_payload_digest(prepared.verified_operands)
+    assert revalidate_pre_call_admission(prepared).classification == "INVALIDATED"
+
+    prepared = _prepare()
+    prepared.verified_operands["digest"] = None
+    assert revalidate_pre_call_admission(prepared).classification == "INVALIDATED"
+    prepared.verified_operands["digest"] = ""
+    assert revalidate_pre_call_admission(prepared).classification == "INVALIDATED"
+
+
+def test_invalidated_preparation_does_not_become_valid_later() -> None:
+    prepared = _prepare()
+    prepared.classification = "INVALIDATED"
+    assert revalidate_pre_call_admission(prepared).classification == "INVALIDATED"
+    published = admission.persistent_pre_call_admission(prepared)
+    assert published["canonical_payload"]["classification"] == "INVALIDATED"
 
 
 def test_archived_admission_record_is_not_live_evidence() -> None:
