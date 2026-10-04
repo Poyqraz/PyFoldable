@@ -1,0 +1,33 @@
+{
+  "failure_class": "conversion_infeasible",
+  "t_old_hex": "0x1.7f9db22d0e567p-1",
+  "t_hex": "0x1.80a3d70a3d711p-1",
+  "h_hex": "0x1.0624dd2f1aa00p-9",
+  "start": 0.7492500000000007,
+  "end": 0.7512500000000008,
+  "origin": 0.0,
+  "last_published": 0.7492500000000007,
+  "y_old_hex": [
+    "-0x1.ffb15b573f0f0p-2",
+    "-0x1.9999999999f5dp-2",
+    "0x1.3fffffffffdecp+5"
+  ],
+  "Q_hex": [
+    [
+      "-0x1.a36e2eb1c491ap-11",
+      "0x1.0f6da2e25f3cfp-61",
+      "-0x1.78492e8ed0618p-60"
+    ],
+    [
+      "0x1.938f7125ea0e2p-52",
+      "-0x1.f3e51736ddedap-49",
+      "0x1.d93b07ad3e3d8p-50"
+    ],
+    [
+      "0x1.84097c574dba7p-50",
+      "0x1.abb3e591b4468p-51",
+      "-0x1.9256b94c1c678p-52"
+    ]
+  ],
+  "note": "Push checkout 8978acecbd7eabf89a1ead92e90141062081358c and PR merge checkout c05fe9970eeaf3f8daa9b20b773e3cc7a0b68f5a share tree 07ff58200f6db56e3db5299dde07cb6fb23e1eee. Runtime pass/fail variation is not a source difference."
+}

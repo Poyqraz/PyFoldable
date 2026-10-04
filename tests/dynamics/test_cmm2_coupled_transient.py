@@ -244,7 +244,8 @@ def test_acceptance_rejects_a_63_ulp_perturbation() -> None:
 
 def test_model_identifiers_are_the_screening_contract() -> None:
     assert MODEL_CLASS == "coupled_aero_hinge_screening_only"
-    assert IMPLEMENTATION_ID == "cmm2_planar_projected_rate_independent_coupling_v1"
+    assert IMPLEMENTATION_ID == "cmm2_planar_projected_rate_independent_coupling_v2"
+    assert IMPLEMENTATION_ID != "cmm2_planar_projected_rate_independent_coupling_v1"
     assert LOAD_MAPPING_MODEL == "planar_projected_material_load_v1"
     assert AERO_LOAD_QUALIFICATION == "screening_only_projected_rate_independent"
     assert HINGE_RATE_AERO_MODEL == "ignored_rate_independent_quasi_steady"

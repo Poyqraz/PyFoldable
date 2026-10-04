@@ -1,0 +1,32 @@
+{
+  "Q": [
+    [
+      "-3689348814742669/4611686018427387904",
+      "4775016564913103/10384593717069655257060992658440192",
+      "-827461371535555/649037107316853453566312041152512"
+    ],
+    [
+      "3549754117017713/10141204801825835211973625643008",
+      "-4397121913941869/1267650600228229401496703205376",
+      "1040645063605371/633825300114114700748351602688"
+    ],
+    [
+      "6826420038065063/5070602400912917605986812821504",
+      "940528231475341/1267650600228229401496703205376",
+      "-884752300652751/2535301200456458802993406410752"
+    ]
+  ],
+  "failure_class_under_current_contract": "conversion_infeasible",
+  "method": "fractions.Fraction.from_float",
+  "proof": "Each rational is the exact value of one recorded binary64 coefficient. This is not an independent algebraic derivation, and it does not prove that a timestamp is representable.",
+  "record_kind": "explicit_rational_mathematical_certificate",
+  "source_record": "reports/c2v07_representability/coefficient_replay_inputs.json",
+  "source_record_sha256": "4d05774e3e518e2645edfc108a95eef21adeff8b9ecf4ae35f4dc868ac295308",
+  "step": "9007199254741/4503599627370496",
+  "t_old": "6748644041614695/9007199254740992",
+  "y_old": [
+    "-562612183449359/1125899906842624",
+    "-7205759403794269/18014398509481984",
+    "1407374883553147/35184372088832"
+  ]
+}

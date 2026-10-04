@@ -125,11 +125,63 @@ APPROVE FOR CONTRACT FREEZE from a separate read-only automated reviewer and
 is not a submitted GitHub review. The later status-closure commit is not that
 technical head. Freezing approves the design contract. It does not authorize
 production implementation, demonstrate feasibility, establish PR-C
-verification, or accept ADR-009. Current production remains RK45/v1. The
-frozen amendment governs a separately authorized future CMM-2 v2
-implementation. Radau is not implemented. CMM-1 remains RK45. Q1–Q4, DOP853
-A/B, fixtures, controls and trajectory gates remain unchanged; Q5 and
-runtime/partition/minimum-SciPy measurements remain pending. Draft PR #81 is a
+verification, or accept ADR-009. This unmerged draft contains the authorized
+CMM-2 v2 Radau integrator, cubic adapter, and certified-root repair. It remains
+Draft/BLOCKED; local trajectory passes do not close the frozen contract.
+Shipped main `4cf0d0ea017fa824ba8d4a063ceddd015dae09d6` remains RK45/v1.
+CMM-1 remains RK45. Q1–Q4, DOP853 A/B, fixtures, controls and trajectory gates
+remain unchanged. Q5 and minimum-SciPy support under `scipy>=1.7` remain open.
+Refinement or work-budget exhaustion on one accepted interval is terminal for
+both counters. A later candidate or helper call cannot return success after
+that limit. Conversion infeasibility, direction rejection, unresolved identity
+and exhaustion stay separate failures. The ordered C2V09-00…27 preflight
+rejects every candidate before a trajectory metric: 00–25 fail in FoldableBEM
+on the Mach-0 polar, and 26–27 fail in the motor domain. Expected source
+rejection is by exception type. Before that evaluation, the sealed draft
+artifact must match the draft built from the pinned declaration and source
+file `a3852e5d14f433528fa9ad63bae26dd076b5136eacf4a7860ef76971eec2afdc`. An
+extra mass sample or polar table is rejected first. A malformed BEM or mapper return is a contract
+block. No candidate is selected. The corrected record is
+`reports/c2v09_ordered_preflight/selection_record.json`. It binds the full
+critical-fixture manifest `prc_critical_fixture_manifest_v1` at
+`265d531f51f08d45139313cd81b0239de0c2e9dd8926e12ded66d2011d83c1f7`, snapshotted
+from PR #81 head `1fdf213bb991b2f155bf812d837bb4dcb73a8cc8` without importing
+that implementation. Historical digest
+`1c465dae2d835fc85f468636131a2af6bce90220bcbde71c03ebea69c4ad3cf9` is the
+earlier smaller record. Digest
+`457186d5f52a40099acbebfe0e8ffc47eb2a8ee5fd43605ee159ae9c76cd1579` is the
+superseded record that hashed only a shared-mechanism subset under the full
+manifest id. Push checkout `8978ace` and PR merge checkout `c05fe99` share
+tree `07ff58200f6db56e3db5299dde07cb6fb23e1eee`. CI for `be6b85d` failed only
+`test_c2v07_presnap_observer_uses_the_cubic_contact` on both Python 3.10 and
+3.11, with conversion infeasibility. CI for `c25f8a0` reached the suite and
+failed that same acceptance test, plus a preflight assertion that demanded a
+null pull-request SHA on a real pull-request event. The event SHA is recorded
+when the event exists. The acceptance test is unchanged and
+awaits a separately reviewed contract amendment. A local pass does not erase
+that certificate. On head `3fff759`, push run `36888456607` failed Python 3.10
+C2V-07 while pull-request run `36888462991` passed Python 3.10, both on NumPy
+2.2.6 and SciPy 1.15.3, with shared tree `5f615822`. On head `272911b`, push
+`36922057688` failed Python 3.10 and passed Python 3.11, while pull request
+`36922064664` passed Python 3.10 and failed Python 3.11. Both failures printed
+the same archived cubic. The execution-variation cause remains unknown. A
+passing run does not remove that obstruction. The closed diagnostic record is
+[the C2V-07 execution report](../../reports/c2v07_execution_diagnostic/report.md).
+The frozen timestamp policy `cmm2_contact_timestamp_quantization_v1_proposed`
+is implemented on this draft only: nearest-even adjacent timestamps, `H*D`
+against the unchanged root-time allowance, and `Q_r`/`Q_p` in the C2V-07
+returned-time check. Pre-snap angle checks run at both the exact relative
+coordinate and the exact public-relative coordinate before an option is
+accepted. The production domain audit uses the same interval work and extends
+through the retained enclosure. C2V-07 reads that conversion certificate, including
+the final relative and public rounding cells. The exact-1/3 witness must select
+the upper neighbor. Coordinator review approves timestamp-slice closure at
+exact HEAD `81424d85cacdd04b0e4df7a721548be7efa7286e`, tree
+`8c25a9f1cc0dcfd02c01cbd719c513db6e93f73e`. That approval preserves this
+implementation, its certificates, the archived failures and the acceptance
+gates. Candidate selection, a future-v2 seal and merge are not part of that
+approval. This draft is not a claim that the amended workflow is complete. `physical_qualification=false`. Coefficient replay inputs and the explicit rational image
+are separate records. Draft PR #81 is a
 separate blocked evidence attempt, not accepted PR-C verification. Independent
 CMM-2 numerical verification is not established. ADR-009 is not created or
 accepted; `physical_qualification=false`. PR-06C remains unresolved, with no GEOM
@@ -408,6 +460,48 @@ Candidate29 remains unchanged / NOT SELECTED; old v1 FAIL, candidate28 rejection
 and historical v2 BLOCKED remain. No new source calls, selector, trajectories,
 v2 seal or implementation authorization. Main remains RK45/v1; PR81/84 untouched,
 ADR-009 unaccepted and physical_qualification=false.
+
+The later preparation slice on this draft pins the append-only declaration
+00…27,28,29 and runs an executable live-eligibility gate. Technical authority
+`fd55fa97676c84c896511765e94561a706252239`, later closure provenance, and the
+executing implementation are separate identities. Missing actual inputs stay
+unestablished. Caller claims do not replace live observations. A zero-source-call
+binding collector records historical capsules, executing dependency file
+identities, and the reviewed graph separately from loaded bytes.
+`ctypes.CDLL(libm).cos` is the resolved libm cos symbol. Wrapper and
+selected-call dispatch stay unestablished, and a matching symbol lookup does
+not remove that blocker. The certificate's 21 source paths keep historical and
+current file hashes, including the changed CMM-2 service and solver. The dense,
+declaration, eligibility and collector modules have no invented historical
+match. File identity, loaded-code identity and operation-graph applicability
+stay separate. The canonical digest covers only its payload. A clean checkout of
+`1126373dc4e4131ff153e9269871ec2fc0a71efa` (tree
+`18ddaae626652f8b1944fa1842eb23a28f437ac0`) produced the partial record
+[reports/c2v09_binding_observation/partial_record.json](../../reports/c2v09_binding_observation/partial_record.json).
+That blocked observation is not eligibility evidence. The gate returns
+CONTRACT BLOCKED when applicability is not established. It does not select,
+seal, relabel a v1 seal, or enter a trajectory. `physical_qualification=false`.
+This delta starts from that collector preparation at
+`e4e81fc4fcff7c3bc94b3c75e4f1ca5638be40a3`. That HEAD is not full PR #84
+approval and is not live eligibility.
+
+## 2026-10-03 actual-runtime applicability delta — blocked
+
+The [separate delta](../cmm2_c2v09_actual_runtime_applicability_delta.md)
+inspects this execution environment. Technical authority
+`fd55fa97676c84c896511765e94561a706252239`, the executing checkout, and the
+observation digest stay separate. Historical v1 FAIL, v2 BLOCKED, candidate28
+rejection, and candidate29 NOT SELECTED remain. Scope A and the cosine
+arithmetic path do not transfer here. The resolved libm symbol is not the
+Python wrapper or the selected call target. Changed CMM-2 files and the new
+dense, declaration, eligibility, and collector modules require explicit
+binding. Missing runtime evidence stays blocked. Status **CONTRACT BLOCKED**.
+This is not eligibility evidence. `physical_qualification=false`. Baseline CI
+does not establish eligibility. The concrete record is
+[reports/c2v09_runtime_applicability/delta_record.json](../../reports/c2v09_runtime_applicability/delta_record.json),
+from checkout `123fe281a220f3c0de9dfa5d4b47504438662362` and tree
+`2e86b38282da5d7515e63cdf323283d884bad7e1`. PR #81 and PR #84 stay untouched
+by this delta.
 
 ## 2026-10-02 strength-aware radial hinge assessment — proposal only
 

@@ -1,0 +1,376 @@
+{
+  "canonical": {
+    "candidates": [
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2983351 failed: Requested mach 0.012317 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.012317 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-00",
+        "input_sha256": "f0569f50f255395eefd8775e0e1646e4d19565d380b513bfd4f378adbd37e1e2",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2983351 failed: Requested mach 0.012317 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.012317 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-01",
+        "input_sha256": "1ed07ea1360f50b4e67c5197037dfe50ef7752cf5492cb67980c76ee081e4ed6",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2983351 failed: Requested mach 0.012317 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.012317 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-02",
+        "input_sha256": "cec133f5864c8ba2ddf1486d947f179b5e688697e0d77d6feb6b84c1afa225db",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2983351 failed: Requested mach 0.012317 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.012317 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-03",
+        "input_sha256": "fa380ba1fdec918155635ce6ffd28a652863811ea125411d14395735674cfd02",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2983351 failed: Requested mach 0.012317 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.012317 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-04",
+        "input_sha256": "86ee5c3a5656d5d53eb0b255f63ed32822c5bab02df7044284c766deabf352e4",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2983351 failed: Requested mach 0.012317 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.012317 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-05",
+        "input_sha256": "0a132744f72c5b289bbac0893c7bf242022891111a470e4b1e46cee4538f8cac",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2983351 failed: Requested mach 0.012317 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.012317 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-06",
+        "input_sha256": "bc7c175579e4ecb8de4004a4b6fa3869cb2249259ac766af02a015de80af8d0a",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2983351 failed: Requested mach 0.012317 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.012317 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-07",
+        "input_sha256": "a93a46570d8c53ec020d796f229e674e4be9e225eeaf19eb17f109a285f3e4f4",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2983351 failed: Requested mach 0.012317 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.012317 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-08",
+        "input_sha256": "a7c6b2b76be023d3258eb6d3f8a515f3df36e890a7a6b37f6ade806be83bc9cc",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2983351 failed: Requested mach 0.0151031 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.0151031 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-09",
+        "input_sha256": "dfe7d02e47b4a6319793000f1ad8ed2dbf29ac49d98e309a51e02d40e99ce87c",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2983351 failed: Requested mach 0.012317 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.012317 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-10",
+        "input_sha256": "c9aaa4201eaf1a24bce3a00925a9449f4eb4d3f7e08a5851fbe2d2c3be70ad15",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2983351 failed: Requested mach 0.012317 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.012317 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-11",
+        "input_sha256": "d9545b8e9610539d0a0d2f0ac71fecf4e39a55f50066cdf1bf97da5c252c4139",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2983351 failed: Requested mach 0.012317 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.012317 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-12",
+        "input_sha256": "0928a2ae9e242227981a10710e91a36dd9143a5ac272463bc94a8a7523141acb",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.26586013 failed: Requested mach 0.0121835 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.0121835 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-13",
+        "input_sha256": "1e4428e1735c52b5022c6b1a9e80aa0d62217d81dcb3ca9115ddbc47db2b062f",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2983351 failed: Requested mach 0.012317 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.012317 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-14",
+        "input_sha256": "e3b0ed7d874568fdf6c87289e33725b16c1164d1ce98bbb657f1d1025966b449",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2983351 failed: Requested mach 0.012317 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.012317 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-15",
+        "input_sha256": "1f7bdfdff9dcfa098d5597ca09e68ba724cd6849e63f97f1994f9a89962cb13c",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2983351 failed: Requested mach 0.012317 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.012317 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-16",
+        "input_sha256": "d01bb8131acfe0d61071697a2bece026a4c12f96a9f609aa691bcfeb3bb9b2d4",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2983351 failed: Requested mach 0.012317 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.012317 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-17",
+        "input_sha256": "c09cafaa687a63b5fbd63a2b611209ba940d90fbf5a6d847a03fccdea99beeb6",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2983351 failed: Requested mach 0.012317 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.012317 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-18",
+        "input_sha256": "16b992d7559dd9e04f3063ce1983fdc313fa0d39c9bb1aab991e452b9e375ee0",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2983351 failed: Requested mach 0.012317 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.012317 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-19",
+        "input_sha256": "1bf2f2616e375c04a09dbede476bd0c5d0063191c38628e214f491f8a5f63f94",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2983351 failed: Requested mach 0.012317 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.012317 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-20",
+        "input_sha256": "e699b65054ae12ee8e07eb1b442ae1bc8d40606340071c6fce9dd14ce39c0f13",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2983351 failed: Requested mach 0.012317 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.012317 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-21",
+        "input_sha256": "149e63521a0c55c555c7e1af6ce2a0a51261636d102990e240c57dbb758d8c81",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2979695 failed: Requested mach 0.012318 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.012318 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-22",
+        "input_sha256": "44b41f55f5efd31a1b709c2534bc57afc66aca2dd54a079eea8ac19d2e85c2cf",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2983351 failed: Requested mach 0.012317 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.012317 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-23",
+        "input_sha256": "317254ec0217f49e927c8ba119b0322460479723d242c138d85d0fcef061762b",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2983351 failed: Requested mach 0.0126748 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.0126748 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-24",
+        "input_sha256": "c03ae0ef0863e703b6791307be539cd8eace36aa10451c0c59b5a42f925037c8",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "Cmm2TransientFailure: CMM-2 aerodynamic source evaluation failed. | BEMRotorElementError: Annulus 0 at r/R=0.2983351 failed: Requested mach 0.012317 is outside [0, 0]. | PolarInterpolationError: Requested mach 0.012317 is outside [0, 0].",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-25",
+        "input_sha256": "f9f80a569892c64dceede2b2b9513b816653f0e50000a7ca7d705a51454df41f",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "CoupledDomainExit: CMM-1 left the motoring domain; regeneration is not modeled.",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-26",
+        "input_sha256": "e7dbffd2e80a9d9d3f8be88c1e5c4d9b89d9e921d4502d79ec41beb5a8b87081",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      },
+      {
+        "cause": "CoupledDomainExit: CMM-1 current limit was exceeded; current is not clipped.",
+        "disposition": "CANDIDATE REJECTED: SOURCE DOMAIN",
+        "id": "C2V09-27",
+        "input_sha256": "fbe4ce36e14b8c7a162fb8213022f0a7e594a917146838a38a69ea5ec7a86c12",
+        "unmeasured": [
+          "q4",
+          "detectability",
+          "partition_margin_m",
+          "trajectory"
+        ]
+      }
+    ],
+    "contract_base_sha": "4cf0d0ea017fa824ba8d4a063ceddd015dae09d6",
+    "critical_fixture_manifest_id": "prc_critical_fixture_manifest_v1",
+    "critical_fixture_manifest_sha256": "ca64ca282261702b81b6b2e5730ebb95d7db9ea39041d8d83a3d948223195090",
+    "detectability": "unmeasured",
+    "domain_margin_m": "unmeasured",
+    "frozen_controls": {
+      "angle_atol_rad": 1e-08,
+      "hinge_velocity_atol_rad_s": 1e-08,
+      "max_rhs_evaluations": 12000,
+      "max_step_s": 0.002,
+      "rtol": 1e-06,
+      "shaft_speed_atol_rad_s": 1e-06
+    },
+    "partition_margin_m": "unmeasured",
+    "policy": "prc_c2v09_ordered_candidates_v1",
+    "preflight_rules": [
+      "phase_a_contract_or_seal_failure_stops",
+      "expected_source_domain_or_convergence_rejection_continues",
+      "malformed_bem_or_mapper_output_blocks",
+      "preflight_incomplete_is_not_selection",
+      "q4_mismatch_stops",
+      "no_trajectory_metric_before_the_selection_digest"
+    ],
+    "q2": "unmeasured",
+    "q4": "unmeasured",
+    "selected_index": null,
+    "selected_input_sha256": null,
+    "status": "CONTRACT BLOCKED",
+    "trajectory_metrics_computed": false
+  },
+  "historical_selection_record_sha256": "1c465dae2d835fc85f468636131a2af6bce90220bcbde71c03ebea69c4ad3cf9",
+  "prior_pr_merge_checkout_sha": "c05fe9970eeaf3f8daa9b20b773e3cc7a0b68f5a",
+  "prior_push_checkout_sha": "8978acecbd7eabf89a1ead92e90141062081358c",
+  "prior_shared_tree_sha": "07ff58200f6db56e3db5299dde07cb6fb23e1eee",
+  "selection_record_sha256": "457186d5f52a40099acbebfe0e8ffc47eb2a8ee5fd43605ee159ae9c76cd1579"
+}
