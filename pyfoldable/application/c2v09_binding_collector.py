@@ -240,7 +240,12 @@ def _identity_row(
     }
 
 
-def _python_inventory(root: Path) -> dict[str, object]:
+def _is_sha256(value: object) -> bool:
+    return isinstance(value, str) and len(value) == 64 and all(character in "0123456789abcdef" for character in value)
+
+
+def pinned_certificate_sources(root: Path) -> tuple[tuple[str, str], ...]:
+    """Return the digest-verified historical source paths and hashes, in certificate order."""
     certificate = (root / "docs/cmm2_c2v09_partition_runtime_certificate.md").read_text(encoding="utf-8")
     body = _json_body(certificate, 2)
     if sha256_bytes(body.encode("utf-8")) != CONNECTION_RECORD_SHA256:
@@ -249,12 +254,22 @@ def _python_inventory(root: Path) -> dict[str, object]:
     rows = parsed.get("source_code_hashes")
     if not isinstance(rows, list) or len(rows) != CERTIFICATE_SOURCE_COUNT:
         raise RuntimeError("Certificate source inventory is not the reviewed 21 paths.")
-    certificate_sources = []
+    pins: list[tuple[str, str]] = []
+    seen: set[str] = set()
     for row in rows:
-        if not isinstance(row, dict) or not isinstance(row.get("path"), str) or not isinstance(row.get("sha256"), str):
+        if not isinstance(row, dict) or not isinstance(row.get("path"), str) or not _is_sha256(row.get("sha256")):
             raise RuntimeError("Certificate source row is incomplete.")
         path = row["path"]
-        historical = row["sha256"]
+        if path in seen:
+            raise RuntimeError("Certificate source paths are not unique.")
+        seen.add(path)
+        pins.append((path, row["sha256"]))
+    return tuple(pins)
+
+
+def _python_inventory(root: Path) -> dict[str, object]:
+    certificate_sources = []
+    for path, historical in pinned_certificate_sources(root):
         current = _current_file_sha(root, path)
         if current is None:
             file_identity = "NOT ESTABLISHED"

@@ -20,6 +20,7 @@ from typing import Callable, Mapping
 from pyfoldable.application.c2v09_binding_collector import (
     UNHISTORICAL_MODULES,
     collect_binding_record,
+    pinned_certificate_sources,
     resolve_loaded_cos_vaddr,
 )
 from pyfoldable.application.c2v09_ordered_declaration import (
@@ -301,9 +302,19 @@ def _row_ready(row: object) -> bool:
     return row.get("file_identity") in {"MATCH", "MISMATCH", "NOT ESTABLISHED", "NO HISTORICAL RECORD"}
 
 
-def _enforce_source_inventory(payload: object, matches: list[str], mismatches: list[str], unestablished: list[str]) -> None:
-    """File hashes classify files only. They do not clear loaded code, graph, or eligibility."""
-    if not isinstance(payload, dict):
+def _is_sha256(value: object) -> bool:
+    return isinstance(value, str) and len(value) == 64 and all(character in "0123456789abcdef" for character in value)
+
+
+def _enforce_source_inventory(
+    payload: object,
+    pinned_sources: tuple[tuple[str, str], ...] | None,
+    matches: list[str],
+    mismatches: list[str],
+    unestablished: list[str],
+) -> None:
+    """Classify file identity from pinned hashes and observed operands. Ignore supplied labels."""
+    if not isinstance(payload, dict) or pinned_sources is None:
         _inventory_unestablished(unestablished)
         return
     inventory = payload.get("python_dependency_inventory")
@@ -315,23 +326,33 @@ def _enforce_source_inventory(payload: object, matches: list[str], mismatches: l
     if not isinstance(sources, list) or not isinstance(modules, list):
         _inventory_unestablished(unestablished)
         return
-    seen: set[str] = set()
+    pinned = dict(pinned_sources)
+    rows_by_path: dict[str, dict] = {}
+    if len(sources) != len(pinned_sources):
+        _inventory_unestablished(unestablished)
+        return
     for row in sources:
-        if not _row_ready(row) or row["file_identity"] == "NO HISTORICAL RECORD":
+        if not isinstance(row, dict) or not isinstance(row.get("path"), str) or not row["path"]:
             _inventory_unestablished(unestablished)
             return
         path = row["path"]
-        if path in seen:
+        if path in rows_by_path or path not in pinned:
             _inventory_unestablished(unestablished)
             return
-        seen.add(path)
-        identity = row["file_identity"]
-        if identity == "MATCH":
-            matches.append(f"historical source file identity {path}")
-        elif identity == "MISMATCH":
-            mismatches.append(f"historical source file {path}")
-        else:
+        rows_by_path[path] = row
+    if set(rows_by_path) != set(pinned):
+        _inventory_unestablished(unestablished)
+        return
+    for path, pinned_hash in pinned_sources:
+        row = rows_by_path[path]
+        historical = row.get("historical_sha256")
+        current = row.get("current_file_sha256")
+        if not _is_sha256(historical) or historical != pinned_hash or not _is_sha256(current):
             unestablished.append(f"historical source file identity {path}")
+        elif current == pinned_hash:
+            matches.append(f"historical source file identity {path}")
+        else:
+            mismatches.append(f"historical source file {path}")
         unestablished.append(f"loaded-code identity {path}")
         unestablished.append(f"operation-graph applicability {path}")
     recorded: dict[str, dict] = {}
@@ -340,7 +361,7 @@ def _enforce_source_inventory(payload: object, matches: list[str], mismatches: l
             _inventory_unestablished(unestablished)
             return
         path = row["path"]
-        if path in recorded or path in seen:
+        if path in recorded or path in rows_by_path:
             _inventory_unestablished(unestablished)
             return
         recorded[path] = row
@@ -505,7 +526,11 @@ def _assess(
     else:
         matches.append("extended declaration digest")
 
-    _enforce_source_inventory(payload, matches, mismatches, unestablished)
+    try:
+        pinned_sources = pinned_certificate_sources(root)
+    except (OSError, RuntimeError, ValueError, KeyError, TypeError):
+        pinned_sources = None
+    _enforce_source_inventory(payload, pinned_sources, matches, mismatches, unestablished)
 
     status = CONTRACT_BLOCKED if mismatches or unestablished else "ELIGIBLE"
     partial = {
