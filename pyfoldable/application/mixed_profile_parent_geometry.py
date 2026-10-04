@@ -403,8 +403,9 @@ def _validate_report_content(c):
     for d in diags:
         contract.keys(d,('code','field','predicate','details'),'/diagnostic')
         for v in d.values(): contract.text(v,'/diagnostic',2048)
+    inputs=array(c['inputs'],3)
     roles=[]
-    for q in array(c['inputs'],3):
+    for q in inputs:
         contract.keys(q,('role','raw_sha256','canonical_sha256','point_or_row_count','use_scope'),'/input')
         roles.append(q['role']); integer(q['point_or_row_count'],256)
         for n in ('raw_sha256','canonical_sha256'):
@@ -414,7 +415,8 @@ def _validate_report_content(c):
     proof_keys={'normalization':('role','input_count','returned_count','raw_sha256','normalized_sha256','reversed','removed_count'),
        'branch_cell':('role','cell_index','x_l','x_r','gap_l','gap_r'),
        'scalar_cell':('cell_index','field','lo','hi'),'denominator':('x_star','gap_A','gap_B','lower_bound')}
-    for p in array(c['proofs'],1400):
+    proofs=array(c['proofs'],1400)
+    for p in proofs:
         contract.keys(p,('kind','content'),'/proof')
         if p['kind'] not in proof_keys: raise ValueError('proof kind')
         contract.keys(p['content'],proof_keys[p['kind']],'/proof/content')
@@ -468,6 +470,76 @@ def _validate_report_content(c):
                  'scalar_use_scope':pm['scalar_use_scope'],'model':pm['model'],
                  'hinges_m':[h.hex() for h in contract.HINGES],'section_requests_m':[]},decoding=True)
         _validate_model(audit_request); _validate_scalars(audit_request,audit)
+        parent_knots=tuple(audit_request.scalars)
+
+        if c['status']=='COMPLETE':
+            if roles!=['A','B','scalars']: raise ValueError('complete receipt coverage')
+            receipts={q['role']:q for q in inputs}
+            for role in ('A','B'):
+                receipt=receipts[role]; endpoint=pm['endpoint_'+role]
+                if (receipt['raw_sha256']!=endpoint['raw_sha256']
+                    or receipt['canonical_sha256']!=endpoint['canonical_coordinate_sha256']
+                    or receipt['point_or_row_count']!=len(endpoint['normalized_points_hex'])
+                    or receipt['use_scope']!=endpoint['use_scope']):
+                    raise ValueError('endpoint receipt correspondence')
+            scalar_receipt=receipts['scalars']
+            if (scalar_receipt['raw_sha256'] is not None
+                or scalar_receipt['canonical_sha256']!=sha(canonical_bytes(pm['scalars']))
+                or scalar_receipt['point_or_row_count']!=len(pm['scalars'])
+                or scalar_receipt['use_scope']!=pm['scalar_use_scope']):
+                raise ValueError('scalar receipt correspondence')
+
+            pos=0
+            for role in ('A','B'):
+                if pos>=len(proofs): raise ValueError('normalization proof coverage')
+                p=proofs[pos]; pc=p['content']; endpoint=pm['endpoint_'+role]
+                if (p['kind']!='normalization' or pc['role']!=role
+                    or pc['input_count']!=len(endpoint['normalized_points_hex'])
+                    or pc['returned_count']!=len(endpoint['normalized_points_hex'])
+                    or pc['raw_sha256']!=endpoint['raw_sha256']
+                    or pc['normalized_sha256']!=endpoint['canonical_coordinate_sha256']
+                    or pc['reversed'] or pc['removed_count']!=0):
+                    raise ValueError('normalization proof correspondence')
+                pos+=1
+
+            for role in ('A','B'):
+                endpoint=pm['endpoint_'+role]
+                xs=sorted({audit.f(number(pair[0])) for pair in endpoint['normalized_points_hex']})
+                if len(xs)<2 or audit.cmp(xs[0],0)!=0 or audit.cmp(xs[-1],1)!=0:
+                    raise ValueError('branch proof support')
+                for cell_index,(xl,xr) in enumerate(zip(xs,xs[1:])):
+                    if pos>=len(proofs): raise ValueError('branch proof coverage')
+                    p=proofs[pos]; pc=p['content']
+                    if (p['kind']!='branch_cell' or pc['role']!=role
+                        or pc['cell_index']!=cell_index
+                        or audit.cmp(fraction(pc['x_l']),xl)!=0
+                        or audit.cmp(fraction(pc['x_r']),xr)!=0):
+                        raise ValueError('branch proof correspondence')
+                    pos+=1
+
+            for cell_index,(old,new) in enumerate(zip(parent_knots,parent_knots[1:])):
+                for field,u,v in zip(SCALAR_FIELDS,_scalars(old),_scalars(new)):
+                    if pos>=len(proofs): raise ValueError('scalar proof coverage')
+                    p=proofs[pos]; pc=p['content']
+                    lo,hi=sorted((audit.f(u),audit.f(v)))
+                    if (p['kind']!='scalar_cell' or pc['cell_index']!=cell_index
+                        or pc['field']!=field
+                        or audit.cmp(fraction(pc['lo']),lo)!=0
+                        or audit.cmp(fraction(pc['hi']),hi)!=0):
+                        raise ValueError('scalar proof correspondence')
+                    pos+=1
+
+            if pos>=len(proofs) or proofs[pos]['kind']!='denominator':
+                raise ValueError('denominator proof coverage')
+            denominator=proofs[pos]['content']
+            gap_a,gap_b,lower=(fraction(denominator[n]) for n in ('gap_A','gap_B','lower_bound'))
+            expected_lower=gap_a if audit.cmp(gap_a,gap_b)<=0 else gap_b
+            if (audit.cmp(fraction(denominator['x_star']),F(1,2))!=0
+                or audit.cmp(lower,expected_lower)!=0 or audit.cmp(lower,0)<=0):
+                raise ValueError('denominator proof correspondence')
+            pos+=1
+            if pos!=len(proofs): raise ValueError('proof ordering/coverage')
+    if c['status']=='COMPLETE' and parent is None: raise ValueError('complete parent')
     known={}; total=0; prior_radius=None
     for record in array(c['sections'],68):
         contract.keys(record,('sha256','content'),'/section')
@@ -492,6 +564,23 @@ def _validate_report_content(c):
             certificate(q)
             if q['output_hex']!=s['scalar_hex'][name]: raise ValueError('scalar output correspondence')
             if q['unit']!=('rad' if name=='beta' else 'dimensionless' if name=='tau' else 'm') or q['kind']!=('COPIED_INPUT' if s['station_kind']=='RETAINED_INPUT_STATION' else 'CERTIFIED_ROUNDING'): raise ValueError('scalar certificate role')
+        if s['station_kind']=='RETAINED_INPUT_STATION':
+            matches=[k for k in parent_knots if audit.cmp(r,audit.f(k.point.radius_m))==0]
+            if len(matches)!=1 or s['source_index']!=matches[0].index:
+                raise ValueError('retained parent row')
+            expected=tuple(v.hex() for v in _scalars(matches[0]))
+            for name,q,h in zip(SCALAR_FIELDS,s['scalar_certificates'],expected):
+                if s['scalar_hex'][name]!=h or q['output_hex']!=h:
+                    raise ValueError('retained scalar correspondence')
+        else:
+            expected_bracket=None
+            for old,new in zip(parent_knots,parent_knots[1:]):
+                if (audit.cmp(audit.f(old.point.radius_m),r)<0
+                    and audit.cmp(r,audit.f(new.point.radius_m))<0):
+                    expected_bracket=[old.index,new.index]
+                    break
+            if expected_bracket is None or s['bracketing_indices']!=expected_bracket:
+                raise ValueError('generated parent bracket')
         fraction(s['blend_weight'])
         points=array(s['points'],1024); total+=len(points)
         for p in points:
@@ -503,6 +592,14 @@ def _validate_report_content(c):
             for h,q in zip(p['xyz_hex'],p['xyz_certificates']):
                 certificate(q)
                 if q['output_hex']!=h or q['unit']!='m' or q['kind']!='CERTIFIED_ROUNDING': raise ValueError('coordinate output correspondence')
+            radial=p['xyz_certificates'][0]
+            if p['xyz_hex'][0]!=s['global_radius_m'] or radial['reference'] is None:
+                raise ValueError('point radial correspondence')
+            if (audit.cmp(fraction(radial['reference']),r)!=0
+                or audit.cmp(fraction(radial['enclosure_lo']),r)!=0
+                or audit.cmp(fraction(radial['enclosure_hi']),r)!=0
+                or radial['trig_terms']!=0):
+                raise ValueError('point radial certificate')
         known[record['sha256']]=s
     if total>69632: raise ValueError('point count')
     cuts=array(c['cuts'],2)
