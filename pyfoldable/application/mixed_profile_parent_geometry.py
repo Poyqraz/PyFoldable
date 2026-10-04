@@ -5,6 +5,7 @@ No network, catalog lookup, mesh/solid, source solver or qualification inference
 from __future__ import annotations
 
 import argparse
+import _struct
 from dataclasses import fields
 from fractions import Fraction as F
 import json
@@ -417,33 +418,80 @@ def _validate_report_content(c):
         contract.keys(p,('kind','content'),'/proof')
         if p['kind'] not in proof_keys: raise ValueError('proof kind')
         contract.keys(p['content'],proof_keys[p['kind']],'/proof/content')
-        for v in p['content'].values():
-            if type(v) is dict: fraction(v)
+        pc=p['content']
+        if p['kind']=='normalization':
+            if pc['role'] not in ('A','B') or type(pc['reversed']) is not bool: raise ValueError('normalization role/flag')
+            for n in ('input_count','returned_count','removed_count'): integer(pc[n],256)
+            for n in ('raw_sha256','normalized_sha256'): contract.digest(pc[n],'/proof/'+n)
+            if pc['reversed'] or pc['removed_count'] or pc['input_count']!=pc['returned_count']: raise ValueError('normalization correspondence')
+        elif p['kind']=='branch_cell':
+            if pc['role'] not in ('A','B'): raise ValueError('branch proof role')
+            integer(pc['cell_index'],511)
+            xl,xr,gl,gr=(fraction(pc[n]) for n in ('x_l','x_r','gap_l','gap_r'))
+            if audit.cmp(xl,xr)>=0 or audit.cmp(xl,0)<0 or audit.cmp(xr,1)>0 or audit.cmp(gl,0)<0 or audit.cmp(gr,0)<0: raise ValueError('branch cell')
+            if audit.cmp(xl,0)>0 and audit.cmp(gl,0)<=0 or audit.cmp(xr,1)<0 and audit.cmp(gr,0)<=0: raise ValueError('interior branch gap')
+        elif p['kind']=='scalar_cell':
+            integer(pc['cell_index'],62)
+            if pc['field'] not in SCALAR_FIELDS: raise ValueError('scalar proof field')
+            if audit.cmp(fraction(pc['lo']),fraction(pc['hi']))>0: raise ValueError('scalar proof bounds')
+        else:
+            for n in proof_keys[p['kind']]: fraction(pc[n])
+            if audit.cmp(fraction(pc['x_star']),F(1,2))!=0 or audit.cmp(fraction(pc['lower_bound']),0)<=0: raise ValueError('denominator proof')
     parent=c['parent']
     if parent is not None:
         contract.keys(parent,('sha256','content'),'/parent')
         if identified(parent['content'])!=parent: raise ValueError('parent identity')
         contract.keys(parent['content'],('schema_id','method_id','policy_ids','endpoint_A','endpoint_B','scalars','scalar_provenance','scalar_use_scope','model'),'/parent/content')
         if parent['content']['schema_id']!='mixed_profile_parent_manifest_v1' or parent['content']['method_id']!=contract.METHOD or parent['content']['policy_ids']!=list(contract.POLICIES): raise ValueError('parent policy')
-    known={}; total=0
+        pm=parent['content']; endpoints={}
+        for role in ('A','B'):
+            e=pm['endpoint_'+role]
+            contract.keys(e,('identity','raw_sha256','canonical_coordinate_sha256','normalized_points_hex','use_scope'),'/parent/endpoint_'+role)
+            contract.text(e['identity'],'/parent/identity')
+            for n in ('raw_sha256','canonical_coordinate_sha256'): contract.digest(e[n],'/parent/'+n)
+            coords=[]
+            for pair in array(e['normalized_points_hex'],256):
+                if len(array(pair,2))!=2: raise ValueError('coordinate pair')
+                x,y=map(number,pair)
+                if not 0<=x<=1 or not -1<=y<=1: raise ValueError('normalized coordinate bounds')
+                coords.append((x,y))
+            if len(coords)<5: raise ValueError('coordinate count')
+            coord_hash=sha('\n'.join(f'{x:.17g},{y:.17g}' for x,y in coords).encode('ascii'))
+            if coord_hash!=e['canonical_coordinate_sha256']: raise ValueError('coordinate identity')
+            contract._scope(e['use_scope'],'/parent/use_scope',True)
+            # Wire-schema audit only: this placeholder is not parsed, measured,
+            # hashed as a source, or used by a geometry evaluator.
+            endpoints['endpoint_'+role]={'identity':e['identity'],'raw_text':'report schema audit',
+                    'file_format':'selig','expected_raw_sha256':e['raw_sha256'],'use_scope':e['use_scope']}
+        audit_request=own_request({'schema_id':'mixed_profile_parent_request_v1','scenario_id':'report-schema-audit',
+                 **endpoints,'scalars':pm['scalars'],'scalar_provenance':pm['scalar_provenance'],
+                 'scalar_use_scope':pm['scalar_use_scope'],'model':pm['model'],
+                 'hinges_m':[h.hex() for h in contract.HINGES],'section_requests_m':[]},decoding=True)
+        _validate_model(audit_request); _validate_scalars(audit_request,audit)
+    known={}; total=0; prior_radius=None
     for record in array(c['sections'],68):
         contract.keys(record,('sha256','content'),'/section')
         if identified(record['content'])!=record: raise ValueError('section digest')
         s=record['content']
         contract.keys(s,('schema_id','parent_sha256','global_radius_m','station_kind','source_index','bracketing_indices','scalar_hex','scalar_certificates','blend_weight','points'),'/section/content')
         if s['schema_id']!='mixed_profile_section_v1' or parent is None or s['parent_sha256']!=parent['sha256']: raise ValueError('section lineage')
-        number(s['global_radius_m'])
+        r=audit.f(number(s['global_radius_m']))
+        if prior_radius is not None and audit.cmp(r,prior_radius)<=0: raise ValueError('section radius order')
+        if audit.cmp(r,audit.f(audit_request.model.domain_m[0]))<0 or audit.cmp(r,audit.f(audit_request.model.domain_m[1]))>0: raise ValueError('section domain')
+        prior_radius=r
         if s['station_kind'] not in ('RETAINED_INPUT_STATION','GENERATED_SECTION'): raise ValueError('station kind')
         if s['source_index'] is not None: integer(s['source_index'],2**63-1)
         if s['bracketing_indices'] is not None:
             if len(array(s['bracketing_indices'],2))!=2: raise ValueError('bracket')
             for n in s['bracketing_indices']: integer(n,2**63-1)
+        if (s['station_kind']=='RETAINED_INPUT_STATION')!=(s['source_index'] is not None) or (s['station_kind']=='GENERATED_SECTION')!=(s['bracketing_indices'] is not None): raise ValueError('station source labels')
         contract.keys(s['scalar_hex'],SCALAR_FIELDS,'/section/scalars')
         for h in s['scalar_hex'].values(): number(h)
         if len(array(s['scalar_certificates'],5))!=5: raise ValueError('scalar certificates')
         for name,q in zip(SCALAR_FIELDS,s['scalar_certificates']):
             certificate(q)
             if q['output_hex']!=s['scalar_hex'][name]: raise ValueError('scalar output correspondence')
+            if q['unit']!=('rad' if name=='beta' else 'dimensionless' if name=='tau' else 'm') or q['kind']!=('COPIED_INPUT' if s['station_kind']=='RETAINED_INPUT_STATION' else 'CERTIFIED_ROUNDING'): raise ValueError('scalar certificate role')
         fraction(s['blend_weight'])
         points=array(s['points'],1024); total+=len(points)
         for p in points:
@@ -454,25 +502,34 @@ def _validate_report_content(c):
             for h in p['xyz_hex']: number(h)
             for h,q in zip(p['xyz_hex'],p['xyz_certificates']):
                 certificate(q)
-                if q['output_hex']!=h: raise ValueError('coordinate output correspondence')
+                if q['output_hex']!=h or q['unit']!='m' or q['kind']!='CERTIFIED_ROUNDING': raise ValueError('coordinate output correspondence')
         known[record['sha256']]=s
     if total>69632: raise ValueError('point count')
     cuts=array(c['cuts'],2)
     if c['status']=='COMPLETE' and len(cuts)!=2 or c['status']=='BLOCKED' and cuts: raise ValueError('cuts')
-    for record in cuts:
+    for cut_index,record in enumerate(cuts):
         contract.keys(record,('sha256','content'),'/cut')
         if identified(record['content'])!=record: raise ValueError('cut digest')
         q=record['content']; contract.keys(q,('parent_sha256','hinge_m','hinge_section_sha256','fixed_section_sha256s','tip_section_sha256s','hardware_offset_m','deployed_transforms','actual_joint_modifications'),'/cut/content')
         if parent is None or q['parent_sha256']!=parent['sha256']: raise ValueError('cut lineage')
         number(q['hinge_m'])
+        if q['hinge_m']!=contract.HINGES[cut_index].hex() or q['hardware_offset_m']!=['0x0.0p+0']*3 or q['deployed_transforms']!=['identity']*2 or q['actual_joint_modifications']!='UNDEFINED': raise ValueError('cut model fields')
         for n in ('fixed_section_sha256s','tip_section_sha256s'):
             for h in array(q[n],68):
                 if h not in known: raise ValueError('unknown section')
         if not q['fixed_section_sha256s'] or not q['tip_section_sha256s'] or q['fixed_section_sha256s'][-1]!=q['hinge_section_sha256'] or q['tip_section_sha256s'][0]!=q['hinge_section_sha256']: raise ValueError('shared hinge')
+        fixed=[]; tip=[]; h=audit.f(number(q['hinge_m']))
+        for identity,s in known.items():
+            sign=audit.cmp(audit.f(number(s['global_radius_m'])),h)
+            if sign<=0: fixed.append(identity)
+            if sign>=0: tip.append(identity)
+        if fixed!=q['fixed_section_sha256s'] or tip!=q['tip_section_sha256s']: raise ValueError('complementary restriction')
     contract.keys(c['budget'],('rational_limit','rational_used','integer_bits_limit','max_integer_bits','max_trig_terms','input_bytes','output_bytes','unique_sections','output_points','retry_count'),'/budget')
     for n,v in c['budget'].items(): integer(v,20_000_000 if n!='input_bytes' else 4*1024*1024)
+    bv=c['budget']
+    if bv['rational_limit']!=20_000_000 or bv['integer_bits_limit']!=65536 or bv['rational_used']>bv['rational_limit'] or bv['max_integer_bits']>bv['integer_bits_limit'] or bv['max_trig_terms'] not in (0,80,96,112,128): raise ValueError('budget limits')
     for n in ('completed_sections','omitted_sections'): integer(c[n],68)
-    if len(c['sections'])+c['omitted_sections']!=c['completed_sections'] or total!=c['budget']['output_points']: raise ValueError('counts')
+    if len(c['sections'])+c['omitted_sections']!=c['completed_sections'] or total!=bv['output_points'] or bv['unique_sections']!=c['completed_sections']: raise ValueError('counts')
     projection={**c,'budget':{**c['budget'],'output_bytes':None}}
     if c['budget']['output_bytes']!=len(canonical_bytes(projection)): raise ValueError('byte count')
 
@@ -486,7 +543,10 @@ def render_mixed_profile_table(report: MixedProfileParentReportV1) -> str:
         if canonical_bytes(c)!=report.canonical_json or sha(report.canonical_json)!=report.sha256:
             raise ValueError('digest')
         _validate_report_content(c)
-        if type(report.execution_json) is not bytes or len(report.execution_json)>128*1024:
+        # 48 paths * 2048 ASCII bytes * 6 JSON escape bytes, plus digests,
+        # bounded context fields and syntax, is below 1 MiB. ASCII controls
+        # remain supported; a displayed-character count is not a byte bound.
+        if type(report.execution_json) is not bytes or len(report.execution_json)>1024*1024:
             raise ValueError('sidecar bytes')
         side=json.loads(report.execution_json)
         if canonical_bytes(side)!=report.execution_json or sha(report.execution_json)!=report.execution_sha256 or side['content_sha256']!=report.sha256:
@@ -536,9 +596,13 @@ def _main(argv=None):
            Path(__file__).with_name('blade_stations.py'),root/'core/airfoil.py',root/'core/models.py')
     code=tuple(sorted((str(x.relative_to(root)),sha(x.read_bytes())) for x in paths))
     runtime=Path(sys.executable)
+    binaries=[runtime]
+    for module in (math,_struct):
+        module_path=getattr(module,'__file__',None)
+        if module_path is not None: binaries.append(Path(module_path))
+    binary_ids=tuple(sorted((str(x.resolve()),sha(x.read_bytes())) for x in binaries))
     context=GeometryExecutionV1('local-caller-input',datetime.now(timezone.utc).isoformat(),
-              platform.python_build()[0]+' '+platform.python_version(),platform.platform(),code,
-              ((runtime.name,sha(runtime.read_bytes())),),'nearest-ties-even-rational-certificate')
+              sys.version,platform.platform(),code,binary_ids,'nearest-ties-even-rational-certificate')
     report=evaluate_mixed_profile_parent(req,execution=context)
     Path(a.json).write_bytes(report.canonical_json); Path(a.execution).write_bytes(report.execution_json)
     Path(a.table).write_text(render_mixed_profile_table(report),encoding='ascii',newline='')

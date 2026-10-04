@@ -182,6 +182,10 @@ def test_cli_direct_agreement(tmp_path, declaration):
                       '--json',str(out),'--table',str(table),'--execution',str(side)],cwd=ROOT,capture_output=True)
     assert p.returncode==0,p.stderr
     context=json.loads(side.read_bytes())['execution']
+    assert set(p for p,h in context['code_sha256'])=={'application/mixed_profile_parent_geometry.py',
+      'application/_mixed_profile_contract.py','application/_mixed_profile_exact.py',
+      'application/blade_stations.py','core/airfoil.py','core/models.py'}
+    assert len(context['binary_sha256'])>=1
     e=g.GeometryExecutionV1(**{**context,'code_sha256':tuple(map(tuple,context['code_sha256'])),
                               'binary_sha256':tuple(map(tuple,context['binary_sha256']))})
     direct=g.evaluate_mixed_profile_parent(g.parse_mixed_profile_request(src.read_bytes()),execution=e)
@@ -317,3 +321,24 @@ def test_review_corrupt_receipts_rejected(report,change):
     side_raw=wire(side)
     invalid=g.MixedProfileParentReportV1(raw,digest,side_raw,hashlib.sha256(side_raw).hexdigest())
     with pytest.raises(g.MixedProfileReportError): g.render_mixed_profile_table(invalid)
+
+
+def test_review_maximum_escaped_execution_context(geometry_request,execution):
+    code=tuple((chr(1)*2046+f'{i:02}', '0'*64) for i in range(32))
+    binary=tuple((chr(2)*2046+f'{i:02}', '0'*64) for i in range(16))
+    report=g.evaluate_mixed_profile_parent(geometry_request,execution=replace(execution,code_sha256=code,binary_sha256=binary))
+    assert len(report.execution_json)>128*1024
+    assert json.loads(report.canonical_json)['status']=='COMPLETE'
+    assert 'Status: COMPLETE' in g.render_mixed_profile_table(report)
+
+
+def test_review_normalization_proof_scalar_schema(report):
+    c=json.loads(report.canonical_json)
+    c['proofs'][0]['content']['raw_sha256']='not-a-digest'
+    projected=copy.deepcopy(c); projected['budget']['output_bytes']=None
+    c['budget']['output_bytes']=len(wire(projected))
+    raw=wire(c); h=hashlib.sha256(raw).hexdigest()
+    side=json.loads(report.execution_json); side['content_sha256']=h
+    sr=wire(side)
+    with pytest.raises(g.MixedProfileReportError):
+        g.render_mixed_profile_table(g.MixedProfileParentReportV1(raw,h,sr,hashlib.sha256(sr).hexdigest()))
