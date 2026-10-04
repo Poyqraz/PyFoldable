@@ -50,3 +50,13 @@ Generic software implementation/testing does not clear E63/NACA4412/APC use or
 redistribution. Permissions remain UNRESOLVED. No freeze, merge, selected-model
 realization, physical evidence or ADR-009 acceptance follows;
 `physical_qualification=false`. PR #81/#84/#91 remain outside this task.
+
+## 3. Reviewed clarification closure
+
+Separate independent read-only review APPROVED technical clarification HEAD
+`28cc33b37e77ddd9913963137f3c381c40cf22f3`, tree
+`570da1161e9f5e63a34908195e6cca6b44ca5526`, parent reviewed design
+`a13d662cf3a118b7b3e0f949d87319c11d38397c`. Fixture and all historical files were
+independently reproduced/preserved. This later closure record is not that technical
+HEAD. The separate stacked implementation remains subject to TDD, independent
+numerical review and exact-head checks. No selected-asset permission or freeze follows.
