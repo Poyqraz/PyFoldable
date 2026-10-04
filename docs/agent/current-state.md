@@ -539,6 +539,21 @@ separates obligations that must exist before the call from the returned-object
 and mapped-interval obligations that can exist only after return. It does not
 authorize the call.
 
+`observe_pre_call_binding` retains, in one process and calling thread, the
+loaded `__call__` source and mapper objects, their code objects and defaults,
+and the candidate29 bytes, Theta0, and stored uncertainties a future call
+would consume. A filename, `co_filename`, or hash is not that loaded graph.
+The fresh zero-call record is
+[reports/c2v09_pre_call_binding/observation.json](../../reports/c2v09_pre_call_binding/observation.json),
+from checkout `7555a4b9e91bd8e3bbb4e6b7423d43488357af27` and tree
+`074f8ab6c337077543fb8999b43c4167eb468996`. The two historical CMM-2 file
+mismatches stay mismatches. The proposed current-graph binding is not a
+historical classification and does not amend the seven-node inventory. The
+repaired cosine JSON is not this process's native evidence. Returned
+BEM-object correspondence and mapped-interval consumption remain post-return
+only. `accept()` still refuses. `eligibility_evidence=false` and
+`physical_qualification=false`. This is not live eligibility.
+
 ## 2026-10-02 strength-aware radial hinge assessment — proposal only
 
 The [separate design proposal](../strength_aware_radial_hinge_assessment_proposal.md)

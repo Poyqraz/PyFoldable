@@ -195,6 +195,34 @@ def test_persistent_record_omits_callables_and_keeps_the_digest_outside() -> Non
     json.dumps(record)
 
 
+def test_archived_pre_call_record_is_not_live_or_eligibility_evidence() -> None:
+    record = json.loads((_repository() / "reports/c2v09_pre_call_binding/observation.json").read_text(encoding="utf-8"))
+    payload = record["canonical_payload"]
+    assert record["canonical_sha256"] == sha256_bytes(canonical_bytes(payload))
+    assert "canonical_sha256" not in payload
+    assert payload["checkout_sha"] == "7555a4b9e91bd8e3bbb4e6b7423d43488357af27"
+    assert payload["tree_sha"] == "074f8ab6c337077543fb8999b43c4167eb468996"
+    assert payload["eligibility_evidence"] is False
+    assert payload["physical_qualification"] is False
+    assert payload["retained_references_serialized"] is False
+    assert payload["source_callbacks"] == 0
+    assert payload["inputs"]["sha256"] == CANDIDATE29_MANIFEST_SHA256
+    assert sha256_bytes(payload["inputs"]["utf8"].encode("utf-8")) == CANDIDATE29_MANIFEST_SHA256
+    assert payload["returned_bem_object_correspondence"] == POST_RETURN_ONLY
+    assert payload["mapped_interval_consumption"] == POST_RETURN_ONLY
+    assert payload["historical_source_mismatches"] == [
+        "pyfoldable/application/cmm2_coupled_transient_service.py",
+        "pyfoldable/dynamics/cmm2_coupled_transient.py",
+    ]
+    assert payload["proposed_current_graph_binding"]["status"] == "PROPOSED / NOT A HISTORICAL CLASSIFICATION"
+    assert payload["proposed_current_graph_binding"]["eligibility_evidence"] is False
+    assert payload["native"]["repaired_record_used_as_live_evidence"] is False
+    assert payload["native"]["eligibility_evidence"] is False
+    assert payload["native"]["native_observer"] == "prepare_cosine_path_certificate"
+    assert payload["native"]["cosine_function_calls"] == 0
+    assert is_live_pre_call_evidence(record) is False
+
+
 def test_repaired_probe_is_the_only_native_observer() -> None:
     observation = observe_pre_call_binding(_repository())
     assert observation.native["native_observer"] == "prepare_cosine_path_certificate"
