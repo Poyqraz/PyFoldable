@@ -383,6 +383,7 @@ def _coordinator_rehashed_report(report, content, sidecar, changed_sections=()):
     'complete_proof_order',
     'complete_branch_coverage',
     'complete_denominator_correspondence',
+    'complete_denominator_gap_correspondence',
 ))
 def test_coordinator_renderer_correspondence_witnesses(report, change):
     content = json.loads(report.canonical_json)
@@ -432,9 +433,15 @@ def test_coordinator_renderer_correspondence_witnesses(report, change):
     elif change == 'complete_branch_coverage':
         p = next(p for p in content['proofs'] if p['kind'] == 'branch_cell')
         p['content']['cell_index'] += 1
-    else:
+    elif change == 'complete_denominator_correspondence':
         p = next(p for p in content['proofs'] if p['kind'] == 'denominator')
         p['content']['lower_bound'] = {'n': '1', 'd': '1'}
+    else:
+        p = next(p for p in content['proofs'] if p['kind'] == 'denominator')
+        p['content']['gap_A'] = {'n': '1', 'd': '1'}
+        gap_b = rational(p['content']['gap_B'])
+        p['content']['lower_bound'] = (
+            p['content']['gap_B'] if gap_b < 1 else {'n': '1', 'd': '1'})
 
     invalid = _coordinator_rehashed_report(
         report, content, sidecar, changed_sections=changed_sections)
