@@ -7,16 +7,20 @@ from pathlib import Path
 
 import pyfoldable.application.c2v09_pre_call_binding as pre_call
 import pyfoldable.application.cmm2_coupled_transient_service as service
+import pyfoldable.core.foldable_rotor as foldable_rotor
 from pyfoldable.application.c2v09_cosine_path_certificate import prepare_cosine_path_certificate
 from pyfoldable.application.c2v09_ordered_declaration import CANDIDATE29_MANIFEST_SHA256, canonical_bytes, sha256_bytes
 from pyfoldable.application.c2v09_pre_call_binding import (
     MAPPER_BINDING,
     POST_RETURN_ONLY,
     SOURCE_BINDING,
+    compare_code_structure,
+    compare_signature_defaults,
     is_live_pre_call_evidence,
     name_only_double,
     observe_pre_call_binding,
     persistent_pre_call_record,
+    revalidate_pre_call_binding,
     same_calling_context,
 )
 from pyfoldable.core.foldable_aero_load import map_foldable_bem_aero_loads
@@ -51,7 +55,8 @@ def test_live_observation_retains_the_loaded_source_and_mapper() -> None:
     assert retained[SOURCE_BINDING] is service.Cmm2FoldableBemMappedAeroEvaluator.__call__.__globals__[SOURCE_BINDING]
     assert retained[MAPPER_BINDING] is service.Cmm2FoldableBemMappedAeroEvaluator.__call__.__globals__[MAPPER_BINDING]
     assert retained[SOURCE_BINDING].__code__ is observation.retained_code_objects[SOURCE_BINDING]
-    assert observation.binding_matches_loaded_module_source is True
+    assert observation.defining_module_association is True
+    assert observation.loaded_implementation_identity == "MATCH"
     assert observation.eligibility_evidence is False
     assert observation.physical_qualification is False
     assert is_live_pre_call_evidence(observation) is True
@@ -76,7 +81,7 @@ def test_replaced_binding_is_observed_and_does_not_clear_history(monkeypatch) ->
     monkeypatch.setattr(service, SOURCE_BINDING, replacement)
     observation = observe_pre_call_binding(_repository(), cosine_observer=_native_unavailable)
     assert observation.retained_callables[SOURCE_BINDING] is replacement
-    assert observation.binding_matches_loaded_module_source is False
+    assert observation.defining_module_association is False
     assert observation.proposed_current_graph_binding["status"] == "PROPOSED / NOT A HISTORICAL CLASSIFICATION"
     assert observation.proposed_current_graph_binding["eligibility_evidence"] is False
     assert "pyfoldable/application/cmm2_coupled_transient_service.py" in observation.historical_source_mismatches
@@ -248,6 +253,184 @@ def test_archived_pre_call_record_is_not_live_or_eligibility_evidence() -> None:
     assert payload["native"]["native_observer"] == "prepare_cosine_path_certificate"
     assert payload["native"]["cosine_function_calls"] == 0
     assert is_live_pre_call_evidence(record) is False
+    archived = (_repository() / "reports/c2v09_pre_call_binding/observation.json").read_bytes()
+    assert sha256_bytes(archived) == "00c19f3f3ad3c203ef27472116f59962bce64977f5b48bdebb534d54a0ccb760"
+    foreign = revalidate_pre_call_binding(record)
+    assert foreign.classification == "NOT ESTABLISHED"
+    assert foreign.authorizes_execution is False
+    assert foreign.eligibility_evidence is False
+
+
+def test_association_is_not_loaded_implementation_identity() -> None:
+    observation = observe_pre_call_binding(_repository(), cosine_observer=_native_unavailable)
+    assert observation.defining_module_association is True
+    assert observation.loaded_implementation_identity == "MATCH"
+    assert observation.geometric_applicability == "NOT ESTABLISHED"
+    assert observation.direct_implementation["transitive_graph"] == "NOT ESTABLISHED"
+    assert observation.compiler_settings["dont_inherit"] is True
+    assert observation.compiler_settings["mode"] == "exec"
+    assert observation.retained_global_callables[SOURCE_BINDING] is observation.retained_callables[SOURCE_BINDING]
+    assert observation.retained_global_callables[MAPPER_BINDING] is observation.retained_callables[MAPPER_BINDING]
+    for name in ("__call__", SOURCE_BINDING, MAPPER_BINDING):
+        node = observation.direct_implementation[name]
+        assert node["namespace_association"] is True
+        assert node["implementation_identity"] == "MATCH"
+        assert node["code_structure"] == "MATCH"
+        assert node["defaults"] == "MATCH"
+        assert node["geometric_applicability"] == "NOT ESTABLISHED"
+        assert node["co_code_digest_is_sufficient"] is False
+    roles = [row["role"] for row in observation.modules_without_historical_record]
+    assert roles[:7] == [
+        "dense",
+        "declaration",
+        "eligibility",
+        "collector",
+        "applicability",
+        "cosine_certificate",
+        "probe_source",
+    ]
+    assert roles[7] == "pre_call_binding"
+    assert all(row["geometric_applicability"] == "NOT ESTABLISHED" for row in observation.certificate_source_file_identity)
+    assert all(row["geometric_applicability"] == "NOT ESTABLISHED" for row in observation.modules_without_historical_record)
+
+
+def test_live_constant_mutation_breaks_implementation_and_restores() -> None:
+    observation = observe_pre_call_binding(_repository(), cosine_observer=_native_unavailable)
+    function = observation.retained_callables[SOURCE_BINDING]
+    original = function.__code__
+    mutated = original.replace(co_consts=original.co_consts + ("mutated-constant",))
+    try:
+        function.__code__ = mutated
+        assert sha256_bytes(function.__code__.co_code) == sha256_bytes(original.co_code)
+        checked = revalidate_pre_call_binding(observation)
+        assert checked.same_process is True
+        assert checked.same_thread is True
+        assert checked.bindings_unchanged is True
+        assert checked.nodes[SOURCE_BINDING]["namespace_association"] is True
+        assert checked.nodes[SOURCE_BINDING]["implementation_identity"] == "MISMATCH"
+        assert checked.nodes[SOURCE_BINDING]["code_structure"] == "MISMATCH"
+        assert checked.authorizes_execution is False
+        assert checked.eligibility_evidence is False
+        assert checked.physical_qualification is False
+    finally:
+        function.__code__ = original
+    restored = revalidate_pre_call_binding(observation)
+    assert restored.nodes[SOURCE_BINDING]["implementation_identity"] == "MATCH"
+    assert restored.authorizes_execution is False
+
+
+def test_live_positional_and_keyword_defaults_are_revalidated() -> None:
+    observation = observe_pre_call_binding(_repository(), cosine_observer=_native_unavailable)
+    function = observation.retained_callables[SOURCE_BINDING]
+    original_defaults = function.__defaults__
+    original_keywords = function.__kwdefaults__
+    try:
+        function.__defaults__ = ("positional-mutated",)
+        positional = revalidate_pre_call_binding(observation)
+        assert positional.nodes[SOURCE_BINDING]["defaults"] == "MISMATCH"
+        assert positional.nodes[SOURCE_BINDING]["implementation_identity"] == "MISMATCH"
+        assert positional.authorizes_execution is False
+        function.__defaults__ = original_defaults
+        function.__kwdefaults__ = {**original_keywords, "bounds": "mutated-bound"}
+        keyword = revalidate_pre_call_binding(observation)
+        assert keyword.nodes[SOURCE_BINDING]["defaults"] == "MISMATCH"
+        assert keyword.nodes[SOURCE_BINDING]["code_structure"] == "MATCH"
+        assert keyword.authorizes_execution is False
+    finally:
+        function.__defaults__ = original_defaults
+        function.__kwdefaults__ = original_keywords
+    assert revalidate_pre_call_binding(observation).nodes[SOURCE_BINDING]["defaults"] == "MATCH"
+
+
+def test_replacing_export_and_evaluator_binding_is_not_source_conformance(monkeypatch) -> None:
+    def decoy(*_args, **_kwargs):
+        raise AssertionError("source evaluated")
+
+    decoy.__code__ = decoy.__code__.replace(co_filename=str(Path(foldable_rotor.__file__).resolve()))
+    monkeypatch.setattr(foldable_rotor, SOURCE_BINDING, decoy)
+    monkeypatch.setattr(service, SOURCE_BINDING, decoy)
+    observation = observe_pre_call_binding(_repository(), cosine_observer=_native_unavailable)
+    node = observation.direct_implementation[SOURCE_BINDING]
+    assert observation.retained_callables[SOURCE_BINDING] is decoy
+    assert node["namespace_association"] is True
+    assert node["implementation_identity"] == "MISMATCH"
+    assert observation.loaded_implementation_identity == "MISMATCH"
+    assert observation.historical_source_mismatches == (
+        "pyfoldable/application/cmm2_coupled_transient_service.py",
+        "pyfoldable/dynamics/cmm2_coupled_transient.py",
+    )
+    assert observation.eligibility_evidence is False
+    assert observation.source_callbacks == 0
+
+
+def test_unsupported_objects_do_not_compare_equal_by_type_name() -> None:
+    class Marker:
+        pass
+
+    def probe():
+        return None
+
+    first = probe.__code__.replace(co_consts=(Marker(),))
+    second = probe.__code__.replace(co_consts=(Marker(),))
+    assert compare_code_structure(first, second) == "NOT ESTABLISHED"
+    assert compare_code_structure(probe.__code__.replace(co_consts=(1,)), probe.__code__.replace(co_consts=(2,))) == "MISMATCH"
+
+    def holder():
+        return None
+
+    nested_first = holder.__code__.replace(co_consts=(first,))
+    nested_second = holder.__code__.replace(co_consts=(second,))
+    assert compare_code_structure(nested_first, nested_second) == "NOT ESTABLISHED"
+
+    def sample(value=Marker()):
+        return value
+
+    source = "def sample(value=Marker()):\n    return value\n"
+    assert compare_signature_defaults(sample, source, "sample") == "NOT ESTABLISHED"
+    sample.__defaults__ = (1,)
+    try:
+        assert compare_signature_defaults(sample, "def sample(value=1):\n    return value\n", "sample") == "MATCH"
+        sample.__defaults__ = (2,)
+        assert compare_signature_defaults(sample, "def sample(value=1):\n    return value\n", "sample") == "MISMATCH"
+    finally:
+        sample.__defaults__ = (Marker(),)
+
+
+def test_revalidation_rejects_context_binding_and_serialized_records(monkeypatch) -> None:
+    observation = observe_pre_call_binding(_repository(), cosine_observer=_native_unavailable)
+    current = revalidate_pre_call_binding(observation)
+    assert current.classification == "REVALIDATED"
+    assert current.implementation_identity == "MATCH"
+    assert current.authorizes_execution is False
+    record = persistent_pre_call_record(observation)
+    assert revalidate_pre_call_binding(record).classification == "NOT ESTABLISHED"
+    assert is_live_pre_call_evidence(record) is False
+    original_thread = observation.thread_id
+    original_pid = observation.pid
+    try:
+        observation.thread_id = original_thread + "-other"
+        stale_thread = revalidate_pre_call_binding(observation)
+        assert stale_thread.same_thread is False
+        assert stale_thread.classification == "INVALIDATED"
+        assert stale_thread.authorizes_execution is False
+        observation.thread_id = original_thread
+        observation.pid = original_pid + 1
+        stale_process = revalidate_pre_call_binding(observation)
+        assert stale_process.same_process is False
+        assert stale_process.classification == "INVALIDATED"
+    finally:
+        observation.thread_id = original_thread
+        observation.pid = original_pid
+
+    def other(*_args, **_kwargs):
+        raise AssertionError("source evaluated")
+
+    monkeypatch.setattr(service, SOURCE_BINDING, other)
+    changed = revalidate_pre_call_binding(observation)
+    assert changed.bindings_unchanged is False
+    assert changed.classification == "INVALIDATED"
+    assert changed.authorizes_execution is False
+    assert changed.eligibility_evidence is False
 
 
 def test_repaired_probe_is_the_only_native_observer() -> None:

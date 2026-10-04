@@ -555,6 +555,17 @@ BEM-object correspondence and mapped-interval consumption remain post-return
 only. `accept()` still refuses. `eligibility_evidence=false` and
 `physical_qualification=false`. This is not live eligibility.
 
+Defining-module association is not loaded implementation identity. The direct
+comparison compiles the captured source of `__call__`,
+`solve_foldable_bem_rotor`, and `map_foldable_bem_aero_loads` without
+executing those modules, then compares code structure and literal defaults.
+A `co_code` digest is not that comparison. Unsupported values stay
+NOT ESTABLISHED. The check does not cover the transitive graph or geometric
+applicability. The archived observation
+[reports/c2v09_pre_call_binding/observation.json](../../reports/c2v09_pre_call_binding/observation.json)
+remains the earlier process record. Same-process revalidation does not
+authorize execution.
+
 ## 2026-10-02 strength-aware radial hinge assessment — proposal only
 
 The [separate design proposal](../strength_aware_radial_hinge_assessment_proposal.md)

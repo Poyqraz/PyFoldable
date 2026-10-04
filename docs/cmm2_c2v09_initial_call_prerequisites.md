@@ -1,9 +1,12 @@
 # Initial-only transaction prerequisites
 
 Status: **ZERO-CALL OBSERVER**. `observe_pre_call_binding` can record the
-pre-call rows in one process and calling thread. A serialized record is not
-the retained callable objects. This table does not authorize a source call,
-mapper call, partition evaluation, selection, seal, or trajectory.
+pre-call rows in one process and calling thread. Defining-module association
+is export identity plus `co_filename`. It is not loaded implementation
+identity. Direct-node comparison covers the evaluator, source, and mapper
+only. A serialized record is not the retained callable objects and cannot
+authorize a later call. This table does not authorize a source call, mapper
+call, partition evaluation, selection, seal, or trajectory.
 `eligibility_evidence=false`. `physical_qualification=false`.
 
 The repaired cosine observation is evidence of one historical process. It does
