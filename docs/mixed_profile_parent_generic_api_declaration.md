@@ -31,8 +31,10 @@ def evaluate_mixed_profile_parent(
 def render_mixed_profile_table(report: MixedProfileParentReportV1) -> str: ...
 ```
 
-All request/record dataclasses are frozen, slots-based and recursively immutable;
-sequences are tuples. Wire objects below map one-for-one to those DTO fields.
+All newly introduced request/record dataclasses are frozen, slots-based and
+recursively immutable; sequences are tuples. Reused existing frozen `StationPoint`
+and `StationProvenance` value records remain unchanged, without adding slots.
+Wire objects below map one-for-one to those DTO fields.
 No filesystem path, catalog lookup, URL fetch, solver, callback or implicit unit
 conversion is part of this service. `execution` supplies identities, not numerical
 controls. The hard limits/model methods are fixed by this declaration and its
@@ -220,6 +222,10 @@ Parent manifest schema ID is `mixed_profile_parent_manifest_v1`. InputReceipt's
 A/B canonical digest is the legacy `.17g` coordinate digest; scalar digest is the
 new codec's ordered scalar-array digest. Execution sidecar has exactly
 `execution` (the context) and `content_sha256`; its digest hashes that whole payload.
+If a correctly typed execution DTO fails its structure/value checks, the service
+returns REQUEST-stage BLOCKED and `execution` is null in the sidecar. An unchecked
+or unserializable context is never copied into it; valid contexts are owned before
+any later failure. Wrong root execution type still raises TypeError before work.
 Proof denominator uses exact x_star=1/2, with lower_bound=min(gap_A,gap_B)>0.
 
 ## 5. Shared budget and rounding certificate records
@@ -307,6 +313,8 @@ rejects earlier, retain that actual ENDPOINT_INVALID reason and do not invent a
 later stronger-proof measurement. R09 duplicated JSON key tests decoder rejection.
 R10/R11 are budget-primitive declarations with primed counters, **harness only**,
 never a caller request/control. Both retry and child paths must preserve exhaustion.
+R11's `retry_add` / `child_compare` are harness path labels invoking the same
+`charge("add")` / `charge("compare")`, not extra operation-enum values.
 
 No fixture adaptation after measurement is permitted. Any literal/method/expected
 predicate change requires a new version/record and review, preserving this one.
