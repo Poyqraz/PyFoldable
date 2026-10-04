@@ -1,7 +1,9 @@
 # Initial-only transaction prerequisites
 
-Status: **PLAN ONLY**. This table does not authorize a source call, mapper
-call, partition evaluation, selection, seal, or trajectory.
+Status: **ZERO-CALL OBSERVER**. `observe_pre_call_binding` can record the
+pre-call rows in one process and calling thread. A serialized record is not
+the retained callable objects. This table does not authorize a source call,
+mapper call, partition evaluation, selection, seal, or trajectory.
 `eligibility_evidence=false`. `physical_qualification=false`.
 
 The repaired cosine observation is evidence of one historical process. It does
