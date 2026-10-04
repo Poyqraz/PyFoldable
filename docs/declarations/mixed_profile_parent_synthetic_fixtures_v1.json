@@ -1,0 +1,492 @@
+{
+  "schema_id": "mixed_profile_parent_fixture_declaration_v1",
+  "status": "PROPOSED / NOT FROZEN / NOT IMPLEMENTED",
+  "authorship": "First-party literal design by Project automation for this declaration; no external coordinate/scalar source or manufacturer realization. Only the public requested hinge values are inherited from task scope.",
+  "canonical_codec": "mpg_canonical_ascii_hex_v1",
+  "positive_cases": [
+    {
+      "id": "S01",
+      "request": {
+        "schema_id": "mixed_profile_parent_request_v1",
+        "scenario_id": "first_party_synthetic_software_v1",
+        "endpoint_A": {
+          "identity": "PYFOLDABLE_SYNTH_CLOSED_A_V1",
+          "raw_text": "PYFOLDABLE_SYNTH_CLOSED_A_V1\n1 0\n0.75 0.0625\n0.5 0.125\n0.25 0.0625\n0 0\n0.25 -0.03125\n0.5 -0.0625\n0.75 -0.03125\n1 0\n",
+          "file_format": "selig",
+          "expected_raw_sha256": "0a137a1a7bfeec6a0ca421c1abd2e529758a445f08abc192875ddfa0e3c713b0",
+          "use_scope": {
+            "kind": "FIRST_PARTY_SYNTHETIC",
+            "reference": "PyFoldable independently invented dyadic software fixture v1"
+          }
+        },
+        "endpoint_B": {
+          "identity": "PYFOLDABLE_SYNTH_OPEN_B_V1",
+          "raw_text": "PYFOLDABLE_SYNTH_OPEN_B_V1\n1 0.015625\n0.875 0.046875\n0.625 0.09375\n0.375 0.09375\n0.125 0.046875\n0 0\n0.125 -0.015625\n0.375 -0.03125\n0.625 -0.03125\n0.875 -0.015625\n1 -0.015625\n",
+          "file_format": "selig",
+          "expected_raw_sha256": "f68417c98523bdf1faaa5f1db516529b1c06e6b750e09124e9a2c202c9ae6fe2",
+          "use_scope": {
+            "kind": "FIRST_PARTY_SYNTHETIC",
+            "reference": "PyFoldable independently invented dyadic software fixture v1"
+          }
+        },
+        "scalars": [
+          {
+            "index": 0,
+            "point": {
+              "radius_m": "0x1.0000000000000p-5",
+              "chord_m": "0x1.0000000000000p-5",
+              "twist_rad": "-0x1.0000000000000p-2"
+            },
+            "tau": "0x1.0000000000000p-3",
+            "Y_m": "-0x0.0p+0",
+            "Z_m": "0x0.0p+0"
+          },
+          {
+            "index": 1,
+            "point": {
+              "radius_m": "0x1.0000000000000p-4",
+              "chord_m": "0x1.4000000000000p-5",
+              "twist_rad": "-0x1.0000000000000p-3"
+            },
+            "tau": "0x1.8000000000000p-3",
+            "Y_m": "0x1.0000000000000p-10",
+            "Z_m": "-0x1.0000000000000p-10"
+          },
+          {
+            "index": 2,
+            "point": {
+              "radius_m": "0x1.8000000000000p-4",
+              "chord_m": "0x1.8000000000000p-6",
+              "twist_rad": "0x0.0p+0"
+            },
+            "tau": "0x1.4000000000000p-3",
+            "Y_m": "0x1.0000000000000p-9",
+            "Z_m": "-0x1.0000000000000p-10"
+          },
+          {
+            "index": 3,
+            "point": {
+              "radius_m": "0x1.0000000000000p-3",
+              "chord_m": "0x1.0000000000000p-6",
+              "twist_rad": "0x1.0000000000000p-3"
+            },
+            "tau": "0x1.8000000000000p-4",
+            "Y_m": "0x1.0000000000000p-10",
+            "Z_m": "0x0.0p+0"
+          },
+          {
+            "index": 4,
+            "point": {
+              "radius_m": "0x1.4000000000000p-3",
+              "chord_m": "0x1.4000000000000p-6",
+              "twist_rad": "0x1.0000000000000p-2"
+            },
+            "tau": "0x1.0000000000000p-3",
+            "Y_m": "-0x0.0p+0",
+            "Z_m": "0x1.0000000000000p-10"
+          },
+          {
+            "index": 5,
+            "point": {
+              "radius_m": "0x1.8000000000000p-3",
+              "chord_m": "0x1.0000000000000p-7",
+              "twist_rad": "0x1.8000000000000p-2"
+            },
+            "tau": "0x1.0000000000000p-4",
+            "Y_m": "0x0.0p+0",
+            "Z_m": "0x1.0000000000000p-9"
+          }
+        ],
+        "scalar_provenance": {
+          "kind": "declared_design",
+          "reference": "PyFoldable independently invented six-row SI software fixture",
+          "locator": "docs/declarations/mixed_profile_parent_synthetic_fixtures_v1.json#S01",
+          "revision": "v1",
+          "parent_sha256": null
+        },
+        "scalar_use_scope": {
+          "kind": "FIRST_PARTY_SYNTHETIC",
+          "reference": "No retained manufacturer record; independently invented dyadic values"
+        },
+        "model": {
+          "method_id": "mixed_profile_pwl_smoothstep_vertical_thickness_v1",
+          "domain_m": [
+            "0x1.0000000000000p-5",
+            "0x1.8000000000000p-3"
+          ],
+          "transition_m": [
+            "0x1.0000000000000p-4",
+            "0x1.0000000000000p-3"
+          ],
+          "frame": "shaft_radial_tangential_axial_v1",
+          "stack_fraction": "0x1.0000000000000p-2",
+          "hardware_offset_m": [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          "hinge_axis": "positive_shaft_axial",
+          "deployed_transforms": [
+            "identity",
+            "identity"
+          ],
+          "actual_joint_modifications": "UNDEFINED"
+        },
+        "hinges_m": [
+          "0x1.a027525460aa6p-4",
+          "0x1.04189374bc6a8p-3"
+        ],
+        "section_requests_m": [
+          "0x1.0000000000000p-4",
+          "0x1.0000000000000p-3"
+        ]
+      },
+      "request_sha256": "b444f14537c678624f63f734aa4c9cad8137cccd0d96a691185ec6b96c62cfcf",
+      "endpoint_receipts": [
+        {
+          "role": "A",
+          "raw_sha256": "0a137a1a7bfeec6a0ca421c1abd2e529758a445f08abc192875ddfa0e3c713b0",
+          "source_order_sha256": "9be4a0ee2f8247fc14d88e1fe3c85150da6ac00fcb5773801b2639221ea93008",
+          "normalized_sha256": "9be4a0ee2f8247fc14d88e1fe3c85150da6ac00fcb5773801b2639221ea93008",
+          "canonical_coordinate_sha256": "9be4a0ee2f8247fc14d88e1fe3c85150da6ac00fcb5773801b2639221ea93008",
+          "points_hex": [
+            [
+              "0x1.0000000000000p+0",
+              "0x0.0p+0"
+            ],
+            [
+              "0x1.8000000000000p-1",
+              "0x1.0000000000000p-4"
+            ],
+            [
+              "0x1.0000000000000p-1",
+              "0x1.0000000000000p-3"
+            ],
+            [
+              "0x1.0000000000000p-2",
+              "0x1.0000000000000p-4"
+            ],
+            [
+              "0x0.0p+0",
+              "0x0.0p+0"
+            ],
+            [
+              "0x1.0000000000000p-2",
+              "-0x1.0000000000000p-5"
+            ],
+            [
+              "0x1.0000000000000p-1",
+              "-0x1.0000000000000p-4"
+            ],
+            [
+              "0x1.8000000000000p-1",
+              "-0x1.0000000000000p-5"
+            ],
+            [
+              "0x1.0000000000000p+0",
+              "0x0.0p+0"
+            ]
+          ],
+          "authorship": "Invented dyadic polygon; no vendor/coordinate-database transcription."
+        },
+        {
+          "role": "B",
+          "raw_sha256": "f68417c98523bdf1faaa5f1db516529b1c06e6b750e09124e9a2c202c9ae6fe2",
+          "source_order_sha256": "7e5fe0d604d4b97210816a5ff4bccdcd9a374e9350de4d724c95bd9526e9c2ae",
+          "normalized_sha256": "7e5fe0d604d4b97210816a5ff4bccdcd9a374e9350de4d724c95bd9526e9c2ae",
+          "canonical_coordinate_sha256": "7e5fe0d604d4b97210816a5ff4bccdcd9a374e9350de4d724c95bd9526e9c2ae",
+          "points_hex": [
+            [
+              "0x1.0000000000000p+0",
+              "0x1.0000000000000p-6"
+            ],
+            [
+              "0x1.c000000000000p-1",
+              "0x1.8000000000000p-5"
+            ],
+            [
+              "0x1.4000000000000p-1",
+              "0x1.8000000000000p-4"
+            ],
+            [
+              "0x1.8000000000000p-2",
+              "0x1.8000000000000p-4"
+            ],
+            [
+              "0x1.0000000000000p-3",
+              "0x1.8000000000000p-5"
+            ],
+            [
+              "0x0.0p+0",
+              "0x0.0p+0"
+            ],
+            [
+              "0x1.0000000000000p-3",
+              "-0x1.0000000000000p-6"
+            ],
+            [
+              "0x1.8000000000000p-2",
+              "-0x1.0000000000000p-5"
+            ],
+            [
+              "0x1.4000000000000p-1",
+              "-0x1.0000000000000p-5"
+            ],
+            [
+              "0x1.c000000000000p-1",
+              "-0x1.0000000000000p-6"
+            ],
+            [
+              "0x1.0000000000000p+0",
+              "-0x1.0000000000000p-6"
+            ]
+          ],
+          "authorship": "Invented dyadic polygon; no vendor/coordinate-database transcription."
+        }
+      ],
+      "scalar_payload_sha256": "6b3187378e5346f1bd25014d87276c08f3a1efe6db88f3989a66abc70c4129fd",
+      "expected_predicates": [
+        "No hidden normalization changes; all declared counts and coordinate identities retained.",
+        "A closed TE; B positive open TE; both whole-domain graph admission.",
+        "Common grid exact x = 0,1/8,1/4,3/8,1/2,5/8,3/4,7/8,1.",
+        "a=1/16 gives w=0; b=1/8 gives w=1; smoothstep endpoint derivatives zero.",
+        "Uniform thickness denominator d=(3-w)/16; camber differs away from x=1/2.",
+        "At scalar knots copy all supplied SI bits, including row0/row4 Y negative zero.",
+        "Both hinges absent from scalar knots; 101.6 mm brackets indices2,3; 127 mm brackets3,4.",
+        "Parent section radial set has 8 values (six knots plus two hinges); requested anchors already knots.",
+        "Fixed/tip parent-section ordinal references: cut0 fixed0..3 / tip3..7; cut1 fixed0..5 / tip5..7.",
+        "Shared hinge section identity included in both children exactly once; no twist reset/rescale.",
+        "All success output gates and rounding certificates must be independently verified later; COMPLETE is an expected requirement, not an observed result."
+      ]
+    }
+  ],
+  "rejection_cases": [
+    {
+      "id": "R01",
+      "kind": "request_rejection",
+      "definition": {
+        "base_request_sha256": "b444f14537c678624f63f734aa4c9cad8137cccd0d96a691185ec6b96c62cfcf",
+        "overlay": [
+          {
+            "op": "replace",
+            "path": "/scalars/3/point/radius_m",
+            "value": "0x1.8000000000000p-4"
+          }
+        ]
+      },
+      "definition_sha256": "7a7576f249c2246b31ad67b3d7139c575738f540ed15e6beafa8a5db0b97c99d",
+      "expected": {
+        "status": "BLOCKED",
+        "stage": "SCALARS",
+        "code": "SCALAR_INVALID",
+        "predicate": "strict increasing scalar radii"
+      },
+      "case_sha256": "cf77de6e9a282c5f5d27125ae15fed2658b5bba7b089182a40cab2f5f247b6e5"
+    },
+    {
+      "id": "R02",
+      "kind": "request_rejection",
+      "definition": {
+        "base_request_sha256": "b444f14537c678624f63f734aa4c9cad8137cccd0d96a691185ec6b96c62cfcf",
+        "overlay": [
+          {
+            "op": "replace",
+            "path": "/scalars/2/point/chord_m",
+            "value": "0x0.0p+0"
+          }
+        ]
+      },
+      "definition_sha256": "1950fd15b0365f0fc8a76d4b2fd6931b1f0489e859d15b4acd0de6c80672a740",
+      "expected": {
+        "status": "BLOCKED",
+        "stage": "SCALARS",
+        "code": "SCALAR_INVALID",
+        "predicate": "0 < chord <= 0.2 m"
+      },
+      "case_sha256": "38c57e3f2024c27c6984c1aa58466febe8dcb56a99fc518a20de068db8585ca5"
+    },
+    {
+      "id": "R03",
+      "kind": "request_rejection",
+      "definition": {
+        "base_request_sha256": "b444f14537c678624f63f734aa4c9cad8137cccd0d96a691185ec6b96c62cfcf",
+        "overlay": [
+          {
+            "op": "replace",
+            "path": "/endpoint_A/expected_raw_sha256",
+            "value": "0000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "definition_sha256": "8ee579ecfb31a72bebc1d7f4b0823968fa52cd51d4c5be5a3d4176f1e25b3276",
+      "expected": {
+        "status": "BLOCKED",
+        "stage": "HASHES",
+        "code": "RAW_HASH_MISMATCH",
+        "predicate": "claimed raw digest equals supplied bytes"
+      },
+      "case_sha256": "46f1b918c8452143336723c519325cfb5c1209a40396a2d6a2ff15e769beacbf"
+    },
+    {
+      "id": "R04",
+      "kind": "request_rejection",
+      "definition": {
+        "base_request_sha256": "b444f14537c678624f63f734aa4c9cad8137cccd0d96a691185ec6b96c62cfcf",
+        "overlay": [
+          {
+            "op": "replace",
+            "path": "/model/frame",
+            "value": "unsupported_rotated_frame"
+          }
+        ]
+      },
+      "definition_sha256": "3b4a16e75112a6404cea2866c71442c52596b2302d80bfdb5d2184c514b52426",
+      "expected": {
+        "status": "BLOCKED",
+        "stage": "REQUEST",
+        "code": "UNSUPPORTED_MODEL",
+        "predicate": "declared supported frame"
+      },
+      "case_sha256": "98650200854123736ba5f06202b72fd6bb5b151e79923c6dea1eaf515aecf3e9"
+    },
+    {
+      "id": "R05",
+      "kind": "request_rejection",
+      "definition": {
+        "base_request_sha256": "b444f14537c678624f63f734aa4c9cad8137cccd0d96a691185ec6b96c62cfcf",
+        "overlay": [
+          {
+            "op": "replace",
+            "path": "/hinges_m/0",
+            "value": "0x1.0000000000000p-2"
+          }
+        ]
+      },
+      "definition_sha256": "42248b57994a939c98ce1bb72a3109cc419f66d591abe1eaf8ddda26e1a68ff1",
+      "expected": {
+        "status": "BLOCKED",
+        "stage": "REQUEST",
+        "code": "UNSUPPORTED_HINGES",
+        "predicate": "exact two declared hinge literals"
+      },
+      "case_sha256": "5aad1ae8d15a17b4b0050190fc9ef10c622e7ca0a64884a76c5f0146b299a2a2"
+    },
+    {
+      "id": "R06",
+      "kind": "request_rejection",
+      "definition": {
+        "base_request_sha256": "b444f14537c678624f63f734aa4c9cad8137cccd0d96a691185ec6b96c62cfcf",
+        "overlay": [
+          {
+            "op": "replace",
+            "path": "/endpoint_A/raw_text",
+            "value": "PYFOLDABLE_SYNTH_CLOSED_A_V1\n1 0\n0.5 0.0625\n0.5 0.125\n0.25 0.0625\n0 0\n0.25 -0.03125\n0.5 -0.0625\n0.75 -0.03125\n1 0\n"
+          },
+          {
+            "op": "replace",
+            "path": "/endpoint_A/expected_raw_sha256",
+            "value": "8f5e7bf30c7ccc7f0bbf448471c1bc7007b6f665fa6afa3b85d5bc61f568d74f"
+          }
+        ]
+      },
+      "definition_sha256": "d8f1e94d642bbbf8a98e43b59da764263d145c280cc88a73421ba0c9edc12868",
+      "expected": {
+        "status": "BLOCKED",
+        "stage": "ENDPOINT_A",
+        "code": "ENDPOINT_INVALID",
+        "predicate": "strict distinct upper-branch x",
+        "earlier_core_rejection_allowed": true
+      },
+      "case_sha256": "5755fd94c0a5e0957ad96059ef2c113b82aed6c89072a8077a6685fbbf1532c8"
+    },
+    {
+      "id": "R07",
+      "kind": "request_rejection",
+      "definition": {
+        "base_request_sha256": "b444f14537c678624f63f734aa4c9cad8137cccd0d96a691185ec6b96c62cfcf",
+        "overlay": [
+          {
+            "op": "replace",
+            "path": "/endpoint_B/raw_text",
+            "value": "PYFOLDABLE_SYNTH_OPEN_B_V1\n1 0.015625\n0.875 0.046875\n0.625 0.09375\n0.375 0.09375\n0.125 0.046875\n0 0\n0.125 -0.015625\n0.375 -0.03125\n0.625 -0.03125\n0.875 -0.015625\n0.875 -0.015625\n"
+          },
+          {
+            "op": "replace",
+            "path": "/endpoint_B/expected_raw_sha256",
+            "value": "80653663820784921d855c7b2332156df39c4f95eaba54d74f00c67c91e5d14d"
+          }
+        ]
+      },
+      "definition_sha256": "28b17d4e96bf0a034ad0bc464c4ac3b3dce742af5f74cef2ee375d31fbcc4fce",
+      "expected": {
+        "status": "BLOCKED",
+        "stage": "ENDPOINT_B",
+        "code": "ENDPOINT_INVALID",
+        "predicate": "exact full lower graph support [0,1]",
+        "earlier_core_rejection_allowed": true
+      },
+      "case_sha256": "75de13c174766eb16a0ae0f4a01976dd64ddbb42836577a6f82ed90fa7333c1f"
+    },
+    {
+      "id": "R08",
+      "kind": "request_rejection",
+      "definition": {
+        "base_request_sha256": "b444f14537c678624f63f734aa4c9cad8137cccd0d96a691185ec6b96c62cfcf",
+        "overlay": [
+          {
+            "op": "replace",
+            "path": "/endpoint_B/raw_text",
+            "value": "PYFOLDABLE_SYNTH_OPEN_B_V1\n1 0.015625\n0.875 0.046875\n0.625 0.09375\n0.375 0.09375\n0.125 0.046875\n0 0\n0.125 -0.015625\n0.375 0.125\n0.625 -0.03125\n0.875 -0.015625\n1 -0.015625\n"
+          },
+          {
+            "op": "replace",
+            "path": "/endpoint_B/expected_raw_sha256",
+            "value": "f2b8bd52b83c0747ced8b155887bb8b32e574a794141c9f33fbf66db3a28d2d3"
+          }
+        ]
+      },
+      "definition_sha256": "db05759ff3bc41949c83f1f8e50d047cc62e9fba1b5a18c085a75ffef3e3ab86",
+      "expected": {
+        "status": "BLOCKED",
+        "stage": "ENDPOINT_B",
+        "code": "ENDPOINT_INVALID",
+        "predicate": "strict interior upper-minus-lower positivity",
+        "earlier_core_rejection_allowed": true
+      },
+      "case_sha256": "681044c24b0f8cf851a0fb22c9e2a77017311c7a84090c3a8b8a3e2fea1322a8"
+    },
+    {
+      "id": "R09",
+      "kind": "decoder_rejection",
+      "raw_ascii": "{\"schema_id\":\"mixed_profile_parent_request_v1\",\"schema_id\":\"duplicate\"}",
+      "raw_sha256": "7efcf7669751778b496a1f96fae8c669712e42b3db38b98ec20bc032a93c3ea3",
+      "expected_exception": "MixedProfileDecodeError",
+      "expected_code": "DUPLICATE_KEY",
+      "case_sha256": "f4cb3b8da4d94228fe5e5ce6e26618c8bc9052e412f3875fcea9f8dc13ff5247"
+    },
+    {
+      "id": "R10",
+      "kind": "budget_unit_declaration",
+      "initial_used": 19999999,
+      "limit": 20000000,
+      "operations": [
+        "add",
+        "compare"
+      ],
+      "expected": "add charged; compare refused before work; used remains 20000000; GeometryBlocked(BUDGET_EXHAUSTED). Harness-only primed counter, not a request control.",
+      "case_sha256": "ff69948408e1685389f85b3f0c11bfd295b1fda8c49268ce148f0f40a48251c6"
+    },
+    {
+      "id": "R11",
+      "kind": "budget_unit_declaration",
+      "initial_used": 20000000,
+      "limit": 20000000,
+      "operations": [
+        "retry_add",
+        "child_compare"
+      ],
+      "expected": "Both refused before work; used remains 20000000; no retry/child reset.",
+      "case_sha256": "5d404f4ca32416ab5bc34725743da8fc659349be0007e2c0d88d5609325473af"
+    }
+  ]
+}
