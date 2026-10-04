@@ -570,7 +570,12 @@ from checkout `bafddc7b864b92bb8f15278299f1a6f32b86301c` and tree
 `f318eaf6dee0c946eee99c7b268dd18aa09a7566`. That checkout is not the commit
 that adds the file. Same-process revalidation does not authorize execution.
 
-`prepare_pre_call_admission` is a zero-call preparation. The canonical policy-bundle digest of the pinned technical-HEAD artifacts is `564ba504f00cc2092dd325d5edca4549724f7a914326515c7859a9a212030167`. Closure HEAD `81424d85cacdd04b0e4df7a721548be7efa7286e` stays separate from the executing checkout. The executing copy of `docs/cmm2_numerical_feasibility_amendment.md` does not match that technical-HEAD pin. Direct-node MATCH does not clear the 21-path loaded-code rows, the seven historical-unbound nodes, or unchecked transitive names. Returned-object correspondence and mapped-interval consumption remain post-return only. A historical cosine-body match does not clear XCR0, wrapper, GOT, executable, or library mismatches. `accept()` still refuses. `eligibility_evidence=false` and `physical_qualification=false`.
+`prepare_pre_call_admission` is a zero-call preparation. The canonical policy-bundle digest of the pinned technical-HEAD artifacts is `564ba504f00cc2092dd325d5edca4549724f7a914326515c7859a9a212030167`. Closure HEAD `81424d85cacdd04b0e4df7a721548be7efa7286e` stays separate from the executing checkout. The executing copy of `docs/cmm2_numerical_feasibility_amendment.md` does not match that technical-HEAD pin. Direct-node MATCH does not clear the 21-path loaded-code rows, the seven historical-unbound nodes, or unchecked transitive names. Returned-object correspondence and mapped-interval consumption remain post-return only. A historical cosine-body match does not clear XCR0, wrapper, GOT, executable, or library mismatches. The bind-now preparation record is
+[reports/c2v09_pre_call_admission/preparation.json](../../reports/c2v09_pre_call_admission/preparation.json),
+from executing checkout `348703c6d46f3565ef183ec8a360634941e60e5f` and tree
+`1b331e0237651f91ccac0886472d5db62b6cefff`. That checkout is not the commit
+that adds the file. In that process the cosine body matched and historical
+XCR0, wrapper, GOT, executable, libm, libc, and loader did not. `accept()` still refuses. `eligibility_evidence=false` and `physical_qualification=false`.
 
 ## 2026-10-02 strength-aware radial hinge assessment — proposal only
 

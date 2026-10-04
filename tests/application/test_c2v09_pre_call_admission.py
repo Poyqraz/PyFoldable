@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pyfoldable.application.c2v09_pre_call_admission as admission
@@ -280,6 +281,25 @@ def test_live_admission_preserves_runtime_mismatches() -> None:
     assert "pyfoldable/application/cmm2_coupled_transient_service.py" in prepared.historical_source_mismatches
     executing = prepared.executing_authority_copies
     assert executing["docs/cmm2_numerical_feasibility_amendment.md"] == "MISMATCH"
+
+
+def test_archived_admission_record_is_not_live_evidence() -> None:
+    root = _repository()
+    assert sha256_bytes((root / "reports/c2v09_pre_call_binding/observation.json").read_bytes()) == "00c19f3f3ad3c203ef27472116f59962bce64977f5b48bdebb534d54a0ccb760"
+    record = json.loads((root / "reports/c2v09_pre_call_admission/preparation.json").read_text(encoding="utf-8"))
+    payload = record["canonical_payload"]
+    assert record["canonical_sha256"] == "a34b1976ab779cbc4760fe14fe903c5187ee311baad44897ff8975a197cac8eb"
+    assert record["canonical_sha256"] == sha256_bytes(canonical_bytes(payload))
+    assert payload["executing_head"] == "348703c6d46f3565ef183ec8a360634941e60e5f"
+    assert payload["executing_tree"] == "1b331e0237651f91ccac0886472d5db62b6cefff"
+    assert payload["policy_bundle_sha256"] == "564ba504f00cc2092dd325d5edca4549724f7a914326515c7859a9a212030167"
+    assert payload["native_comparison"]["loaded_body"]["classification"] == "MATCH"
+    assert payload["native_comparison"]["historical_xcr0"]["classification"] == "MISMATCH"
+    assert payload["native_comparison"]["body_match_clears_xcr0"] is False
+    assert payload["eligibility_evidence"] is False
+    assert payload["authorizes_execution"] is False
+    assert payload["dependent_counters"]["source"] == 0
+    assert revalidate_pre_call_admission(record).classification == "NOT ESTABLISHED"
 
 
 def _row(prepared, name: str) -> dict:

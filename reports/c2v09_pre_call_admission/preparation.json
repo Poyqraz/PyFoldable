@@ -1,0 +1,1248 @@
+{
+  "canonical_payload": {
+    "authorizes_execution": false,
+    "caller_claims": {},
+    "caller_claims_role": "not an operand",
+    "checked_coverage": {
+      "coverage": "direct evaluator, source, and mapper nodes plus verified declaration operands",
+      "direct_node_match_clears_file_inventory": false,
+      "direct_node_match_clears_transitive_graph": false,
+      "file_inventory": [
+        {
+          "current_sha256": "909a53cde402f00100ad77c6ab85657dd85406efdfe4396b2352d62ff13125b3",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "MISMATCH",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": "1efbcb0ab9769063ce7e059a779abf3570aedf35c070a679cb0c2c8e9dc9f74a",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/application/cmm2_coupled_transient_service.py"
+        },
+        {
+          "current_sha256": "5a249daf8eff06ac0a9ad36e33a74bd49292e738da5322c760ed56e5b109eade",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "MATCH",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": "5a249daf8eff06ac0a9ad36e33a74bd49292e738da5322c760ed56e5b109eade",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/application/coupled_transient_service.py"
+        },
+        {
+          "current_sha256": "0657ff62ea98e57ed92fb91c0c00bac414c05c69a627a589a86c2ae449448859",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "MATCH",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": "0657ff62ea98e57ed92fb91c0c00bac414c05c69a627a589a86c2ae449448859",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/application/folding_mechanism.py"
+        },
+        {
+          "current_sha256": "7314deffe0eecd91280cabd60dd043ca9916049f7dee542bd5fa292939e83055",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "MATCH",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": "7314deffe0eecd91280cabd60dd043ca9916049f7dee542bd5fa292939e83055",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/application/mechanism_binding.py"
+        },
+        {
+          "current_sha256": "3079f8cafe962556064efe74f7b9c22ceaae59bfaa5f063bb8a7ab1d2905b196",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "MATCH",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": "3079f8cafe962556064efe74f7b9c22ceaae59bfaa5f063bb8a7ab1d2905b196",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/core/airfoil.py"
+        },
+        {
+          "current_sha256": "4ca509127e6eedb5f124bfd12ba5192c1fc2a2de87219c7a15d0e373e5d1119a",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "MATCH",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": "4ca509127e6eedb5f124bfd12ba5192c1fc2a2de87219c7a15d0e373e5d1119a",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/core/bem.py"
+        },
+        {
+          "current_sha256": "7df94790f8e23ca749bc2bcb741e0afbf4e93a6881f1b9b0253b4e278b326fc3",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "MATCH",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": "7df94790f8e23ca749bc2bcb741e0afbf4e93a6881f1b9b0253b4e278b326fc3",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/core/bem_rotor.py"
+        },
+        {
+          "current_sha256": "bc55d40533c9dc634064484be83f589be8cecf5715b2d4a9f60989265764b0fe",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "MATCH",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": "bc55d40533c9dc634064484be83f589be8cecf5715b2d4a9f60989265764b0fe",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/core/config.py"
+        },
+        {
+          "current_sha256": "ffc815e101ed6d9cdb24fa9581585ea03eb2b048960fadb87d4ed3a89657b6bc",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "MATCH",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": "ffc815e101ed6d9cdb24fa9581585ea03eb2b048960fadb87d4ed3a89657b6bc",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/core/foldable_aero_load.py"
+        },
+        {
+          "current_sha256": "da2e6b694d59311463941d1551ee215c54bab24a6e92e79fd4d94713f6bb02a1",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "MATCH",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": "da2e6b694d59311463941d1551ee215c54bab24a6e92e79fd4d94713f6bb02a1",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/core/foldable_rotor.py"
+        },
+        {
+          "current_sha256": "fec0b429c5201a7e7565205df756d00d344a5d5dd94703b7775d4b74ce17b853",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "MATCH",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": "fec0b429c5201a7e7565205df756d00d344a5d5dd94703b7775d4b74ce17b853",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/core/models.py"
+        },
+        {
+          "current_sha256": "9c06d9d42e90970df585b7e250981e41c497d19b9e0269a349d04e63646d670b",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "MATCH",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": "9c06d9d42e90970df585b7e250981e41c497d19b9e0269a349d04e63646d670b",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/core/motor_bem_coupling.py"
+        },
+        {
+          "current_sha256": "839fdb78e3ec57452d743c6bb2a997c4c2635a320bf0c181fb5efa6fc66c731d",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "MATCH",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": "839fdb78e3ec57452d743c6bb2a997c4c2635a320bf0c181fb5efa6fc66c731d",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/core/polar.py"
+        },
+        {
+          "current_sha256": "fb97b4886a1bd04cff808d940ba2dbcdaf1732ec989236ff9a2beeae8c69cfa8",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "MATCH",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": "fb97b4886a1bd04cff808d940ba2dbcdaf1732ec989236ff9a2beeae8c69cfa8",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/core/polar_spanwise.py"
+        },
+        {
+          "current_sha256": "8730fa755175f529ada1be7dba58b0ff1c2198e9128a448359aea1e3563f9f7a",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "MATCH",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": "8730fa755175f529ada1be7dba58b0ff1c2198e9128a448359aea1e3563f9f7a",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/core/rotational_augmentation.py"
+        },
+        {
+          "current_sha256": "aee9da530eb4de2d435661a5c73c450ec60e118f995ce6379a1b7f077cbbd208",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "MATCH",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": "aee9da530eb4de2d435661a5c73c450ec60e118f995ce6379a1b7f077cbbd208",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/core/units.py"
+        },
+        {
+          "current_sha256": "8d0e58fc4ba8c3bf4887d0557165340c2f24dedd32444b4c517ff296f449cffc",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "MISMATCH",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": "f120cd1ec0c329721f962abe95f16ec30fd56a1fda70f855b2991a0678736de1",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/dynamics/cmm2_coupled_transient.py"
+        },
+        {
+          "current_sha256": "db9a73474afcd83b6874533d2efec9bbfef25f86b5350840565c0ed73afa56c0",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "MATCH",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": "db9a73474afcd83b6874533d2efec9bbfef25f86b5350840565c0ed73afa56c0",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/dynamics/coupled_transient.py"
+        },
+        {
+          "current_sha256": "236ef2c3ec7577e49ac34747e47cb42a823574b7880cd93b7a3b0f775e19fe67",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "MATCH",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": "236ef2c3ec7577e49ac34747e47cb42a823574b7880cd93b7a3b0f775e19fe67",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/dynamics/mechanism_contracts.py"
+        },
+        {
+          "current_sha256": "290cc2a928afca84a50c120e5e012019b67a8c8f53c1a3efe122a023a3efec67",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "MATCH",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": "290cc2a928afca84a50c120e5e012019b67a8c8f53c1a3efe122a023a3efec67",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/dynamics/mechanism_transient.py"
+        },
+        {
+          "current_sha256": "6223b9e22087da4d450473ba7c84dd4562a94462d16084cc60026c2360f8b750",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "MATCH",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": "6223b9e22087da4d450473ba7c84dd4562a94462d16084cc60026c2360f8b750",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pythrust/propulsion/models.py"
+        }
+      ],
+      "graph_nodes": [
+        {
+          "classification": "CHECKED DIRECT NODE",
+          "name": "__call__",
+          "role": "evaluator"
+        },
+        {
+          "classification": "CHECKED DIRECT NODE",
+          "name": "solve_foldable_bem_rotor",
+          "role": "source"
+        },
+        {
+          "classification": "CHECKED DIRECT NODE",
+          "name": "map_foldable_bem_aero_loads",
+          "role": "mapper"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "math.ulp/math.nextafter",
+          "role": "native terminal guard"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "PlanarProjectedMaterialLoadResult.intervals",
+          "role": "partition interval consumer"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "AttributeError",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "Cmm2AeroEvaluation",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "Cmm2AeroProvenanceRecord",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "Cmm2DomainExit",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "Cmm2TransientError",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "Cmm2TransientFailure",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "FOLDABLE_BEM_ROTOR_SCHEMA_VERSION",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "FOLD_LIMIT_RAD",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "FoldableBEMRotorResult",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "FoldableRotorState",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "Mapping",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "OMEGA_MIN",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "OperatingCondition",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "PlanarProjectedMaterialLoadError",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "PlanarProjectedMaterialLoadResult",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "SpanwisePolarSchedule",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "TypeError",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "ValueError",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "_AERO_FAILURES",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "_AERO_SOURCE_FAILURE",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "_bem_provenance",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "_canonical_json",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "_native_terminal_annuli",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "_projection_factor",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "_real",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "_require_finite_state",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "_sha256",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "abs",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "aerodynamic_generalized_power_w",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "air_density_kg_m3",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "airfoil_id",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "angle_from_deployed_rad",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "append",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "as_mapping",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "bem_settings",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "blade",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "blade_count",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "bounds",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "dict",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "distributed_couple_model",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "dynamic_viscosity_pa_s",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "effective_blade",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "elements",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "environment",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "float",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "forward_speed_m_s",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "generalized_power_w",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "geometry",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "geometry_extended",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "hinge_radius_m",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "hinge_rate_aerodynamic_model",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "hinge_rate_rad_s",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "id",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "isfinite",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "isinstance",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "load_mapping_model",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "map_projected_material_loads",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "math",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "nominal_blade",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "one_tip_hinge_generalized_load_nm",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "one_tip_hinge_generalized_torque_nm",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "operating_condition_id",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "physical_qualification",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "polar_schedule_id",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "polar_sources",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "polars",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "pressure_pa",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "project_foldable_blade",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "project_spanwise_polar_schedule",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "projected_tip_radius_m",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "projection_factor",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "projection_model",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "provenance_records",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "qualification",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "radial_domain",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "radius_m",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "rotor_result",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "scenario_id",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "schema_version",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "sectional_aerodynamic_couple",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "settings",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "solve_bem_rotor",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "source_outer_projected_radius_m",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "source_terminal_radius_m",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "source_whole_rotor_projected_thrust_n",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "source_whole_rotor_resisting_torque_nm",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "state",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "successful_bem_solves",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "successful_map_calls",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "synchronous_n_times_one_tip_hinge_generalized_torque_nm",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "temperature_k",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "terminal_boundary_delta_m",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "terminal_boundary_normalized",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "theta_rad",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "thrust_n",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "torque_nm",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "tuple",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "whole_rotor_aerodynamic_shaft_generalized_load_nm",
+          "role": "transitive name"
+        },
+        {
+          "classification": "NOT ESTABLISHED",
+          "name": "whole_rotor_shaft_generalized_load_nm",
+          "role": "transitive name"
+        }
+      ],
+      "historical_unbound_collector_count": 7,
+      "historical_unbound_nodes": [
+        {
+          "amends_collector_inventory": false,
+          "compiled_loaded_native_identity": "NOT A COMPILED IMAGE",
+          "current_sha256": "15794671c73499092a96d445ed3643b8cbd59608c2b33d6b8d40b1788869ead8",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "NO HISTORICAL RECORD",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": null,
+          "kind": "python_source",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "loaded_code_scope": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/dynamics/cmm2_radau_dense.py",
+          "role": "dense"
+        },
+        {
+          "amends_collector_inventory": false,
+          "compiled_loaded_native_identity": "NOT A COMPILED IMAGE",
+          "current_sha256": "584189753855f7c22728c3e1147b86bd37447fc181ce6e84586805d76653e873",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "NO HISTORICAL RECORD",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": null,
+          "kind": "python_source",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "loaded_code_scope": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/application/c2v09_ordered_declaration.py",
+          "role": "declaration"
+        },
+        {
+          "amends_collector_inventory": false,
+          "compiled_loaded_native_identity": "NOT A COMPILED IMAGE",
+          "current_sha256": "2ceab7bc0078102a942d83bb02fb3ee5d23a1f7449974f0ed7ebd67ad6f23c6b",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "NO HISTORICAL RECORD",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": null,
+          "kind": "python_source",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "loaded_code_scope": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/application/c2v09_live_eligibility.py",
+          "role": "eligibility"
+        },
+        {
+          "amends_collector_inventory": false,
+          "compiled_loaded_native_identity": "NOT A COMPILED IMAGE",
+          "current_sha256": "f47d9ddcf424c874edb3734205036651d47d1fd0bfd333e96fb1b2e3ae4f81e3",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "NO HISTORICAL RECORD",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": null,
+          "kind": "python_source",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "loaded_code_scope": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/application/c2v09_binding_collector.py",
+          "role": "collector"
+        },
+        {
+          "amends_collector_inventory": false,
+          "compiled_loaded_native_identity": "NOT A COMPILED IMAGE",
+          "current_sha256": "02f5dc1bdd05984331147b1fee9158d0beefbaf5ee3a98fd1726ad2de8ac8405",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "NO HISTORICAL RECORD",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": null,
+          "kind": "python_source",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "loaded_code_scope": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/application/c2v09_runtime_applicability.py",
+          "role": "applicability"
+        },
+        {
+          "amends_collector_inventory": false,
+          "compiled_loaded_native_identity": "NOT A COMPILED IMAGE",
+          "current_sha256": "5b4ed333d7d28c8606b59630cc17fee3a48b4a2af54fbf6051ad43c50e55c6bc",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "NO HISTORICAL RECORD",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": null,
+          "kind": "python_source",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "loaded_code_scope": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/application/c2v09_cosine_path_certificate.py",
+          "role": "cosine_certificate"
+        },
+        {
+          "amends_collector_inventory": false,
+          "compiled_loaded_native_identity": "NOT ESTABLISHED",
+          "current_sha256": "e75b6d88b78250ae9e4cce87839291c0540f018550dc14465409f7e12426d33d",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "NO HISTORICAL RECORD",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": null,
+          "kind": "c_source",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "loaded_code_scope": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/application/c2v09_cosine_path_probe.c",
+          "role": "probe_source"
+        },
+        {
+          "amends_collector_inventory": false,
+          "compiled_loaded_native_identity": "NOT A COMPILED IMAGE",
+          "current_sha256": "27fafcd1ca8a9a762afaba39f6a6c853af5c32ab392f4e70deeb2b01de3a4d40",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "NO HISTORICAL RECORD",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "historical_sha256": null,
+          "kind": "python_source",
+          "loaded_code_identity": "6be4c10ec0e4f82849cb9e484cdcb1881020e135ba5a39ca4269a95412400b03",
+          "loaded_code_scope": "observe_pre_call_binding code object in this process",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/application/c2v09_pre_call_binding.py",
+          "role": "pre_call_binding"
+        },
+        {
+          "amends_collector_inventory": false,
+          "current_sha256": "6b0e3d2e85ebdded0b235e914fbb21bb4a8cbc28d4c78abd8698984ac8e7fc68",
+          "direct_node_match_clears_this_row": false,
+          "file_identity": "NO HISTORICAL RECORD",
+          "geometric_applicability": "NOT ESTABLISHED",
+          "kind": "python_source",
+          "loaded_code_identity": "NOT ESTABLISHED",
+          "operation_graph_applicability": "NOT ESTABLISHED",
+          "path": "pyfoldable/application/c2v09_pre_call_admission.py",
+          "role": "pre_call_admission"
+        }
+      ]
+    },
+    "classification": "ZERO-CALL PREPARATION",
+    "closure_head": "81424d85cacdd04b0e4df7a721548be7efa7286e",
+    "declaration_sha256": "13f4ac4f671c5b81ba68cb96537e5b9c29ff72c260cd634568983910531dce43",
+    "dependent_counters": {
+      "mapper": 0,
+      "partition": 0,
+      "seal": 0,
+      "selection": 0,
+      "source": 0,
+      "trajectory": 0
+    },
+    "direct_identity": "MATCH",
+    "eligibility_evidence": false,
+    "executing_authority_copies": {
+      "docs/cmm2_c2v09_candidate29_proposal.md": "MATCH",
+      "docs/cmm2_c2v09_partition_initial_assessment.md": "MATCH",
+      "docs/cmm2_c2v09_partition_policy_proposal.md": "MATCH",
+      "docs/cmm2_c2v09_partition_runtime_certificate.md": "MATCH",
+      "docs/cmm2_c2v09_partition_scope_runtime_proposal.md": "MATCH",
+      "docs/cmm2_numerical_feasibility_amendment.md": "MISMATCH"
+    },
+    "executing_head": "348703c6d46f3565ef183ec8a360634941e60e5f",
+    "executing_tree": "1b331e0237651f91ccac0886472d5db62b6cefff",
+    "historical_source_mismatches": [
+      "pyfoldable/application/cmm2_coupled_transient_service.py",
+      "pyfoldable/dynamics/cmm2_coupled_transient.py"
+    ],
+    "initial_declaration_state": {
+      "bem_settings": {
+        "annulus_count": 4,
+        "annulus_settings": {
+          "angle_tolerance_rad": "0x1.b7cdfd9d7bdbbp-34",
+          "bracket_samples": 16,
+          "include_root_loss": false,
+          "include_tip_loss": true,
+          "loading_branch": "positive_only",
+          "max_iterations": 100,
+          "minimum_tip_loss_factor": "0x1.0c6f7a0b5ed8dp-20",
+          "relative_residual_tolerance": "0x1.b7cdfd9d7bdbbp-34",
+          "residual_tolerance_m2_s": "0x1.5798ee2308c3ap-27",
+          "rotational_augmentation": {
+            "kind": "disabled",
+            "lift_curve_slope_per_rad": null,
+            "maximum_absolute_alpha_rad": "0x1.921fb54442d18p-1",
+            "maximum_chord_over_radius": "0x1.8000000000000p-1",
+            "model_id": "disabled",
+            "source": null,
+            "zero_lift_angle_rad": null
+          }
+        },
+        "radial_domain": "station_span"
+      },
+      "bounds": "error",
+      "controls": {
+        "angle_atol_rad": "0x1.5798ee2308c3ap-27",
+        "hinge_velocity_atol_rad_s": "0x1.5798ee2308c3ap-27",
+        "max_duration_s": "0x1.0000000000000p+1",
+        "max_input_knots": 256,
+        "max_rhs_evaluations": 12000,
+        "max_samples": 5000,
+        "max_step_s": "0x1.0624dd2f1a9fcp-9",
+        "rtol": "0x1.0c6f7a0b5ed8dp-20",
+        "shaft_speed_atol_rad_s": "0x1.0c6f7a0b5ed8dp-20"
+      },
+      "hinge_radius_m": "0x1.5c28f5c28f5c3p-4",
+      "initial_angle_rad": "-0x1.999999999999ap-3",
+      "initial_angular_velocity_rad_s": "0x1.47ae147ae147bp-7",
+      "initial_omega_rad_s": "0x1.4f1a6c638d03fp+5"
+    },
+    "native_comparison": {
+      "body_match_clears_executable": false,
+      "body_match_clears_wrapper": false,
+      "body_match_clears_xcr0": false,
+      "classification": "NOT TRANSFERRED",
+      "collector_kind": "collect_binding_record",
+      "executable": {
+        "certificate": "fa67443527ed9647f760d807e2a38f26340757123e643c4639cf273ed15d5ea7",
+        "classification": "MISMATCH",
+        "observed": "e50d468e8b0adfb05733f5b87b3cff34829c4a8c1aea50c865aa8bdfe4bb150f"
+      },
+      "fegetround": {
+        "classification": "MATCH"
+      },
+      "historical_got": {
+        "certificate": "0x1432ef8",
+        "classification": "MISMATCH",
+        "observed": "0xa293d8"
+      },
+      "historical_wrapper": {
+        "certificate": "0x180a180",
+        "classification": "MISMATCH",
+        "observed": "0x62e430"
+      },
+      "historical_xcr0": {
+        "certificate": [
+          "0xe7",
+          "0x0"
+        ],
+        "classification": "MISMATCH",
+        "observed": [
+          "0x602e7",
+          "0x0"
+        ]
+      },
+      "libraries": {
+        "libc": "MISMATCH",
+        "libm": "MISMATCH",
+        "loader": "MISMATCH"
+      },
+      "loaded_body": {
+        "classification": "MATCH"
+      },
+      "loaded_constants": {
+        "classification": "MATCH"
+      },
+      "mismatches": [
+        "historical XCR0",
+        "historical wrapper",
+        "historical GOT",
+        "CPython executable",
+        "libm",
+        "libc",
+        "loader"
+      ],
+      "mxcsr": {
+        "classification": "MATCH"
+      },
+      "native_observer": "prepare_cosine_path_certificate",
+      "selected_dispatch_uses_cdll_symbol": false
+    },
+    "obligation_matrix": [
+      {
+        "classification": "VERIFIED",
+        "name": "technical authority artifact bytes",
+        "when": "PRE-CALL"
+      },
+      {
+        "classification": "VERIFIED",
+        "name": "closure head provenance",
+        "when": "PRE-CALL"
+      },
+      {
+        "classification": "SEPARATE",
+        "name": "executing head",
+        "when": "PRE-CALL"
+      },
+      {
+        "classification": "VERIFIED",
+        "name": "policy bundle digest",
+        "when": "PRE-CALL"
+      },
+      {
+        "classification": "VERIFIED",
+        "name": "four proof identities",
+        "when": "PRE-CALL"
+      },
+      {
+        "classification": "VERIFIED",
+        "name": "candidate29 manifest bytes",
+        "when": "PRE-CALL"
+      },
+      {
+        "classification": "VERIFIED",
+        "name": "candidate29 draft bytes",
+        "when": "PRE-CALL"
+      },
+      {
+        "classification": "VERIFIED DECLARATION FIELD",
+        "name": "candidate29 source identity",
+        "when": "PRE-CALL"
+      },
+      {
+        "classification": "VERIFIED",
+        "name": "stored scale",
+        "when": "PRE-CALL"
+      },
+      {
+        "classification": "VERIFIED",
+        "name": "Theta0",
+        "when": "PRE-CALL"
+      },
+      {
+        "classification": "VERIFIED",
+        "name": "stored uncertainties",
+        "when": "PRE-CALL"
+      },
+      {
+        "classification": "VERIFIED DECLARATION OPERAND",
+        "name": "initial declaration state",
+        "when": "PRE-CALL"
+      },
+      {
+        "classification": "NOT ESTABLISHED",
+        "name": "live initial request object",
+        "when": "PRE-CALL"
+      },
+      {
+        "classification": "MATCH",
+        "name": "direct node implementation",
+        "when": "PRE-CALL"
+      },
+      {
+        "classification": "FILE IDENTITY ONLY",
+        "name": "21-path file inventory",
+        "when": "PRE-CALL"
+      },
+      {
+        "classification": "NO HISTORICAL CLEARANCE",
+        "name": "historical unbound nodes",
+        "when": "PRE-CALL"
+      },
+      {
+        "classification": "NOT ESTABLISHED",
+        "name": "unchecked transitive graph",
+        "when": "PRE-CALL"
+      },
+      {
+        "classification": "NOT ESTABLISHED",
+        "name": "geometric applicability",
+        "when": "PRE-CALL"
+      },
+      {
+        "classification": "MISMATCH",
+        "name": "native wrapper/GOT",
+        "when": "PRE-CALL"
+      },
+      {
+        "classification": "MATCH",
+        "name": "native body",
+        "when": "PRE-CALL"
+      },
+      {
+        "classification": "MISMATCH",
+        "name": "historical XCR0",
+        "when": "PRE-CALL"
+      },
+      {
+        "classification": "MISMATCH",
+        "name": "executable identity",
+        "when": "PRE-CALL"
+      },
+      {
+        "classification": "POST-RETURN ONLY",
+        "name": "returned source object correspondence",
+        "when": "POST-RETURN"
+      },
+      {
+        "classification": "POST-RETURN ONLY",
+        "name": "mapped interval consumption",
+        "when": "POST-RETURN"
+      },
+      {
+        "classification": "NOT IN THIS TRANSACTION",
+        "name": "partition evaluation",
+        "when": "LATER"
+      },
+      {
+        "classification": "NOT IN THIS TRANSACTION",
+        "name": "Q4",
+        "when": "LATER"
+      },
+      {
+        "classification": "NOT IN THIS TRANSACTION",
+        "name": "selection",
+        "when": "LATER"
+      },
+      {
+        "classification": "NOT IN THIS TRANSACTION",
+        "name": "seal",
+        "when": "LATER"
+      },
+      {
+        "classification": "NOT IN THIS TRANSACTION",
+        "name": "trajectory",
+        "when": "LATER"
+      }
+    ],
+    "outcome": "zero-call pre-call admission preparation",
+    "physical_qualification": false,
+    "pid": 235837,
+    "policy_bundle": {
+      "closure_head": "81424d85cacdd04b0e4df7a721548be7efa7286e",
+      "closure_role": "timestamp closure provenance; not the executing head",
+      "locators": [
+        {
+          "path": "docs/cmm2_numerical_feasibility_amendment.md",
+          "section": "2 and 7"
+        },
+        {
+          "path": "docs/cmm2_c2v09_candidate29_proposal.md",
+          "section": "1-3"
+        },
+        {
+          "path": "docs/cmm2_c2v09_partition_policy_proposal.md",
+          "section": "2-7"
+        },
+        {
+          "path": "docs/cmm2_c2v09_partition_scope_runtime_proposal.md",
+          "section": "2-3 and 5"
+        },
+        {
+          "path": "docs/cmm2_numerical_verification_contract.md",
+          "section": "11"
+        }
+      ],
+      "policy_ids": {
+        "partition_v2": "prc_c2v09_partition_provenance_neighborhood_v2_proposed",
+        "scope_v3": "prc_c2v09_partition_geometry_scope_v3_proposed",
+        "selector": "prc_c2v09_ordered_candidates_v3_proposed",
+        "timestamp": "cmm2_contact_timestamp_quantization_v1_proposed"
+      },
+      "proof_identities": {
+        "connection_record_sha256": "80abd1b5d16872a67004a0511fdb8ad40c8d04d5e1319635d1b79459b4280897",
+        "cosine_record_sha256": "7c9fc9cc0def92fb3d4f2c850e63e85ce70821aa562fbc1c9a9ab45f5e12b865",
+        "prior_geometric_record_sha256": "0b672af90ee94197489522c45ab173834b893a7a47786c196eed7f0478cb4526",
+        "runtime_binding_sha256": "5a2a8ab62faf7729769ea9dd620ffd07635605ae170ef523c91d3ec560c16a67"
+      },
+      "technical_head": "fd55fa97676c84c896511765e94561a706252239",
+      "technical_head_artifact_sha256": {
+        "docs/cmm2_c2v09_candidate29_proposal.md": "d49dccd482e3c5ec71d78cd92968620fdd118c64888eabcdcd45149484e9d884",
+        "docs/cmm2_c2v09_partition_initial_assessment.md": "eba42e24e8f5d128ccb218f3fad1d6d983aa5a8b22784a81ae0c351b379cf666",
+        "docs/cmm2_c2v09_partition_policy_proposal.md": "c563fddc5774d1a4ecfc2ae7961dc05915e04a1185e5ccb43084870db8a1d0d2",
+        "docs/cmm2_c2v09_partition_runtime_certificate.md": "d0c9196a747ad2e49f94bb264e33bca95eec0a20e1bc900dc1bd5442d0ef5b35",
+        "docs/cmm2_c2v09_partition_scope_runtime_proposal.md": "b15665e115628c850e1f877891a8c5099404be0e6c1b206ce7a63f1901dd189c",
+        "docs/cmm2_numerical_feasibility_amendment.md": "372179bda248811450a33c2beacf8c9ce930a05add3cc58bfe58fec82e99c59a"
+      }
+    },
+    "policy_bundle_sha256": "564ba504f00cc2092dd325d5edca4549724f7a914326515c7859a9a212030167",
+    "retained_observations_serialized": false,
+    "revalidation_classification": "REVALIDATED",
+    "technical_head": "fd55fa97676c84c896511765e94561a706252239",
+    "thread_id": "235837",
+    "verified_operands": {
+      "candidate28_sha256": "c2061c293190a5fec947230b89c98c553da22aab738b6146c54fd49955dfb547",
+      "candidate29_byte_length": 16685,
+      "candidate29_sha256": "0b37fb45c005d7a046dee6541d1a89e4a0a5cead7434621718c90d191843b7a4",
+      "classification": "VERIFIED",
+      "digest": "bf3158f85325de2a0a6ef3aa8d97f0100792a19e603ef4b59f3a85bf33ae3656",
+      "draft_sha256": "b3d3fd8e58a2476937607e04ecd2651b91cfb4c95c44ea026a39eff57dc167d6",
+      "live_initial_request_object": "NOT ESTABLISHED",
+      "main_v1_seal_sha256": "389d5565d179358b4530bc98038f3046291594615d1acb0d3873655f678595b9",
+      "original_00_27_sha256": "265d531f51f08d45139313cd81b0239de0c2e9dd8926e12ded66d2011d83c1f7",
+      "role": "verified operand",
+      "source_sha256": "61048f3143ad1074e7e1e822b847cb7a93ba27315c9676d8b1dc43936439736e",
+      "source_sha256_role": "field inside the verified manifest; not a live source file read",
+      "stored_scale_hex": "0x1.c2f8b88dfb80cp-23",
+      "theta0": [
+        "-1888948576541780995587/9444732965739290427392",
+        "-1888944609753935385085/9444732965739290427392"
+      ],
+      "theta0_role": "verified operand",
+      "uncertainty_hex": [
+        "0x1.1eb3a59b5e786p-30",
+        "0x1.1eb3a59b5e786p-30",
+        "0x1.1eb3a59b5e786p-30",
+        "0x1.1eb3a59b5e786p-30",
+        "0x1.1eb3a59b5e786p-30",
+        "0x1.1eb3a59b5e786p-30",
+        "0x1.1eb3a59b5e786p-30",
+        "0x1.1eb3a59b5e786p-30",
+        "0x1.1eb3a59b5e786p-30",
+        "0x1.1eb3a59b5e786p-30",
+        "0x1.1eb3a59b5e786p-30"
+      ]
+    }
+  },
+  "canonical_sha256": "a34b1976ab779cbc4760fe14fe903c5187ee311baad44897ff8975a197cac8eb",
+  "digest_scope": "SHA-256 of the section 7.3 canonical bytes of canonical_payload only. canonical_sha256 and digest_scope are outside that payload."
+}
