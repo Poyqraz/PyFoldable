@@ -103,6 +103,7 @@ class PreCallObservation:
     runtime: dict[str, object] = field(default_factory=dict)
     implementation_comparison: dict[str, object] = field(default_factory=dict)
     modules_without_historical_record: tuple[dict[str, object], ...] = ()
+    certificate_source_file_identity: tuple[dict[str, object], ...] = ()
     retained_evaluator_call: object = None
     process_scope: str = PROCESS_SCOPE
 
@@ -135,16 +136,28 @@ def same_calling_context(observation: PreCallObservation, *, pid: int, thread_id
     return observation.pid == pid and observation.thread_id == thread_id
 
 
-def _historical_mismatches(root: Path) -> tuple[str, ...]:
-    """File-identity mismatches only. This does not call the collector's native probe."""
-    found: list[str] = []
+def _certificate_file_identity(root: Path) -> tuple[dict[str, object], ...]:
+    """Pinned file hashes only. A missing file stays unestablished and is not dropped."""
+    rows: list[dict[str, object]] = []
     for path, historical in pinned_certificate_sources(root):
         file = root / path
         if not file.is_file():
-            continue
-        if sha256_bytes(file.read_bytes()) != historical:
-            found.append(path)
-    return tuple(found)
+            current = None
+            identity = "NOT ESTABLISHED"
+        else:
+            current = sha256_bytes(file.read_bytes())
+            identity = "MATCH" if current == historical else "MISMATCH"
+        rows.append(
+            {
+                "path": path,
+                "historical_sha256": historical,
+                "current_sha256": current,
+                "file_identity": identity,
+                "loaded_code_identity": "NOT ESTABLISHED",
+                "operation_graph_applicability": "NOT ESTABLISHED",
+            }
+        )
+    return tuple(rows)
 
 
 def _unhistorical(root: Path) -> tuple[dict[str, object], ...]:
@@ -355,6 +368,7 @@ def observe_pre_call_binding(
         code_hashes[name] = hashlib.sha256(code.co_code).hexdigest()
         file_hashes[name] = sha256_bytes(Path(origin).read_bytes())
     inputs = _inputs(root, materials_loader)
+    certificate_sources = _certificate_file_identity(root)
     return PreCallObservation(
         retained,
         code_objects,
@@ -363,7 +377,7 @@ def observe_pre_call_binding(
         code_hashes,
         file_hashes,
         origins,
-        _historical_mismatches(root),
+        tuple(row["path"] for row in certificate_sources if row["file_identity"] == "MISMATCH"),
         {
             "status": "PROPOSED / NOT A HISTORICAL CLASSIFICATION",
             "loaded_module_source": defined,
@@ -393,6 +407,7 @@ def observe_pre_call_binding(
             "bindings": comparison,
         },
         modules_without_historical_record=_unhistorical(root),
+        certificate_source_file_identity=certificate_sources,
         retained_evaluator_call=call,
     )
 
@@ -428,6 +443,7 @@ def persistent_pre_call_record(observation: PreCallObservation) -> dict[str, obj
         "module_file_hashes": observation.module_file_hashes,
         "module_origins": observation.module_origins,
         "historical_source_mismatches": list(observation.historical_source_mismatches),
+        "certificate_source_file_identity": [dict(row) for row in observation.certificate_source_file_identity],
         "proposed_current_graph_binding": observation.proposed_current_graph_binding,
         "inputs": {
             "classification": observation.inputs["classification"],

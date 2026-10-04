@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pyfoldable.application.c2v09_pre_call_binding as pre_call
 import pyfoldable.application.cmm2_coupled_transient_service as service
 from pyfoldable.application.c2v09_cosine_path_certificate import prepare_cosine_path_certificate
 from pyfoldable.application.c2v09_ordered_declaration import CANDIDATE29_MANIFEST_SHA256, canonical_bytes, sha256_bytes
@@ -122,6 +123,19 @@ def test_forged_cosine_observer_is_not_this_process_probe() -> None:
     assert observation.eligibility_evidence is False
 
 
+def test_missing_pinned_source_is_not_dropped_from_the_inventory(monkeypatch) -> None:
+    def pins(_root):
+        return (("absent.py", "ab" * 32),)
+
+    monkeypatch.setattr(pre_call, "pinned_certificate_sources", pins)
+    observation = observe_pre_call_binding(_repository(), cosine_observer=_native_unavailable)
+    assert observation.historical_source_mismatches == ()
+    assert observation.certificate_source_file_identity[0]["path"] == "absent.py"
+    assert observation.certificate_source_file_identity[0]["file_identity"] == "NOT ESTABLISHED"
+    assert observation.certificate_source_file_identity[0]["loaded_code_identity"] == "NOT ESTABLISHED"
+    assert observation.certificate_source_file_identity[0]["operation_graph_applicability"] == "NOT ESTABLISHED"
+
+
 def test_missing_inputs_and_unavailable_native_observations_stay_unestablished() -> None:
     def missing(_root):
         raise RuntimeError("inputs unavailable")
@@ -170,6 +184,14 @@ def test_reviewed_inputs_stay_with_the_historical_mismatches() -> None:
     assert observation.historical_source_mismatches == (
         "pyfoldable/application/cmm2_coupled_transient_service.py",
         "pyfoldable/dynamics/cmm2_coupled_transient.py",
+    )
+    assert len(observation.certificate_source_file_identity) == 21
+    assert [row["path"] for row in observation.certificate_source_file_identity if row["file_identity"] == "MISMATCH"] == list(
+        observation.historical_source_mismatches
+    )
+    assert all(
+        row["loaded_code_identity"] == "NOT ESTABLISHED" and row["operation_graph_applicability"] == "NOT ESTABLISHED"
+        for row in observation.certificate_source_file_identity
     )
     assert observation.proposed_current_graph_binding["does_not_rewrite_historical_classifications"] is True
     assert observation.returned_bem_object_correspondence == POST_RETURN_ONLY
