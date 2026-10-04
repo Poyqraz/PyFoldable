@@ -503,6 +503,82 @@ from checkout `123fe281a220f3c0de9dfa5d4b47504438662362` and tree
 `2e86b38282da5d7515e63cdf323283d884bad7e1`. PR #81 and PR #84 stay untouched
 by this delta.
 
+## 2026-10-03 one-runtime cosine path certificate
+
+The [separate certificate](../cmm2_c2v09_one_runtime_cosine_path_certificate.md)
+follows the Python math wrapper's own PLT GOT to the selected cosine target.
+An independent libm symbol lookup is not that evidence. The historical CPython
+wrapper address argument does not apply to this executable. Changed Python
+graph correspondence and the returned source object stay outside this
+certificate. `physical_qualification=false`. This is not eligibility evidence.
+The bind-now file
+[reports/c2v09_cosine_path_certificate/observation.json](../../reports/c2v09_cosine_path_certificate/observation.json),
+from checkout `f343a9b206b0169e96bf5e66548ee08d257c3806`, is historical evidence.
+Its probe checked CPUID leaf 7 after that leaf overwrote the OSXSAVE register, and it calculated the libm body argument before comparing loaded wrapper bytes. Those bytes matched on that run, and leaf 7 ECX bit 27 happened to be set. The repaired observation is
+[reports/c2v09_cosine_path_certificate/repaired_observation.json](../../reports/c2v09_cosine_path_certificate/repaired_observation.json),
+from checkout `319c10ae22e55891ad8552d8741664c8ef7f7f38`. Checkout, tree, probe, and implementation identities are recorded separately. The selected libm body matches the historical body under the repaired guard and wrapper prerequisite. The historical CPython wrapper addresses do not apply. This is not eligibility evidence. PR #81 and PR #84 stay unmerged into main.
+
+The later enforcement slice keeps seven unhistorical nodes in one ordered
+inventory: dense, declaration, eligibility, collector, applicability, cosine
+certificate, and the probe C source. The C source hash is not a compiled or
+loaded native identity. Historical file MATCH is file identity only. The two
+changed CMM-2 paths stay mismatches on the eligibility gate. Missing or
+malformed inventory stays unestablished. `eligibility_evidence=false` and
+`physical_qualification=false`. No dependent call is enabled. A separate
+zero-call observation is
+[reports/c2v09_source_inventory_enforcement/observation.json](../../reports/c2v09_source_inventory_enforcement/observation.json),
+from checkout `4c1b2c7145eeb0a78c3e4f95da568ef6092f52fb`. It does not replace
+the historical cosine or binding observations.
+
+A later gate check compares that inventory with the digest-verified 21 paths
+by membership, uniqueness, pinned hashes, and hash operands. A supplied MATCH
+label is not that check. The archived observation above does not exercise
+this later check. The
+[initial-call prerequisite table](../cmm2_c2v09_initial_call_prerequisites.md)
+separates obligations that must exist before the call from the returned-object
+and mapped-interval obligations that can exist only after return. It does not
+authorize the call.
+
+`observe_pre_call_binding` retains, in one process and calling thread, the
+loaded `__call__` source and mapper objects, their code objects and defaults,
+and the candidate29 bytes, Theta0, and stored uncertainties a future call
+would consume. A filename, `co_filename`, or hash is not that loaded graph.
+The fresh zero-call record is
+[reports/c2v09_pre_call_binding/observation.json](../../reports/c2v09_pre_call_binding/observation.json),
+from checkout `3b8d790d09f5eefd1be8669895de1cbb6ee3442d` and tree
+`085f30932817951b67b4066595820ed6d6e34b4b`. The two historical CMM-2 file
+mismatches stay mismatches. All 21 pinned paths are present; a missing file
+stays NOT ESTABLISHED. File MATCH is file identity only. The proposed current-graph binding is not a
+historical classification and does not amend the seven-node inventory. The
+repaired cosine JSON is not this process's native evidence. Returned
+BEM-object correspondence and mapped-interval consumption remain post-return
+only. `accept()` still refuses. `eligibility_evidence=false` and
+`physical_qualification=false`. This is not live eligibility.
+
+Defining-module association is not loaded implementation identity. The direct
+comparison compiles the captured source of `__call__`,
+`solve_foldable_bem_rotor`, and `map_foldable_bem_aero_loads` without
+executing those modules, then compares code structure and literal defaults.
+A `co_code` digest is not that comparison. Unsupported values stay
+NOT ESTABLISHED. The check does not cover the transitive graph or geometric
+applicability. The archived observation
+[reports/c2v09_pre_call_binding/observation.json](../../reports/c2v09_pre_call_binding/observation.json)
+remains the earlier process record, byte for byte. A later direct-node
+observation is
+[reports/c2v09_pre_call_binding/implementation_identity_observation.json](../../reports/c2v09_pre_call_binding/implementation_identity_observation.json),
+from checkout `bafddc7b864b92bb8f15278299f1a6f32b86301c` and tree
+`f318eaf6dee0c946eee99c7b268dd18aa09a7566`. That checkout is not the commit
+that adds the file. Same-process revalidation recomputes the retained operand digest and does not authorize execution. `REVALIDATED` covers the direct-node binding and those operand checks. It does not establish native-control continuity, transitive loaded-code identity, geometric applicability, or post-return correspondence. The two historical CMM-2 source-file mismatches remain blockers.
+
+`prepare_pre_call_admission` is a zero-call preparation. The canonical policy-bundle digest of the pinned technical-HEAD artifacts is `564ba504f00cc2092dd325d5edca4549724f7a914326515c7859a9a212030167`. Closure HEAD `81424d85cacdd04b0e4df7a721548be7efa7286e` stays separate from the executing checkout. Frozen authority is the archived technical-HEAD bytes. The executing copy of `docs/cmm2_numerical_feasibility_amendment.md` differs by the status-only section 8 record. That difference is informational and does not by itself require a new runtime certificate. Direct-node MATCH does not clear the 21-path loaded-code rows, the seven historical-unbound nodes, or unchecked transitive names. Returned-object correspondence and mapped-interval consumption remain post-return only. A historical cosine-body match does not clear XCR0, wrapper, GOT, executable, or library mismatches. The bind-now preparation record is
+[reports/c2v09_pre_call_admission/preparation.json](../../reports/c2v09_pre_call_admission/preparation.json),
+from executing checkout `348703c6d46f3565ef183ec8a360634941e60e5f` and tree
+`1b331e0237651f91ccac0886472d5db62b6cefff`. That checkout is not the commit
+that adds the file. In that process the cosine body matched and historical
+XCR0, wrapper, GOT, executable, libm, libc, and loader did not. `accept()` still refuses. `eligibility_evidence=false` and `physical_qualification=false`.
+
+`bind_initial_call` retains one unevaluated `Cmm2FoldableBemMappedAeroEvaluator` built from the parsed candidate29 draft and verified manifest tables, including the draft bytes and the source-recipe bytes. Binary64 hex preserves signed zero. The active graph comparison covers the evaluator constructor and call, the source, the mapper, and the draft loader, including nested code, literal defaults, and callable globals. `solve_cmm2_transient` and `first_radau_contact` stay NOT CLEARED. A genuine native observation is `prepare_cosine_path_certificate` in this process: wrapper, PLT, GOT, loaded body, and controls. The compiled probe image is a separate `gcc -O2 -shared -fPIC` hash of the probe source; the certificate source file stays the repaired implementation and discards its temporary image. The probe source hash is not that image. A substitute observer stays a test double. Exact historical equality and equivalence are not proofs. Unreviewed applicability stays CONTRACT BLOCKED. Returned-object correspondence and mapped-interval consumption stay post-return only. First-call execution is not authorized.
+
 ## 2026-10-02 strength-aware radial hinge assessment — proposal only
 
 The [separate design proposal](../strength_aware_radial_hinge_assessment_proposal.md)
@@ -531,3 +607,32 @@ new offset topology is not cleared by planar GEOM-01 or existing BEM. Actual CAD
 conditions and strength evidence remain required. The duplicated-root/twist-reset
 control and its greater-loss hypothesis are optional and unmeasured. No runs,
 new gates, freeze or qualification follows; PR #81/#84 contracts are unchanged.
+
+
+## 2026-10-03 — PR #91 repair handoff transport
+
+The uploaded repair bundle and mailbox bind original code-observation commit
+`319c10ae22e55891ad8552d8741664c8ef7f7f38` (tree
+`fff000b4c4bc9c7a4d64a5b3030f675ee3ede3fb`) and original record commit
+`07717b86220bc9d385aa95c30b190be0d3d78bf0` (tree
+`94271c2c4b9f40f1c40b32e64bf58e5aa5942bc1`). They are separate from GitHub
+Git Data transport commits, whose author/date metadata produce new identities.
+The two original file trees are preserved exactly before a separate test/status
+portability delta. Neither original SHA is relabelled as a remotely tested HEAD.
+
+The repaired-record regression always verifies the executing probe and Python
+implementation bytes against the immutable repaired-observation source hashes.
+It additionally verifies the original observation commit's source blobs and
+tree when that object is available, using an explicit repository working
+directory. Missing archival Git history does not waive either current-source
+hash check. Three regression checks cover absent history, source drift under
+absent history, and available-history checks in the explicit repository.
+
+Historical and repaired observation files remain byte-for-byte unchanged; the
+original recorded process/checkout/runtime identities remain historical. No
+production source, numerical contract, timestamp closure, fixture, workflow or
+qualification gate changes in the portability delta. PR #91 remains Draft and
+unmerged; fresh CI must cover the actual published transport HEAD. Publication
+and baseline CI do not establish C2V-09 live eligibility, initial preflight,
+selection, a v2 seal, accepted PR-C evidence, ADR-009 or physical qualification.
+`eligibility_evidence=false`; `physical_qualification=false`.

@@ -6,6 +6,10 @@ A unit-test double is not live execution evidence.
 
 from __future__ import annotations
 
+import json
+import subprocess
+
+from pyfoldable.application.c2v09_binding_collector import collect_binding_record
 from pyfoldable.application.c2v09_live_eligibility import (
     assess_live_eligibility,
     load_reviewed_materials,
@@ -18,6 +22,8 @@ from pyfoldable.application.c2v09_ordered_declaration import (
     ORIGINAL_MANIFEST_SHA256,
     TECHNICAL_HEAD,
     build_extended_declaration,
+    canonical_bytes,
+    sha256_bytes,
 )
 
 
@@ -269,3 +275,206 @@ def test_actual_context_is_blocked_and_preserves_partial_observations() -> None:
     assert report.trajectory_calls == 0
     assert record.partial_record["selection"] is None
     assert record.partial_record["sealed"] is False
+
+
+_CHANGED = (
+    "pyfoldable/application/cmm2_coupled_transient_service.py",
+    "pyfoldable/dynamics/cmm2_coupled_transient.py",
+)
+_NEW_NODES = (
+    "pyfoldable/dynamics/cmm2_radau_dense.py",
+    "pyfoldable/application/c2v09_ordered_declaration.py",
+    "pyfoldable/application/c2v09_live_eligibility.py",
+    "pyfoldable/application/c2v09_binding_collector.py",
+    "pyfoldable/application/c2v09_runtime_applicability.py",
+    "pyfoldable/application/c2v09_cosine_path_certificate.py",
+    "pyfoldable/application/c2v09_cosine_path_probe.c",
+)
+
+
+def _refused(record):
+    report = run_certificate_dependent(
+        record,
+        source=lambda: None,
+        mapper=lambda: None,
+        select=lambda: None,
+        seal=lambda: None,
+        trajectory=lambda: None,
+    )
+    assert record.accept(context_id=record.context_id).accepted is False
+    assert report.source_calls == report.mapper_calls == report.selection_calls == 0
+    assert report.seal_calls == report.trajectory_calls == 0
+    assert record.status == "CONTRACT BLOCKED"
+
+
+def test_changed_cmm2_files_reach_the_gate_mismatch_record() -> None:
+    record = assess_live_eligibility(_repository())
+    for path in _CHANGED:
+        assert f"historical source file {path}" in record.mismatches
+        assert f"historical source file identity {path}" not in record.matches
+        assert f"loaded-code identity {path}" in record.unestablished
+        assert f"operation-graph applicability {path}" in record.unestablished
+    _refused(record)
+
+
+def test_matching_file_hash_does_not_clear_loaded_code_or_graph() -> None:
+    path = "pyfoldable/core/units.py"
+    record = assess_live_eligibility(_repository())
+    assert f"historical source file identity {path}" in record.matches
+    assert f"loaded-code identity {path}" in record.unestablished
+    assert f"operation-graph applicability {path}" in record.unestablished
+    assert f"loaded-code identity {path}" not in record.matches
+    assert f"operation-graph applicability {path}" not in record.matches
+    assert record.status == "CONTRACT BLOCKED"
+    _refused(record)
+
+
+def test_seven_new_nodes_have_no_historical_clearance() -> None:
+    record = assess_live_eligibility(_repository())
+    prefix = "no historical applicability clearance "
+    paths = [item[len(prefix):] for item in record.unestablished if item.startswith(prefix)]
+    assert paths == list(_NEW_NODES)
+    assert f"compiled loaded native identity {_NEW_NODES[-1]}" in record.unestablished
+    assert f"compiled loaded native identity {_NEW_NODES[-1]}" not in record.matches
+    _refused(record)
+
+
+def test_malformed_inventory_stays_unestablished(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "pyfoldable.application.c2v09_live_eligibility.collect_binding_record",
+        lambda _root: {
+            "canonical_payload": {
+                "observations": {"mxcsr": None, "cpu_feature_flags": None},
+                "python_dependency_inventory": {"certificate_sources": "broken"},
+            }
+        },
+    )
+    record = assess_live_eligibility(_repository())
+    assert "python dependency inventory" in record.unestablished
+    assert record.status == "CONTRACT BLOCKED"
+    _refused(record)
+
+
+def test_inventory_observation_is_a_separate_blocked_record() -> None:
+    root = _repository()
+    document = json.loads(
+        (root / "reports/c2v09_source_inventory_enforcement/observation.json").read_text(encoding="utf-8")
+    )
+    payload = document["canonical_payload"]
+    assert "canonical_sha256" not in payload
+    assert document["canonical_sha256"] == sha256_bytes(canonical_bytes(payload))
+    assert payload["eligibility_evidence"] is False
+    assert payload["physical_qualification"] is False
+    assert payload["status"] == "CONTRACT BLOCKED"
+    assert payload["source_callbacks"] == payload["mapper_callbacks"] == payload["trajectory_callbacks"] == 0
+    assert payload["historical_source_file_mismatches"] == [
+        f"historical source file {path}" for path in _CHANGED
+    ]
+    assert payload["new_nodes_without_historical_clearance"] == list(_NEW_NODES)
+    assert payload["loaded_code_unestablished_for_units"] is True
+    checkout = payload["checkout_sha"]
+    present = subprocess.call(
+        ["git", "cat-file", "-e", f"{checkout}^{{commit}}"],
+        cwd=root,
+        stderr=subprocess.DEVNULL,
+    ) == 0
+    if present:
+        tree = subprocess.check_output(["git", "rev-parse", f"{checkout}^{{tree}}"], cwd=root, text=True).strip()
+        assert payload["tree_sha"] == tree
+
+
+def _replace_sources(monkeypatch, sources) -> None:
+    def wrapped(root):
+        record = collect_binding_record(root)
+        record["canonical_payload"]["python_dependency_inventory"]["certificate_sources"] = sources
+        return record
+
+    monkeypatch.setattr("pyfoldable.application.c2v09_live_eligibility.collect_binding_record", wrapped)
+
+
+def _copied_sources():
+    record = collect_binding_record(_repository())
+    return [dict(row) for row in record["canonical_payload"]["python_dependency_inventory"]["certificate_sources"]]
+
+
+def test_empty_truncated_extra_substituted_and_duplicate_inventories_fail_closed(monkeypatch) -> None:
+    root = _repository()
+    real = _copied_sources()
+    invented = {
+        "path": "not-a-certificate-path.py",
+        "historical_sha256": None,
+        "current_file_sha256": None,
+        "file_identity": "MATCH",
+    }
+    cases = (
+        [],
+        real[:20],
+        real + [invented],
+        real[1:] + [invented],
+        real[:-1] + [dict(real[0])],
+    )
+    for sources in cases:
+        _replace_sources(monkeypatch, sources)
+        record = assess_live_eligibility(root)
+        assert "python dependency inventory" in record.unestablished
+        assert "historical source file identity not-a-certificate-path.py" not in record.matches
+        assert record.status == "CONTRACT BLOCKED"
+        _refused(record)
+
+
+def test_missing_hashes_and_contradictory_labels_are_not_trusted_matches(monkeypatch) -> None:
+    root = _repository()
+    sources = _copied_sources()
+    units = next(row for row in sources if row["path"] == "pyfoldable/core/units.py")
+    service = next(row for row in sources if row["path"] == _CHANGED[0])
+    units["file_identity"] = "MATCH"
+    units["historical_sha256"] = None
+    units["current_file_sha256"] = None
+    service["file_identity"] = "MATCH"
+    _replace_sources(monkeypatch, sources)
+    missing = assess_live_eligibility(root)
+    assert "historical source file identity pyfoldable/core/units.py" not in missing.matches
+    assert "historical source file identity pyfoldable/core/units.py" in missing.unestablished
+    assert f"historical source file {_CHANGED[0]}" in missing.mismatches
+    assert f"historical source file identity {_CHANGED[0]}" not in missing.matches
+
+    sources = _copied_sources()
+    units = next(row for row in sources if row["path"] == "pyfoldable/core/units.py")
+    units["file_identity"] = "MISMATCH"
+    _replace_sources(monkeypatch, sources)
+    contradictory = assess_live_eligibility(root)
+    assert "historical source file identity pyfoldable/core/units.py" in contradictory.matches
+    assert "historical source file pyfoldable/core/units.py" not in contradictory.mismatches
+
+    sources = _copied_sources()
+    units = next(row for row in sources if row["path"] == "pyfoldable/core/units.py")
+    units["historical_sha256"] = "0" * 64
+    _replace_sources(monkeypatch, sources)
+    substituted = assess_live_eligibility(root)
+    assert "historical source file identity pyfoldable/core/units.py" not in substituted.matches
+    assert "historical source file identity pyfoldable/core/units.py" in substituted.unestablished
+    _refused(missing)
+    _refused(contradictory)
+    _refused(substituted)
+
+
+def test_claims_replay_and_waiver_cannot_clear_source_obligations() -> None:
+    root = _repository()
+    claims = {
+        "waive_source_mismatch": True,
+        "historical source file pyfoldable/application/cmm2_coupled_transient_service.py": "MATCH",
+        "loaded-code identity pyfoldable/core/units.py": "MATCH",
+    }
+    record = assess_live_eligibility(
+        root,
+        caller_claims=claims,
+        claimed_record={"status": "ELIGIBLE"},
+        waive_source_mismatch=True,
+    )
+    for path in _CHANGED:
+        assert f"historical source file {path}" in record.mismatches
+    assert "loaded-code identity pyfoldable/core/units.py" in record.unestablished
+    assert "caller-supplied record is not live execution evidence" in record.mismatches
+    assert record.observations["caller_claims"]["waive_source_mismatch"] is True
+    assert record.status == "CONTRACT BLOCKED"
+    _refused(record)
