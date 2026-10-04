@@ -143,3 +143,49 @@ Workflows remain unchanged. Final GitHub feedback is checked after successful CI
 No merge/freeze is performed. This is a separately authorized generic software
 implementation, not accepted selected-model realization, complete parent surface,
 CAD/mesh, clearance, strength, performance or optimum-hinge evidence.
+## 2026-10-04 subsequent coordinator renderer closure repair
+
+The preceding implementation approvals and execution receipt are historical.
+The coordinator subsequently requested changes at
+`83da77b2398942f1d3a63f5ddca0e15b1dbb4486` for report correspondence and COMPLETE
+admission evidence. This repair remains on the same Draft PR #95, with unchanged
+stacked base `30b285b2bfd016bc444d43dd553d07020e5751b3`. Exact final review and
+push CI identities are recorded in that PR; no earlier check covers a new HEAD.
+
+The renderer now binds retained indices and all five scalar bits, including signed
+zero, to the parent row at the same represented radius. Generated brackets must
+be the actual adjacent enclosing parent rows. Every point's radial value and
+certificate must agree with its section. Successful admission requires ordered
+A/B/scalar receipts and complete normalization, branch-cell, scalar-cell and
+denominator evidence linked to the admitted parent. Exact branch-gap relationships
+are audited against retained normalized coordinates. Internally consistent doubled
+gaps and denominator evidence cannot substitute for that correspondence.
+
+A parent is admitted only after the earlier proofs succeed. Later BLOCKED reports
+retain those earlier obligations; earlier parent-null failures retain their valid
+incomplete prefixes. A COMPLETE request identity cannot be absent, and early-stage
+failures cannot contain an admitted parent. These checks use the separate bounded
+report-audit transaction; they do not parse external assets, regenerate sections,
+reset evaluator budgets or turn content hashes into authenticity evidence.
+
+Twelve correctly rehashed witnesses independently reproduced missing rejection at
+the starting HEAD. Four further RED cases covered parent-coordinate gap linkage,
+missing earlier proofs in a late BLOCKED report, absent COMPLETE request identity
+and premature parent admission. All are GREEN after repair. A regression forbids
+the renderer from invoking asset parsing, endpoint admission or section evaluation.
+Focused cases are included in 151 passing affected tests; syntax and whitespace
+checks pass. R01–R08 archived BLOCKED reports still render.
+
+A fresh S01 CLI run preserves the original canonical JSON byte-for-byte, SHA-256
+`4384536470719379fc928d794533b528d7fd43388ed95490bb476303a2e1b2dd`, and readable
+table byte-for-byte, SHA-256
+`60075f985fcbf6b2b2059da57a4002ab6291014437deaa427eb46b4b9fc20b43`.
+Fresh execution metadata separately hashes to
+`3de3d0385296bcb171f3e114c16123a1d3655cd378444673a88a0697514de951`; it records
+the changed renderer source and actual execution time, not a new geometry identity.
+The evaluator's 25,439 rational operations, 19,702 maximum bits, 80 trig terms and
+zero retries are unchanged. Immutable declarations and archived receipts remain
+byte-identical. Only renderer validation, synthetic regressions and this appended
+closure record change; selected assets, PR #94, numerical gates, workflows,
+C2V-09 and qualification boundaries remain unchanged. Draft/unmerged;
+`physical_qualification=false`.

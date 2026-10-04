@@ -447,3 +447,56 @@ def test_coordinator_renderer_correspondence_witnesses(report, change):
         report, content, sidecar, changed_sections=changed_sections)
     with pytest.raises(g.MixedProfileReportError):
         g.render_mixed_profile_table(invalid)
+
+
+def test_complete_branch_evidence_matches_admitted_coordinates(report):
+    content = json.loads(report.canonical_json)
+    sidecar = json.loads(report.execution_json)
+    # Keep positivity, cell continuity and denominator linkage internally
+    # consistent; only correspondence to the admitted endpoint is corrupted.
+    for proof in content['proofs']:
+        names = ('gap_l', 'gap_r') if proof['kind'] == 'branch_cell' else (
+            ('gap_A', 'gap_B', 'lower_bound') if proof['kind'] == 'denominator' else ())
+        for name in names:
+            value = 2 * rational(proof['content'][name])
+            proof['content'][name] = {'n': str(value.numerator), 'd': str(value.denominator)}
+    invalid = _coordinator_rehashed_report(report, content, sidecar)
+    with pytest.raises(g.MixedProfileReportError):
+        g.render_mixed_profile_table(invalid)
+
+
+def test_admitted_blocked_parent_keeps_earlier_proof_requirements(geometry_request, execution, monkeypatch):
+    def blocked(*args):
+        raise g.GeometryBlocked('BUDGET_EXHAUSTED', 'synthetic cut-stage failure')
+    monkeypatch.setattr(g, '_build_cuts', blocked)
+    report = g.evaluate_mixed_profile_parent(geometry_request, execution=execution)
+    assert 'Status: BLOCKED (CUTS)' in g.render_mixed_profile_table(report)
+    content = json.loads(report.canonical_json)
+    assert content['parent'] is not None
+    content['proofs'] = []
+    invalid = _coordinator_rehashed_report(report, content, json.loads(report.execution_json))
+    with pytest.raises(g.MixedProfileReportError):
+        g.render_mixed_profile_table(invalid)
+
+
+@pytest.mark.parametrize('change', ('missing_request', 'early_parent'))
+def test_admission_stage_correspondence(report, change):
+    content = json.loads(report.canonical_json)
+    if change == 'missing_request':
+        content['request_sha256'] = None
+    else:
+        content.update(status='BLOCKED', stage='ENDPOINT_A', cuts=[],
+                       diagnostics=[{'code': 'ENDPOINT_INVALID', 'field': '/',
+                                     'predicate': 'synthetic', 'details': 'synthetic'}])
+    invalid = _coordinator_rehashed_report(report, content, json.loads(report.execution_json))
+    with pytest.raises(g.MixedProfileReportError):
+        g.render_mixed_profile_table(invalid)
+
+
+def test_renderer_only_audits_retained_report_data(report, monkeypatch):
+    def forbidden(*args, **kwargs):
+        pytest.fail('renderer must not parse assets or regenerate geometry')
+    for name in ('parse_airfoil_coordinates', '_endpoint', '_prove_graphs', '_section',
+                 'evaluate_mixed_profile_parent'):
+        monkeypatch.setattr(g, name, forbidden)
+    assert 'Status: COMPLETE' in g.render_mixed_profile_table(report)

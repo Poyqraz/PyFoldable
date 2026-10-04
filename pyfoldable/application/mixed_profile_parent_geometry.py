@@ -346,6 +346,7 @@ def _validate_report_content(c):
     if c['status'] not in ('COMPLETE','BLOCKED') or c['stage'] not in stages: raise ValueError('status')
     if (c['status']=='COMPLETE')!=(c['stage']=='COMPLETE'): raise ValueError('stage')
     if c['request_sha256'] is not None: contract.digest(c['request_sha256'],'/request_sha256')
+    if c['status']=='COMPLETE' and c['request_sha256'] is None: raise ValueError('complete request identity')
     def integer(v,limit):
         if type(v) is not int or not 0<=v<=limit: raise ValueError('integer')
     def number(h): return contract.f64(h,'/report',True)
@@ -441,6 +442,8 @@ def _validate_report_content(c):
             if audit.cmp(fraction(pc['x_star']),F(1,2))!=0 or audit.cmp(fraction(pc['lower_bound']),0)<=0: raise ValueError('denominator proof')
     parent=c['parent']
     if parent is not None:
+        if c['stage'] not in ('PROOFS','SECTIONS','CUTS','SERIALIZATION','COMPLETE'):
+            raise ValueError('parent admission stage')
         contract.keys(parent,('sha256','content'),'/parent')
         if identified(parent['content'])!=parent: raise ValueError('parent identity')
         contract.keys(parent['content'],('schema_id','method_id','policy_ids','endpoint_A','endpoint_B','scalars','scalar_provenance','scalar_use_scope','model'),'/parent/content')
@@ -472,7 +475,10 @@ def _validate_report_content(c):
         _validate_model(audit_request); _validate_scalars(audit_request,audit)
         parent_knots=tuple(audit_request.scalars)
 
-        if c['status']=='COMPLETE':
+        # A parent is admitted only after all input/proof gates have completed.
+        # Later BLOCKED stages retain that earlier admission evidence; earlier
+        # parent-null failures retain their legitimately incomplete prefixes.
+        if parent is not None:
             if roles!=['A','B','scalars']: raise ValueError('complete receipt coverage')
             receipts={q['role']:q for q in inputs}
             for role in ('A','B'):
@@ -505,9 +511,22 @@ def _validate_report_content(c):
             branch_cells={}
             for role in ('A','B'):
                 endpoint=pm['endpoint_'+role]
-                xs=sorted({audit.f(number(pair[0])) for pair in endpoint['normalized_points_hex']})
-                if len(xs)<2 or audit.cmp(xs[0],0)!=0 or audit.cmp(xs[-1],1)!=0:
-                    raise ValueError('branch proof support')
+                # Audit the supplied proof against its retained represented
+                # coordinates, never parse assets or evaluate parent sections.
+                coords=tuple(tuple(audit.f(number(v)) for v in pair)
+                             for pair in endpoint['normalized_points_hex'])
+                leading=[i for i,(x,_) in enumerate(coords) if audit.cmp(x,0)==0]
+                if len(leading)!=1 or not 0<leading[0]<len(coords)-1:
+                    raise ValueError('branch leading edge')
+                edge=leading[0]
+                upper,lower=tuple(reversed(coords[:edge+1])),coords[edge:]
+                for branch in (upper,lower):
+                    if (audit.cmp(branch[0][0],0)!=0 or audit.cmp(branch[-1][0],1)!=0
+                        or audit.cmp(branch[0][1],0)!=0):
+                        raise ValueError('branch proof support')
+                    for old,new in zip(branch,branch[1:]):
+                        if audit.cmp(old[0],new[0])>=0: raise ValueError('branch coordinate ordering')
+                xs=rational_union([x for branch in (upper,lower) for x,_ in branch],audit)
                 cells=[]
                 for cell_index,(xl,xr) in enumerate(zip(xs,xs[1:])):
                     if pos>=len(proofs): raise ValueError('branch proof coverage')
@@ -517,6 +536,10 @@ def _validate_report_content(c):
                         or pc['cell_index']!=cell_index
                         or audit.cmp(pl,xl)!=0 or audit.cmp(pr,xr)!=0):
                         raise ValueError('branch proof correspondence')
+                    for x,gap in ((xl,gl),(xr,gr)):
+                        represented_gap=audit.sub(interpolate(upper,x,audit),interpolate(lower,x,audit))
+                        if audit.cmp(gap,represented_gap)!=0:
+                            raise ValueError('branch gap coordinate correspondence')
                     if cells and audit.cmp(cells[-1][3],gl)!=0:
                         raise ValueError('branch proof continuity')
                     cells.append((pl,pr,gl,gr))
