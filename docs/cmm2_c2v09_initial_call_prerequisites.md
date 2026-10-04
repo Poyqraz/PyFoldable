@@ -4,7 +4,10 @@ Status: **ZERO-CALL OBSERVER**. `observe_pre_call_binding` can record the
 pre-call rows in one process and calling thread. Defining-module association
 is export identity plus `co_filename`. It is not loaded implementation
 identity. Direct-node comparison covers the evaluator, source, and mapper
-only. A serialized record is not the retained callable objects and cannot
+only. `prepare_pre_call_admission` binds technical-HEAD policy bytes, verified
+declaration operands, and this process's native comparison. A body match does
+not clear an XCR0, wrapper, or executable mismatch. Post-return rows stay
+empty. A serialized record is not the retained callable objects and cannot
 authorize a later call. This table does not authorize a source call, mapper
 call, partition evaluation, selection, seal, or trajectory.
 `eligibility_evidence=false`. `physical_qualification=false`.
