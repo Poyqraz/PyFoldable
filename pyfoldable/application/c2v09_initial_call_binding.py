@@ -279,6 +279,7 @@ def bind_initial_call(
             MAPPER_BINDING: evaluator.__call__.__globals__.get(MAPPER_BINDING),
             "__call__": Cmm2FoldableBemMappedAeroEvaluator.__call__,
             "__call_code__": evaluator.__call__.__code__,
+            "active_codes": {qualname: function.__code__ for _path, qualname, function in _ACTIVE_CODE},
         },
         identity,
         arguments,
@@ -326,6 +327,9 @@ def revalidate_initial_call_binding(value: object) -> InitialCallRevalidation:
         return InitialCallRevalidation("INVALIDATED")
     if evaluator.__call__.__code__ is not value.retained["__call_code__"]:
         return InitialCallRevalidation("INVALIDATED")
+    for _path, qualname, function in _ACTIVE_CODE:
+        if function.__code__ is not value.retained["active_codes"][qualname]:
+            return InitialCallRevalidation("INVALIDATED")
     return InitialCallRevalidation("REVALIDATED")
 
 

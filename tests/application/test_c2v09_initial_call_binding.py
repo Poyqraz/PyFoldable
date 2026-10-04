@@ -7,6 +7,9 @@ from pathlib import Path
 import pyfoldable.application.c2v09_initial_call_binding as binding_module
 import pyfoldable.application.cmm2_coupled_transient_service as service
 from pyfoldable.application.cmm2_coupled_transient_service import Cmm2FoldableBemMappedAeroEvaluator
+from pyfoldable.core.config import load_design_config
+from pyfoldable.core.foldable_aero_load import map_foldable_bem_aero_loads
+from pyfoldable.core.foldable_rotor import solve_foldable_bem_rotor
 from pyfoldable.application.c2v09_initial_call_binding import (
     binary64_hex,
     bind_initial_call,
@@ -105,6 +108,23 @@ def test_input_and_code_mutations_invalidate_and_restore() -> None:
     finally:
         bound.evaluator.polars = original_polars
     assert revalidate_initial_call_binding(bound).classification == "REVALIDATED"
+
+
+def test_active_graph_code_replacement_invalidates(monkeypatch) -> None:
+    bound = bind_initial_call(_repository(), admission=_admission())
+    for function in (
+        solve_foldable_bem_rotor,
+        map_foldable_bem_aero_loads,
+        load_design_config,
+        Cmm2FoldableBemMappedAeroEvaluator.__init__,
+    ):
+        original = function.__code__
+        try:
+            function.__code__ = original.replace(co_consts=original.co_consts + ("mutated",))
+            assert revalidate_initial_call_binding(bound).classification == "INVALIDATED"
+        finally:
+            function.__code__ = original
+        assert revalidate_initial_call_binding(bound).classification == "REVALIDATED"
 
 
 def test_global_replacement_and_stale_context_invalidate(monkeypatch) -> None:
