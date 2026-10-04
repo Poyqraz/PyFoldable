@@ -1,0 +1,561 @@
+{
+  "S01": {
+    "budget": {
+      "input_bytes": 3191,
+      "integer_bits_limit": 65536,
+      "max_integer_bits": 19702,
+      "max_trig_terms": 80,
+      "output_bytes": 1925124,
+      "output_points": 144,
+      "rational_limit": 20000000,
+      "rational_used": 25439,
+      "retry_count": 0,
+      "unique_sections": 8
+    },
+    "content_bytes": 1925127,
+    "content_sha256": "4384536470719379fc928d794533b528d7fd43388ed95490bb476303a2e1b2dd",
+    "cuts": [
+      {
+        "content": {
+          "actual_joint_modifications": "UNDEFINED",
+          "deployed_transforms": [
+            "identity",
+            "identity"
+          ],
+          "fixed_section_sha256s": [
+            "0e94ddb4743f9bfade662434625e9fda1feb86a50a8ca9ea6546128a64136a3b",
+            "dd778d57145c04f8e3583a6f7d8b575352d0a199035cd17ec2eb9d6846ccbe2b",
+            "6b81f0758656070bf7b411b4c197308da128f09df3283f9628f802780b1cc2bf",
+            "c1f0b4a6e1977863194e04ce9b562a03a3b0761855196b856ec02f2887ef4c49"
+          ],
+          "hardware_offset_m": [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          "hinge_m": "0x1.a027525460aa6p-4",
+          "hinge_section_sha256": "c1f0b4a6e1977863194e04ce9b562a03a3b0761855196b856ec02f2887ef4c49",
+          "parent_sha256": "03e4db350bb26722f0895759aa4edef7dc32ba4858fa1b958201f2480899ab32",
+          "tip_section_sha256s": [
+            "c1f0b4a6e1977863194e04ce9b562a03a3b0761855196b856ec02f2887ef4c49",
+            "4a8f0b94f661bf429de3f7a9cc9b9ef6002a2d10d8065b46f636994080d20187",
+            "07b2fca6964012f435194b33c0fa0de9ad7846c3e8fe40ff6d45a94f3ab1d801",
+            "3e1c7f5f02d332371d1ba41e2598382fc4247e69b20523d57a494c420abe39fb",
+            "3f2bec1f77084e13445cd35017ca09d2440373467a014cfba500d8fd29bec56f"
+          ]
+        },
+        "sha256": "3e0085779e6d744a994fba13036fb8bb2526935cab440f0e62ab0ca6709a9d81"
+      },
+      {
+        "content": {
+          "actual_joint_modifications": "UNDEFINED",
+          "deployed_transforms": [
+            "identity",
+            "identity"
+          ],
+          "fixed_section_sha256s": [
+            "0e94ddb4743f9bfade662434625e9fda1feb86a50a8ca9ea6546128a64136a3b",
+            "dd778d57145c04f8e3583a6f7d8b575352d0a199035cd17ec2eb9d6846ccbe2b",
+            "6b81f0758656070bf7b411b4c197308da128f09df3283f9628f802780b1cc2bf",
+            "c1f0b4a6e1977863194e04ce9b562a03a3b0761855196b856ec02f2887ef4c49",
+            "4a8f0b94f661bf429de3f7a9cc9b9ef6002a2d10d8065b46f636994080d20187",
+            "07b2fca6964012f435194b33c0fa0de9ad7846c3e8fe40ff6d45a94f3ab1d801"
+          ],
+          "hardware_offset_m": [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          "hinge_m": "0x1.04189374bc6a8p-3",
+          "hinge_section_sha256": "07b2fca6964012f435194b33c0fa0de9ad7846c3e8fe40ff6d45a94f3ab1d801",
+          "parent_sha256": "03e4db350bb26722f0895759aa4edef7dc32ba4858fa1b958201f2480899ab32",
+          "tip_section_sha256s": [
+            "07b2fca6964012f435194b33c0fa0de9ad7846c3e8fe40ff6d45a94f3ab1d801",
+            "3e1c7f5f02d332371d1ba41e2598382fc4247e69b20523d57a494c420abe39fb",
+            "3f2bec1f77084e13445cd35017ca09d2440373467a014cfba500d8fd29bec56f"
+          ]
+        },
+        "sha256": "29e0315189e7ce57d853019de089e2178003699b15e055b74ba7ef6f95f150a3"
+      }
+    ],
+    "execution": {
+      "binary_sha256": [
+        [
+          "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3.12",
+          "fa67443527ed9647f760d807e2a38f26340757123e643c4639cf273ed15d5ea7"
+        ]
+      ],
+      "code_sha256": [
+        [
+          "application/_mixed_profile_contract.py",
+          "a20207c664d166bf3834f83e3844ed2c7c6afe94d9b02881a3823773d8a7143d"
+        ],
+        [
+          "application/_mixed_profile_exact.py",
+          "ff4f7ea420610e6a01de81697557356b95e843ed08ddfc67264fcd88796be89a"
+        ],
+        [
+          "application/blade_stations.py",
+          "8ca96110460c8213671aa5c651b0cfb86709fa457835e389efc08cf950e2948a"
+        ],
+        [
+          "application/mixed_profile_parent_geometry.py",
+          "45460bb381817444ae19268ed928162319c23e1543d03ce5ae8122bf61c810da"
+        ],
+        [
+          "core/airfoil.py",
+          "3079f8cafe962556064efe74f7b9c22ceaae59bfaa5f063bb8a7ab1d2905b196"
+        ],
+        [
+          "core/models.py",
+          "fec0b429c5201a7e7565205df756d00d344a5d5dd94703b7775d4b74ce17b853"
+        ]
+      ],
+      "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+      "python_build": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+      "rounding_mode": "nearest-ties-even-rational-certificate",
+      "run_id": "local-caller-input",
+      "started_utc": "2026-10-04T12:51:31.341026+00:00"
+    },
+    "execution_sha256": "cc017b08ca91b0ebc746431cce550350f72b0356b29e4f103f55a63598409951",
+    "inputs": [
+      {
+        "canonical_sha256": "9be4a0ee2f8247fc14d88e1fe3c85150da6ac00fcb5773801b2639221ea93008",
+        "point_or_row_count": 9,
+        "raw_sha256": "0a137a1a7bfeec6a0ca421c1abd2e529758a445f08abc192875ddfa0e3c713b0",
+        "role": "A",
+        "use_scope": {
+          "kind": "FIRST_PARTY_SYNTHETIC",
+          "reference": "PyFoldable independently invented dyadic software fixture v1"
+        }
+      },
+      {
+        "canonical_sha256": "7e5fe0d604d4b97210816a5ff4bccdcd9a374e9350de4d724c95bd9526e9c2ae",
+        "point_or_row_count": 11,
+        "raw_sha256": "f68417c98523bdf1faaa5f1db516529b1c06e6b750e09124e9a2c202c9ae6fe2",
+        "role": "B",
+        "use_scope": {
+          "kind": "FIRST_PARTY_SYNTHETIC",
+          "reference": "PyFoldable independently invented dyadic software fixture v1"
+        }
+      },
+      {
+        "canonical_sha256": "6b3187378e5346f1bd25014d87276c08f3a1efe6db88f3989a66abc70c4129fd",
+        "point_or_row_count": 6,
+        "raw_sha256": null,
+        "role": "scalars",
+        "use_scope": {
+          "kind": "FIRST_PARTY_SYNTHETIC",
+          "reference": "No retained manufacturer record; independently invented dyadic values"
+        }
+      }
+    ],
+    "parent_sha256": "03e4db350bb26722f0895759aa4edef7dc32ba4858fa1b958201f2480899ab32",
+    "proof_record_count": 37,
+    "qualification": {
+      "as_built": "UNESTABLISHED",
+      "clearance": "UNESTABLISHED",
+      "manufacturer_equivalence": "UNESTABLISHED",
+      "optimum_hinge": "UNESTABLISHED",
+      "physical_qualification": false,
+      "solid": "UNESTABLISHED",
+      "strength": "UNESTABLISHED"
+    },
+    "request_sha256": "b444f14537c678624f63f734aa4c9cad8137cccd0d96a691185ec6b96c62cfcf",
+    "section_records": [
+      {
+        "bracketing_indices": null,
+        "global_radius_m": "0x1.0000000000000p-5",
+        "scalar_hex": {
+          "Y": "-0x0.0p+0",
+          "Z": "0x0.0p+0",
+          "beta": "-0x1.0000000000000p-2",
+          "c": "0x1.0000000000000p-5",
+          "tau": "0x1.0000000000000p-3"
+        },
+        "sha256": "0e94ddb4743f9bfade662434625e9fda1feb86a50a8ca9ea6546128a64136a3b",
+        "source_index": 0,
+        "station_kind": "RETAINED_INPUT_STATION"
+      },
+      {
+        "bracketing_indices": null,
+        "global_radius_m": "0x1.0000000000000p-4",
+        "scalar_hex": {
+          "Y": "0x1.0000000000000p-10",
+          "Z": "-0x1.0000000000000p-10",
+          "beta": "-0x1.0000000000000p-3",
+          "c": "0x1.4000000000000p-5",
+          "tau": "0x1.8000000000000p-3"
+        },
+        "sha256": "dd778d57145c04f8e3583a6f7d8b575352d0a199035cd17ec2eb9d6846ccbe2b",
+        "source_index": 1,
+        "station_kind": "RETAINED_INPUT_STATION"
+      },
+      {
+        "bracketing_indices": null,
+        "global_radius_m": "0x1.8000000000000p-4",
+        "scalar_hex": {
+          "Y": "0x1.0000000000000p-9",
+          "Z": "-0x1.0000000000000p-10",
+          "beta": "0x0.0p+0",
+          "c": "0x1.8000000000000p-6",
+          "tau": "0x1.4000000000000p-3"
+        },
+        "sha256": "6b81f0758656070bf7b411b4c197308da128f09df3283f9628f802780b1cc2bf",
+        "source_index": 2,
+        "station_kind": "RETAINED_INPUT_STATION"
+      },
+      {
+        "bracketing_indices": [
+          2,
+          3
+        ],
+        "global_radius_m": "0x1.a027525460aa6p-4",
+        "scalar_hex": {
+          "Y": "0x1.bfb15b573eab4p-10",
+          "Z": "-0x1.7f62b6ae7d568p-11",
+          "beta": "0x1.013a92a305530p-5",
+          "c": "0x1.5fd8adab9f55ap-6",
+          "tau": "0x1.1fd8adab9f55ap-3"
+        },
+        "sha256": "c1f0b4a6e1977863194e04ce9b562a03a3b0761855196b856ec02f2887ef4c49",
+        "source_index": null,
+        "station_kind": "GENERATED_SECTION"
+      },
+      {
+        "bracketing_indices": null,
+        "global_radius_m": "0x1.0000000000000p-3",
+        "scalar_hex": {
+          "Y": "0x1.0000000000000p-10",
+          "Z": "0x0.0p+0",
+          "beta": "0x1.0000000000000p-3",
+          "c": "0x1.0000000000000p-6",
+          "tau": "0x1.8000000000000p-4"
+        },
+        "sha256": "4a8f0b94f661bf429de3f7a9cc9b9ef6002a2d10d8065b46f636994080d20187",
+        "source_index": 3,
+        "station_kind": "RETAINED_INPUT_STATION"
+      },
+      {
+        "bracketing_indices": [
+          3,
+          4
+        ],
+        "global_radius_m": "0x1.04189374bc6a8p-3",
+        "scalar_hex": {
+          "Y": "0x1.df3b645a1cac0p-11",
+          "Z": "0x1.0624dd2f1aa00p-14",
+          "beta": "0x1.10624dd2f1aa0p-3",
+          "c": "0x1.04189374bc6a8p-6",
+          "tau": "0x1.883126e978d50p-4"
+        },
+        "sha256": "07b2fca6964012f435194b33c0fa0de9ad7846c3e8fe40ff6d45a94f3ab1d801",
+        "source_index": null,
+        "station_kind": "GENERATED_SECTION"
+      },
+      {
+        "bracketing_indices": null,
+        "global_radius_m": "0x1.4000000000000p-3",
+        "scalar_hex": {
+          "Y": "-0x0.0p+0",
+          "Z": "0x1.0000000000000p-10",
+          "beta": "0x1.0000000000000p-2",
+          "c": "0x1.4000000000000p-6",
+          "tau": "0x1.0000000000000p-3"
+        },
+        "sha256": "3e1c7f5f02d332371d1ba41e2598382fc4247e69b20523d57a494c420abe39fb",
+        "source_index": 4,
+        "station_kind": "RETAINED_INPUT_STATION"
+      },
+      {
+        "bracketing_indices": null,
+        "global_radius_m": "0x1.8000000000000p-3",
+        "scalar_hex": {
+          "Y": "0x0.0p+0",
+          "Z": "0x1.0000000000000p-9",
+          "beta": "0x1.8000000000000p-2",
+          "c": "0x1.0000000000000p-7",
+          "tau": "0x1.0000000000000p-4"
+        },
+        "sha256": "3f2bec1f77084e13445cd35017ca09d2440373467a014cfba500d8fd29bec56f",
+        "source_index": 5,
+        "station_kind": "RETAINED_INPUT_STATION"
+      }
+    ],
+    "table_sha256": "60075f985fcbf6b2b2059da57a4002ab6291014437deaa427eb46b4b9fc20b43"
+  },
+  "clarification_closure_base": "30b285b2bfd016bc444d43dd553d07020e5751b3",
+  "clarification_technical_head": "28cc33b37e77ddd9913963137f3c381c40cf22f3",
+  "fixture_bytes_sha256": "99b2f9f746e799ef03a1eb8dd2c45f2ee6bc606d35b93a9fabdaf50eace363e2",
+  "fixture_canonical_sha256": "4cd0305a09cb2a460f334d0508af45b5b93fccb239fe6b2ad06bc131d386be02",
+  "rejection_cases": [
+    {
+      "budget": {
+        "input_bytes": 3191,
+        "integer_bits_limit": 65536,
+        "max_integer_bits": 12,
+        "max_trig_terms": 0,
+        "output_bytes": 1405,
+        "output_points": 0,
+        "rational_limit": 20000000,
+        "rational_used": 37,
+        "retry_count": 0,
+        "unique_sections": 0
+      },
+      "case_sha256": "cf77de6e9a282c5f5d27125ae15fed2658b5bba7b089182a40cab2f5f247b6e5",
+      "content_sha256": "a3745484cfe37c3ec0396e97ba8f2c183592d13535af206aaacc6c2b2c814c0e",
+      "diagnostics": [
+        {
+          "code": "SCALAR_INVALID",
+          "details": "strict increasing scalar radii",
+          "field": "/scalars/3/point/radius_m",
+          "predicate": "strict increasing scalar radii"
+        }
+      ],
+      "id": "R01",
+      "stage": "SCALARS",
+      "status": "BLOCKED"
+    },
+    {
+      "budget": {
+        "input_bytes": 3179,
+        "integer_bits_limit": 65536,
+        "max_integer_bits": 12,
+        "max_trig_terms": 0,
+        "output_bytes": 1380,
+        "output_points": 0,
+        "rational_limit": 20000000,
+        "rational_used": 27,
+        "retry_count": 0,
+        "unique_sections": 0
+      },
+      "case_sha256": "38c57e3f2024c27c6984c1aa58466febe8dcb56a99fc518a20de068db8585ca5",
+      "content_sha256": "387757e3c3d873aa89e8489589584817b6bf13f1743b9d16669feeeda2c8c9e6",
+      "diagnostics": [
+        {
+          "code": "SCALAR_INVALID",
+          "details": "0 < chord <= 0.2 m",
+          "field": "/scalars/2/point/chord_m",
+          "predicate": "0 < chord <= 0.2 m"
+        }
+      ],
+      "id": "R02",
+      "stage": "SCALARS",
+      "status": "BLOCKED"
+    },
+    {
+      "budget": {
+        "input_bytes": 3191,
+        "integer_bits_limit": 65536,
+        "max_integer_bits": 0,
+        "max_trig_terms": 0,
+        "output_bytes": 892,
+        "output_points": 0,
+        "rational_limit": 20000000,
+        "rational_used": 0,
+        "retry_count": 0,
+        "unique_sections": 0
+      },
+      "case_sha256": "46f1b918c8452143336723c519325cfb5c1209a40396a2d6a2ff15e769beacbf",
+      "content_sha256": "5c56fdcf538e0ba79adbc08dc7e15c8a5eae3ecf1ca71d7f3e421f5d3c3baf9e",
+      "diagnostics": [
+        {
+          "code": "RAW_HASH_MISMATCH",
+          "details": "claimed raw digest equals supplied bytes",
+          "field": "/endpoint_A",
+          "predicate": "claimed raw digest equals supplied bytes"
+        }
+      ],
+      "id": "R03",
+      "stage": "HASHES",
+      "status": "BLOCKED"
+    },
+    {
+      "budget": {
+        "input_bytes": 3184,
+        "integer_bits_limit": 65536,
+        "max_integer_bits": 0,
+        "max_trig_terms": 0,
+        "output_bytes": 884,
+        "output_points": 0,
+        "rational_limit": 20000000,
+        "rational_used": 0,
+        "retry_count": 0,
+        "unique_sections": 0
+      },
+      "case_sha256": "98650200854123736ba5f06202b72fd6bb5b151e79923c6dea1eaf515aecf3e9",
+      "content_sha256": "6315017a4ec0f63571d9695029270bc8088a6776c59a0f51e1e492ceb20a36e3",
+      "diagnostics": [
+        {
+          "code": "UNSUPPORTED_MODEL",
+          "details": "declared supported model/frame/offsets",
+          "field": "/model",
+          "predicate": "declared supported model/frame/offsets"
+        }
+      ],
+      "id": "R04",
+      "stage": "REQUEST",
+      "status": "BLOCKED"
+    },
+    {
+      "budget": {
+        "input_bytes": 3191,
+        "integer_bits_limit": 65536,
+        "max_integer_bits": 0,
+        "max_trig_terms": 0,
+        "output_bytes": 878,
+        "output_points": 0,
+        "rational_limit": 20000000,
+        "rational_used": 0,
+        "retry_count": 0,
+        "unique_sections": 0
+      },
+      "case_sha256": "5aad1ae8d15a17b4b0050190fc9ef10c622e7ca0a64884a76c5f0146b299a2a2",
+      "content_sha256": "512e00126dc3b60cb4a8a23e4c9711d4c0226069cf9a5eccd90f981607aa8e8b",
+      "diagnostics": [
+        {
+          "code": "UNSUPPORTED_HINGES",
+          "details": "exact two declared hinge literals",
+          "field": "/hinges_m",
+          "predicate": "exact two declared hinge literals"
+        }
+      ],
+      "id": "R05",
+      "stage": "REQUEST",
+      "status": "BLOCKED"
+    },
+    {
+      "budget": {
+        "input_bytes": 3190,
+        "integer_bits_limit": 65536,
+        "max_integer_bits": 58,
+        "max_trig_terms": 0,
+        "output_bytes": 1649,
+        "output_points": 0,
+        "rational_limit": 20000000,
+        "rational_used": 91,
+        "retry_count": 0,
+        "unique_sections": 0
+      },
+      "case_sha256": "5755fd94c0a5e0957ad96059ef2c113b82aed6c89072a8077a6685fbbf1532c8",
+      "content_sha256": "e792abb756ce27506360b6d6ced5a03bb2c9890d511191b474631318bb53f712",
+      "diagnostics": [
+        {
+          "code": "ENDPOINT_INVALID",
+          "details": "strict distinct branch x",
+          "field": "/",
+          "predicate": "strict distinct branch x"
+        }
+      ],
+      "id": "R06",
+      "stage": "ENDPOINT_A",
+      "status": "BLOCKED"
+    },
+    {
+      "budget": {
+        "input_bytes": 3195,
+        "integer_bits_limit": 65536,
+        "max_integer_bits": 58,
+        "max_trig_terms": 0,
+        "output_bytes": 2670,
+        "output_points": 0,
+        "rational_limit": 20000000,
+        "rational_used": 265,
+        "retry_count": 0,
+        "unique_sections": 0
+      },
+      "case_sha256": "75de13c174766eb16a0ae0f4a01976dd64ddbb42836577a6f82ed90fa7333c1f",
+      "content_sha256": "e7f470858c8fa17e1bc59e269277fb830f87015bf59af2d9f248face69ff7b5b",
+      "diagnostics": [
+        {
+          "code": "ENDPOINT_INVALID",
+          "details": "core parser/validator rejection",
+          "field": "/endpoint_B",
+          "predicate": "core parser/validator rejection"
+        }
+      ],
+      "id": "R07",
+      "stage": "ENDPOINT_B",
+      "status": "BLOCKED"
+    },
+    {
+      "budget": {
+        "input_bytes": 3188,
+        "integer_bits_limit": 65536,
+        "max_integer_bits": 58,
+        "max_trig_terms": 0,
+        "output_bytes": 2670,
+        "output_points": 0,
+        "rational_limit": 20000000,
+        "rational_used": 265,
+        "retry_count": 0,
+        "unique_sections": 0
+      },
+      "case_sha256": "681044c24b0f8cf851a0fb22c9e2a77017311c7a84090c3a8b8a3e2fea1322a8",
+      "content_sha256": "cbbcf5b83838930a983041e98e4fd2c7e32a6f3eaf19665f4f56a29ef5397042",
+      "diagnostics": [
+        {
+          "code": "ENDPOINT_INVALID",
+          "details": "core parser/validator rejection",
+          "field": "/endpoint_B",
+          "predicate": "core parser/validator rejection"
+        }
+      ],
+      "id": "R08",
+      "stage": "ENDPOINT_B",
+      "status": "BLOCKED"
+    },
+    {
+      "case_sha256": "f4cb3b8da4d94228fe5e5ce6e26618c8bc9052e412f3875fcea9f8dc13ff5247",
+      "code": "DUPLICATE_KEY",
+      "exception": "MixedProfileDecodeError",
+      "field": "/schema_id",
+      "id": "R09",
+      "raw_sha256": "7efcf7669751778b496a1f96fae8c669712e42b3db38b98ec20bc032a93c3ea3"
+    },
+    {
+      "case_sha256": "ff69948408e1685389f85b3f0c11bfd295b1fda8c49268ce148f0f40a48251c6",
+      "harness_only": true,
+      "id": "R10",
+      "operations": [
+        {
+          "operation": "add",
+          "path": "add",
+          "result": "CHARGED",
+          "used": 20000000
+        },
+        {
+          "operation": "compare",
+          "path": "compare",
+          "result": "BUDGET_EXHAUSTED",
+          "used": 20000000
+        }
+      ]
+    },
+    {
+      "case_sha256": "5d404f4ca32416ab5bc34725743da8fc659349be0007e2c0d88d5609325473af",
+      "harness_only": true,
+      "id": "R11",
+      "operations": [
+        {
+          "operation": "add",
+          "path": "retry_add",
+          "result": "BUDGET_EXHAUSTED",
+          "used": 20000000
+        },
+        {
+          "operation": "compare",
+          "path": "child_compare",
+          "result": "BUDGET_EXHAUSTED",
+          "used": 20000000
+        }
+      ]
+    }
+  ],
+  "review_limits": "Actual production geometry output/certificates are in the reproducible full local S01 report. This compact receipt does not claim arbitrary-runtime/source or physical clearance.",
+  "reviewed_design_head": "a13d662cf3a118b7b3e0f949d87319c11d38397c",
+  "schema_id": "generic_mixed_profile_first_party_execution_receipt_v1",
+  "scope": "First-party synthetic software evidence only; no manufacturer, physical or selected-asset claim.",
+  "tested_code_head": "a70134889603beec3f974a7536e1448269ff5c11",
+  "tested_tree": "a80768ba9478215553812cfeec0e9f419de36cd0"
+}
