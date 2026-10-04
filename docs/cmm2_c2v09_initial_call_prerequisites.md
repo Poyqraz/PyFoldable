@@ -19,7 +19,7 @@ does not require an every-angle BEM convergence theorem.
 | Obligation | When it can exist | Required evidence before it is used |
 | --- | --- | --- |
 | Loaded Python graph for the two changed CMM-2 files and the seven unhistorical nodes | Before the call | Loaded-code identity, not a file hash. The C probe source hash is not a compiled image. |
-| Python math wrapper and selected cosine GOT target | Before the call, on the calling thread | This process's PLT GOT qword. An independent libm symbol lookup and the repaired record do not supply it. |
+| Python math wrapper and selected cosine GOT target | Before the call, on the calling thread | This process's wrapper, PLT stub, and GOT qword from `prepare_cosine_path_certificate`. An independent libm symbol lookup, a test double, and the repaired record do not supply it. The compiled probe image hash is not the C source hash. Historical address or XCR0 equality is not assumed. |
 | Caller-thread numerical controls | Immediately before the call, then again immediately after | MXCSR, `fegetround`, x87 control, and CPUID/XCR0 on that same thread. |
 | Actual inputs | Before the call | Parsed candidate29 draft, stations, polar tables, settings, environment, hinge radius, and bounds. Declaration defaults and caller claims are not those objects. |
 | Retained-reference object correspondence | Only after `solve_foldable_bem_rotor` returns | The returned `FoldableBEMRotorResult` is the object passed into `map_foldable_bem_aero_loads`. A JSON replay is not that object. |
