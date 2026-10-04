@@ -294,3 +294,26 @@ def test_rational_serialization_inside_declared_bits_above_python_digit_limit():
     rebuilt=0
     for char in v['d']: rebuilt=rebuilt*10+ord(char)-48
     assert rebuilt==q.denominator and v['n']=='1'
+
+
+@pytest.mark.parametrize('change',('sidecar_extra','sidecar_bad_execution','negative_error','coordinate_mismatch'))
+def test_review_corrupt_receipts_rejected(report,change):
+    c=json.loads(report.canonical_json); side=json.loads(report.execution_json)
+    old_section=c['sections'][0]['sha256']
+    if change=='sidecar_extra': side['extra']='not allowed'
+    elif change=='sidecar_bad_execution': side['execution']={'not':'GeometryExecutionV1'}
+    elif change=='negative_error': c['sections'][0]['content']['scalar_certificates'][0]['absolute_error_bound']={'n':'-1','d':'1'}
+    else: c['sections'][0]['content']['points'][0]['xyz_hex'][0]='0x0.0p+0'
+    if change in ('negative_error','coordinate_mismatch'):
+        s=c['sections'][0]
+        s['sha256']=hashlib.sha256(wire(s['content'])).hexdigest()
+        for cut in c['cuts']:
+            for n in ('fixed_section_sha256s','tip_section_sha256s'):
+                cut['content'][n]=[s['sha256'] if h==old_section else h for h in cut['content'][n]]
+            cut['sha256']=hashlib.sha256(wire(cut['content'])).hexdigest()
+        projected=copy.deepcopy(c); projected['budget']['output_bytes']=None
+        c['budget']['output_bytes']=len(wire(projected))
+    raw=wire(c); digest=hashlib.sha256(raw).hexdigest(); side['content_sha256']=digest
+    side_raw=wire(side)
+    invalid=g.MixedProfileParentReportV1(raw,digest,side_raw,hashlib.sha256(side_raw).hexdigest())
+    with pytest.raises(g.MixedProfileReportError): g.render_mixed_profile_table(invalid)

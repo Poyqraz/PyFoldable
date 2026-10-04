@@ -27,6 +27,7 @@ from ._mixed_profile_contract import (
 from ._mixed_profile_exact import (
     GeometryBudgetV1, GeometryBlocked, rat, interpolate, rational_union, maximum, minimum,
     _prove_graphs, _round_certificate, _copied_certificate, trig_enclosures, placement_enclosures,
+    rounding_cell, absq,
 )
 
 QUALIFICATION={'physical_qualification':False, **{k:'UNESTABLISHED' for k in
@@ -334,6 +335,9 @@ def evaluate_mixed_profile_parent(request: MixedProfileParentRequestV1, *,
 
 def _validate_report_content(c):
     """Validate supplied report schema/content identities, not recompute geometry."""
+    # A separate bounded report-audit transaction, never a reset/replay of
+    # the recorded evaluator work budget and never a second parent evaluator.
+    audit=GeometryBudgetV1()
     contract.keys(c,tuple(_content()),'/')
     stages=('REQUEST','HASHES','SCALARS','ENDPOINT_A','ENDPOINT_B','PROOFS','SECTIONS','CUTS','SERIALIZATION','COMPLETE')
     if c['schema_id']!='mixed_profile_parent_report_v1' or c['qualification']!=QUALIFICATION:
@@ -361,17 +365,38 @@ def _validate_report_content(c):
             return v
         n,d=dec(q['n'],False),dec(q['d'],True)
         if math.gcd(n,d)!=1: raise ValueError('unreduced rational')
+        return audit.f(F(n,d))
     certificate_keys=('kind','unit','reference','enclosure_lo','enclosure_hi','output_hex','predecessor_hex',
                       'successor_hex','cell_lo','cell_hi','cell_lo_closed','cell_hi_closed','absolute_error_bound','trig_terms','zero_rule')
     def certificate(q):
         contract.keys(q,certificate_keys,'/certificate')
         if q['kind'] not in ('COPIED_INPUT','CERTIFIED_ROUNDING') or q['unit'] not in ('m','rad','dimensionless'): raise ValueError('certificate')
-        for n in ('output_hex','predecessor_hex','successor_hex'): number(q[n])
-        for n in ('enclosure_lo','enclosure_hi','cell_lo','cell_hi','absolute_error_bound'): fraction(q[n])
-        if q['reference'] is not None: fraction(q['reference'])
+        values={n:number(q[n]) for n in ('output_hex','predecessor_hex','successor_hex')}
+        exact={n:fraction(q[n]) for n in ('enclosure_lo','enclosure_hi','cell_lo','cell_hi','absolute_error_bound')}
+        reference=fraction(q['reference']) if q['reference'] is not None else None
         if type(q['cell_lo_closed']) is not bool or type(q['cell_hi_closed']) is not bool: raise ValueError('ownership')
         integer(q['trig_terms'],128)
         if q['zero_rule'] not in ('PRESERVE_INPUT_SIGN','EXACT_ZERO_POSITIVE','SIGNED_UNDERFLOW','NOT_ZERO'): raise ValueError('zero')
+        lo,hi=exact['enclosure_lo'],exact['enclosure_hi']; output=values['output_hex']; v=audit.f(output)
+        if audit.cmp(lo,hi)>0 or audit.cmp(exact['absolute_error_bound'],0)<0: raise ValueError('certificate bounds')
+        if reference is not None and (audit.cmp(lo,reference)>0 or audit.cmp(reference,hi)>0): raise ValueError('reference containment')
+        if q['predecessor_hex']!=math.nextafter(output,-math.inf).hex() or q['successor_hex']!=math.nextafter(output,math.inf).hex(): raise ValueError('neighbors')
+        if q['kind']=='COPIED_INPUT':
+            if reference is None or any(audit.cmp(x,v)!=0 for x in (reference,lo,hi,exact['cell_lo'],exact['cell_hi'])) or audit.cmp(exact['absolute_error_bound'],0)!=0:
+                raise ValueError('copied certificate')
+            if q['trig_terms']!=0 or not q['cell_lo_closed'] or not q['cell_hi_closed']: raise ValueError('copied cell')
+            if q['zero_rule']!=('PRESERVE_INPUT_SIGN' if output==0 else 'NOT_ZERO'): raise ValueError('copy zero')
+        else:
+            _,_,cl,ch,lc,hc=rounding_cell(output,audit)
+            if audit.cmp(cl,exact['cell_lo'])!=0 or audit.cmp(ch,exact['cell_hi'])!=0 or lc!=q['cell_lo_closed'] or hc!=q['cell_hi_closed']: raise ValueError('actual rounding cell')
+            l,h=audit.cmp(lo,cl),audit.cmp(hi,ch)
+            if l<0 or h>0 or l==0 and not lc or h==0 and not hc: raise ValueError('cell ownership')
+            err=maximum([absq(audit.sub(v,lo),audit),absq(audit.sub(v,hi),audit)],audit)
+            if audit.cmp(err,exact['absolute_error_bound'])!=0: raise ValueError('error displacement')
+            if output==0:
+                exact_zero=audit.cmp(lo,0)==0 and audit.cmp(hi,0)==0
+                if q['zero_rule']!=('EXACT_ZERO_POSITIVE' if exact_zero else 'SIGNED_UNDERFLOW') or exact_zero and output.hex().startswith('-'): raise ValueError('new zero')
+            elif q['zero_rule']!='NOT_ZERO': raise ValueError('nonzero rule')
     diags=array(c['diagnostics'],1)
     if len(diags)!=(0 if c['status']=='COMPLETE' else 1): raise ValueError('diagnostic count')
     for d in diags:
@@ -416,7 +441,9 @@ def _validate_report_content(c):
         contract.keys(s['scalar_hex'],SCALAR_FIELDS,'/section/scalars')
         for h in s['scalar_hex'].values(): number(h)
         if len(array(s['scalar_certificates'],5))!=5: raise ValueError('scalar certificates')
-        for q in s['scalar_certificates']: certificate(q)
+        for name,q in zip(SCALAR_FIELDS,s['scalar_certificates']):
+            certificate(q)
+            if q['output_hex']!=s['scalar_hex'][name]: raise ValueError('scalar output correspondence')
         fraction(s['blend_weight'])
         points=array(s['points'],1024); total+=len(points)
         for p in points:
@@ -425,7 +452,9 @@ def _validate_report_content(c):
             number(p['x_hex']); fraction(p['v_reference'])
             if len(array(p['xyz_hex'],3))!=3 or len(array(p['xyz_certificates'],3))!=3: raise ValueError('point tuple')
             for h in p['xyz_hex']: number(h)
-            for q in p['xyz_certificates']: certificate(q)
+            for h,q in zip(p['xyz_hex'],p['xyz_certificates']):
+                certificate(q)
+                if q['output_hex']!=h: raise ValueError('coordinate output correspondence')
         known[record['sha256']]=s
     if total>69632: raise ValueError('point count')
     cuts=array(c['cuts'],2)
@@ -457,9 +486,22 @@ def render_mixed_profile_table(report: MixedProfileParentReportV1) -> str:
         if canonical_bytes(c)!=report.canonical_json or sha(report.canonical_json)!=report.sha256:
             raise ValueError('digest')
         _validate_report_content(c)
+        if type(report.execution_json) is not bytes or len(report.execution_json)>128*1024:
+            raise ValueError('sidecar bytes')
         side=json.loads(report.execution_json)
         if canonical_bytes(side)!=report.execution_json or sha(report.execution_json)!=report.execution_sha256 or side['content_sha256']!=report.sha256:
             raise ValueError('sidecar')
+        contract.keys(side,('execution','content_sha256'),'/sidecar')
+        if side['execution'] is not None:
+            e=side['execution']
+            contract.keys(e,tuple(f.name for f in fields(GeometryExecutionV1)),'/execution')
+            pairs={}
+            for key in ('code_sha256','binary_sha256'):
+                if type(e[key]) is not list or len(e[key])>(32 if key=='code_sha256' else 16): raise ValueError('execution pairs')
+                if any(type(pair) is not list or len(pair)!=2 for pair in e[key]): raise ValueError('execution pair')
+                pairs[key]=tuple(tuple(pair) for pair in e[key])
+            observed=own_execution(GeometryExecutionV1(**{**e,**pairs}))
+            if canonical_bytes(observed)!=canonical_bytes(e): raise ValueError('execution schema')
         rows=['First-party/caller-declared generated geometry; physical_qualification=false',
               f"Status: {c['status']} ({c['stage']})",f"Content SHA-256: {report.sha256}",
               'radius_m | kind | source/bracket | chord_m | twist_rad | exact radius hex | chord hex | twist hex']
