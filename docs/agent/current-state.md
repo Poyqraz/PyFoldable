@@ -563,8 +563,12 @@ A `co_code` digest is not that comparison. Unsupported values stay
 NOT ESTABLISHED. The check does not cover the transitive graph or geometric
 applicability. The archived observation
 [reports/c2v09_pre_call_binding/observation.json](../../reports/c2v09_pre_call_binding/observation.json)
-remains the earlier process record. Same-process revalidation does not
-authorize execution.
+remains the earlier process record, byte for byte. A later direct-node
+observation is
+[reports/c2v09_pre_call_binding/implementation_identity_observation.json](../../reports/c2v09_pre_call_binding/implementation_identity_observation.json),
+from checkout `bafddc7b864b92bb8f15278299f1a6f32b86301c` and tree
+`f318eaf6dee0c946eee99c7b268dd18aa09a7566`. That checkout is not the commit
+that adds the file. Same-process revalidation does not authorize execution.
 
 ## 2026-10-02 strength-aware radial hinge assessment — proposal only
 

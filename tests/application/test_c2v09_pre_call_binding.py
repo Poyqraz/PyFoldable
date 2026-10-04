@@ -433,6 +433,33 @@ def test_revalidation_rejects_context_binding_and_serialized_records(monkeypatch
     assert changed.eligibility_evidence is False
 
 
+def test_implementation_identity_record_is_not_the_earlier_observation() -> None:
+    root = _repository()
+    earlier = (root / "reports/c2v09_pre_call_binding/observation.json").read_bytes()
+    assert sha256_bytes(earlier) == "00c19f3f3ad3c203ef27472116f59962bce64977f5b48bdebb534d54a0ccb760"
+    record = json.loads((root / "reports/c2v09_pre_call_binding/implementation_identity_observation.json").read_text(encoding="utf-8"))
+    payload = record["canonical_payload"]
+    assert record["canonical_sha256"] == "2365929c491694741fddc0528b0e0955401ae5f3371697ccc267d650cf4d7aed"
+    assert record["canonical_sha256"] == sha256_bytes(canonical_bytes(payload))
+    assert payload["checkout_sha"] == "bafddc7b864b92bb8f15278299f1a6f32b86301c"
+    assert payload["tree_sha"] == "f318eaf6dee0c946eee99c7b268dd18aa09a7566"
+    assert payload["defining_module_association"] is True
+    assert payload["loaded_implementation_identity"] == "MATCH"
+    assert payload["transitive_graph"] == "NOT ESTABLISHED"
+    assert payload["geometric_applicability"] == "NOT ESTABLISHED"
+    assert payload["authorizes_execution"] is False
+    assert payload["eligibility_evidence"] is False
+    assert payload["physical_qualification"] is False
+    assert len(payload["certificate_source_file_identity"]) == 21
+    assert payload["historical_source_mismatches"] == [
+        "pyfoldable/application/cmm2_coupled_transient_service.py",
+        "pyfoldable/dynamics/cmm2_coupled_transient.py",
+    ]
+    assert is_live_pre_call_evidence(record) is False
+    assert revalidate_pre_call_binding(record).authorizes_execution is False
+    assert revalidate_pre_call_binding(record).classification == "NOT ESTABLISHED"
+
+
 def test_repaired_probe_is_the_only_native_observer() -> None:
     observation = observe_pre_call_binding(_repository())
     assert observation.native["native_observer"] == "prepare_cosine_path_certificate"
