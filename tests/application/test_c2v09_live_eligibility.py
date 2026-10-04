@@ -445,8 +445,17 @@ def test_missing_hashes_and_contradictory_labels_are_not_trusted_matches(monkeyp
     contradictory = assess_live_eligibility(root)
     assert "historical source file identity pyfoldable/core/units.py" in contradictory.matches
     assert "historical source file pyfoldable/core/units.py" not in contradictory.mismatches
+
+    sources = _copied_sources()
+    units = next(row for row in sources if row["path"] == "pyfoldable/core/units.py")
+    units["historical_sha256"] = "0" * 64
+    _replace_sources(monkeypatch, sources)
+    substituted = assess_live_eligibility(root)
+    assert "historical source file identity pyfoldable/core/units.py" not in substituted.matches
+    assert "historical source file identity pyfoldable/core/units.py" in substituted.unestablished
     _refused(missing)
     _refused(contradictory)
+    _refused(substituted)
 
 
 def test_claims_replay_and_waiver_cannot_clear_source_obligations() -> None:

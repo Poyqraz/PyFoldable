@@ -528,9 +528,12 @@ malformed inventory stays unestablished. `eligibility_evidence=false` and
 zero-call observation is
 [reports/c2v09_source_inventory_enforcement/observation.json](../../reports/c2v09_source_inventory_enforcement/observation.json),
 from checkout `4c1b2c7145eeb0a78c3e4f95da568ef6092f52fb`. It does not replace
-the historical cosine or binding observations. The gate now checks the
-digest-verified 21-path inventory by membership, uniqueness, pinned hashes,
-and hash operands. A supplied MATCH label is not that check. The
+the historical cosine or binding observations.
+
+A later gate check compares that inventory with the digest-verified 21 paths
+by membership, uniqueness, pinned hashes, and hash operands. A supplied MATCH
+label is not that check. The archived observation above does not exercise
+this later check. The
 [initial-call prerequisite table](../cmm2_c2v09_initial_call_prerequisites.md)
 separates obligations that must exist before the call from the returned-object
 and mapped-interval obligations that can exist only after return. It does not
