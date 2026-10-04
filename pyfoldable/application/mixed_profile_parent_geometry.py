@@ -502,20 +502,26 @@ def _validate_report_content(c):
                     raise ValueError('normalization proof correspondence')
                 pos+=1
 
+            branch_cells={}
             for role in ('A','B'):
                 endpoint=pm['endpoint_'+role]
                 xs=sorted({audit.f(number(pair[0])) for pair in endpoint['normalized_points_hex']})
                 if len(xs)<2 or audit.cmp(xs[0],0)!=0 or audit.cmp(xs[-1],1)!=0:
                     raise ValueError('branch proof support')
+                cells=[]
                 for cell_index,(xl,xr) in enumerate(zip(xs,xs[1:])):
                     if pos>=len(proofs): raise ValueError('branch proof coverage')
                     p=proofs[pos]; pc=p['content']
+                    pl,pr,gl,gr=(fraction(pc[n]) for n in ('x_l','x_r','gap_l','gap_r'))
                     if (p['kind']!='branch_cell' or pc['role']!=role
                         or pc['cell_index']!=cell_index
-                        or audit.cmp(fraction(pc['x_l']),xl)!=0
-                        or audit.cmp(fraction(pc['x_r']),xr)!=0):
+                        or audit.cmp(pl,xl)!=0 or audit.cmp(pr,xr)!=0):
                         raise ValueError('branch proof correspondence')
+                    if cells and audit.cmp(cells[-1][3],gl)!=0:
+                        raise ValueError('branch proof continuity')
+                    cells.append((pl,pr,gl,gr))
                     pos+=1
+                branch_cells[role]=cells
 
             for cell_index,(old,new) in enumerate(zip(parent_knots,parent_knots[1:])):
                 for field,u,v in zip(SCALAR_FIELDS,_scalars(old),_scalars(new)):
@@ -532,9 +538,25 @@ def _validate_report_content(c):
             if pos>=len(proofs) or proofs[pos]['kind']!='denominator':
                 raise ValueError('denominator proof coverage')
             denominator=proofs[pos]['content']
+            star=fraction(denominator['x_star'])
             gap_a,gap_b,lower=(fraction(denominator[n]) for n in ('gap_A','gap_B','lower_bound'))
+            expected_gaps=[]
+            for role in ('A','B'):
+                expected_gap=None
+                for xl,xr,gl,gr in branch_cells[role]:
+                    if audit.cmp(star,xl)>=0 and audit.cmp(star,xr)<=0:
+                        if audit.cmp(star,xl)==0: expected_gap=gl
+                        elif audit.cmp(star,xr)==0: expected_gap=gr
+                        else:
+                            q=audit.div(audit.sub(star,xl),audit.sub(xr,xl))
+                            expected_gap=audit.add(gl,audit.mul(q,audit.sub(gr,gl)))
+                        break
+                if expected_gap is None: raise ValueError('denominator cell coverage')
+                expected_gaps.append(expected_gap)
             expected_lower=gap_a if audit.cmp(gap_a,gap_b)<=0 else gap_b
-            if (audit.cmp(fraction(denominator['x_star']),F(1,2))!=0
+            if (audit.cmp(star,F(1,2))!=0
+                or audit.cmp(gap_a,expected_gaps[0])!=0
+                or audit.cmp(gap_b,expected_gaps[1])!=0
                 or audit.cmp(lower,expected_lower)!=0 or audit.cmp(lower,0)<=0):
                 raise ValueError('denominator proof correspondence')
             pos+=1
