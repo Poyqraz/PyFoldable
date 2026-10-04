@@ -577,6 +577,8 @@ from executing checkout `348703c6d46f3565ef183ec8a360634941e60e5f` and tree
 that adds the file. In that process the cosine body matched and historical
 XCR0, wrapper, GOT, executable, libm, libc, and loader did not. `accept()` still refuses. `eligibility_evidence=false` and `physical_qualification=false`.
 
+`bind_initial_call` retains one unevaluated `Cmm2FoldableBemMappedAeroEvaluator` built from the parsed candidate29 draft and verified manifest tables. Binary64 hex preserves signed zero. The active graph comparison covers the evaluator constructor and call, the source, the mapper, and the draft loader. `solve_cmm2_transient` and the Radau dense routine stay NOT CLEARED. Applicability remains CONTRACT BLOCKED. Returned-object correspondence and mapped-interval consumption stay post-return only. First-call execution is not authorized.
+
 ## 2026-10-02 strength-aware radial hinge assessment — proposal only
 
 The [separate design proposal](../strength_aware_radial_hinge_assessment_proposal.md)
