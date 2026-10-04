@@ -545,9 +545,10 @@ and the candidate29 bytes, Theta0, and stored uncertainties a future call
 would consume. A filename, `co_filename`, or hash is not that loaded graph.
 The fresh zero-call record is
 [reports/c2v09_pre_call_binding/observation.json](../../reports/c2v09_pre_call_binding/observation.json),
-from checkout `7555a4b9e91bd8e3bbb4e6b7423d43488357af27` and tree
-`074f8ab6c337077543fb8999b43c4167eb468996`. The two historical CMM-2 file
-mismatches stay mismatches. The proposed current-graph binding is not a
+from checkout `3b8d790d09f5eefd1be8669895de1cbb6ee3442d` and tree
+`085f30932817951b67b4066595820ed6d6e34b4b`. The two historical CMM-2 file
+mismatches stay mismatches. All 21 pinned paths are present; a missing file
+stays NOT ESTABLISHED. File MATCH is file identity only. The proposed current-graph binding is not a
 historical classification and does not amend the seven-node inventory. The
 repaired cosine JSON is not this process's native evidence. Returned
 BEM-object correspondence and mapped-interval consumption remain post-return

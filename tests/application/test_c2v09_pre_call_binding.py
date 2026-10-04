@@ -222,8 +222,8 @@ def test_archived_pre_call_record_is_not_live_or_eligibility_evidence() -> None:
     payload = record["canonical_payload"]
     assert record["canonical_sha256"] == sha256_bytes(canonical_bytes(payload))
     assert "canonical_sha256" not in payload
-    assert payload["checkout_sha"] == "7555a4b9e91bd8e3bbb4e6b7423d43488357af27"
-    assert payload["tree_sha"] == "074f8ab6c337077543fb8999b43c4167eb468996"
+    assert payload["checkout_sha"] == "3b8d790d09f5eefd1be8669895de1cbb6ee3442d"
+    assert payload["tree_sha"] == "085f30932817951b67b4066595820ed6d6e34b4b"
     assert payload["eligibility_evidence"] is False
     assert payload["physical_qualification"] is False
     assert payload["retained_references_serialized"] is False
@@ -236,6 +236,11 @@ def test_archived_pre_call_record_is_not_live_or_eligibility_evidence() -> None:
         "pyfoldable/application/cmm2_coupled_transient_service.py",
         "pyfoldable/dynamics/cmm2_coupled_transient.py",
     ]
+    assert len(payload["certificate_source_file_identity"]) == 21
+    assert all(
+        row["loaded_code_identity"] == "NOT ESTABLISHED" and row["operation_graph_applicability"] == "NOT ESTABLISHED"
+        for row in payload["certificate_source_file_identity"]
+    )
     assert payload["proposed_current_graph_binding"]["status"] == "PROPOSED / NOT A HISTORICAL CLASSIFICATION"
     assert payload["proposed_current_graph_binding"]["eligibility_evidence"] is False
     assert payload["native"]["repaired_record_used_as_live_evidence"] is False

@@ -26,7 +26,177 @@
       "solve_foldable_bem_rotor",
       "map_foldable_bem_aero_loads"
     ],
-    "checkout_sha": "7555a4b9e91bd8e3bbb4e6b7423d43488357af27",
+    "certificate_source_file_identity": [
+      {
+        "current_sha256": "909a53cde402f00100ad77c6ab85657dd85406efdfe4396b2352d62ff13125b3",
+        "file_identity": "MISMATCH",
+        "historical_sha256": "1efbcb0ab9769063ce7e059a779abf3570aedf35c070a679cb0c2c8e9dc9f74a",
+        "loaded_code_identity": "NOT ESTABLISHED",
+        "operation_graph_applicability": "NOT ESTABLISHED",
+        "path": "pyfoldable/application/cmm2_coupled_transient_service.py"
+      },
+      {
+        "current_sha256": "5a249daf8eff06ac0a9ad36e33a74bd49292e738da5322c760ed56e5b109eade",
+        "file_identity": "MATCH",
+        "historical_sha256": "5a249daf8eff06ac0a9ad36e33a74bd49292e738da5322c760ed56e5b109eade",
+        "loaded_code_identity": "NOT ESTABLISHED",
+        "operation_graph_applicability": "NOT ESTABLISHED",
+        "path": "pyfoldable/application/coupled_transient_service.py"
+      },
+      {
+        "current_sha256": "0657ff62ea98e57ed92fb91c0c00bac414c05c69a627a589a86c2ae449448859",
+        "file_identity": "MATCH",
+        "historical_sha256": "0657ff62ea98e57ed92fb91c0c00bac414c05c69a627a589a86c2ae449448859",
+        "loaded_code_identity": "NOT ESTABLISHED",
+        "operation_graph_applicability": "NOT ESTABLISHED",
+        "path": "pyfoldable/application/folding_mechanism.py"
+      },
+      {
+        "current_sha256": "7314deffe0eecd91280cabd60dd043ca9916049f7dee542bd5fa292939e83055",
+        "file_identity": "MATCH",
+        "historical_sha256": "7314deffe0eecd91280cabd60dd043ca9916049f7dee542bd5fa292939e83055",
+        "loaded_code_identity": "NOT ESTABLISHED",
+        "operation_graph_applicability": "NOT ESTABLISHED",
+        "path": "pyfoldable/application/mechanism_binding.py"
+      },
+      {
+        "current_sha256": "3079f8cafe962556064efe74f7b9c22ceaae59bfaa5f063bb8a7ab1d2905b196",
+        "file_identity": "MATCH",
+        "historical_sha256": "3079f8cafe962556064efe74f7b9c22ceaae59bfaa5f063bb8a7ab1d2905b196",
+        "loaded_code_identity": "NOT ESTABLISHED",
+        "operation_graph_applicability": "NOT ESTABLISHED",
+        "path": "pyfoldable/core/airfoil.py"
+      },
+      {
+        "current_sha256": "4ca509127e6eedb5f124bfd12ba5192c1fc2a2de87219c7a15d0e373e5d1119a",
+        "file_identity": "MATCH",
+        "historical_sha256": "4ca509127e6eedb5f124bfd12ba5192c1fc2a2de87219c7a15d0e373e5d1119a",
+        "loaded_code_identity": "NOT ESTABLISHED",
+        "operation_graph_applicability": "NOT ESTABLISHED",
+        "path": "pyfoldable/core/bem.py"
+      },
+      {
+        "current_sha256": "7df94790f8e23ca749bc2bcb741e0afbf4e93a6881f1b9b0253b4e278b326fc3",
+        "file_identity": "MATCH",
+        "historical_sha256": "7df94790f8e23ca749bc2bcb741e0afbf4e93a6881f1b9b0253b4e278b326fc3",
+        "loaded_code_identity": "NOT ESTABLISHED",
+        "operation_graph_applicability": "NOT ESTABLISHED",
+        "path": "pyfoldable/core/bem_rotor.py"
+      },
+      {
+        "current_sha256": "bc55d40533c9dc634064484be83f589be8cecf5715b2d4a9f60989265764b0fe",
+        "file_identity": "MATCH",
+        "historical_sha256": "bc55d40533c9dc634064484be83f589be8cecf5715b2d4a9f60989265764b0fe",
+        "loaded_code_identity": "NOT ESTABLISHED",
+        "operation_graph_applicability": "NOT ESTABLISHED",
+        "path": "pyfoldable/core/config.py"
+      },
+      {
+        "current_sha256": "ffc815e101ed6d9cdb24fa9581585ea03eb2b048960fadb87d4ed3a89657b6bc",
+        "file_identity": "MATCH",
+        "historical_sha256": "ffc815e101ed6d9cdb24fa9581585ea03eb2b048960fadb87d4ed3a89657b6bc",
+        "loaded_code_identity": "NOT ESTABLISHED",
+        "operation_graph_applicability": "NOT ESTABLISHED",
+        "path": "pyfoldable/core/foldable_aero_load.py"
+      },
+      {
+        "current_sha256": "da2e6b694d59311463941d1551ee215c54bab24a6e92e79fd4d94713f6bb02a1",
+        "file_identity": "MATCH",
+        "historical_sha256": "da2e6b694d59311463941d1551ee215c54bab24a6e92e79fd4d94713f6bb02a1",
+        "loaded_code_identity": "NOT ESTABLISHED",
+        "operation_graph_applicability": "NOT ESTABLISHED",
+        "path": "pyfoldable/core/foldable_rotor.py"
+      },
+      {
+        "current_sha256": "fec0b429c5201a7e7565205df756d00d344a5d5dd94703b7775d4b74ce17b853",
+        "file_identity": "MATCH",
+        "historical_sha256": "fec0b429c5201a7e7565205df756d00d344a5d5dd94703b7775d4b74ce17b853",
+        "loaded_code_identity": "NOT ESTABLISHED",
+        "operation_graph_applicability": "NOT ESTABLISHED",
+        "path": "pyfoldable/core/models.py"
+      },
+      {
+        "current_sha256": "9c06d9d42e90970df585b7e250981e41c497d19b9e0269a349d04e63646d670b",
+        "file_identity": "MATCH",
+        "historical_sha256": "9c06d9d42e90970df585b7e250981e41c497d19b9e0269a349d04e63646d670b",
+        "loaded_code_identity": "NOT ESTABLISHED",
+        "operation_graph_applicability": "NOT ESTABLISHED",
+        "path": "pyfoldable/core/motor_bem_coupling.py"
+      },
+      {
+        "current_sha256": "839fdb78e3ec57452d743c6bb2a997c4c2635a320bf0c181fb5efa6fc66c731d",
+        "file_identity": "MATCH",
+        "historical_sha256": "839fdb78e3ec57452d743c6bb2a997c4c2635a320bf0c181fb5efa6fc66c731d",
+        "loaded_code_identity": "NOT ESTABLISHED",
+        "operation_graph_applicability": "NOT ESTABLISHED",
+        "path": "pyfoldable/core/polar.py"
+      },
+      {
+        "current_sha256": "fb97b4886a1bd04cff808d940ba2dbcdaf1732ec989236ff9a2beeae8c69cfa8",
+        "file_identity": "MATCH",
+        "historical_sha256": "fb97b4886a1bd04cff808d940ba2dbcdaf1732ec989236ff9a2beeae8c69cfa8",
+        "loaded_code_identity": "NOT ESTABLISHED",
+        "operation_graph_applicability": "NOT ESTABLISHED",
+        "path": "pyfoldable/core/polar_spanwise.py"
+      },
+      {
+        "current_sha256": "8730fa755175f529ada1be7dba58b0ff1c2198e9128a448359aea1e3563f9f7a",
+        "file_identity": "MATCH",
+        "historical_sha256": "8730fa755175f529ada1be7dba58b0ff1c2198e9128a448359aea1e3563f9f7a",
+        "loaded_code_identity": "NOT ESTABLISHED",
+        "operation_graph_applicability": "NOT ESTABLISHED",
+        "path": "pyfoldable/core/rotational_augmentation.py"
+      },
+      {
+        "current_sha256": "aee9da530eb4de2d435661a5c73c450ec60e118f995ce6379a1b7f077cbbd208",
+        "file_identity": "MATCH",
+        "historical_sha256": "aee9da530eb4de2d435661a5c73c450ec60e118f995ce6379a1b7f077cbbd208",
+        "loaded_code_identity": "NOT ESTABLISHED",
+        "operation_graph_applicability": "NOT ESTABLISHED",
+        "path": "pyfoldable/core/units.py"
+      },
+      {
+        "current_sha256": "8d0e58fc4ba8c3bf4887d0557165340c2f24dedd32444b4c517ff296f449cffc",
+        "file_identity": "MISMATCH",
+        "historical_sha256": "f120cd1ec0c329721f962abe95f16ec30fd56a1fda70f855b2991a0678736de1",
+        "loaded_code_identity": "NOT ESTABLISHED",
+        "operation_graph_applicability": "NOT ESTABLISHED",
+        "path": "pyfoldable/dynamics/cmm2_coupled_transient.py"
+      },
+      {
+        "current_sha256": "db9a73474afcd83b6874533d2efec9bbfef25f86b5350840565c0ed73afa56c0",
+        "file_identity": "MATCH",
+        "historical_sha256": "db9a73474afcd83b6874533d2efec9bbfef25f86b5350840565c0ed73afa56c0",
+        "loaded_code_identity": "NOT ESTABLISHED",
+        "operation_graph_applicability": "NOT ESTABLISHED",
+        "path": "pyfoldable/dynamics/coupled_transient.py"
+      },
+      {
+        "current_sha256": "236ef2c3ec7577e49ac34747e47cb42a823574b7880cd93b7a3b0f775e19fe67",
+        "file_identity": "MATCH",
+        "historical_sha256": "236ef2c3ec7577e49ac34747e47cb42a823574b7880cd93b7a3b0f775e19fe67",
+        "loaded_code_identity": "NOT ESTABLISHED",
+        "operation_graph_applicability": "NOT ESTABLISHED",
+        "path": "pyfoldable/dynamics/mechanism_contracts.py"
+      },
+      {
+        "current_sha256": "290cc2a928afca84a50c120e5e012019b67a8c8f53c1a3efe122a023a3efec67",
+        "file_identity": "MATCH",
+        "historical_sha256": "290cc2a928afca84a50c120e5e012019b67a8c8f53c1a3efe122a023a3efec67",
+        "loaded_code_identity": "NOT ESTABLISHED",
+        "operation_graph_applicability": "NOT ESTABLISHED",
+        "path": "pyfoldable/dynamics/mechanism_transient.py"
+      },
+      {
+        "current_sha256": "6223b9e22087da4d450473ba7c84dd4562a94462d16084cc60026c2360f8b750",
+        "file_identity": "MATCH",
+        "historical_sha256": "6223b9e22087da4d450473ba7c84dd4562a94462d16084cc60026c2360f8b750",
+        "loaded_code_identity": "NOT ESTABLISHED",
+        "operation_graph_applicability": "NOT ESTABLISHED",
+        "path": "pythrust/propulsion/models.py"
+      }
+    ],
+    "checkout_sha": "3b8d790d09f5eefd1be8669895de1cbb6ee3442d",
     "code_hashes": {
       "__call__": "3fb4f20d9c74bb832dd074630ecefcf60a25307532245f17bbe7686a55fd0a2b",
       "map_foldable_bem_aero_loads": "a5e0713ba4637d1db04064a9120b6530ee57c3fc0f286eb2a679f64c605b3302",
@@ -350,11 +520,11 @@
       {
         "amends_collector_inventory": false,
         "compiled_loaded_native_identity": "NOT A COMPILED IMAGE",
-        "current_sha256": "f6959c86421328252eb4bed724c2c7f94af6b6268ed96fac932e4c70517bd5bc",
+        "current_sha256": "2456725a3af79f75b8f49bd64de8dd805c145f95e83c5f563ec6c74de60e979a",
         "file_identity": "NO HISTORICAL RECORD",
         "historical_sha256": null,
         "kind": "python_source",
-        "loaded_code_identity": "af09a728d921528deeeec5529854e2fc76beaf7062500c960b965c5badabe3c0",
+        "loaded_code_identity": "45e082488989e3d33c3dc8c7fa0f2fe730e6f8ee35ad60d4912b877f2642cc07",
         "loaded_code_scope": "observe_pre_call_binding code object in this process",
         "operation_graph_applicability": "NOT ESTABLISHED",
         "path": "pyfoldable/application/c2v09_pre_call_binding.py",
@@ -455,7 +625,7 @@
         "classification": "OBSERVED",
         "cpuid_leaf1": [
           "0xc06f2",
-          "0x3040800",
+          "0x1040800",
           "0xfffa3227",
           "0x1fabfbff"
         ],
@@ -474,7 +644,7 @@
         "mxcsr_rounding": "nearest ties-to-even",
         "osxsave": true,
         "required_bits_ok": true,
-        "thread_id": "230382",
+        "thread_id": "230753",
         "x87_control": "0x37f",
         "xcr0": [
           "0x602e7",
@@ -495,13 +665,13 @@
         "mapped_file": "/usr/bin/python3.12"
       },
       "repaired_record_used_as_live_evidence": false,
-      "selected_address": "0x7fa159d80ad0",
+      "selected_address": "0x7ff95766bad0",
       "selected_evidence": "python wrapper plt got",
-      "thread_id": "230382"
+      "thread_id": "230753"
     },
     "outcome": "zero-call pre-call binding observation",
     "physical_qualification": false,
-    "pid": 230382,
+    "pid": 230753,
     "process_scope": "this process and calling thread only; not another process's observation",
     "proposed_current_graph_binding": {
       "does_not_rewrite_historical_classifications": true,
@@ -513,14 +683,14 @@
     "returned_bem_object_correspondence": "POST-RETURN ONLY",
     "runtime": {
       "executable": "/workspace/venv/bin/python",
-      "pid": 230382,
+      "pid": 230753,
       "python_version": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
-      "thread_id": "230382"
+      "thread_id": "230753"
     },
     "source_callbacks": 0,
-    "thread_id": "230382",
-    "tree_sha": "074f8ab6c337077543fb8999b43c4167eb468996"
+    "thread_id": "230753",
+    "tree_sha": "085f30932817951b67b4066595820ed6d6e34b4b"
   },
-  "canonical_sha256": "54af2d34f780e8f4011cd1078b42f053b4a7b2ce70fc02dfa6ad978c09fc6dd0",
+  "canonical_sha256": "7138aa838d4ae98165b94b42a2ee4185085a2020951f389e0d28028c24d657ff",
   "digest_scope": "SHA-256 of the section 7.3 canonical bytes of canonical_payload only. canonical_sha256 and digest_scope are outside that payload. Retained callable objects are not in this payload."
 }
