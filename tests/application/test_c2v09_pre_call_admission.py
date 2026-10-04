@@ -294,16 +294,30 @@ def _mutate(prepared, key: str, value: object) -> None:
 def test_unchanged_preparation_revalidates_operand_and_direct_node_checks_only() -> None:
     prepared = _prepare()
     checked = revalidate_pre_call_admission(prepared)
-    assert checked.classification == "REVALIDATED"
+    fresh = admission._verified_operands(_repository())
     assert checked.authorizes_execution is False
     assert checked.scope == "direct-node binding and retained operand checks"
     assert checked.native_control_continuity == "NOT ESTABLISHED"
     assert checked.transitive_loaded_code_identity == "NOT ESTABLISHED"
     assert checked.geometric_applicability == "NOT ESTABLISHED"
     assert checked.post_return_correspondence == "POST-RETURN ONLY"
+    assert admission.retained_operands_match(prepared.verified_operands, fresh) is True
+    if prepared.classification != "ZERO-CALL PREPARATION":
+        assert checked.classification == "INVALIDATED"
+        return
+    assert checked.classification == "REVALIDATED"
     published = admission.persistent_pre_call_admission(prepared)
     assert published["canonical_payload"]["classification"] == "ZERO-CALL PREPARATION"
     assert published["canonical_payload"]["verified_operands"]["classification"] == "VERIFIED"
+
+
+def test_missing_technical_head_does_not_upgrade_an_invalidated_preparation(monkeypatch) -> None:
+    monkeypatch.setattr(admission, "_technical_authority_bytes", lambda *_args: None)
+    prepared = _prepare()
+    assert prepared.policy_bundle_sha256 is None
+    assert prepared.classification == "INVALIDATED"
+    assert admission.retained_operands_match(prepared.verified_operands, admission._verified_operands(_repository())) is True
+    assert revalidate_pre_call_admission(prepared).classification == "INVALIDATED"
 
 
 def test_stale_digest_does_not_keep_mutated_operands_verified() -> None:
@@ -314,13 +328,17 @@ def test_stale_digest_does_not_keep_mutated_operands_verified() -> None:
     }
     for key, value in fields.items():
         prepared = _prepare()
+        fresh = admission._verified_operands(_repository())
         _mutate(prepared, key, value)
+        assert admission.retained_operands_match(prepared.verified_operands, fresh) is False
         assert revalidate_pre_call_admission(prepared).classification == "INVALIDATED"
         published = admission.persistent_pre_call_admission(prepared)
         assert published["canonical_payload"]["classification"] == "INVALIDATED"
         assert published["canonical_payload"]["verified_operands"]["classification"] != "VERIFIED"
     prepared = _prepare()
+    fresh = admission._verified_operands(_repository())
     prepared.verified_operands["initial_declaration_state"]["bounds"] = "mutated"
+    assert admission.retained_operands_match(prepared.verified_operands, fresh) is False
     assert revalidate_pre_call_admission(prepared).classification == "INVALIDATED"
     published = admission.persistent_pre_call_admission(prepared)
     assert published["canonical_payload"]["verified_operands"]["classification"] != "VERIFIED"
@@ -328,15 +346,24 @@ def test_stale_digest_does_not_keep_mutated_operands_verified() -> None:
 
 def test_recomputed_or_missing_digest_cannot_authorize_wrong_operands() -> None:
     prepared = _prepare()
+    fresh = admission._verified_operands(_repository())
     prepared.verified_operands["theta0"] = ["1/2", "1/2"]
     prepared.verified_operands["digest"] = admission.operand_payload_digest(prepared.verified_operands)
+    assert admission.retained_operands_match(prepared.verified_operands, fresh) is False
     assert revalidate_pre_call_admission(prepared).classification == "INVALIDATED"
 
     prepared = _prepare()
+    fresh = admission._verified_operands(_repository())
     prepared.verified_operands["digest"] = None
+    assert admission.retained_operands_match(prepared.verified_operands, fresh) is False
     assert revalidate_pre_call_admission(prepared).classification == "INVALIDATED"
     prepared.verified_operands["digest"] = ""
+    assert admission.retained_operands_match(prepared.verified_operands, fresh) is False
     assert revalidate_pre_call_admission(prepared).classification == "INVALIDATED"
+    assert admission.retained_operands_match(
+        {"classification": "VERIFIED", "digest": None},
+        {"classification": "VERIFIED", "digest": None},
+    ) is False
 
 
 def test_invalidated_preparation_does_not_become_valid_later() -> None:
