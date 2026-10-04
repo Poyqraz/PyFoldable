@@ -291,3 +291,16 @@ Keep `physical_qualification=false`, PR-06C unresolved and GEOM unknown/False
 states. No ADR-009 acceptance, calibration, experimental-validation promotion,
 design freeze or merge follows. Existing normative contracts, numerical
 thresholds and historical records are preserved.
+
+
+## 2026-10-03 prospective mixed-profile parent geometry scope
+
+A separate [generated mixed-profile sections/surfaces proposal](generated_mixed_profile_parent_geometry_contract.md)
+is **PROPOSED / NOT IMPLEMENTED**. It defines an identified continuous internal
+parent model and complementary restrictions, with inherited global chord/twist,
+explicit coordinate/thickness/transition/frame choices and joint differences.
+Generated sections at absent source hinges are model evaluations, not manufacturer
+rows. External CAD/STEP remains optional. The 13-inch example and its two comparison
+positions remain separate from the 250 mm baseline; source validity, as-built
+evidence, clearance and strength are not established by a generated surface.
+Earlier study records and broader proposal limits remain unchanged.

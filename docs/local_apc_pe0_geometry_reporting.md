@@ -206,3 +206,13 @@ It does not establish BEM performance, fracture risk, joint strength, an optimum
 hinge, accepted CMM-2 evidence, ADR-009 acceptance or physical qualification. C2V-09
 fixtures and PR #81/#84/#91 remain unchanged. Complete CAD/section/coordinate and
 experimental work retain their separate evidence requirements.
+
+
+## 2026-10-03 prospective generated-geometry boundary
+
+The separate [mixed-profile parent proposal](generated_mixed_profile_parent_geometry_contract.md)
+is **PROPOSED / NOT IMPLEMENTED**, not an extension of this retained-row contract.
+Any future continuous hinge section or declared blend has generated-model identity;
+original missing stations, all source rows and the genuine receipt remain intact.
+APC12/NACA4412 equivalence does not establish coordinates or the manufacturer's
+blend. No vendor input/full derivative is committed and no surface is executed.

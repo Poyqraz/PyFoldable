@@ -686,3 +686,23 @@ Candidate29 NOT SELECTED; literal v1 FAIL and historical v2 BLOCKED preserved.
 Kabul edilmiş bağımsız sayısal kanıt yoktur. Main RK45/v1, pending Q5/runtime/
 minimum-SciPy work and qualification boundaries remain; no implementation,
 ADR-009 acceptance or physical qualification follows.
+
+
+## 2026-10-03 CAD-free geometry workstream update — proposal only
+
+PR #92 merged at `988a8524c4a8814eeee54071a86b6da67f0b150b`: bounded local PE0
+source-retention/reporting is implemented, including the subsequently supplied
+genuine-source receipt. Earlier Draft/unavailable statements are historical; this
+update supersedes their current-status meaning without rewriting those records.
+Mixed-profile coordinates/surfaces, joint strength and optimum-hinge selection
+remain unestablished.
+
+The separate [mixed-profile parent geometry proposal](generated_mixed_profile_parent_geometry_contract.md)
+is **PROPOSED / NOT IMPLEMENTED**. Next bounded future scope: an identified
+continuous internal section model, explicitly declared blend and thickness/frame
+choices, complementary restrictions at two hinges and deterministic geometry
+reports. Coordinate rights/identity and placement assumptions precede implementation;
+no source/surface/BEM/FEA/trajectory execution or freeze is authorized by this
+documentation proposal. External CAD/STEP is optional. 13-inch source conventions
+remain separate from the 250 mm project baseline. Broader strength evidence and
+physical gates remain unchanged; no ADR-009 acceptance or qualification promotion.
