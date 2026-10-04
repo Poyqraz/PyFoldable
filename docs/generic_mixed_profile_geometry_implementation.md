@@ -5,8 +5,13 @@ Implementation in a separate Draft PR, stacked on PR #94; no merge/freeze.
 Reviewed design `a13d662cf3a118b7b3e0f949d87319c11d38397c`, separately reviewed
 [clarification](mixed_profile_parent_implementation_clarification.md) technical
 HEAD `28cc33b37e77ddd9913963137f3c381c40cf22f3`, closure/base
-`30b285b2bfd016bc444d43dd553d07020e5751b3`. Main ancestry is
-`6200b050809f7aca3ef3365608eea8cbfd80bd64`. The generic software scope was explicitly
+`30b285b2bfd016bc444d43dd553d07020e5751b3`. Main reference is
+`6200b050809f7aca3ef3365608eea8cbfd80bd64`. The preserved declaration lineage
+branches from PR #93 technical HEAD `1bbd9ccac876d5d612d2ac19e0cc16d492623e99`,
+which is the actual merge-base with main. Its tree and the main merge tree are
+identical (`136f451a3ace8ae011120c78174c99824508b42f`). The implementation PR targets
+the exact clarification closure branch; reviewed history is not rebased to inject
+the main merge commit. The generic software scope was explicitly
 authorized; historical proposal/selected-model statuses remain unchanged.
 
 ## Local service and CLI
