@@ -52,6 +52,7 @@ def rational(v):
 def test_s01_identity_immutable_cuts(geometry_request, report, declaration):
     c = json.loads(report.canonical_json)
     assert c['status'] == 'COMPLETE', c['diagnostics']
+    assert report.sha256 == '4384536470719379fc928d794533b528d7fd43388ed95490bb476303a2e1b2dd'
     assert c['request_sha256'] == declaration['positive_cases'][0]['request_sha256']
     assert c['budget']['input_bytes'] == len(wire(declaration['positive_cases'][0]['request']))
     sections = c['sections']
@@ -136,6 +137,7 @@ def test_declared_rejections(declaration, execution, case_index):
     c=json.loads(one.canonical_json); expected=case['expected']
     assert (c['status'],c['stage'],c['diagnostics'][0]['code'])==(expected['status'],expected['stage'],expected['code'])
     assert not c['cuts']
+    assert 'Status: BLOCKED' in g.render_mixed_profile_table(one)
 
 
 def test_r09_decoder(declaration):
