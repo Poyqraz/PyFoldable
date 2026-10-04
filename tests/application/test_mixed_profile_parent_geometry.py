@@ -342,3 +342,99 @@ def test_review_normalization_proof_scalar_schema(report):
     sr=wire(side)
     with pytest.raises(g.MixedProfileReportError):
         g.render_mixed_profile_table(g.MixedProfileParentReportV1(raw,h,sr,hashlib.sha256(sr).hexdigest()))
+
+
+def _coordinator_rehashed_report(report, content, sidecar, changed_sections=()):
+    """Refresh all content identities so witnesses test correspondence, not stale hashes."""
+    replacements = {}
+    for section in changed_sections:
+        old = section['sha256']
+        section['sha256'] = hashlib.sha256(wire(section['content'])).hexdigest()
+        replacements[old] = section['sha256']
+    if replacements:
+        for cut in content['cuts']:
+            for name in ('fixed_section_sha256s', 'tip_section_sha256s'):
+                cut['content'][name] = [replacements.get(h, h) for h in cut['content'][name]]
+            cut['content']['hinge_section_sha256'] = replacements.get(
+                cut['content']['hinge_section_sha256'], cut['content']['hinge_section_sha256'])
+            cut['sha256'] = hashlib.sha256(wire(cut['content'])).hexdigest()
+    projected = copy.deepcopy(content)
+    projected['budget']['output_bytes'] = None
+    content['budget']['output_bytes'] = len(wire(projected))
+    raw = wire(content)
+    digest = hashlib.sha256(raw).hexdigest()
+    sidecar['content_sha256'] = digest
+    sidecar_raw = wire(sidecar)
+    return g.MixedProfileParentReportV1(
+        raw, digest, sidecar_raw, hashlib.sha256(sidecar_raw).hexdigest())
+
+
+@pytest.mark.parametrize('change', (
+    'retained_parent_scalar',
+    'retained_signed_zero',
+    'retained_source_index',
+    'generated_bracket',
+    'point_radius',
+    'complete_inputs_missing',
+    'complete_input_correspondence',
+    'complete_proofs_missing',
+    'complete_proof_order',
+    'complete_branch_coverage',
+    'complete_denominator_correspondence',
+))
+def test_coordinator_renderer_correspondence_witnesses(report, change):
+    content = json.loads(report.canonical_json)
+    sidecar = json.loads(report.execution_json)
+    changed_sections = []
+
+    if change == 'retained_parent_scalar':
+        dst, src = content['sections'][0], content['sections'][1]
+        dst['content']['scalar_hex']['c'] = src['content']['scalar_hex']['c']
+        dst['content']['scalar_certificates'][0] = copy.deepcopy(
+            src['content']['scalar_certificates'][0])
+        changed_sections = [dst]
+    elif change == 'retained_signed_zero':
+        dst = content['sections'][0]
+        src = next(s for s in content['sections']
+                   if s['content']['station_kind'] == 'RETAINED_INPUT_STATION'
+                   and s['content']['source_index'] == 5)
+        assert dst['content']['scalar_hex']['Y'] == '-0x0.0p+0'
+        assert src['content']['scalar_hex']['Y'] == '0x0.0p+0'
+        dst['content']['scalar_hex']['Y'] = src['content']['scalar_hex']['Y']
+        dst['content']['scalar_certificates'][3] = copy.deepcopy(
+            src['content']['scalar_certificates'][3])
+        changed_sections = [dst]
+    elif change == 'retained_source_index':
+        dst = content['sections'][0]
+        dst['content']['source_index'] = 9999
+        changed_sections = [dst]
+    elif change == 'generated_bracket':
+        dst = next(s for s in content['sections']
+                   if s['content']['station_kind'] == 'GENERATED_SECTION')
+        dst['content']['bracketing_indices'] = [4, 1]
+        changed_sections = [dst]
+    elif change == 'point_radius':
+        dst, src = content['sections'][0], content['sections'][1]
+        dst_point, src_point = dst['content']['points'][0], src['content']['points'][0]
+        dst_point['xyz_hex'][0] = src_point['xyz_hex'][0]
+        dst_point['xyz_certificates'][0] = copy.deepcopy(src_point['xyz_certificates'][0])
+        changed_sections = [dst]
+    elif change == 'complete_inputs_missing':
+        content['inputs'] = []
+    elif change == 'complete_input_correspondence':
+        content['inputs'][0]['point_or_row_count'] -= 1
+    elif change == 'complete_proofs_missing':
+        content['proofs'] = []
+    elif change == 'complete_proof_order':
+        content['proofs'][0], content['proofs'][1] = content['proofs'][1], content['proofs'][0]
+    elif change == 'complete_branch_coverage':
+        p = next(p for p in content['proofs'] if p['kind'] == 'branch_cell')
+        p['content']['cell_index'] += 1
+    else:
+        p = next(p for p in content['proofs'] if p['kind'] == 'denominator')
+        p['content']['lower_bound'] = {'n': '1', 'd': '1'}
+
+    invalid = _coordinator_rehashed_report(
+        report, content, sidecar, changed_sections=changed_sections)
+    with pytest.raises(g.MixedProfileReportError):
+        g.render_mixed_profile_table(invalid)
