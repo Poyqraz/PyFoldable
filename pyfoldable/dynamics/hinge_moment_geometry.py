@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from typing import Literal
 
-from ..kinematics import effective_hinge_radius_m, effective_tip_cg_from_hinge_m
+from ..geometry_helpers import effective_hinge_radius_m, effective_tip_cg_from_hinge_m
 from ..models import FoldablePropellerConfig
 
 CentMomentModel = Literal["progress_lever", "geometric_radial"]
