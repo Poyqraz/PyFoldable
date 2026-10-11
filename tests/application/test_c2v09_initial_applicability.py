@@ -29,6 +29,7 @@ from pyfoldable.application.c2v09_pre_call_admission import prepare_pre_call_adm
 from pyfoldable.application.c2v09_pre_call_package import (
     PRE_CALL_READY,
     UNRESOLVED,
+    _body_argument_established,
     _constants_identity,
     _helper_call_bound,
     _label,
@@ -759,36 +760,87 @@ def test_helper_connection_follows_stub_got_and_qword() -> None:
     assert assess_helper_connection(annotation)["classification"] == "NOT ESTABLISHED"
 
 
-def test_reviewed_artifact_clears_only_the_libm_hypothesis() -> None:
+def _changed_body_receipt(
+    *,
+    provenance: str | None,
+    assumptions: list[str] | None,
+    include_review: bool = True,
+    include_binding: bool = True,
+) -> dict[str, object]:
+    """A changed body and a self-issued receipt. Hashes match the supplied claim."""
     context = _ready_context()
     cosine = context["native"]["runtime_correspondence"]["cosine"]
     cosine["required_bits_ok"] = True
     cosine["mxcsr"] = "0x1f80"
     cosine["libm_body_argument"] = "DOES NOT APPLY"
-    document = {
-        "assumptions": ["the captured body bytes are the selected cosine path"],
-        "applies_to": {
+    cosine["body_sha256"] = hashlib.sha256(b"changed cosine body").hexdigest()
+    cosine["constants"] = [{"vaddr": "0xabc", "observed_bytes_hex": "0102", "classification": "CHANGED"}]
+    assumptions = ["UNPROVED"] if assumptions is None else assumptions
+    document: dict[str, object] = {"assumptions": assumptions}
+    if include_binding:
+        document["applies_to"] = {
             "body_sha256": cosine["body_sha256"],
             "constants_identity": _constants_identity(cosine),
             "path": cosine["selected_address"],
-        },
-    }
+        }
     artifact = json.dumps(document, sort_keys=True).encode("utf-8")
     cosine["reviewed_transfer_artifact"] = artifact
-    cosine["reviewed_transfer_review"] = {
-        "artifact_sha256": sha256_bytes(artifact),
-        "provenance": "independent review names this artifact digest",
-        "scope": "captured cosine body and constants only",
-        "assumptions": document["assumptions"],
-        "binds_captured_path": True,
-    }
-    unresolved = _label(False, _ready_graph(), _ready_ulp(), **context)[1]
-    assert not any(row["name"] == "libm body argument" for row in unresolved)
-    assert any(row["name"] == "selected nextafter semantics" for row in unresolved)
-    cosine["reviewed_transfer_review"] = dict(cosine["reviewed_transfer_review"])
-    cosine["reviewed_transfer_review"]["artifact_sha256"] = "00" * 32
+    if include_review:
+        cosine["reviewed_transfer_review"] = {
+            "artifact_sha256": sha256_bytes(artifact),
+            "provenance": provenance,
+            "scope": "captured cosine body and constants",
+            "assumptions": assumptions,
+            "binds_captured_path": True,
+        }
+    return context
+
+
+def _assert_libm_body_stays(context: dict[str, object]) -> None:
+    cosine = context["native"]["runtime_correspondence"]["cosine"]
+    assert _body_argument_established(cosine) is False
     unresolved = _label(False, _ready_graph(), _ready_ulp(), **context)[1]
     assert any(row["name"] == "libm body argument" for row in unresolved)
+    assert any(row["name"] == "selected nextafter semantics" for row in unresolved)
+
+
+def test_unreviewed_unproved_receipt_keeps_the_libm_hypothesis() -> None:
+    _assert_libm_body_stays(_changed_body_receipt(provenance="UNREVIEWED", assumptions=["UNPROVED"]))
+
+
+def test_convincing_self_issued_wording_keeps_the_libm_hypothesis() -> None:
+    _assert_libm_body_stays(
+        _changed_body_receipt(
+            provenance="Independently approved for this exact artifact and captured path.",
+            assumptions=["Proved: these assumptions apply to the captured body, constants, and path."],
+        )
+    )
+
+
+def test_matching_recomputed_hashes_are_not_approval() -> None:
+    context = _changed_body_receipt(
+        provenance="digest recomputed from the artifact bytes",
+        assumptions=["the artifact names the recomputed body and constants"],
+    )
+    cosine = context["native"]["runtime_correspondence"]["cosine"]
+    artifact = cosine["reviewed_transfer_artifact"]
+    assert cosine["reviewed_transfer_review"]["artifact_sha256"] == sha256_bytes(artifact)
+    assert cosine["reviewed_transfer_review"]["artifact_sha256"] == hashlib.sha256(artifact).hexdigest()
+    binding = json.loads(artifact)["applies_to"]
+    assert binding["body_sha256"] == cosine["body_sha256"]
+    assert binding["constants_identity"] == _constants_identity(cosine)
+    _assert_libm_body_stays(context)
+
+
+def test_missing_approval_or_applicability_keeps_the_libm_hypothesis() -> None:
+    _assert_libm_body_stays(_changed_body_receipt(provenance=None, assumptions=["UNPROVED"], include_review=False))
+    _assert_libm_body_stays(
+        _changed_body_receipt(
+            provenance="UNREVIEWED",
+            assumptions=["UNPROVED"],
+            include_binding=False,
+        )
+    )
 
 
 def test_helper_gate_recomputes_the_loaded_chain() -> None:
@@ -1032,6 +1084,7 @@ def test_structural_records_do_not_close_semantic_hypotheses() -> None:
     label, unresolved = _label(False, _ready_graph(), _ready_ulp(), **context)
     names = {row["name"] for row in unresolved}
     assert label == UNRESOLVED
+    assert "libm body argument" not in names
     assert "interpreter binary64 arithmetic semantics" in names
     assert "PyFloat_AsDouble conversion semantics" in names
     assert "selected nextafter semantics" in names

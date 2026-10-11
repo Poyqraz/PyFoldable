@@ -6,7 +6,6 @@ calls stay at zero. PRE-CALL READY FOR REVIEW is not execution authorization.
 
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 from pathlib import Path
@@ -380,49 +379,8 @@ def _constants_identity(cosine: Mapping[str, object]) -> str:
 
 
 def _body_argument_established(cosine: Mapping[str, object]) -> bool:
-    """A caller dictionary is not a reviewed transfer. Disagreement stays blocked."""
-    if cosine.get("libm_body_argument") == "APPLIES":
-        return True
-    artifact = cosine.get("reviewed_transfer_artifact")
-    review = cosine.get("reviewed_transfer_review")
-    if not isinstance(artifact, (bytes, bytearray)) or not isinstance(review, Mapping):
-        return False
-    digest = sha256_bytes(bytes(artifact))
-    if review.get("artifact_sha256") != digest:
-        return False
-    provenance = review.get("provenance")
-    assumptions = review.get("assumptions")
-    scope = review.get("scope")
-    if not isinstance(provenance, str) or not provenance:
-        return False
-    if not isinstance(scope, str) or not scope:
-        return False
-    if not isinstance(assumptions, list) or not assumptions or not all(isinstance(item, str) and item for item in assumptions):
-        return False
-    if review.get("binds_captured_path") is not True:
-        return False
-    try:
-        document = json.loads(bytes(artifact).decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
-        return False
-    if not isinstance(document, dict) or document.get("assumptions") != assumptions:
-        return False
-    binding = document.get("applies_to")
-    body = cosine.get("body_sha256")
-    constants = cosine.get("constants")
-    identity = _constants_identity(cosine)
-    path = cosine.get("selected_address")
-    if not isinstance(binding, Mapping):
-        return False
-    if not isinstance(body, str) or not body or not isinstance(constants, list) or not constants or not identity:
-        return False
-    if not isinstance(path, str) or not path:
-        return False
-    return (
-        binding.get("body_sha256") == body
-        and binding.get("constants_identity") == identity
-        and binding.get("path") == path
-    )
+    """The historical captured-body verdict applies. A supplied artifact is not approval."""
+    return cosine.get("libm_body_argument") == "APPLIES"
 
 
 def _decode_matches_stored_edges(row: Mapping[str, object]) -> bool:
