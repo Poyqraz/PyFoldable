@@ -420,6 +420,18 @@ def _find_instruction(instructions: list[dis.Instruction], opname: str, argrepr:
     return None
 
 
+def _is_multiply(opname: str, argrepr: str) -> bool:
+    return (opname == "BINARY_OP" and argrepr == "*") or opname == "BINARY_MULTIPLY"
+
+
+def _is_subtract(opname: str, argrepr: str) -> bool:
+    return (opname == "BINARY_OP" and argrepr == "-") or opname == "BINARY_SUBTRACT"
+
+
+def _is_divide(opname: str, argrepr: str) -> bool:
+    return (opname == "BINARY_OP" and argrepr == "/") or opname == "BINARY_TRUE_DIVIDE"
+
+
 def _window(code: types.CodeType, start: int, last: int) -> dict[str, object] | None:
     instructions = _real_instructions(code)
     opcodes: list[str] = []
@@ -449,10 +461,14 @@ def _arithmetic_bounds(qualname: str, code: types.CodeType) -> tuple[int, int] |
     instructions = _real_instructions(code)
     if qualname == "FoldableRotorState.angle_from_deployed_rad":
         start = _find_instruction(instructions, "LOAD_ATTR", "opening_angle_rad")
-        last = None if start is None else _find_instruction(instructions, "BINARY_OP", "-", start.offset)
+        last = None
+        if start is not None:
+            last = next((item for item in instructions if item.offset >= start.offset and _is_subtract(item.opname, item.argrepr)), None)
     elif qualname == "BladeGeometry.radius_m":
         start = _find_instruction(instructions, "LOAD_ATTR", "diameter_m")
-        last = None if start is None else _find_instruction(instructions, "BINARY_OP", "/", start.offset)
+        last = None
+        if start is not None:
+            last = next((item for item in instructions if item.offset >= start.offset and _is_divide(item.opname, item.argrepr)), None)
     elif qualname == "project_foldable_blade.kernel_radius":
         start = None
         last = None
@@ -461,7 +477,8 @@ def _arithmetic_bounds(qualname: str, code: types.CodeType) -> tuple[int, int] |
                 continue
             window = instructions[index:index + 12]
             pairs = {(item.opname, item.argrepr) for item in window}
-            if ("LOAD_ATTR", "radius_m") in pairs and ("BINARY_OP", "*") in pairs and ("STORE_FAST", "nominal_radius") in pairs:
+            multiplied = any(_is_multiply(opname, argrepr) for opname, argrepr in pairs)
+            if ("LOAD_ATTR", "radius_m") in pairs and multiplied and ("STORE_FAST", "nominal_radius") in pairs:
                 start = instruction
                 last = next(item for item in window if item.opname == "STORE_FAST" and item.argrepr == "nominal_radius")
                 break
@@ -471,11 +488,13 @@ def _arithmetic_bounds(qualname: str, code: types.CodeType) -> tuple[int, int] |
         for index, instruction in enumerate(instructions):
             if instruction.opname != "LOAD_ATTR" or instruction.argrepr != "r_over_R":
                 continue
-            window = instructions[index:index + 8]
+            window = instructions[index:index + 12]
             pairs = {(item.opname, item.argrepr) for item in window}
-            if ("LOAD_ATTR", "radius_m") in pairs and ("BINARY_OP", "*") in pairs and ("STORE_DEREF", "radius") in pairs:
+            multiplied = any(_is_multiply(opname, argrepr) for opname, argrepr in pairs)
+            stored = next((item for item in window if item.opname in {"STORE_DEREF", "STORE_FAST"} and item.argrepr == "radius"), None)
+            if ("LOAD_ATTR", "radius_m") in pairs and multiplied and stored is not None:
                 start = instructions[index - 1] if index else instruction
-                last = next(item for item in window if item.opname == "STORE_DEREF" and item.argrepr == "radius")
+                last = stored
                 break
     elif qualname == "solve_bem_rotor.annulus_edge":
         store = _find_instruction(instructions, "STORE_FAST", "inner")

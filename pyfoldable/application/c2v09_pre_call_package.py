@@ -56,12 +56,12 @@ _EMBEDDED_ARITHMETIC = (
     "solve_bem_rotor.midpoint",
 )
 _ARITHMETIC_OPCODES = {
-    "FoldableRotorState.angle_from_deployed_rad": "BINARY_OP -",
-    "BladeGeometry.radius_m": "BINARY_OP /",
-    "project_foldable_blade.kernel_radius": "BINARY_OP *",
-    "solve_bem_annulus.kernel_radius": "STORE_DEREF radius",
-    "solve_bem_rotor.annulus_edge": "STORE_FAST outer",
-    "solve_bem_rotor.midpoint": "STORE_FAST midpoint",
+    "FoldableRotorState.angle_from_deployed_rad": ("BINARY_OP -", "BINARY_SUBTRACT"),
+    "BladeGeometry.radius_m": ("BINARY_OP /", "BINARY_TRUE_DIVIDE"),
+    "project_foldable_blade.kernel_radius": ("BINARY_OP *", "BINARY_MULTIPLY"),
+    "solve_bem_annulus.kernel_radius": ("STORE_DEREF radius", "STORE_FAST radius"),
+    "solve_bem_rotor.annulus_edge": ("STORE_FAST outer",),
+    "solve_bem_rotor.midpoint": ("STORE_FAST midpoint",),
 }
 _SEMANTIC_HYPOTHESES = (
     ("interpreter binary64 arithmetic semantics", "a bytecode window does not establish arithmetic or storage semantics"),
@@ -278,7 +278,7 @@ def _arithmetic_established(record: object) -> bool:
             return False
         if not isinstance(parent, int) or parent < end:
             return False
-        if not isinstance(opcodes, list) or _ARITHMETIC_OPCODES[qualname] not in opcodes:
+        if not isinstance(opcodes, list) or not any(marker in opcodes for marker in _ARITHMETIC_OPCODES[qualname]):
             return False
         if not isinstance(blob, str):
             return False

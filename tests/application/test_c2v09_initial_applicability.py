@@ -645,7 +645,7 @@ def test_annulus_kernel_follows_the_consumed_solve_bem_annulus() -> None:
     projection_window = arithmetic_operation_record("project_foldable_blade.kernel_radius")
     assert annulus_window["co_code_hex"]
     assert annulus_window["co_code_hex"] != projection_window["co_code_hex"]
-    assert "STORE_DEREF radius" in annulus_window["opcodes"]
+    assert any(token in {"STORE_DEREF radius", "STORE_FAST radius"} for token in annulus_window["opcodes"])
     original = bem_rotor.solve_bem_annulus
 
     def other(*_args, **_kwargs):
