@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import subprocess
@@ -109,7 +110,11 @@ def test_binding_uses_parsed_inputs_and_does_not_call_the_evaluator() -> None:
     assert bound.caller_claims_role == "not actual-input evidence"
     assert bound.initial_arguments["time_s"] == "NOT ESTABLISHED"
     assert bound.deferred_routines["clearance_granted"] is False
-    assert all(row["classification"] == "MATCH" for row in bound.active_graph)
+    for row in bound.active_graph:
+        if row["globals"] == "NOT ESTABLISHED" or row["constants"] == "NOT ESTABLISHED" or row["defaults"] == "NOT ESTABLISHED":
+            assert row["classification"] == "NOT ESTABLISHED"
+        else:
+            assert row["classification"] == "MATCH"
     assert bound.deferred_routines["solve_cmm2_transient"] == "NOT CLEARED"
     assert bound.applicability["status"] == "CONTRACT BLOCKED"
     assert bound.applicability["exact_historical_equality_assumed"] is False
@@ -190,6 +195,94 @@ def test_input_and_code_mutations_invalidate_and_restore() -> None:
     finally:
         bound.retained["draft_bytes"] = original_draft
     assert revalidate_initial_call_binding(bound).classification == "REVALIDATED"
+
+
+def test_numerical_controls_and_polar_coordinates_invalidate() -> None:
+    bound = _bind()
+    settings = bound.evaluator.settings
+    annulus = settings.annulus_settings
+    rotation = annulus.rotational_augmentation
+    table = bound.evaluator.polars.anchors[0].family.tables[0]
+    schedule = bound.evaluator.polars
+    mutations = (
+        (settings, "radial_domain", "hub_to_tip" if settings.radial_domain != "hub_to_tip" else "station_span"),
+        (annulus, "max_iterations", annulus.max_iterations + 1),
+        (annulus, "bracket_samples", annulus.bracket_samples + 1),
+        (annulus, "include_tip_loss", not annulus.include_tip_loss),
+        (annulus, "include_root_loss", not annulus.include_root_loss),
+        (annulus, "residual_tolerance_m2_s", annulus.residual_tolerance_m2_s * 2.0),
+        (annulus, "relative_residual_tolerance", annulus.relative_residual_tolerance * 2.0),
+        (annulus, "angle_tolerance_rad", annulus.angle_tolerance_rad * 2.0),
+        (annulus, "minimum_tip_loss_factor", annulus.minimum_tip_loss_factor / 2.0),
+        (annulus, "loading_branch", "signed_nonreversed" if annulus.loading_branch != "signed_nonreversed" else "positive_only"),
+        (rotation, "maximum_chord_over_radius", rotation.maximum_chord_over_radius / 2.0),
+        (rotation, "maximum_absolute_alpha_rad", rotation.maximum_absolute_alpha_rad / 2.0),
+        (table, "reynolds", table.reynolds * 2.0),
+        (table, "mach", -0.0 if table.mach == 0.0 else -0.0),
+        (table, "airfoil_id", table.airfoil_id + "-other"),
+        (schedule, "id", schedule.id + "-other"),
+    )
+    for owner, name, replacement in mutations:
+        original = getattr(owner, name)
+        try:
+            object.__setattr__(owner, name, replacement)
+            assert replacement != original or binary64_hex(float(replacement)) != binary64_hex(float(original))
+            assert revalidate_initial_call_binding(bound).classification == "INVALIDATED"
+        finally:
+            object.__setattr__(owner, name, original)
+        assert revalidate_initial_call_binding(bound).classification == "REVALIDATED"
+
+
+def test_pending_argument_payload_is_retained_apart_from_the_mutable_dict() -> None:
+    bound = _bind()
+    assert bound.initial_arguments["time_s"] == "NOT ESTABLISHED"
+    snapshot = bound.retained["initial_argument_snapshot"]
+    assert snapshot is not bound.initial_arguments
+    original = dict(bound.initial_arguments)
+    signed_zero = "0x0.0p+0" if original["theta_rad_hex"] == "-0x0.0p+0" else "-0x0.0p+0"
+    for key in ("theta_rad_hex", "omega_rad_s_hex", "theta_dot_rad_s_hex"):
+        bound.initial_arguments[key] = signed_zero
+        assert revalidate_initial_call_binding(bound).classification == "INVALIDATED"
+        bound.initial_arguments[key] = original[key]
+        assert revalidate_initial_call_binding(bound).classification == "REVALIDATED"
+    removed = bound.initial_arguments.pop("theta_dot_rad_s_hex")
+    try:
+        assert revalidate_initial_call_binding(bound).classification == "INVALIDATED"
+    finally:
+        bound.initial_arguments["theta_dot_rad_s_hex"] = removed
+    assert revalidate_initial_call_binding(bound).classification == "REVALIDATED"
+    current = bound.initial_arguments
+    try:
+        bound.initial_arguments = {}
+        assert revalidate_initial_call_binding(bound).classification == "INVALIDATED"
+        bound.initial_arguments = {"time_s": "0x0.0p+0"}
+        assert revalidate_initial_call_binding(bound).classification == "INVALIDATED"
+    finally:
+        bound.initial_arguments = current
+    assert revalidate_initial_call_binding(bound).classification == "REVALIDATED"
+    assert bound.initial_arguments["time_s"] == "NOT ESTABLISHED"
+
+
+def test_unresolved_direct_callee_constant_is_not_a_match(tmp_path: Path, monkeypatch) -> None:
+    source = tmp_path / "inert_callee.py"
+    source.write_text(
+        "def callee(value):\n    return value in {1}\n\ndef caller():\n    return callee(0)\n",
+        encoding="utf-8",
+    )
+    spec = importlib.util.spec_from_file_location("inert_callee_binding", source)
+    loaded = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(loaded)
+    monkeypatch.setattr(
+        binding_module,
+        "_ACTIVE_CODE",
+        (("inert_callee.py", "caller", loaded.caller),),
+    )
+    row = binding_module._compare_active(tmp_path)[0]
+    assert row["constants"] == "MATCH"
+    assert row["defaults"] == "MATCH"
+    assert row["globals"] == "NOT ESTABLISHED"
+    assert row["classification"] == "NOT ESTABLISHED"
 
 
 def test_field_writes_invalidate_retained_inputs() -> None:

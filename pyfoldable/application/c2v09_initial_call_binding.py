@@ -181,7 +181,7 @@ def _compare_active(root: Path) -> list[dict[str, object]]:
         referenced = _referenced_globals(root, function)
         if "MISMATCH" in (classification, defaults, referenced):
             overall = "MISMATCH"
-        elif "NOT ESTABLISHED" in (classification, defaults):
+        elif "NOT ESTABLISHED" in (classification, defaults, referenced):
             overall = "NOT ESTABLISHED"
         else:
             overall = "MATCH"
@@ -298,10 +298,31 @@ def _sequence_hex(values: object) -> list[str]:
     return [binary64_hex(value) for value in values]
 
 
+def _optional_hex(value: float | None) -> str | None:
+    if value is None:
+        return None
+    return binary64_hex(value)
+
+
+def _frozen(value: object) -> object:
+    """Immutable snapshot. Floats keep their binary64 sign bit."""
+    if isinstance(value, float):
+        return ("binary64", binary64_hex(value))
+    if value is None or isinstance(value, (bool, int, str, bytes)):
+        return value
+    if isinstance(value, (list, tuple)):
+        return tuple(_frozen(item) for item in value)
+    if isinstance(value, Mapping):
+        return tuple(sorted((str(key), _frozen(item)) for key, item in value.items()))
+    return ("unsupported", type(value).__name__)
+
+
 def _input_fingerprint(evaluator: Cmm2FoldableBemMappedAeroEvaluator) -> dict[str, object]:
     """Live field values. Object identity does not cover in-place writes."""
     blade = evaluator.blade
     environment = evaluator.environment
+    annulus = evaluator.settings.annulus_settings
+    rotation = annulus.rotational_augmentation
     return {
         "bounds": evaluator.bounds,
         "diameter_hex": binary64_hex(blade.diameter_m),
@@ -316,22 +337,48 @@ def _input_fingerprint(evaluator: Cmm2FoldableBemMappedAeroEvaluator) -> dict[st
             }
             for station in blade.stations
         ],
+        "polar_schedule_id": evaluator.polars.id,
         "polars": [
             {
                 "r_over_R": binary64_hex(anchor.r_over_R),
                 "tables": [
                     {
+                        "airfoil_id": table.airfoil_id,
+                        "reynolds_hex": binary64_hex(table.reynolds),
+                        "mach_hex": binary64_hex(table.mach),
                         "alpha": _sequence_hex(table.alpha_rad),
                         "cl": _sequence_hex(table.cl),
                         "cd": _sequence_hex(table.cd),
                         "cm": _sequence_hex(table.cm),
+                        "source": table.source,
+                        "scenario_id": table.scenario_id,
+                        "metadata": _frozen(dict(table.metadata)),
                     }
                     for table in anchor.family.tables
                 ],
             }
             for anchor in evaluator.polars.anchors
         ],
-        "annulus_count": evaluator.settings.annulus_count,
+        "bem": {
+            "annulus_count": evaluator.settings.annulus_count,
+            "radial_domain": evaluator.settings.radial_domain,
+            "bracket_samples": annulus.bracket_samples,
+            "max_iterations": annulus.max_iterations,
+            "angle_tolerance_hex": binary64_hex(annulus.angle_tolerance_rad),
+            "residual_tolerance_hex": binary64_hex(annulus.residual_tolerance_m2_s),
+            "relative_residual_tolerance_hex": binary64_hex(annulus.relative_residual_tolerance),
+            "minimum_tip_loss_factor_hex": binary64_hex(annulus.minimum_tip_loss_factor),
+            "include_tip_loss": annulus.include_tip_loss,
+            "include_root_loss": annulus.include_root_loss,
+            "loading_branch": annulus.loading_branch,
+            "rotational_augmentation": {
+                "kind": rotation.kind,
+                "lift_curve_slope_hex": _optional_hex(rotation.lift_curve_slope_per_rad),
+                "zero_lift_angle_hex": _optional_hex(rotation.zero_lift_angle_rad),
+                "maximum_chord_over_radius_hex": binary64_hex(rotation.maximum_chord_over_radius),
+                "maximum_absolute_alpha_hex": binary64_hex(rotation.maximum_absolute_alpha_rad),
+            },
+        },
         "environment": {
             "id": environment.id,
             "forward_speed_m_s": binary64_hex(environment.forward_speed_m_s),
@@ -650,7 +697,7 @@ def bind_initial_call(
         ),
         "polar_alpha_hex": _polar_alpha_hex(polars),
         "environment_air_density_hex": binary64_hex(environment.air_density_kg_m3),
-        "fingerprint": _input_fingerprint(evaluator),
+        "fingerprint": _frozen(_input_fingerprint(evaluator)),
         "evidence_role": "parsed draft and verified manifest bytes",
     }
     arguments = {
@@ -659,6 +706,7 @@ def bind_initial_call(
         "theta_dot_rad_s_hex": binary64_hex(float(effective["initial_angular_velocity_rad_s"])),
         "omega_rad_s_hex": binary64_hex(float(effective["initial_omega_rad_s"])),
     }
+    argument_snapshot = _frozen(arguments)
     native = _fresh_native(root, native_observer)
     bound = InitialCallBinding(
         evaluator,
@@ -676,9 +724,11 @@ def bind_initial_call(
             "active_codes": {qualname: function.__code__ for _path, qualname, function in _ACTIVE_CODE},
             "defaults": {qualname: _default_snapshot(function) for _path, qualname, function in _ACTIVE_CODE},
             "globals": {qualname: _callable_globals(function) for _path, qualname, function in _ACTIVE_CODE},
+            "initial_argument_snapshot": argument_snapshot,
+            "input_fingerprint": identity["fingerprint"],
         },
         identity,
-        arguments,
+        dict(arguments),
         _compare_active(root),
         {
             "solve_cmm2_transient": "NOT CLEARED",
@@ -751,7 +801,9 @@ def revalidate_initial_call_binding(value: object) -> InitialCallRevalidation:
         snapshot = value.retained["globals"][qualname]
         if current != snapshot:
             return InitialCallRevalidation("INVALIDATED")
-    if _input_fingerprint(evaluator) != value.input_identity["fingerprint"]:
+    if _frozen(_input_fingerprint(evaluator)) != value.retained["input_fingerprint"]:
+        return InitialCallRevalidation("INVALIDATED")
+    if not isinstance(value.initial_arguments, Mapping) or _frozen(value.initial_arguments) != value.retained["initial_argument_snapshot"]:
         return InitialCallRevalidation("INVALIDATED")
     if not _native_continuous(value):
         return InitialCallRevalidation("INVALIDATED")
