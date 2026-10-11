@@ -43,6 +43,7 @@ DIGEST_SCOPE = (
     "canonical_sha256 and digest_scope are outside that payload."
 )
 _CALL = re.compile(r"^\s*[0-9a-f]+:.*\bcall\s+([0-9a-f]+)\s+<([^>]+)>", re.IGNORECASE)
+_INSTRUCTION = re.compile(r"^\s*([0-9a-f]+):", re.IGNORECASE)
 
 
 def xcr0_read_permitted(leaf1_ecx: int, leaf7_ecx: int) -> bool:
@@ -274,6 +275,74 @@ def _readable_process_bytes(address: int, length: int) -> bytes | None:
         return None
 
 
+def call_edges_from_loaded_bytes(code: bytes, base: int) -> list[dict[str, object]]:
+    """Direct and RIP-relative calls decoded from the bytes that were loaded."""
+    edges: list[dict[str, object]] = []
+    index = 0
+    while index < len(code):
+        if code[index] == 0xE8 and index + 5 <= len(code):
+            displacement = int.from_bytes(code[index + 1:index + 5], "little", signed=True)
+            edges.append(
+                {
+                    "kind": "direct",
+                    "opcode": "e8",
+                    "offset": index,
+                    "target": hex(base + index + 5 + displacement),
+                    "source": "loaded bytes",
+                }
+            )
+            index += 5
+            continue
+        if index + 6 <= len(code) and code[index] == 0xFF and code[index + 1] == 0x15:
+            displacement = int.from_bytes(code[index + 2:index + 6], "little", signed=True)
+            edges.append(
+                {
+                    "kind": "indirect",
+                    "opcode": "ff15",
+                    "offset": index,
+                    "target": hex(base + index + 6 + displacement),
+                    "source": "loaded bytes",
+                }
+            )
+            index += 6
+            continue
+        index += 1
+    return edges
+
+
+def _loaded_symbol_calls(
+    wrapper_runtime: int,
+    located: tuple[str, int],
+    disassembly: str,
+    symbol: str,
+) -> list[dict[str, object]]:
+    """Use disassembly only to choose an instruction. The edge comes from loaded bytes."""
+    path, wrapper_vaddr = located
+    edges: list[dict[str, object]] = []
+    for line in disassembly.splitlines():
+        match = _CALL.match(line)
+        located_instruction = _INSTRUCTION.match(line)
+        if match is None or located_instruction is None or not match.group(2).startswith(symbol):
+            continue
+        instruction_vaddr = int(located_instruction.group(1), 16)
+        runtime = wrapper_runtime + (instruction_vaddr - wrapper_vaddr)
+        file_bytes = _elf_bytes(path, instruction_vaddr, 5)
+        loaded = _readable_process_bytes(runtime, 5)
+        if file_bytes is None or loaded is None or file_bytes != loaded or not loaded.startswith(b"\xe8"):
+            continue
+        decoded = call_edges_from_loaded_bytes(loaded, runtime)
+        if not decoded:
+            continue
+        edge = dict(decoded[0])
+        edge["symbol"] = match.group(2)
+        edge["loaded_bytes_match_file"] = True
+        edge["loaded_instruction_bytes_hex"] = loaded.hex()
+        edge["file_instruction_bytes_hex"] = file_bytes.hex()
+        edge["disk_disassembly_is_proof"] = False
+        edges.append(edge)
+    return edges
+
+
 def _read_qword(address: int) -> int | None:
     if _runtime_owner(address) is None:
         return None
@@ -452,15 +521,17 @@ def _consumed_symbol_ranges(binary: Path, symbols: Mapping[str, int | None]) -> 
         file_off = _file_offset_for_vaddr(binary, spec[0])
         size = spec[1]
         loaded = None if size <= 0 or file_off is None else _readable_process_bytes(address, size)
+        file_slice = b"" if file_off is None or file_off + size > len(data) else data[file_off:file_off + size]
         if loaded is None or file_off is None or file_off + size > len(data):
             correspondence = "NOT ESTABLISHED"
             difference = "unavailable"
-        elif data[file_off:file_off + size] == loaded:
+        elif file_slice == loaded:
             correspondence = "MATCH"
             difference = None
         else:
             correspondence = "MISMATCH"
             difference = "observed"
+        mapped = _runtime_to_vaddr(address)
         rows.append(
             {
                 "name": name,
@@ -468,44 +539,108 @@ def _consumed_symbol_ranges(binary: Path, symbols: Mapping[str, int | None]) -> 
                 "file_offset": file_off,
                 "length": size,
                 "end_address": hex(address + size),
+                "file_bytes_hex": None if not file_slice else file_slice.hex(),
+                "loaded_bytes_hex": None if loaded is None else loaded.hex(),
+                "call_edges": [] if loaded is None else call_edges_from_loaded_bytes(loaded, address),
+                "call_edges_decoded_from_loaded_bytes": loaded is not None,
+                "address_to_elf": {
+                    "runtime_address": hex(address),
+                    "mapped_file": None if mapped is None else mapped[0],
+                    "elf_vaddr": None if mapped is None else hex(mapped[1]),
+                    "file_offset": file_off,
+                },
                 "correspondence": correspondence,
                 "difference": difference,
                 "coverage": "symbol range",
                 "whole_elf": False,
+                "disk_disassembly_is_proof": False,
             }
         )
     return rows
 
 
-def observe_ulp_terminal_guard() -> dict[str, object]:
-    """Disassemble math.ulp. Do not call math.ulp or nextafter."""
-    address = None
+def _c_function_address(function: object) -> int | None:
     getter = ctypes.pythonapi.PyCFunction_GetFunction
     getter.argtypes = [ctypes.py_object]
     getter.restype = ctypes.c_void_p
     try:
-        value = getter(math.ulp)
-        address = int(value) if value else None
+        value = getter(function)
     except (OSError, ValueError, TypeError):
-        address = None
-    if not address:
+        return None
+    if not value:
         ctypes.pythonapi.PyErr_Clear()
-    disassembly = None
-    if address is not None:
-        located = _runtime_to_vaddr(address)
-        if located is not None:
-            disassembly = _disassemble(located[0], located[1], located[1] + 0x180)
-    calls_nextafter = bool(disassembly and _calls_symbol(disassembly, "nextafter"))
-    return {
+        return None
+    return int(value)
+
+
+def observe_ulp_terminal_guard() -> dict[str, object]:
+    """Follow the loaded math.ulp wrapper. Do not call math.ulp or nextafter."""
+    address = _c_function_address(math.ulp)
+    located = None if address is None else _runtime_to_vaddr(address)
+    loaded = None if address is None else _readable_process_bytes(address, 0x180)
+    file_bytes = None if located is None else _elf_bytes(located[0], located[1], 0x180)
+    matches = loaded is not None and file_bytes is not None and loaded == file_bytes
+    record: dict[str, object] = {
         "ulp_function_calls": 0,
         "nextafter_function_calls": 0,
         "output_sampled": False,
         "wrapper_address": None if address is None else hex(address),
-        "calls_nextafter_plt": calls_nextafter,
-        "selected_nextafter": "OBSERVED IN WRAPPER DISASSEMBLY" if calls_nextafter else "NOT ESTABLISHED",
+        "wrapper_address_establishes_path": False,
+        "disk_disassembly_is_proof": False,
+        "loaded_wrapper_bytes_hex": None if loaded is None else loaded.hex(),
+        "file_wrapper_bytes_hex": None if file_bytes is None else file_bytes.hex(),
+        "loaded_wrapper_matches_file": matches,
+        "address_to_elf": None
+        if located is None or address is None
+        else {
+            "runtime_address": hex(address),
+            "mapped_file": located[0],
+            "elf_vaddr": hex(located[1]),
+            "file_offset": _file_offset_for_vaddr(Path(located[0]), located[1]),
+        },
+        "call_edges": [],
+        "loaded_stub_bytes_hex": None,
+        "got_slot": None,
+        "selected_address": None,
+        "evidence": None,
+        "calls_nextafter_plt": False,
+        "selected_nextafter": "NOT ESTABLISHED",
         "historical_equality_assumed": False,
         "settles_applicability": False,
     }
+    if address is None or located is None or not matches:
+        return record
+    disassembly = _disassemble(located[0], located[1], located[1] + 0x180)
+    if disassembly is None:
+        return record
+    edges = _loaded_symbol_calls(address, located, disassembly, "nextafter")
+    record["call_edges"] = edges
+    if not edges:
+        return record
+    target = int(str(edges[0]["target"]), 16)
+    stub = _readable_process_bytes(target, 16)
+    if stub is None:
+        return record
+    record["loaded_stub_bytes_hex"] = stub.hex()
+    got = plt_got_address(stub, target)
+    if got is None:
+        return record
+    record["got_slot"] = hex(got)
+    pointer = _read_qword(got)
+    prefix = 4 if stub.startswith(b"\xf3\x0f\x1e\xfa") else 0
+    selected = classify_selected_call(
+        got_pointer=pointer,
+        stub_address=target,
+        cdll_pointer=None,
+        unresolved_address=target + prefix + 6,
+    )
+    owner = None if pointer is None else _runtime_owner(pointer)
+    if selected["classification"] == "OBSERVED" and owner is not None and owner[3] != located[0] and pointer is not None:
+        record["calls_nextafter_plt"] = True
+        record["selected_nextafter"] = "OBSERVED"
+        record["selected_address"] = hex(pointer)
+        record["evidence"] = "loaded wrapper plt got"
+    return record
 
 
 def _fegetround() -> str | None:
@@ -608,6 +743,7 @@ def prepare_cosine_path_certificate(root: Path) -> dict[str, object]:
             plt_vaddr = _cos_plt_vaddr(disassembly)
     selected: dict[str, object]
     body_sha = None
+    body_bytes = None
     body_vaddr = None
     libm_path = None
     constants: list[dict[str, object]] = []
@@ -667,6 +803,7 @@ def prepare_cosine_path_certificate(root: Path) -> dict[str, object]:
                 if got_pointer + HISTORICAL_BODY_LENGTH <= owner[1]:
                     libm_path = owner[3]
                     body = ctypes.string_at(got_pointer, HISTORICAL_BODY_LENGTH)
+                    body_bytes = body
                     body_sha = sha256_bytes(body)
                     mapped = _runtime_to_vaddr(got_pointer)
                     body_vaddr = None if mapped is None else hex(mapped[1])
@@ -680,6 +817,7 @@ def prepare_cosine_path_certificate(root: Path) -> dict[str, object]:
                 {
                     "vaddr": vaddr,
                     "match": observed == expected,
+                    "observed_bytes_hex": None if observed is None else observed.hex(),
                     "classification": "NOT ESTABLISHED" if observed is None else ("MATCH" if observed == expected else "MISMATCH"),
                 }
             )
@@ -711,6 +849,53 @@ def prepare_cosine_path_certificate(root: Path) -> dict[str, object]:
     )
     selected = attributed["selected_call_target"]
     libm_argument = attributed["libm_body_argument"]
+    conversion_edges = []
+    cosine_edges = []
+    if wrapper is not None and located is not None and disassembly is not None:
+        conversion_edges = _loaded_symbol_calls(wrapper, located, disassembly, "PyFloat_AsDouble")
+        cosine_edges = _loaded_symbol_calls(wrapper, located, disassembly, "cos@")
+    conversion: dict[str, object]
+    if conversion_edges:
+        conversion = dict(conversion_edges[0])
+        conversion["classification"] = "OBSERVED"
+    else:
+        conversion = {
+            "classification": "NOT ESTABLISHED",
+            "source": "loaded bytes",
+            "disk_disassembly_is_proof": False,
+        }
+    runtime_correspondence = {
+        "recording_pid": os.getpid(),
+        "recording_thread_id": features["thread_id"],
+        "disk_disassembly_is_proof": False,
+        "whole_elf_required": False,
+        "cosine": {
+            "loaded_wrapper_bytes_hex": None if loaded_wrapper is None else loaded_wrapper.hex(),
+            "file_wrapper_bytes_hex": None if elf_wrapper is None else elf_wrapper.hex(),
+            "loaded_wrapper_matches_file": attributed["loaded_wrapper_matches_elf"] is True,
+            "conversion": conversion,
+            "cosine_call_edges": cosine_edges,
+            "plt_stub_bytes_hex": selected.get("plt_stub_bytes_hex"),
+            "plt_jmp_bytes_hex": selected.get("plt_jmp_bytes_hex"),
+            "got_slot": selected.get("got_slot"),
+            "selected_address": selected.get("address"),
+            "evidence": selected.get("evidence"),
+            "selected_classification": selected.get("classification"),
+            "body_sha256": body_sha,
+            "body_bytes_hex": None if body_bytes is None else body_bytes.hex(),
+            "body_elf_vaddr": body_vaddr,
+            "constants": constants,
+            "controls_classification": features.get("classification"),
+            "required_bits_ok": features.get("required_bits_ok"),
+            "mxcsr": features.get("mxcsr"),
+            "fegetround": features.get("fegetround"),
+            "x87_control": features.get("x87_control"),
+            "xcr0": features.get("xcr0"),
+            "cosine_function_calls": 0,
+            "libm_body_argument": libm_argument,
+            "disk_disassembly_is_proof": False,
+        },
+    }
     payload = {
         "status": "ONE RUNTIME PATH CERTIFICATE",
         "eligibility_evidence": False,
@@ -746,6 +931,7 @@ def prepare_cosine_path_certificate(root: Path) -> dict[str, object]:
         "loaded_constants": constants,
         "numerical_controls_and_features": features,
         "libm_body_argument": libm_argument,
+        "runtime_correspondence": runtime_correspondence,
         "historical_cpython_wrapper_argument": wrapper_argument,
         "applicability_scope": (
             "historical libm body validity predicate for this selected path only; "

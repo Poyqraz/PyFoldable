@@ -10,7 +10,6 @@ from __future__ import annotations
 import ctypes
 import json
 import math
-import sys
 from pathlib import Path
 from typing import Callable, Mapping
 
@@ -29,30 +28,12 @@ from pyfoldable.application.c2v09_ordered_declaration import (
     _json_fence,
     sha256_bytes,
 )
-from pyfoldable.application.c2v09_pre_call_binding import (
-    _code_for_qualname,
-    compare_code_structure,
-    compare_signature_defaults,
+from pyfoldable.application.c2v09_declared_operations import (
+    OPERATION_SPECS,
+    OperationSpec,
+    classify_resolved_operation,
+    resolve_operation,
 )
-from pyfoldable.application.cmm2_coupled_transient_service import Cmm2FoldableBemMappedAeroEvaluator
-from pyfoldable.core.bem_rotor import _interpolate_station, _radial_limits, solve_bem_rotor
-from pyfoldable.core.config import load_design_config
-from pyfoldable.core.foldable_aero_load import (
-    _native_terminal_annuli,
-    _projection_factor,
-    map_foldable_bem_aero_loads,
-    map_projected_material_loads,
-    projected_radius_m,
-)
-from pyfoldable.core.foldable_rotor import (
-    FoldableRotorState,
-    _station_at_hinge,
-    project_foldable_blade,
-    project_spanwise_polar_schedule,
-    solve_foldable_bem_rotor,
-)
-from pyfoldable.core.polar import PolarFamily
-from pyfoldable.core.polar_spanwise import SpanwisePolarSchedule
 
 
 ACCEPTED_REPAIR_HEAD = "f74f7d4f0cf2c2a6e6cd37aeec666aea786d12ca"
@@ -62,73 +43,45 @@ REPAIRED_OBSERVATION_SHA256 = "273744853a2c2b0691cc208fbb5d00e97d8b802379958d106
 CERTIFICATE_PATH = "docs/cmm2_c2v09_partition_runtime_certificate.md"
 IMPLEMENTATION_SOURCE = "pyfoldable/application/c2v09_cosine_path_certificate.py"
 
-_DECLARED_OPERATIONS = (
-    ("pyfoldable/application/cmm2_coupled_transient_service.py", "Cmm2FoldableBemMappedAeroEvaluator.__call__", Cmm2FoldableBemMappedAeroEvaluator.__call__, "evaluator call", "transaction"),
-    ("pyfoldable/core/foldable_rotor.py", "solve_foldable_bem_rotor", solve_foldable_bem_rotor, "source call", "transaction"),
-    ("pyfoldable/core/foldable_aero_load.py", "map_foldable_bem_aero_loads", map_foldable_bem_aero_loads, "mapper call", "transaction"),
-    ("pyfoldable/core/config.py", "load_design_config", load_design_config, "draft parse", "transaction"),
-    ("pyfoldable/core/foldable_rotor.py", "FoldableRotorState.angle_from_deployed_rad", FoldableRotorState.angle_from_deployed_rad.fget, "angle from deployed", "geometric lemma"),
-    ("pyfoldable/core/foldable_rotor.py", "project_foldable_blade", project_foldable_blade, "source cosine projection and kernel-radius product", "geometric lemma"),
-    ("pyfoldable/core/foldable_rotor.py", "project_spanwise_polar_schedule", project_spanwise_polar_schedule, "spanwise anchor projection", "geometric lemma"),
-    ("pyfoldable/core/foldable_aero_load.py", "_projection_factor", _projection_factor, "mapper cosine input", "geometric lemma"),
-    ("pyfoldable/core/foldable_rotor.py", "_station_at_hinge", _station_at_hinge, "hinge station construction", "geometric lemma"),
-    ("pyfoldable/core/bem_rotor.py", "_radial_limits", _radial_limits, "radial domain construction", "geometric lemma"),
-    ("pyfoldable/core/bem_rotor.py", "_interpolate_station", _interpolate_station, "normalized radial query", "geometric lemma"),
-    ("pyfoldable/core/polar.py", "PolarFamily.query", PolarFamily.query, "polar query branches", "geometric lemma"),
-    ("pyfoldable/core/polar_spanwise.py", "SpanwisePolarSchedule.section", SpanwisePolarSchedule.section, "spanwise normalized query", "geometric lemma"),
-    ("pyfoldable/core/foldable_aero_load.py", "projected_radius_m", projected_radius_m, "mapper projected radius", "geometric lemma"),
-    ("pyfoldable/core/foldable_aero_load.py", "map_projected_material_loads", map_projected_material_loads, "mapper interval ownership", "geometric lemma"),
-    ("pyfoldable/core/foldable_aero_load.py", "_native_terminal_annuli", _native_terminal_annuli, "python terminal-guard helper", "native terminal guard"),
-    ("pyfoldable/core/bem_rotor.py", "solve_bem_rotor", solve_bem_rotor, "bem numerical solution", "bem numerical dependency"),
-)
-
-
-def _operation_row(root: Path, path: str, qualname: str, function: object, operation: str, family: str) -> dict[str, object]:
-    source_path = root / path
-    code_status = "NOT ESTABLISHED"
-    defaults = "NOT ESTABLISHED"
-    referenced = "NOT ESTABLISHED"
-    if source_path.is_file() and hasattr(function, "__code__"):
-        text = source_path.read_text(encoding="utf-8")
-        compiled = compile(text, str(source_path), "exec", dont_inherit=True, optimize=sys.flags.optimize)
-        expected = _code_for_qualname(compiled, qualname)
-        if expected is not None:
-            code_status = compare_code_structure(function.__code__, expected)
-        defaults = compare_signature_defaults(function, text, qualname)
-        referenced = _referenced_globals(root, function)
-    if "MISMATCH" in (code_status, defaults, referenced):
+def _operation_row(root: Path, spec: OperationSpec) -> dict[str, object]:
+    resolved = resolve_operation(spec)
+    compared = classify_resolved_operation(root, spec, resolved)
+    referenced = "NOT ESTABLISHED" if resolved is None else _referenced_globals(root, resolved.callee)
+    if "MISMATCH" in (compared["classification"], referenced):
         overall = "MISMATCH"
-    elif "NOT ESTABLISHED" in (code_status, defaults, referenced):
+    elif "NOT ESTABLISHED" in (compared["classification"], referenced):
         overall = "NOT ESTABLISHED"
     else:
         overall = "MATCH"
+    proof = "this qualname is not established"
+    if overall == "MATCH" and spec.family == "bem numerical dependency":
+        proof = "loaded code identity of this qualname only; not an every-angle convergence theorem"
+    elif overall == "MATCH":
+        proof = "loaded code structure of this qualname only"
     return {
-        "path": path,
-        "qualname": qualname,
-        "operation": operation,
-        "family": family,
+        "path": spec.path,
+        "qualname": spec.qualname,
+        "operation": spec.operation,
+        "family": spec.family,
         "classification": overall,
-        "constants": code_status,
-        "defaults": defaults,
+        "constants": compared["constants"],
+        "defaults": compared["defaults"],
+        "markers": compared["markers"],
         "globals": referenced,
-        "geometric_lemma": family == "geometric lemma",
-        "bem_numerical_dependency": family == "bem numerical dependency",
+        "resolved_from": "call-site namespace",
+        "descriptor_kind": "property" if isinstance(getattr(resolved, "descriptor", None), property) else "function" if resolved is not None else None,
+        "geometric_lemma": spec.family == "geometric lemma",
+        "bem_numerical_dependency": spec.family == "bem numerical dependency",
+        "every_angle_convergence_theorem": False,
         "module_digest_clears_this_row": False,
         "filename_clears_this_row": False,
-        "proof_role": (
-            "loaded code structure of this qualname only"
-            if overall == "MATCH"
-            else "this qualname is not established"
-        ),
+        "proof_role": proof,
     }
 
 
 def declare_initial_operation_graph(root: Path) -> list[dict[str, object]]:
     """Finite source-to-mapper and scope-A graph. A filename clears nothing."""
-    rows = [
-        _operation_row(root, path, qualname, function, operation, family)
-        for path, qualname, function, operation, family in _DECLARED_OPERATIONS
-    ]
+    rows = [_operation_row(root, spec) for spec in OPERATION_SPECS]
     rows.append(_native_guard_row())
     return rows
 

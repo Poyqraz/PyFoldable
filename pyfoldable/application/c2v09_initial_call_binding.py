@@ -19,6 +19,11 @@ from typing import Callable, Mapping
 
 from pyfoldable.application.c2v09_binding_collector import collect_binding_record
 from pyfoldable.application.c2v09_cosine_path_certificate import prepare_cosine_path_certificate
+from pyfoldable.application.c2v09_declared_operations import (
+    capture_operation_bindings,
+    operation_bindings_hold,
+    resolve_qualname,
+)
 from pyfoldable.application.c2v09_ordered_declaration import (
     CANDIDATE29_DISPOSITION,
     _json_fence,
@@ -219,9 +224,18 @@ def _loads(text: str) -> dict[str, object]:
     return parsed
 
 
+def _consumed_active(qualname: str, fallback: object) -> object:
+    """Call-site callee when this qualname is declared; otherwise the supplied callable."""
+    resolved = resolve_qualname(qualname)
+    if resolved is None:
+        return fallback
+    return resolved.callee
+
+
 def _compare_active(root: Path) -> list[dict[str, object]]:
     rows = []
     for path, qualname, function in _ACTIVE_CODE:
+        function = _consumed_active(qualname, function)
         source_path = root / path
         classification = "NOT ESTABLISHED"
         defaults = "NOT ESTABLISHED"
@@ -618,6 +632,7 @@ def _fresh_native(root: Path, observer: Callable[[Path], object]) -> dict[str, o
         "thread_id": _thread_id(),
         "attribution": "wrapper plt got" if observed_target else "NOT ESTABLISHED",
         "comparison": compared,
+        "runtime_correspondence": dict(_mapping(payload.get("runtime_correspondence"))),
         "os": {"system": platform.system(), "machine": platform.machine()},
     }
 
@@ -785,11 +800,12 @@ def bind_initial_call(
             MAPPER_BINDING: evaluator.__call__.__globals__.get(MAPPER_BINDING),
             "__call__": Cmm2FoldableBemMappedAeroEvaluator.__call__,
             "__call_code__": evaluator.__call__.__code__,
-            "active_codes": {qualname: function.__code__ for _path, qualname, function in _ACTIVE_CODE},
-            "defaults": {qualname: _default_snapshot(function) for _path, qualname, function in _ACTIVE_CODE},
-            "globals": {qualname: _callable_globals(function) for _path, qualname, function in _ACTIVE_CODE},
+            "active_codes": {qualname: _consumed_active(qualname, function).__code__ for _path, qualname, function in _ACTIVE_CODE},
+            "defaults": {qualname: _default_snapshot(_consumed_active(qualname, function)) for _path, qualname, function in _ACTIVE_CODE},
+            "globals": {qualname: _callable_globals(_consumed_active(qualname, function)) for _path, qualname, function in _ACTIVE_CODE},
             "initial_argument_snapshot": argument_snapshot,
             "input_fingerprint": identity["fingerprint"],
+            "operation_bindings": capture_operation_bindings(),
         },
         identity,
         dict(arguments),
@@ -851,6 +867,7 @@ def revalidate_initial_call_binding(value: object) -> InitialCallRevalidation:
     if binary64_hex(evaluator.environment.air_density_kg_m3) != value.input_identity["environment_air_density_hex"]:
         return InitialCallRevalidation("INVALIDATED")
     for path, qualname, function in _ACTIVE_CODE:
+        function = _consumed_active(qualname, function)
         if function.__code__ is not value.retained["active_codes"][qualname]:
             return InitialCallRevalidation("INVALIDATED")
         defaults = value.retained["defaults"][qualname]
@@ -865,6 +882,8 @@ def revalidate_initial_call_binding(value: object) -> InitialCallRevalidation:
         snapshot = value.retained["globals"][qualname]
         if current != snapshot:
             return InitialCallRevalidation("INVALIDATED")
+    if not operation_bindings_hold(value.retained.get("operation_bindings")):
+        return InitialCallRevalidation("INVALIDATED")
     if _frozen(_input_fingerprint(evaluator)) != value.retained["input_fingerprint"]:
         return InitialCallRevalidation("INVALIDATED")
     if not isinstance(value.initial_arguments, Mapping) or _frozen(value.initial_arguments) != value.retained["initial_argument_snapshot"]:
