@@ -410,22 +410,36 @@ def _loaded_jump_slot_calls(path: str, loaded: bytes, file_bytes: bytes, base: i
     return edges
 
 
+def _executable_images(data: bytes) -> list[tuple[str, int, bytes]]:
+    headers = _section_headers(data)
+    if headers is None:
+        return []
+    images = []
+    for name, header in headers:
+        address = header[3]
+        size = header[5]
+        if address == 0 or size <= 0 or size > 8_000_000:
+            continue
+        if not (name.startswith(".plt") or (header[2] & 4)):
+            continue
+        images.append((name, address, data[header[4]:header[4] + size]))
+    images.sort(key=lambda item: (not item[0].startswith(".plt"), item[0]))
+    return images
+
+
 def _plt_entry_vaddr(path: str, slot_vaddr: int) -> int | None:
+    """File vaddr of the stub whose RIP-relative jump uses this GOT slot."""
     data = Path(path).read_bytes()
-    plt = _section(data, ".plt")
-    if plt is None:
-        return None
-    blob = data[plt[4]:plt[4] + plt[5]]
-    base = plt[3]
     endbr = b"\xf3\x0f\x1e\xfa"
-    for index in range(len(blob) - 6):
-        if blob[index] != 0xFF or blob[index + 1] != 0x25:
-            continue
-        displacement = int.from_bytes(blob[index + 2:index + 6], "little", signed=True)
-        if base + index + 6 + displacement != slot_vaddr:
-            continue
-        entry = index - 4 if index >= 4 and blob[index - 4:index] == endbr else index
-        return base + entry
+    for _name, base, blob in _executable_images(data):
+        for index in range(len(blob) - 6):
+            if blob[index] != 0xFF or blob[index + 1] != 0x25:
+                continue
+            displacement = int.from_bytes(blob[index + 2:index + 6], "little", signed=True)
+            if base + index + 6 + displacement != slot_vaddr:
+                continue
+            entry = index - 4 if index >= 4 and blob[index - 4:index] == endbr else index
+            return base + entry
     return None
 
 
