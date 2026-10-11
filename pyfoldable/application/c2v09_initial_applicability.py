@@ -12,7 +12,7 @@ import json
 import math
 import sys
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Mapping
 
 from pyfoldable.application.c2v09_initial_call_binding import (
     CONTRACT_BLOCKED,
@@ -20,6 +20,7 @@ from pyfoldable.application.c2v09_initial_call_binding import (
     InitialCallBinding,
     _referenced_globals,
     bind_initial_call,
+    revalidate_initial_call_binding,
 )
 from pyfoldable.application.c2v09_ordered_declaration import (
     CANDIDATE29_DISPOSITION,
@@ -174,30 +175,96 @@ def _historical_ulp(root: Path) -> dict[str, object]:
     }
 
 
+def classify_implementation_change(
+    current_digest: str,
+    historical_digest: str | None,
+    *,
+    review_binding: Mapping[str, object] | None = None,
+) -> dict[str, object]:
+    """A hash difference is pending until an explicit review names this digest."""
+    scope = None
+    if not isinstance(historical_digest, str):
+        relation = "NOT ESTABLISHED"
+    elif current_digest == historical_digest:
+        relation = "HISTORICAL EQUALITY"
+    elif (
+        isinstance(review_binding, Mapping)
+        and review_binding.get("current_digest") == current_digest
+        and isinstance(review_binding.get("scope"), str)
+        and review_binding.get("scope")
+    ):
+        relation = "REVIEWED REBINDING"
+        scope = str(review_binding["scope"])
+    else:
+        relation = "CHANGED / REVIEW PENDING"
+    return {
+        "current_implementation_sha256": current_digest,
+        "historical_implementation_sha256": historical_digest,
+        "relation": relation,
+        "review_scope": scope,
+        "historical_equality_assumed": False,
+        "clears_runtime_differences": False,
+        "runtime_transfer_approved": False,
+    }
+
+
 def _implementation_rebinding(root: Path) -> dict[str, object]:
     current = sha256_bytes((root / IMPLEMENTATION_SOURCE).read_bytes())
     observed = root / REPAIRED_OBSERVATION_PATH
     historical = None
     if observed.is_file() and sha256_bytes(observed.read_bytes()) == REPAIRED_OBSERVATION_SHA256:
         payload = json.loads(observed.read_text(encoding="utf-8"))["canonical_payload"]
-        historical = payload.get("implementation_sha256")
-    if not isinstance(historical, str):
-        relation = "NOT ESTABLISHED"
-    elif current == historical:
-        relation = "HISTORICAL EQUALITY"
-    else:
-        relation = "REVIEWED REBINDING"
+        value = payload.get("implementation_sha256")
+        historical = value if isinstance(value, str) else None
+    return classify_implementation_change(current, historical)
+
+
+def _blocked(name: str, classification: str, timing: str) -> dict[str, object]:
+    row: dict[str, object] = {
+        "name": name,
+        "classification": classification,
+        "contract": CONTRACT_BLOCKED,
+        "timing": timing,
+    }
+    if timing == "POST-RETURN ONLY":
+        row["demanded_before_it_exists"] = False
+    if timing == "deferred integration":
+        row["prerequisite_for_isolated_source_attempt"] = False
+    return row
+
+
+def _not_current_runtime() -> dict[str, object]:
     return {
-        "current_implementation_sha256": current,
-        "historical_implementation_sha256": historical,
-        "relation": relation,
-        "historical_equality_assumed": False,
-        "clears_runtime_differences": False,
+        "current": False,
+        "kind": "NOT CURRENT",
+        "loaded_code_correspondence": "NOT ESTABLISHED",
+        "measurement_image": {
+            "file_image_identity": "NOT ESTABLISHED",
+            "loaded_code_correspondence": "NOT ESTABLISHED",
+            "handle_associated": False,
+            "second_compilation_is_evidence": False,
+            "source_hash_is_the_image": False,
+        },
+        "test_double_is_measurement_evidence": False,
+        "archived_json_is_measurement_evidence": False,
+        "cosine_function_calls": 0,
     }
 
 
-def _blocked(name: str, classification: str) -> dict[str, object]:
-    return {"name": name, "classification": classification, "contract": CONTRACT_BLOCKED}
+def _serialized_dossier() -> dict[str, object]:
+    return {
+        "status": CONTRACT_BLOCKED,
+        "authorizes_execution": False,
+        "eligibility_evidence": False,
+        "physical_qualification": False,
+        "candidate29_disposition": CANDIDATE29_DISPOSITION,
+        "binding_revalidation": "NOT ESTABLISHED",
+        "serialized_record_is_a_live_binding": False,
+        "genuine_runtime_observations": _not_current_runtime(),
+        "retained_observation": {"role": "historical/unvalidated", "revalidation": "NOT ESTABLISHED"},
+        "deferred_radau_is_prerequisite_for_isolated_source_attempt": False,
+        "post_return_demanded_before_existence": False,
+    }
 
 
 def build_applicability_dossier(
@@ -207,54 +274,80 @@ def build_applicability_dossier(
     native_observer: Callable[..., object] | None = None,
 ) -> dict[str, object]:
     """One reviewable dossier. Unresolved rows stay contract blocked."""
+    if binding is not None and not isinstance(binding, InitialCallBinding):
+        return _serialized_dossier()
     prepared = binding if binding is not None else bind_initial_call(
         root,
         **({} if native_observer is None else {"native_observer": native_observer}),
     )
+    checked = revalidate_initial_call_binding(prepared)
+    current = checked.classification == "REVALIDATED"
     graph = declare_initial_operation_graph(root)
     native = prepared.native_observation
     measurement = native.get("measurement_image") if isinstance(native.get("measurement_image"), dict) else {}
-    genuine = native.get("kind") == "genuine" and measurement.get("handle_associated") is True
-    if not genuine:
-        measurement = {
+    genuine = current and native.get("kind") == "genuine" and measurement.get("handle_associated") is True
+    if genuine:
+        current_measurement = dict(measurement)
+        correspondence = current_measurement.get("loaded_code_correspondence", "NOT ESTABLISHED")
+        if correspondence != "MATCH":
+            correspondence = "NOT ESTABLISHED"
+    else:
+        current_measurement = {
             "file_image_identity": "NOT ESTABLISHED",
             "loaded_code_correspondence": "NOT ESTABLISHED",
             "handle_associated": False,
             "second_compilation_is_evidence": False,
             "source_hash_is_the_image": False,
         }
-    correspondence = measurement.get("loaded_code_correspondence", "NOT ESTABLISHED")
-    if correspondence != "MATCH":
         correspondence = "NOT ESTABLISHED"
     admission = prepared.admission
     unmet = [
-        _blocked("returned source object", POST_RETURN_ONLY),
-        _blocked("mapped interval consumption", POST_RETURN_ONLY),
-        _blocked("time_s", str(prepared.initial_arguments.get("time_s"))),
-        _blocked("solve_cmm2_transient", str(prepared.deferred_routines.get("solve_cmm2_transient"))),
-        _blocked("first_radau_contact", str(prepared.deferred_routines.get("cmm2_radau_dense"))),
-        _blocked("native terminal guard historical path", "NOT ESTABLISHED"),
-        _blocked("applicability review", "UNREVIEWED"),
+        _blocked("returned source object", POST_RETURN_ONLY, "POST-RETURN ONLY"),
+        _blocked("mapped interval consumption", POST_RETURN_ONLY, "POST-RETURN ONLY"),
+        _blocked("time_s", str(prepared.initial_arguments.get("time_s")), "pre-call"),
+        _blocked("solve_cmm2_transient", str(prepared.deferred_routines.get("solve_cmm2_transient")), "deferred integration"),
+        _blocked("first_radau_contact", str(prepared.deferred_routines.get("cmm2_radau_dense")), "deferred integration"),
+        _blocked("native terminal guard historical path", "NOT ESTABLISHED", "pre-call"),
+        _blocked("applicability review", "UNREVIEWED", "pre-call"),
     ]
     if correspondence != "MATCH":
-        unmet.append(_blocked("loaded probe-image correspondence", "NOT ESTABLISHED"))
+        unmet.append(_blocked("loaded probe-image correspondence", "NOT ESTABLISHED", "pre-call"))
     for row in graph:
         if row["classification"] != "MATCH":
-            unmet.append(_blocked(str(row["qualname"]), str(row["classification"])))
+            unmet.append(_blocked(str(row["qualname"]), str(row["classification"]), "pre-call"))
     for name in admission.historical_source_mismatches:
-        unmet.append(_blocked(f"historical source {name}", "MISMATCH"))
+        unmet.append(_blocked(f"historical source {name}", "MISMATCH", "pre-call"))
     for name in prepared.applicability.get("historical_mismatches") or []:
-        unmet.append(_blocked(str(name), "MISMATCH"))
+        unmet.append(_blocked(str(name), "MISMATCH", "pre-call"))
     justified = [
         {
             "qualname": row["qualname"],
             "family": row["family"],
             "proof_role": row["proof_role"],
             "clears_other_rows": False,
+            "current_runtime": current,
         }
         for row in graph
-        if row["classification"] == "MATCH"
+        if row["classification"] == "MATCH" and current
     ]
+    runtime = {
+        "current": current,
+        "kind": native.get("kind") if current else "NOT CURRENT",
+        "pid": prepared.pid,
+        "thread_id": prepared.thread_id,
+        "measurement_image": current_measurement,
+        "loaded_code_correspondence": correspondence,
+        "test_double_is_measurement_evidence": False,
+        "archived_json_is_measurement_evidence": False,
+        "cosine_function_calls": native.get("cosine_function_calls", 0) if current else 0,
+    }
+    retained = {
+        "role": "current" if current else "historical/unvalidated",
+        "revalidation": checked.classification,
+        "original_pid": prepared.pid,
+        "original_thread_id": prepared.thread_id,
+        "measurement_image": dict(measurement) if isinstance(measurement, dict) else {},
+    }
     return {
         "status": CONTRACT_BLOCKED,
         "authorizes_execution": False,
@@ -284,21 +377,18 @@ def build_applicability_dossier(
             "operation_graph": graph,
             "module_digest_clears_any_row": False,
             "filename_clears_any_row": False,
+            "current_runtime": current,
         },
-        "genuine_runtime_observations": {
-            "kind": native.get("kind"),
-            "pid": prepared.pid,
-            "thread_id": prepared.thread_id,
-            "measurement_image": measurement,
-            "loaded_code_correspondence": correspondence,
-            "test_double_is_measurement_evidence": False,
-            "archived_json_is_measurement_evidence": False,
-            "cosine_function_calls": native.get("cosine_function_calls", 0),
-        },
+        "binding_revalidation": checked.classification,
+        "serialized_record_is_a_live_binding": True,
+        "genuine_runtime_observations": runtime,
+        "retained_observation": retained,
         "justified_correspondence": justified,
         "unmet_hypotheses": unmet,
         "time_s": prepared.initial_arguments.get("time_s"),
         "post_return": dict(prepared.post_return),
         "dependent_counters": dict(prepared.dependent_counters),
         "archived_record_authorizes_later_process": False,
+        "deferred_radau_is_prerequisite_for_isolated_source_attempt": False,
+        "post_return_demanded_before_existence": False,
     }

@@ -286,6 +286,49 @@ def _read_qword(address: int) -> int | None:
 
 
 PROBE_BUILD_FLAGS = ("-O2", "-shared", "-fPIC")
+INSPECTED_PREFIX_LENGTH = 64
+
+
+def classify_loaded_correspondence(
+    file_bytes: bytes,
+    loaded_bytes: bytes | None,
+    *,
+    address: int,
+    file_offset: int,
+) -> dict[str, object]:
+    """A prefix comparison does not establish whole-image correspondence."""
+    if loaded_bytes is None or file_offset < 0 or file_offset + len(loaded_bytes) > len(file_bytes):
+        inspected = "NOT ESTABLISHED"
+        difference = "unavailable"
+        length = 0 if loaded_bytes is None else len(loaded_bytes)
+    elif file_bytes[file_offset:file_offset + len(loaded_bytes)] == loaded_bytes:
+        inspected = "MATCH"
+        difference = None
+        length = len(loaded_bytes)
+    else:
+        inspected = "MISMATCH"
+        difference = "observed"
+        length = len(loaded_bytes)
+    covers_file = file_offset == 0 and loaded_bytes is not None and len(loaded_bytes) == len(file_bytes) and length == len(file_bytes)
+    if covers_file and inspected == "MATCH":
+        whole = "MATCH"
+        coverage = "whole file"
+    elif covers_file and inspected == "MISMATCH":
+        whole = "MISMATCH"
+        coverage = "whole file"
+    else:
+        whole = "NOT ESTABLISHED"
+        coverage = "entrypoint prefix"
+    return {
+        "inspected_address": hex(address),
+        "inspected_end_address": None if loaded_bytes is None else hex(address + len(loaded_bytes)),
+        "inspected_file_offset": file_offset,
+        "inspected_length": length,
+        "inspected_correspondence": inspected,
+        "difference": difference,
+        "correspondence_coverage": coverage,
+        "loaded_code_correspondence": whole,
+    }
 
 
 def _probe_words(source: Path) -> tuple[list[int], dict[str, object]] | None:
@@ -318,28 +361,26 @@ def _measurement_image(source: Path, binary: Path, address: int | None) -> dict[
     file_sha = sha256_bytes(file_bytes)
     source_sha = sha256_bytes(source.read_bytes())
     loaded_path = None
-    correspondence = "NOT ESTABLISHED"
     owner = None if address is None else _runtime_owner(address)
+    inspected = classify_loaded_correspondence(b"", None, address=0, file_offset=0)
     if owner is not None and address is not None:
         start, end, map_off, path = owner
         loaded_path = path
+        file_off = map_off + (address - start)
+        length = min(INSPECTED_PREFIX_LENGTH, end - address)
         try:
             mapped = Path(path).read_bytes()
         except OSError:
             mapped = None
-        length = min(64, end - address)
-        file_off = map_off + (address - start)
         loaded = None if length <= 0 else _readable_process_bytes(address, length)
-        if (
-            mapped is not None
-            and loaded is not None
-            and sha256_bytes(mapped) == file_sha
-            and 0 <= file_off
-            and file_off + length <= len(mapped)
-            and mapped[file_off:file_off + length] == loaded
-        ):
-            correspondence = "MATCH"
-    return {
+        reference = mapped if mapped is not None and sha256_bytes(mapped) == file_sha else None
+        inspected = classify_loaded_correspondence(
+            b"" if reference is None else reference,
+            None if reference is None else loaded,
+            address=address,
+            file_offset=file_off,
+        )
+    record = {
         "role": "actual loaded probe image used for read_state",
         "compiler": "gcc",
         "flags": list(PROBE_BUILD_FLAGS),
@@ -350,12 +391,13 @@ def _measurement_image(source: Path, binary: Path, address: int | None) -> dict[
         "loaded_path": loaded_path,
         "read_state_address": None if address is None else hex(address),
         "handle_associated": address is not None,
-        "loaded_code_correspondence": correspondence,
         "second_compilation_is_evidence": False,
         "source_hash_is_the_image": False,
         "cosine_function_calls": 0,
         "read_state_calls": 0,
     }
+    record.update(inspected)
+    return record
 
 
 def _fegetround() -> str | None:

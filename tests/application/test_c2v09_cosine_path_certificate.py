@@ -18,6 +18,7 @@ from pyfoldable.application.c2v09_cosine_path_certificate import (
     UNPARSED_STUB_METHOD,
     _feature_record,
     attribute_loaded_wrapper,
+    classify_loaded_correspondence,
     classify_selected_call,
     libm_body_verdict,
     plt_got_address,
@@ -130,6 +131,34 @@ def test_historical_certificate_bytes_stay_unchanged() -> None:
     assert sha256_bytes(certificate.read_bytes()) == CERTIFICATE_FILE_SHA256
 
 
+def test_prefix_match_does_not_establish_whole_image_correspondence() -> None:
+    file_bytes = bytes(range(256))
+    loaded = file_bytes[:64]
+    unchanged = classify_loaded_correspondence(file_bytes, loaded, address=0x1000, file_offset=0)
+    assert unchanged["inspected_length"] == 64
+    assert unchanged["inspected_address"] == "0x1000"
+    assert unchanged["inspected_end_address"] == "0x1040"
+    assert unchanged["inspected_correspondence"] == "MATCH"
+    assert unchanged["loaded_code_correspondence"] == "NOT ESTABLISHED"
+    shifted = bytearray(loaded)
+    outside = bytearray(file_bytes)
+    outside[100] ^= 0xFF
+    still_prefix = classify_loaded_correspondence(bytes(outside), loaded, address=0x1000, file_offset=0)
+    assert still_prefix["inspected_correspondence"] == "MATCH"
+    assert still_prefix["loaded_code_correspondence"] == "NOT ESTABLISHED"
+    shifted[32] ^= 0xFF
+    observed = classify_loaded_correspondence(file_bytes, bytes(shifted), address=0x1000, file_offset=0)
+    assert observed["inspected_correspondence"] == "MISMATCH"
+    assert observed["difference"] == "observed"
+    assert observed["loaded_code_correspondence"] == "NOT ESTABLISHED"
+    missing = classify_loaded_correspondence(file_bytes, None, address=0x1000, file_offset=0)
+    assert missing["inspected_correspondence"] == "NOT ESTABLISHED"
+    assert missing["difference"] == "unavailable"
+    complete = classify_loaded_correspondence(file_bytes, file_bytes, address=0x1000, file_offset=0)
+    assert complete["inspected_correspondence"] == "MATCH"
+    assert complete["loaded_code_correspondence"] == "MATCH"
+
+
 def test_live_path_keeps_cdll_out_of_the_call_target() -> None:
     payload = _payload(prepare_cosine_path_certificate(_repository()))
     selected = payload["selected_call_target"]
@@ -149,7 +178,11 @@ def test_live_path_keeps_cdll_out_of_the_call_target() -> None:
     assert image["file_image_sha256"] != payload["probe_source_sha256"]
     assert image["flags"] == ["-O2", "-shared", "-fPIC"]
     assert image["cosine_function_calls"] == 0
-    assert image["loaded_code_correspondence"] in {"MATCH", "NOT ESTABLISHED"}
+    assert image["loaded_code_correspondence"] == "NOT ESTABLISHED"
+    assert image["inspected_length"] > 0
+    assert image["inspected_address"] == image["read_state_address"]
+    assert image["inspected_correspondence"] in {"MATCH", "MISMATCH", "NOT ESTABLISHED"}
+    assert image["correspondence_coverage"] == "entrypoint prefix"
     assert image["read_state_address"]
     identities = {
         payload["checkout_sha"],

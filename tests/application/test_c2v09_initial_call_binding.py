@@ -483,6 +483,8 @@ def test_bind_now_process_keeps_probe_image_and_control_changes(tmp_path: Path) 
         "    'measurement_second': native['measurement_image']['second_compilation_is_evidence'],\n"
         "    'measurement_source_is_image': native['measurement_image']['source_hash_is_the_image'],\n"
         "    'measurement_correspondence': native['measurement_image']['loaded_code_correspondence'],\n"
+        "    'inspected_correspondence': native['measurement_image']['inspected_correspondence'],\n"
+        "    'inspected_length': native['measurement_image']['inspected_length'],\n"
         "    'measurement_flags': native['measurement_image']['flags'],\n"
         "    'measurement_calls': native['measurement_image']['read_state_calls'],\n"
         "    'probe_source_sha256': native['probe_source_sha256'],\n"
@@ -529,7 +531,9 @@ def test_bind_now_process_keeps_probe_image_and_control_changes(tmp_path: Path) 
     assert payload["measurement_handle"] is True
     assert payload["measurement_second"] is False
     assert payload["measurement_source_is_image"] is False
-    assert payload["measurement_correspondence"] in {"MATCH", "NOT ESTABLISHED"}
+    assert payload["measurement_correspondence"] == "NOT ESTABLISHED"
+    assert payload["inspected_length"] > 0
+    assert payload["inspected_correspondence"] in {"MATCH", "MISMATCH", "NOT ESTABLISHED"}
     assert payload["measurement_flags"] == ["-O2", "-shared", "-fPIC"]
     assert payload["measurement_calls"] == 1
     assert payload["calls"] == 0
