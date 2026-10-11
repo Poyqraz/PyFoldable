@@ -316,7 +316,7 @@ def decode_loaded_calls(code: bytes, base: int) -> dict[str, object]:
     for instruction in instructions:
         if instruction.address != base + consumed:
             return _decoder_record("unsupported", "NOT ESTABLISHED", [])
-        if instruction.mnemonic == "call":
+        if instruction.mnemonic == "call" or instruction.mnemonic.endswith(" call"):
             edge = _capstone_call_edge(instruction, base)
             if edge is None:
                 return _decoder_record("unsupported", "NOT ESTABLISHED", [])

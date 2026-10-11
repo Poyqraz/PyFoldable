@@ -680,6 +680,17 @@ def test_annulus_kernel_follows_the_consumed_solve_bem_annulus() -> None:
     assert bound.evaluator.successful_bem_solves == 0
 
 
+def test_prefixed_calls_stay_on_the_edge_list() -> None:
+    for blob in ("f2e800000000", "3ee800000000", "f2ff1500000000", "3eff1500000000"):
+        record = decode_loaded_calls(bytes.fromhex(blob), 0x1000)
+        assert record["edges"], blob
+        assert record["classification"] == "OBSERVED"
+        assert record["coverage"] == "complete"
+    mixed = decode_loaded_calls(bytes.fromhex("e800000000f2ff1500000000"), 0x1000)
+    assert mixed["classification"] == "OBSERVED"
+    assert len(mixed["edges"]) == 2
+
+
 def test_rex_w_mov_immediate_is_not_a_call() -> None:
     record = decode_loaded_calls(bytes.fromhex("6648c7c00000e8010000c3"), 0x1000)
     assert record["edges"] == []
