@@ -263,39 +263,216 @@ def _readable_process_bytes(address: int, length: int) -> bytes | None:
         return None
 
 
-def call_edges_from_loaded_bytes(code: bytes, base: int) -> list[dict[str, object]]:
-    """Direct and RIP-relative calls decoded from the bytes that were loaded."""
+_LEGACY_PREFIXES = frozenset({0xF0, 0xF2, 0xF3, 0x2E, 0x36, 0x3E, 0x26, 0x64, 0x65, 0x66, 0x67})
+_MODRM_OPCODES = frozenset(
+    {
+        0x00, 0x01, 0x02, 0x03, 0x08, 0x09, 0x0A, 0x0B,
+        0x10, 0x11, 0x12, 0x13, 0x18, 0x19, 0x1A, 0x1B,
+        0x20, 0x21, 0x22, 0x23, 0x28, 0x29, 0x2A, 0x2B,
+        0x30, 0x31, 0x32, 0x33, 0x38, 0x39, 0x3A, 0x3B,
+        0x63, 0x69, 0x6B, 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
+        0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F,
+        0xC0, 0xC1, 0xC6, 0xC7, 0xD0, 0xD1, 0xD2, 0xD3,
+        0xD8, 0xD9, 0xDA, 0xDB, 0xDC, 0xDD, 0xDE, 0xDF,
+        0xF6, 0xF7, 0xFE, 0xFF,
+    }
+)
+_IMM8_ONLY = frozenset(set(range(0x70, 0x80)) | {0x04, 0x0C, 0x14, 0x1C, 0x24, 0x2C, 0x34, 0x3C, 0x6A, 0xA8, 0xCD, 0xE0, 0xE1, 0xE2, 0xE3, 0xE4, 0xE5, 0xE6, 0xE7, 0xEB})
+_IMM32_ONLY = frozenset({0x05, 0x0D, 0x15, 0x1D, 0x25, 0x2D, 0x35, 0x3D, 0x68, 0xA9, 0xE8, 0xE9})
+_NO_OPERAND = frozenset(set(range(0x50, 0x60)) | {0x90, 0x98, 0x99, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F, 0xA4, 0xA5, 0xA6, 0xA7, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xC3, 0xC9, 0xCB, 0xCC, 0xF5, 0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xEC, 0xED, 0xEE, 0xEF})
+_OF_NO_MODRM = frozenset({0x05, 0x07, 0x0B, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x77, 0xA0, 0xA1, 0xA2, 0xA8, 0xA9, 0xAA} | set(range(0xC8, 0xD0)))
+_OF_IMM8_MODRM = frozenset({0x70, 0xA4, 0xAC, 0xBA, 0xC2})
+_MODRM_IMM8 = frozenset({0x6B, 0x80, 0x82, 0x83, 0xC0, 0xC1, 0xC6})
+_MODRM_IMM32 = frozenset({0x69, 0x81, 0xC7})
+
+
+def _parse_modrm(code: bytes, index: int) -> tuple[int, int] | None:
+    if index >= len(code):
+        return None
+    modrm = code[index]
+    index += 1
+    mod = modrm >> 6
+    reg = (modrm >> 3) & 7
+    rm = modrm & 7
+    if mod != 3 and rm == 4:
+        if index >= len(code):
+            return None
+        sib = code[index]
+        index += 1
+        if mod == 0 and (sib & 7) == 5:
+            index += 4
+        elif mod == 1:
+            index += 1
+        elif mod == 2:
+            index += 4
+    elif mod == 0 and rm == 5:
+        index += 4
+    elif mod == 1:
+        index += 1
+    elif mod == 2:
+        index += 4
+    if index > len(code):
+        return None
+    return index, reg
+
+
+def _imm_size(prefix66: bool, rex_w: bool, wide: bool) -> int:
+    if rex_w and wide:
+        return 8
+    if prefix66:
+        return 2
+    return 4
+
+
+def decode_loaded_calls(code: bytes, base: int) -> dict[str, object]:
+    """Linear 64-bit decode. An unknown or truncated opcode establishes no call."""
     edges: list[dict[str, object]] = []
     index = 0
-    while index < len(code):
-        if code[index] == 0xE8 and index + 5 <= len(code):
-            displacement = int.from_bytes(code[index + 1:index + 5], "little", signed=True)
-            edges.append(
-                {
-                    "kind": "direct",
-                    "opcode": "e8",
-                    "offset": index,
-                    "target": hex(base + index + 5 + displacement),
-                    "source": "loaded bytes",
-                }
-            )
-            index += 5
-            continue
-        if index + 6 <= len(code) and code[index] == 0xFF and code[index + 1] == 0x15:
-            displacement = int.from_bytes(code[index + 2:index + 6], "little", signed=True)
-            edges.append(
-                {
-                    "kind": "indirect",
-                    "opcode": "ff15",
-                    "offset": index,
-                    "target": hex(base + index + 6 + displacement),
-                    "source": "loaded bytes",
-                }
-            )
-            index += 6
-            continue
+    limit = len(code)
+    while index < limit:
+        start = index
+        prefix66 = False
+        prefix_count = 0
+        while index < limit and code[index] in _LEGACY_PREFIXES:
+            if code[index] == 0x66:
+                prefix66 = True
+            elif code[index] == 0x67:
+                return _undecoded("unsupported")
+            index += 1
+            prefix_count += 1
+            if prefix_count > 14:
+                return _undecoded("unsupported")
+        rex = 0
+        if index < limit and 0x40 <= code[index] <= 0x4F:
+            rex = code[index]
+            index += 1
+        if index >= limit:
+            return _undecoded("truncated")
+        primary = code[index]
         index += 1
-    return edges
+        two_byte = False
+        opcode = primary
+        if primary == 0x0F:
+            if index >= limit:
+                return _undecoded("truncated")
+            opcode = code[index]
+            index += 1
+            two_byte = True
+            if opcode in {0x38, 0x3A}:
+                return _undecoded("unsupported")
+        rex_w = bool(rex & 0x08)
+        kind = None
+        immediate = 0
+        has_modrm = False
+        group_imm = None
+        if two_byte:
+            if opcode in set(range(0x80, 0x90)):
+                immediate = 4
+            elif opcode in _OF_NO_MODRM:
+                immediate = 0
+            elif opcode in _OF_IMM8_MODRM:
+                has_modrm = True
+                immediate = 1
+            else:
+                has_modrm = True
+        elif opcode in _IMM8_ONLY:
+            immediate = 1
+        elif opcode in _IMM32_ONLY:
+            immediate = 4
+            kind = "direct" if opcode == 0xE8 else None
+        elif opcode in _NO_OPERAND:
+            immediate = 0
+        elif opcode in set(range(0xB0, 0xB8)):
+            immediate = 1
+        elif opcode in set(range(0xB8, 0xC0)):
+            immediate = _imm_size(prefix66, rex_w, True)
+        elif opcode in {0xC2, 0xCA}:
+            immediate = 2
+        elif opcode in _MODRM_OPCODES:
+            has_modrm = True
+            if opcode in _MODRM_IMM8:
+                immediate = 1
+            elif opcode in _MODRM_IMM32:
+                immediate = 2 if prefix66 else 4
+            elif opcode in {0xF6, 0xF7}:
+                group_imm = "byte" if opcode == 0xF6 else "wide"
+        else:
+            return _undecoded("unsupported")
+        reg = 0
+        if has_modrm:
+            parsed = _parse_modrm(code, index)
+            if parsed is None:
+                return _undecoded("truncated")
+            index, reg = parsed
+            if group_imm is not None and reg in {0, 1}:
+                immediate = 1 if group_imm == "byte" else (2 if prefix66 else 4)
+            if not two_byte and opcode == 0xFF and reg == 2:
+                kind = "indirect"
+        if index + immediate > limit:
+            return _undecoded("truncated")
+        immediate_at = index
+        index += immediate
+        if kind == "direct":
+            displacement = int.from_bytes(code[immediate_at:index], "little", signed=True)
+            edges.append(_call_edge("direct", "e8", start, base + index + displacement, None, None))
+        elif kind == "indirect":
+            displacement = _rip_displacement(code[start:index])
+            if displacement is None:
+                return _undecoded("unsupported")
+            target = base + index + displacement
+            edges.append(_call_edge("indirect", "ff15", start, target, target, None))
+    return {
+        "classification": "OBSERVED",
+        "decoder": "x86-64 linear sweep",
+        "mode": "64-bit",
+        "coverage": "complete",
+        "edges": edges,
+    }
+
+
+def _rip_displacement(instruction: bytes) -> int | None:
+    marker = instruction.rfind(b"\xff\x15")
+    if marker < 0 or marker + 6 != len(instruction):
+        return None
+    return int.from_bytes(instruction[marker + 2:marker + 6], "little", signed=True)
+
+
+def _call_edge(
+    kind: str,
+    opcode: str,
+    offset: int,
+    target: int,
+    plt_destination: int | None,
+    resolved_callee: int | None,
+) -> dict[str, object]:
+    return {
+        "kind": kind,
+        "opcode": opcode,
+        "offset": offset,
+        "target": hex(target),
+        "source": "loaded bytes",
+        "plt_destination": None if plt_destination is None else hex(plt_destination),
+        "resolved_callee": None if resolved_callee is None else hex(resolved_callee),
+        "symbol_bytes_establish_edge": False,
+    }
+
+
+def _undecoded(coverage: str) -> dict[str, object]:
+    return {
+        "classification": "NOT ESTABLISHED",
+        "decoder": "x86-64 linear sweep",
+        "mode": "64-bit",
+        "coverage": coverage,
+        "edges": [],
+    }
+
+
+def call_edges_from_loaded_bytes(code: bytes, base: int) -> list[dict[str, object]]:
+    """Established call edges only. An incomplete decode contributes none."""
+    record = decode_loaded_calls(code, base)
+    if record["classification"] != "OBSERVED":
+        return []
+    return list(record["edges"])
 
 
 def _section_headers(data: bytes) -> list[tuple[str, tuple[int, ...]]] | None:
@@ -556,6 +733,7 @@ def _probe_words(source: Path) -> tuple[list[int], dict[str, object]] | None:
             state = (ctypes.c_uint32 * 12)()
             library.read_state(state)
             measurement["read_state_calls"] = 1
+            _bind_probe_helper_edges(measurement)
             return [int(word) for word in state], measurement
     except (OSError, AttributeError):
         return None
@@ -657,12 +835,16 @@ def _consumed_symbol_ranges(binary: Path, symbols: Mapping[str, int | None]) -> 
         if loaded is None or file_off is None or file_off + size > len(data):
             correspondence = "NOT ESTABLISHED"
             difference = "unavailable"
+            decoded = _undecoded("truncated" if loaded is not None else "unavailable")
         elif file_slice == loaded:
             correspondence = "MATCH"
             difference = None
+            decoded = decode_loaded_calls(loaded, address)
         else:
             correspondence = "MISMATCH"
             difference = "observed"
+            decoded = decode_loaded_calls(loaded, address)
+        edges = list(decoded["edges"]) if decoded.get("classification") == "OBSERVED" else []
         mapped = _runtime_to_vaddr(address)
         rows.append(
             {
@@ -673,8 +855,11 @@ def _consumed_symbol_ranges(binary: Path, symbols: Mapping[str, int | None]) -> 
                 "end_address": hex(address + size),
                 "file_bytes_hex": None if not file_slice else file_slice.hex(),
                 "loaded_bytes_hex": None if loaded is None else loaded.hex(),
-                "call_edges": [] if loaded is None else call_edges_from_loaded_bytes(loaded, address),
-                "call_edges_decoded_from_loaded_bytes": loaded is not None,
+                "call_decode": decoded,
+                "call_edges": edges,
+                "call_edges_decoded_from_loaded_bytes": decoded.get("classification") == "OBSERVED" and decoded.get("coverage") == "complete",
+                "symbol_bytes_establish_edge": False,
+                "helper_call_established": False,
                 "address_to_elf": {
                     "runtime_address": hex(address),
                     "mapped_file": None if mapped is None else mapped[0],
@@ -689,6 +874,45 @@ def _consumed_symbol_ranges(binary: Path, symbols: Mapping[str, int | None]) -> 
             }
         )
     return rows
+
+
+def _annotate_loaded_edge(edge: Mapping[str, object]) -> dict[str, object]:
+    """A direct call may land on a PLT stub. That stub is not the resolved callee."""
+    recorded = dict(edge)
+    recorded["symbol_bytes_establish_edge"] = False
+    if recorded.get("kind") != "direct":
+        return recorded
+    target = int(str(recorded["target"]), 16)
+    stub = _readable_process_bytes(target, 16)
+    got = None if stub is None else plt_got_address(stub, target)
+    if got is None:
+        recorded["plt_destination"] = None
+        recorded["resolved_callee"] = recorded["target"]
+        return recorded
+    pointer = _read_qword(got)
+    recorded["plt_destination"] = recorded["target"]
+    recorded["resolved_callee"] = None if pointer is None else hex(pointer)
+    return recorded
+
+
+def _bind_probe_helper_edges(measurement: dict[str, object]) -> None:
+    """Re-read GOT slots after read_state. Symbol bytes do not create the edge."""
+    ranges = measurement.get("consumed_instruction_ranges")
+    if not isinstance(ranges, list):
+        return
+    rows = {row.get("name"): row for row in ranges if isinstance(row, dict)}
+    reader = rows.get("read_state")
+    helper = rows.get("xcr0_read_permitted")
+    if not isinstance(reader, dict):
+        return
+    annotated = [_annotate_loaded_edge(edge) for edge in reader.get("call_edges") or [] if isinstance(edge, dict)]
+    reader["call_edges"] = annotated
+    reader["symbol_bytes_establish_edge"] = False
+    helper_address = helper.get("address") if isinstance(helper, dict) else None
+    reader["helper_call_established"] = any(
+        edge.get("resolved_callee") == helper_address and edge.get("plt_destination") != helper_address
+        for edge in annotated
+    )
 
 
 def _c_function_address(function: object) -> int | None:

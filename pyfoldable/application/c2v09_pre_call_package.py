@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Mapping
 
 from pyfoldable.application.c2v09_binding_collector import pinned_certificate_sources
-from pyfoldable.application.c2v09_cosine_path_certificate import observe_ulp_terminal_guard
+from pyfoldable.application.c2v09_cosine_path_certificate import decode_loaded_calls, observe_ulp_terminal_guard
 from pyfoldable.application.c2v09_declared_operations import (
     ARITHMETIC_QUALNAMES,
     REQUIRED_GRAPH_QUALNAMES,
@@ -51,6 +51,7 @@ _REQUIRED_DISPOSITIONS = (
 _CONSUMED_PROBE_SYMBOLS = ("read_state", "xcr0_read_permitted")
 _EMBEDDED_ARITHMETIC = (
     "project_foldable_blade.kernel_radius",
+    "solve_bem_annulus.kernel_radius",
     "solve_bem_rotor.annulus_edge",
     "solve_bem_rotor.midpoint",
 )
@@ -58,9 +59,15 @@ _ARITHMETIC_OPCODES = {
     "FoldableRotorState.angle_from_deployed_rad": "BINARY_OP -",
     "BladeGeometry.radius_m": "BINARY_OP /",
     "project_foldable_blade.kernel_radius": "BINARY_OP *",
+    "solve_bem_annulus.kernel_radius": "STORE_DEREF radius",
     "solve_bem_rotor.annulus_edge": "STORE_FAST outer",
     "solve_bem_rotor.midpoint": "STORE_FAST midpoint",
 }
+_SEMANTIC_HYPOTHESES = (
+    ("interpreter binary64 arithmetic semantics", "a bytecode window does not establish arithmetic or storage semantics"),
+    ("PyFloat_AsDouble conversion semantics", "a call address does not establish conversion semantics"),
+    ("selected nextafter semantics", "a selected address does not establish nextafter semantics"),
+)
 _FILE_DELTA_ROLES = {
     "pyfoldable/application/cmm2_coupled_transient_service.py": (
         "consumed by the initial evaluator constructor and call; "
@@ -154,7 +161,8 @@ def geometric_applicability_argument(graph: list[dict[str, object]]) -> dict[str
         "FoldableRotorState.angle_from_deployed_rad": "deployed-angle subtraction is checked, not bypassed",
         "BladeGeometry.radius_m": "blade radius consumed by the kernel-radius product",
         "project_foldable_blade": "source cosine input",
-        "project_foldable_blade.kernel_radius": "kernel-radius product q*R, distinct from the annulus midpoint",
+        "project_foldable_blade.kernel_radius": "projection nominal radius, distinct from the annulus kernel radius",
+        "solve_bem_annulus.kernel_radius": "annulus kernel radius station.r_over_R * blade.radius_m",
         "solve_bem_rotor.annulus_edge": "annulus edges consumed inside solve_bem_rotor",
         "solve_bem_rotor.midpoint": "annulus midpoint consumed inside solve_bem_rotor",
         "_projection_factor": "mapper cosine uses the same represented angle at a separate call site",
@@ -341,9 +349,84 @@ def _cosine_established(native: Mapping[str, object]) -> bool:
         and _nonempty_text(cosine.get("body_sha256"))
         and constants_known
         and cosine.get("controls_classification") == "OBSERVED"
+        and cosine.get("required_bits_ok") is True
+        and _ftz_off(cosine.get("mxcsr"))
         and cosine.get("cosine_function_calls") == 0
         and cosine.get("disk_disassembly_is_proof") is False
-        and cosine.get("libm_body_argument") in {"APPLIES", "DOES NOT APPLY"}
+        and _body_argument_established(cosine)
+    )
+
+
+def _ftz_off(mxcsr: object) -> bool:
+    if not isinstance(mxcsr, str):
+        return False
+    try:
+        value = int(mxcsr, 16)
+    except ValueError:
+        return False
+    return (value & 0x8000) == 0
+
+
+def _constants_identity(cosine: Mapping[str, object]) -> str:
+    constants = cosine.get("constants")
+    if not isinstance(constants, list):
+        return ""
+    return repr([(row.get("vaddr"), row.get("observed_bytes_hex"), row.get("classification")) for row in constants if isinstance(row, Mapping)])
+
+
+def _body_argument_established(cosine: Mapping[str, object]) -> bool:
+    """Disagreement is not clearance. An alternative must name this captured path."""
+    if cosine.get("libm_body_argument") == "APPLIES":
+        return True
+    alternative = cosine.get("alternative_transfer_argument")
+    if not isinstance(alternative, Mapping):
+        return False
+    scope = alternative.get("scope")
+    return (
+        alternative.get("applicable") is True
+        and isinstance(scope, str)
+        and bool(scope)
+        and alternative.get("binds_captured_path") is True
+        and alternative.get("body_sha256") == cosine.get("body_sha256")
+        and alternative.get("constants_identity") == _constants_identity(cosine)
+    )
+
+
+def _decode_matches_stored_edges(row: Mapping[str, object]) -> bool:
+    blob = row.get("loaded_bytes_hex")
+    address = row.get("address")
+    if not isinstance(blob, str) or not isinstance(address, str) or not blob:
+        return False
+    try:
+        decoded = decode_loaded_calls(bytes.fromhex(blob), int(address, 16))
+    except ValueError:
+        return False
+    if decoded.get("classification") != "OBSERVED" or decoded.get("coverage") != "complete":
+        return False
+    stored = row.get("call_edges")
+    if not isinstance(stored, list):
+        return False
+    decoded_edges = decoded.get("edges")
+    if not isinstance(decoded_edges, list):
+        return False
+    decoded_keys = [(edge.get("offset"), edge.get("target"), edge.get("kind")) for edge in decoded_edges if isinstance(edge, Mapping)]
+    stored_keys = [(edge.get("offset"), edge.get("target"), edge.get("kind")) for edge in stored if isinstance(edge, Mapping)]
+    return decoded_keys == stored_keys
+
+
+def _helper_call_bound(reader: Mapping[str, object], helper: Mapping[str, object]) -> bool:
+    if reader.get("symbol_bytes_establish_edge") is not False:
+        return False
+    helper_address = helper.get("address")
+    edges = reader.get("call_edges")
+    if not isinstance(helper_address, str) or not isinstance(edges, list) or not edges:
+        return False
+    return any(
+        isinstance(edge, Mapping)
+        and edge.get("symbol_bytes_establish_edge") is False
+        and edge.get("resolved_callee") == helper_address
+        and edge.get("plt_destination") != helper_address
+        for edge in edges
     )
 
 
@@ -375,6 +458,12 @@ def _probe_range_gaps(native: Mapping[str, object]) -> list[dict[str, object]]:
         )
         if not captured:
             gaps.append(_hypothesis(name, "captured loaded bytes"))
+        elif not _decode_matches_stored_edges(row):
+            gaps.append(_hypothesis(name, "call edges are not an instruction-boundary decode"))
+    reader = found.get("read_state")
+    helper = found.get("xcr0_read_permitted")
+    if isinstance(reader, Mapping) and isinstance(helper, Mapping) and not _helper_call_bound(reader, helper):
+        gaps.append(_hypothesis("read_state helper call edge", "decoded call target is not bound to the retained helper"))
     return gaps
 
 
@@ -456,6 +545,16 @@ def _label(
     if observed.get("kind") != "genuine":
         unresolved.append(_hypothesis("native observation", "unestablished native test double"))
     else:
+        cosine = {}
+        correspondence = observed.get("runtime_correspondence")
+        if isinstance(correspondence, Mapping) and isinstance(correspondence.get("cosine"), Mapping):
+            cosine = correspondence["cosine"]
+        if cosine.get("required_bits_ok") is not True:
+            unresolved.append(_hypothesis("numerical controls", "required bits are not satisfied"))
+        if not _ftz_off(cosine.get("mxcsr")):
+            unresolved.append(_hypothesis("numerical controls", "FTZ must be off"))
+        if not _body_argument_established(cosine):
+            unresolved.append(_hypothesis("libm body argument", "no applicable argument is bound to the captured body and constants"))
         if not _cosine_established(observed):
             unresolved.append(_hypothesis("cosine path", "loaded-path correspondence"))
         unresolved.extend(_probe_range_gaps(observed))
@@ -463,6 +562,8 @@ def _label(
     unresolved.extend(_delta_hypotheses(file_deltas))
     if not _arithmetic_established(interpreter_arithmetic):
         unresolved.append(_hypothesis("interpreter binary64 arithmetic", "control-state observation"))
+    for name, missing in _SEMANTIC_HYPOTHESES:
+        unresolved.append(_hypothesis(name, missing))
     if unresolved:
         return UNRESOLVED, unresolved
     return PRE_CALL_READY, []

@@ -290,6 +290,16 @@ OPERATION_SPECS: tuple[OperationSpec, ...] = (
         "native terminal guard",
     ),
     _operation(
+        "pyfoldable/core/bem.py",
+        "solve_bem_annulus.kernel_radius",
+        _BEM,
+        "solve_bem_annulus",
+        "annulus kernel radius station.r_over_R * blade.radius_m",
+        "geometric lemma",
+        source_qualname="solve_bem_annulus",
+        required_names=("radius_m",),
+    ),
+    _operation(
         "pyfoldable/core/bem_rotor.py",
         "solve_bem_rotor",
         _ROTOR,
@@ -305,6 +315,7 @@ ARITHMETIC_QUALNAMES: tuple[str, ...] = (
     "FoldableRotorState.angle_from_deployed_rad",
     "BladeGeometry.radius_m",
     "project_foldable_blade.kernel_radius",
+    "solve_bem_annulus.kernel_radius",
     "solve_bem_rotor.annulus_edge",
     "solve_bem_rotor.midpoint",
 )
@@ -453,6 +464,18 @@ def _arithmetic_bounds(qualname: str, code: types.CodeType) -> tuple[int, int] |
             if ("LOAD_ATTR", "radius_m") in pairs and ("BINARY_OP", "*") in pairs and ("STORE_FAST", "nominal_radius") in pairs:
                 start = instruction
                 last = next(item for item in window if item.opname == "STORE_FAST" and item.argrepr == "nominal_radius")
+                break
+    elif qualname == "solve_bem_annulus.kernel_radius":
+        start = None
+        last = None
+        for index, instruction in enumerate(instructions):
+            if instruction.opname != "LOAD_ATTR" or instruction.argrepr != "r_over_R":
+                continue
+            window = instructions[index:index + 8]
+            pairs = {(item.opname, item.argrepr) for item in window}
+            if ("LOAD_ATTR", "radius_m") in pairs and ("BINARY_OP", "*") in pairs and ("STORE_DEREF", "radius") in pairs:
+                start = instructions[index - 1] if index else instruction
+                last = next(item for item in window if item.opname == "STORE_DEREF" and item.argrepr == "radius")
                 break
     elif qualname == "solve_bem_rotor.annulus_edge":
         store = _find_instruction(instructions, "STORE_FAST", "inner")

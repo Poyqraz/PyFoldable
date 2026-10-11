@@ -13,9 +13,14 @@ from pyfoldable.application.c2v09_initial_applicability import (
 )
 from pyfoldable.application.c2v09_cosine_path_certificate import (
     call_edges_from_loaded_bytes,
+    decode_loaded_calls,
     observe_ulp_terminal_guard,
 )
-from pyfoldable.application.c2v09_declared_operations import REQUIRED_GRAPH_QUALNAMES, resolve_qualname
+from pyfoldable.application.c2v09_declared_operations import (
+    REQUIRED_GRAPH_QUALNAMES,
+    arithmetic_operation_record,
+    resolve_qualname,
+)
 from pyfoldable.application.c2v09_initial_call_binding import bind_initial_call, revalidate_initial_call_binding
 from pyfoldable.application.c2v09_pre_call_admission import prepare_pre_call_admission
 from pyfoldable.application.c2v09_pre_call_package import (
@@ -27,6 +32,7 @@ from pyfoldable.application.c2v09_pre_call_package import (
 from pyfoldable.application.c2v09_pre_call_binding import observe_pre_call_binding
 from pyfoldable.core.foldable_rotor import FoldableRotorState
 from pyfoldable.core.models import BladeGeometry
+import pyfoldable.core.bem_rotor as bem_rotor
 import pyfoldable.core.foldable_rotor as foldable_rotor
 
 
@@ -338,20 +344,18 @@ def test_wrapper_address_does_not_establish_the_loaded_nextafter_path() -> None:
 
 def test_loaded_call_edges_are_decoded_from_loaded_bytes() -> None:
     edges = call_edges_from_loaded_bytes(bytes.fromhex("e800000000"), 0x1000)
-    assert edges == [
-        {
-            "kind": "direct",
-            "opcode": "e8",
-            "offset": 0,
-            "target": hex(0x1005),
-            "source": "loaded bytes",
-        }
-    ]
+    assert edges[0]["kind"] == "direct"
+    assert edges[0]["opcode"] == "e8"
+    assert edges[0]["offset"] == 0
+    assert edges[0]["target"] == hex(0x1005)
+    assert edges[0]["source"] == "loaded bytes"
     got = call_edges_from_loaded_bytes(bytes.fromhex("ff1500000000"), 0x2000)
     assert got[0]["kind"] == "indirect"
     assert got[0]["opcode"] == "ff15"
     assert got[0]["target"] == hex(0x2006)
     assert got[0]["source"] == "loaded bytes"
+    assert got[0]["plt_destination"] == hex(0x2006)
+    assert got[0]["resolved_callee"] is None
 
 
 def _ready_graph() -> list[dict[str, object]]:
@@ -524,6 +528,15 @@ def _ready_context() -> dict[str, object]:
                     "output_sampled": False,
                 },
                 {
+                    "qualname": "solve_bem_annulus.kernel_radius",
+                    "co_code_hex": "ff",
+                    "start_offset": 0,
+                    "end_offset": 1,
+                    "parent_co_code_length": 8,
+                    "opcodes": ["STORE_DEREF radius"],
+                    "output_sampled": False,
+                },
+                {
                     "qualname": "solve_bem_rotor.annulus_edge",
                     "co_code_hex": "dd",
                     "start_offset": 0,
@@ -549,8 +562,11 @@ def _ready_context() -> dict[str, object]:
 def test_complete_evidence_is_ready_and_a_missing_byte_is_not() -> None:
     context = _ready_context()
     label, unresolved = _label(False, _ready_graph(), _ready_ulp(), **context)
-    assert label == PRE_CALL_READY
-    assert unresolved == []
+    assert label == UNRESOLVED
+    names = {row["name"] for row in unresolved}
+    assert "interpreter binary64 arithmetic semantics" in names
+    assert "PyFloat_AsDouble conversion semantics" in names
+    assert "selected nextafter semantics" in names
     native = _ready_native()
     native["measurement_image"]["consumed_instruction_ranges"][0]["file_bytes_hex"] = ""
     label, unresolved = _label(False, _ready_graph(), _ready_ulp(), **{**context, "native": native})
@@ -624,7 +640,127 @@ def test_shared_parent_bytecode_is_not_two_arithmetic_paths() -> None:
     assert any(row["name"] == "interpreter binary64 arithmetic" for row in unresolved)
 
 
+def test_annulus_kernel_follows_the_consumed_solve_bem_annulus() -> None:
+    annulus_window = arithmetic_operation_record("solve_bem_annulus.kernel_radius")
+    projection_window = arithmetic_operation_record("project_foldable_blade.kernel_radius")
+    assert annulus_window["co_code_hex"]
+    assert annulus_window["co_code_hex"] != projection_window["co_code_hex"]
+    assert "STORE_DEREF radius" in annulus_window["opcodes"]
+    original = bem_rotor.solve_bem_annulus
+
+    def other(*_args, **_kwargs):
+        raise AssertionError("annulus evaluated")
+
+    try:
+        bem_rotor.solve_bem_annulus = other
+        rows = {item["qualname"]: item for item in declare_initial_operation_graph(_repository())}
+        kernel = rows["solve_bem_annulus.kernel_radius"]
+        assert kernel["family"] == "geometric lemma"
+        assert kernel["classification"] != "MATCH"
+        assert kernel["every_angle_convergence_theorem"] is False
+        projection = rows["project_foldable_blade.kernel_radius"]
+        assert projection["operation"] != kernel["operation"]
+    finally:
+        bem_rotor.solve_bem_annulus = original
+    bound = _bind()
+    try:
+        bem_rotor.solve_bem_annulus = other
+        assert revalidate_initial_call_binding(bound).classification == "INVALIDATED"
+    finally:
+        bem_rotor.solve_bem_annulus = original
+    assert revalidate_initial_call_binding(bound).classification == "REVALIDATED"
+    restored = {item["qualname"]: item for item in declare_initial_operation_graph(_repository())}
+    assert restored["solve_bem_annulus.kernel_radius"]["classification"] == "MATCH"
+    assert bound.evaluator.successful_bem_solves == 0
+
+
+def test_shr_and_mov_immediate_are_not_calls() -> None:
+    helper = call_edges_from_loaded_bytes(bytes.fromhex("f30f1efa89f8c1e81b83e001c3"), 0x1000)
+    mov = call_edges_from_loaded_bytes(bytes.fromhex("b8e8000000c3"), 0x2000)
+    assert helper == []
+    assert mov == []
+
+
+def test_truncated_or_unsupported_decoding_stays_unestablished() -> None:
+    truncated = decode_loaded_calls(bytes.fromhex("e800"), 0x3000)
+    assert truncated["classification"] == "NOT ESTABLISHED"
+    assert truncated["coverage"] == "truncated"
+    assert truncated["edges"] == []
+    assert truncated["mode"] == "64-bit"
+    unsupported = decode_loaded_calls(bytes.fromhex("06c3"), 0x4000)
+    assert unsupported["classification"] == "NOT ESTABLISHED"
+    assert unsupported["coverage"] == "unsupported"
+    assert unsupported["edges"] == []
+    direct = decode_loaded_calls(bytes.fromhex("e800000000"), 0x1000)
+    assert direct["classification"] == "OBSERVED"
+    assert direct["coverage"] == "complete"
+    assert direct["edges"][0]["kind"] == "direct"
+    assert direct["edges"][0]["target"] == hex(0x1005)
+    indirect = decode_loaded_calls(bytes.fromhex("ff1500000000"), 0x2000)
+    assert indirect["classification"] == "OBSERVED"
+    assert indirect["edges"][0]["kind"] == "indirect"
+    assert indirect["edges"][0]["target"] == hex(0x2006)
+    assert indirect["edges"][0]["plt_destination"] == hex(0x2006)
+    assert indirect["edges"][0]["resolved_callee"] is None
+    assert indirect["edges"][0]["symbol_bytes_establish_edge"] is False
+
+
+def test_symbol_bytes_do_not_establish_the_helper_call_edge() -> None:
+    context = _ready_context()
+    image = context["native"]["measurement_image"]
+    for row in image["consumed_instruction_ranges"]:
+        row["call_edges"] = []
+        row["call_edges_decoded_from_loaded_bytes"] = True
+        row["call_decode"] = {"classification": "OBSERVED", "coverage": "complete", "edges": []}
+    label, unresolved = _label(False, _ready_graph(), _ready_ulp(), **context)
+    assert label == UNRESOLVED
+    assert any(row["name"] == "read_state helper call edge" for row in unresolved)
+
+
+def test_control_and_body_disagreement_stay_unresolved() -> None:
+    context = _ready_context()
+    cosine = context["native"]["runtime_correspondence"]["cosine"]
+    cosine["required_bits_ok"] = False
+    cosine["mxcsr"] = "0x1f80"
+    label, unresolved = _label(False, _ready_graph(), _ready_ulp(), **context)
+    assert label == UNRESOLVED
+    assert any(row["name"] == "numerical controls" and "required bits" in str(row["missing"]) for row in unresolved)
+    context = _ready_context()
+    cosine = context["native"]["runtime_correspondence"]["cosine"]
+    cosine["required_bits_ok"] = True
+    cosine["mxcsr"] = "0x9fa0"
+    label, unresolved = _label(False, _ready_graph(), _ready_ulp(), **context)
+    assert any(row["name"] == "numerical controls" and "FTZ" in str(row["missing"]) for row in unresolved)
+    context = _ready_context()
+    cosine = context["native"]["runtime_correspondence"]["cosine"]
+    cosine["required_bits_ok"] = True
+    cosine["mxcsr"] = "0x1f80"
+    cosine["libm_body_argument"] = "DOES NOT APPLY"
+    cosine.pop("alternative_transfer_argument", None)
+    label, unresolved = _label(False, _ready_graph(), _ready_ulp(), **context)
+    assert any(row["name"] == "libm body argument" for row in unresolved)
+    cosine["exact_historical_xcr0_match"] = False
+    label, unresolved = _label(False, _ready_graph(), _ready_ulp(), **context)
+    assert not any(row["missing"] == "historical XCR0 equality" for row in unresolved)
+
+
+def test_structural_records_do_not_close_semantic_hypotheses() -> None:
+    context = _ready_context()
+    cosine = context["native"]["runtime_correspondence"]["cosine"]
+    cosine["required_bits_ok"] = True
+    cosine["mxcsr"] = "0x1f80"
+    cosine["libm_body_argument"] = "APPLIES"
+    label, unresolved = _label(False, _ready_graph(), _ready_ulp(), **context)
+    names = {row["name"] for row in unresolved}
+    assert label == UNRESOLVED
+    assert "interpreter binary64 arithmetic semantics" in names
+    assert "PyFloat_AsDouble conversion semantics" in names
+    assert "selected nextafter semantics" in names
+
+
 def test_historical_capsule_bytes_remain_the_earlier_record() -> None:
-    path = _repository() / "reports/c2v09_pre_call_capsule/capsule.json"
-    digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    assert digest == "09f7df71697528333be1674fde6419bbeadeec084213274c2eab3ee7abb6649a"
+    root = _repository() / "reports/c2v09_pre_call_capsule"
+    historical = hashlib.sha256((root / "capsule.json").read_bytes()).hexdigest()
+    loaded = hashlib.sha256((root / "loaded_correspondence_capsule.json").read_bytes()).hexdigest()
+    assert historical == "09f7df71697528333be1674fde6419bbeadeec084213274c2eab3ee7abb6649a"
+    assert loaded == "8cebb4d5fe12e4ef6f15aacae0dcc986999534346d9043de9c9cef51320024f5"
