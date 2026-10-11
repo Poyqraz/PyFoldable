@@ -681,6 +681,19 @@ def test_shr_and_mov_immediate_are_not_calls() -> None:
     assert mov == []
 
 
+def test_sse_immediate_bytes_are_not_calls() -> None:
+    witnesses = (
+        "0f71d0e8000000c3",
+        "0f72d0e8000000c3",
+        "0f73d0e8000000c3",
+        "0fc6c0e800000000c3",
+    )
+    for blob in witnesses:
+        record = decode_loaded_calls(bytes.fromhex(blob), 0x1000)
+        assert record["edges"] == []
+        assert record["classification"] in {"OBSERVED", "NOT ESTABLISHED"}
+
+
 def test_truncated_or_unsupported_decoding_stays_unestablished() -> None:
     truncated = decode_loaded_calls(bytes.fromhex("e800"), 0x3000)
     assert truncated["classification"] == "NOT ESTABLISHED"
