@@ -32,6 +32,7 @@ from pyfoldable.application.c2v09_pre_call_package import (
     _constants_identity,
     _helper_call_bound,
     _label,
+    _probe_range_gaps,
     prepare_pre_call_package,
 )
 from pyfoldable.application.c2v09_pre_call_binding import observe_pre_call_binding
@@ -777,6 +778,114 @@ def test_reviewed_artifact_clears_only_the_libm_hypothesis() -> None:
     cosine["reviewed_transfer_review"]["artifact_sha256"] = "00" * 32
     unresolved = _label(False, _ready_graph(), _ready_ulp(), **context)[1]
     assert any(row["name"] == "libm body argument" for row in unresolved)
+
+
+def test_helper_gate_recomputes_the_loaded_chain() -> None:
+    helper_bytes = bytes.fromhex("f30f1efa89f8c1e81b83e001c3")
+    base = 0x1000
+    helper_stub = 0x2000
+    other_stub = 0x4000
+    code = _relative_call(base, 0, helper_stub) + _relative_call(base, 5, other_stub) + b"\xc3"
+    helper_plt = bytes.fromhex("ff2500000000") + b"\x90" * 10
+    other_plt = bytes.fromhex("ff2500000000") + b"\x90" * 10
+    helper = {
+        "address": hex(0x3000),
+        "loaded_bytes_hex": helper_bytes.hex(),
+        "file_bytes_hex": helper_bytes.hex(),
+    }
+    reader = {
+        "symbol_bytes_establish_edge": False,
+        "address": hex(base),
+        "loaded_bytes_hex": code.hex(),
+        "observed_plt_stubs": [
+            {"address": hex(helper_stub), "bytes_hex": helper_plt.hex()},
+            {"address": hex(other_stub), "bytes_hex": other_plt.hex()},
+        ],
+        "observed_got_qwords": [
+            {"slot": hex(0x2006), "qword": hex(0x3000)},
+            {"slot": hex(0x4006), "qword": hex(0x9999)},
+        ],
+        "call_edges": [
+            {"resolved_callee": hex(0x3000), "plt_destination": hex(other_stub), "symbol_bytes_establish_edge": False},
+        ],
+        "helper_connection": {
+            "classification": "OBSERVED",
+            "plt_stub_bytes_hex": "00",
+            "got_slot": "0x1",
+            "observed_qword": hex(0x3000),
+            "plt_destination": hex(other_stub),
+            "helper_range_matches": True,
+            "address_annotation_establishes_connection": False,
+        },
+    }
+    assert _helper_call_bound(reader, helper) is True
+    forged = {
+        "name": "read_state",
+        "address": "0x1000",
+        "loaded_bytes_hex": "c3",
+        "file_bytes_hex": "c3",
+        "symbol_bytes_establish_edge": False,
+        "correspondence": "MATCH",
+        "whole_elf": False,
+        "disk_disassembly_is_proof": False,
+        "call_edges_decoded_from_loaded_bytes": True,
+        "call_edges": [],
+        "address_to_elf": {"mapped_file": "/tmp/probe.so", "runtime_address": "0x1000", "file_offset": 128},
+        "helper_connection": {
+            "classification": "OBSERVED",
+            "plt_stub_bytes_hex": "00",
+            "got_slot": "0x1",
+            "observed_qword": "0x3000",
+            "plt_destination": "0x2000",
+            "helper_range_matches": True,
+            "address_annotation_establishes_connection": False,
+        },
+    }
+    retained = {
+        "name": "xcr0_read_permitted",
+        "address": "0x3000",
+        "loaded_bytes_hex": "bb",
+        "file_bytes_hex": "bb",
+        "correspondence": "MATCH",
+        "whole_elf": False,
+        "disk_disassembly_is_proof": False,
+        "call_edges_decoded_from_loaded_bytes": True,
+        "call_edges": [],
+        "address_to_elf": {"mapped_file": "/tmp/probe.so", "runtime_address": "0x3000", "file_offset": 256},
+    }
+    assert _helper_call_bound(forged, retained) is False
+    gaps = _probe_range_gaps({"measurement_image": {"consumed_instruction_ranges": [forged, retained]}})
+    assert any(row["name"] == "read_state helper call edge" for row in gaps)
+
+
+def test_blank_body_identities_do_not_clear_the_libm_hypothesis() -> None:
+    context = _ready_context()
+    cosine = context["native"]["runtime_correspondence"]["cosine"]
+    cosine["required_bits_ok"] = True
+    cosine["mxcsr"] = "0x1f80"
+    cosine["libm_body_argument"] = "DOES NOT APPLY"
+    cosine["body_sha256"] = ""
+    cosine["constants"] = []
+    document = {
+        "assumptions": ["the captured body bytes are the selected cosine path"],
+        "applies_to": {
+            "body_sha256": "",
+            "constants_identity": "[]",
+            "path": cosine["selected_address"],
+        },
+    }
+    artifact = json.dumps(document, sort_keys=True).encode("utf-8")
+    cosine["reviewed_transfer_artifact"] = artifact
+    cosine["reviewed_transfer_review"] = {
+        "artifact_sha256": sha256_bytes(artifact),
+        "provenance": "independent review names this artifact digest",
+        "scope": "captured cosine body and constants only",
+        "assumptions": document["assumptions"],
+        "binds_captured_path": True,
+    }
+    unresolved = _label(False, _ready_graph(), _ready_ulp(), **context)[1]
+    assert any(row["name"] == "libm body argument" for row in unresolved)
+    assert any(row["name"] == "selected nextafter semantics" for row in unresolved)
 
 
 def test_reassigned_callee_does_not_bind_the_helper() -> None:

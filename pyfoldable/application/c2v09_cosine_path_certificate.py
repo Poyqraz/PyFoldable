@@ -886,6 +886,12 @@ def _bind_probe_helper_edges(measurement: dict[str, object]) -> None:
             "helper_file_bytes": _hex_bytes(helper.get("file_bytes_hex")) if isinstance(helper, dict) else b"",
         }
     )
+    reader["observed_plt_stubs"] = [
+        {"address": hex(address), "bytes_hex": blob.hex()} for address, blob in sorted(stubs.items())
+    ]
+    reader["observed_got_qwords"] = [
+        {"slot": hex(slot), "qword": hex(value)} for slot, value in sorted(qwords.items())
+    ]
     reader["helper_connection"] = connection
     reader["helper_call_established"] = connection["classification"] == "OBSERVED"
 

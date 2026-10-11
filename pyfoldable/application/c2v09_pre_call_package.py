@@ -13,7 +13,11 @@ from pathlib import Path
 from typing import Mapping
 
 from pyfoldable.application.c2v09_binding_collector import pinned_certificate_sources
-from pyfoldable.application.c2v09_cosine_path_certificate import decode_loaded_calls, observe_ulp_terminal_guard
+from pyfoldable.application.c2v09_cosine_path_certificate import (
+    assess_helper_connection,
+    decode_loaded_calls,
+    observe_ulp_terminal_guard,
+)
 from pyfoldable.application.c2v09_declared_operations import (
     ARITHMETIC_QUALNAMES,
     REQUIRED_GRAPH_QUALNAMES,
@@ -404,14 +408,20 @@ def _body_argument_established(cosine: Mapping[str, object]) -> bool:
     if not isinstance(document, dict) or document.get("assumptions") != assumptions:
         return False
     binding = document.get("applies_to")
+    body = cosine.get("body_sha256")
+    constants = cosine.get("constants")
+    identity = _constants_identity(cosine)
+    path = cosine.get("selected_address")
     if not isinstance(binding, Mapping):
         return False
+    if not isinstance(body, str) or not body or not isinstance(constants, list) or not constants or not identity:
+        return False
+    if not isinstance(path, str) or not path:
+        return False
     return (
-        binding.get("body_sha256") == cosine.get("body_sha256")
-        and binding.get("constants_identity") == _constants_identity(cosine)
-        and binding.get("path") == cosine.get("selected_address")
-        and isinstance(binding.get("path"), str)
-        and bool(binding.get("path"))
+        binding.get("body_sha256") == body
+        and binding.get("constants_identity") == identity
+        and binding.get("path") == path
     )
 
 
@@ -437,23 +447,64 @@ def _decode_matches_stored_edges(row: Mapping[str, object]) -> bool:
     return decoded_keys == stored_keys
 
 
+def _decode_hex(value: object) -> bytes | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        return bytes.fromhex(value)
+    except ValueError:
+        return None
+
+
 def _helper_call_bound(reader: Mapping[str, object], helper: Mapping[str, object]) -> bool:
-    """Address annotations do not establish the probe-to-helper chain."""
-    connection = reader.get("helper_connection")
-    if not isinstance(connection, Mapping):
+    """Recompute the stub, GOT, qword, and helper range. Stored addresses are not the chain."""
+    if reader.get("symbol_bytes_establish_edge") is not False:
         return False
-    if connection.get("address_annotation_establishes_connection") is not False:
+    read_bytes = _decode_hex(reader.get("loaded_bytes_hex"))
+    helper_range = _decode_hex(helper.get("loaded_bytes_hex"))
+    helper_file = _decode_hex(helper.get("file_bytes_hex"))
+    if read_bytes is None or helper_range is None or helper_file is None:
         return False
-    if connection.get("classification") != "OBSERVED" or connection.get("helper_range_matches") is not True:
+    try:
+        read_address = int(str(reader["address"]), 16)
+        helper_address = int(str(helper["address"]), 16)
+    except (KeyError, TypeError, ValueError):
         return False
-    if not _nonempty_text(connection.get("plt_stub_bytes_hex")) or not _nonempty_text(connection.get("got_slot")):
+    stubs: dict[int, bytes] = {}
+    observed_stubs = reader.get("observed_plt_stubs")
+    if not isinstance(observed_stubs, list):
         return False
-    helper_address = helper.get("address")
-    return (
-        isinstance(helper_address, str)
-        and connection.get("observed_qword") == helper_address
-        and connection.get("plt_destination") not in (None, helper_address)
+    for row in observed_stubs:
+        blob = _decode_hex(row.get("bytes_hex")) if isinstance(row, Mapping) else None
+        if blob is None or not isinstance(row, Mapping) or not isinstance(row.get("address"), str):
+            return False
+        try:
+            stubs[int(row["address"], 16)] = blob
+        except ValueError:
+            return False
+    qwords: dict[int, int] = {}
+    observed_qwords = reader.get("observed_got_qwords")
+    if not isinstance(observed_qwords, list):
+        return False
+    for row in observed_qwords:
+        if not isinstance(row, Mapping) or not isinstance(row.get("slot"), str) or not isinstance(row.get("qword"), str):
+            return False
+        try:
+            qwords[int(row["slot"], 16)] = int(row["qword"], 16)
+        except ValueError:
+            return False
+    connection = assess_helper_connection(
+        {
+            "read_state_bytes": read_bytes,
+            "read_state_address": read_address,
+            "stub_bytes_by_address": stubs,
+            "qword_by_slot": qwords,
+            "helper_address": helper_address,
+            "helper_range_bytes": helper_range,
+            "helper_file_bytes": helper_file,
+        }
     )
+    return connection.get("classification") == "OBSERVED" and connection.get("observed_qword") == helper.get("address")
 
 
 def _probe_range_gaps(native: Mapping[str, object]) -> list[dict[str, object]]:
