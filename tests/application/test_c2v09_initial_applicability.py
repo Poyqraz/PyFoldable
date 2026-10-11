@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 
 from pyfoldable.application.c2v09_initial_applicability import (
@@ -12,10 +13,12 @@ from pyfoldable.application.c2v09_initial_applicability import (
     declare_initial_operation_graph,
 )
 from pyfoldable.application.c2v09_cosine_path_certificate import (
+    assess_helper_connection,
     call_edges_from_loaded_bytes,
     decode_loaded_calls,
     observe_ulp_terminal_guard,
 )
+from pyfoldable.application.c2v09_ordered_declaration import sha256_bytes
 from pyfoldable.application.c2v09_declared_operations import (
     REQUIRED_GRAPH_QUALNAMES,
     arithmetic_operation_record,
@@ -26,6 +29,8 @@ from pyfoldable.application.c2v09_pre_call_admission import prepare_pre_call_adm
 from pyfoldable.application.c2v09_pre_call_package import (
     PRE_CALL_READY,
     UNRESOLVED,
+    _constants_identity,
+    _helper_call_bound,
     _label,
     prepare_pre_call_package,
 )
@@ -672,6 +677,147 @@ def test_annulus_kernel_follows_the_consumed_solve_bem_annulus() -> None:
     restored = {item["qualname"]: item for item in declare_initial_operation_graph(_repository())}
     assert restored["solve_bem_annulus.kernel_radius"]["classification"] == "MATCH"
     assert bound.evaluator.successful_bem_solves == 0
+
+
+def test_rex_w_mov_immediate_is_not_a_call() -> None:
+    record = decode_loaded_calls(bytes.fromhex("6648c7c00000e8010000c3"), 0x1000)
+    assert record["edges"] == []
+    assert record["classification"] in {"OBSERVED", "NOT ESTABLISHED"}
+    assert record["mode"] == "64-bit"
+    assert record["decoder"]
+    assert record["coverage"] in {"complete", "unsupported", "truncated"}
+    if record["classification"] == "OBSERVED":
+        assert record["coverage"] == "complete"
+
+
+def _relative_call(base: int, offset: int, target: int) -> bytes:
+    next_ip = base + offset + 5
+    return b"\xe8" + (target - next_ip).to_bytes(4, "little", signed=True)
+
+
+def test_helper_connection_follows_stub_got_and_qword() -> None:
+    base = 0x1000
+    helper_stub = 0x2000
+    other_stub = 0x4000
+    helper_bytes = bytes.fromhex("f30f1efa89f8c1e81b83e001c3")
+    code = _relative_call(base, 0, helper_stub) + _relative_call(base, 5, other_stub) + b"\xc3"
+    helper_plt = bytes.fromhex("ff2500000000") + b"\x90" * 10
+    other_plt = bytes.fromhex("ff2500000000") + b"\x90" * 10
+    evidence = {
+        "read_state_bytes": code,
+        "read_state_address": base,
+        "stub_bytes_by_address": {helper_stub: helper_plt, other_stub: other_plt},
+        "qword_by_slot": {0x2006: 0x3000, 0x4006: 0x9999},
+        "helper_address": 0x3000,
+        "helper_range_bytes": helper_bytes,
+        "helper_file_bytes": helper_bytes,
+        "resolved_callee": {other_stub: 0x3000},
+    }
+    connected = assess_helper_connection(evidence)
+    assert connected["classification"] == "OBSERVED"
+    assert connected["call_offset"] == 0
+    assert connected["plt_destination"] == hex(helper_stub)
+    assert connected["got_slot"] == hex(0x2006)
+    assert connected["observed_qword"] == hex(0x3000)
+    assert connected["helper_range_matches"] is True
+    assert connected["address_annotation_establishes_connection"] is False
+    reassigned = dict(evidence)
+    reassigned["stub_bytes_by_address"] = {other_stub: other_plt}
+    reassigned["qword_by_slot"] = {0x4006: 0x9999}
+    assert assess_helper_connection(reassigned)["classification"] == "NOT ESTABLISHED"
+    missing = dict(evidence)
+    missing["stub_bytes_by_address"] = {}
+    assert assess_helper_connection(missing)["classification"] == "NOT ESTABLISHED"
+    unresolved = dict(evidence)
+    unresolved["qword_by_slot"] = {0x4006: 0x9999}
+    assert assess_helper_connection(unresolved)["classification"] == "NOT ESTABLISHED"
+    inconsistent = dict(evidence)
+    inconsistent["qword_by_slot"] = {0x2006: 0x1111, 0x4006: 0x9999}
+    assert assess_helper_connection(inconsistent)["classification"] == "NOT ESTABLISHED"
+    mismatched = dict(evidence)
+    mismatched["helper_file_bytes"] = b"\x00"
+    assert assess_helper_connection(mismatched)["classification"] == "NOT ESTABLISHED"
+    annotation = {
+        "plt_destination": hex(helper_stub),
+        "got_slot": hex(0x2006),
+        "observed_qword": hex(0x3000),
+        "helper_address": hex(0x3000),
+        "resolved_callee": hex(0x3000),
+    }
+    assert assess_helper_connection(annotation)["classification"] == "NOT ESTABLISHED"
+
+
+def test_reviewed_artifact_clears_only_the_libm_hypothesis() -> None:
+    context = _ready_context()
+    cosine = context["native"]["runtime_correspondence"]["cosine"]
+    cosine["required_bits_ok"] = True
+    cosine["mxcsr"] = "0x1f80"
+    cosine["libm_body_argument"] = "DOES NOT APPLY"
+    document = {
+        "assumptions": ["the captured body bytes are the selected cosine path"],
+        "applies_to": {
+            "body_sha256": cosine["body_sha256"],
+            "constants_identity": _constants_identity(cosine),
+            "path": cosine["selected_address"],
+        },
+    }
+    artifact = json.dumps(document, sort_keys=True).encode("utf-8")
+    cosine["reviewed_transfer_artifact"] = artifact
+    cosine["reviewed_transfer_review"] = {
+        "artifact_sha256": sha256_bytes(artifact),
+        "provenance": "independent review names this artifact digest",
+        "scope": "captured cosine body and constants only",
+        "assumptions": document["assumptions"],
+        "binds_captured_path": True,
+    }
+    unresolved = _label(False, _ready_graph(), _ready_ulp(), **context)[1]
+    assert not any(row["name"] == "libm body argument" for row in unresolved)
+    assert any(row["name"] == "selected nextafter semantics" for row in unresolved)
+    cosine["reviewed_transfer_review"] = dict(cosine["reviewed_transfer_review"])
+    cosine["reviewed_transfer_review"]["artifact_sha256"] = "00" * 32
+    unresolved = _label(False, _ready_graph(), _ready_ulp(), **context)[1]
+    assert any(row["name"] == "libm body argument" for row in unresolved)
+
+
+def test_reassigned_callee_does_not_bind_the_helper() -> None:
+    helper = {"address": "0x3000"}
+    reader = {
+        "symbol_bytes_establish_edge": False,
+        "call_edges": [
+            {
+                "symbol_bytes_establish_edge": False,
+                "resolved_callee": "0x1111",
+                "plt_destination": "0x2000",
+                "offset": 0,
+            },
+            {
+                "symbol_bytes_establish_edge": False,
+                "resolved_callee": "0x3000",
+                "plt_destination": "0x4000",
+                "offset": 5,
+            },
+        ],
+    }
+    assert _helper_call_bound(reader, helper) is False
+
+
+def test_caller_dictionary_does_not_clear_the_libm_body_blocker() -> None:
+    context = _ready_context()
+    cosine = context["native"]["runtime_correspondence"]["cosine"]
+    cosine["required_bits_ok"] = True
+    cosine["mxcsr"] = "0x1f80"
+    cosine["libm_body_argument"] = "DOES NOT APPLY"
+    cosine["alternative_transfer_argument"] = {
+        "applicable": True,
+        "scope": "captured libm body",
+        "binds_captured_path": True,
+        "body_sha256": cosine["body_sha256"],
+        "constants_identity": _constants_identity(cosine),
+    }
+    _label_result = _label(False, _ready_graph(), _ready_ulp(), **context)
+    unresolved = _label_result[1]
+    assert any(row["name"] == "libm body argument" for row in unresolved)
+    assert any(row["name"] == "selected nextafter semantics" for row in unresolved)
 
 
 def test_shr_and_mov_immediate_are_not_calls() -> None:

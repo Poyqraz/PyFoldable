@@ -19,6 +19,9 @@ import threading
 from pathlib import Path
 from typing import Mapping
 
+import capstone
+from capstone import CS_ARCH_X86, CS_MODE_64, Cs, CsError
+
 from pyfoldable.application.c2v09_binding_collector import read_loaded_vaddr
 from pyfoldable.application.c2v09_ordered_declaration import (
     RUNTIME_BINDING_SHA256,
@@ -263,189 +266,66 @@ def _readable_process_bytes(address: int, length: int) -> bytes | None:
         return None
 
 
-_LEGACY_PREFIXES = frozenset({0xF0, 0xF2, 0xF3, 0x2E, 0x36, 0x3E, 0x26, 0x64, 0x65, 0x66, 0x67})
-_MODRM_OPCODES = frozenset(
-    {
-        0x00, 0x01, 0x02, 0x03, 0x08, 0x09, 0x0A, 0x0B,
-        0x10, 0x11, 0x12, 0x13, 0x18, 0x19, 0x1A, 0x1B,
-        0x20, 0x21, 0x22, 0x23, 0x28, 0x29, 0x2A, 0x2B,
-        0x30, 0x31, 0x32, 0x33, 0x38, 0x39, 0x3A, 0x3B,
-        0x63, 0x69, 0x6B, 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
-        0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F,
-        0xC0, 0xC1, 0xC6, 0xC7, 0xD0, 0xD1, 0xD2, 0xD3,
-        0xD8, 0xD9, 0xDA, 0xDB, 0xDC, 0xDD, 0xDE, 0xDF,
-        0xF6, 0xF7, 0xFE, 0xFF,
-    }
-)
-_IMM8_ONLY = frozenset(set(range(0x70, 0x80)) | {0x04, 0x0C, 0x14, 0x1C, 0x24, 0x2C, 0x34, 0x3C, 0x6A, 0xA8, 0xCD, 0xE0, 0xE1, 0xE2, 0xE3, 0xE4, 0xE5, 0xE6, 0xE7, 0xEB})
-_IMM32_ONLY = frozenset({0x05, 0x0D, 0x15, 0x1D, 0x25, 0x2D, 0x35, 0x3D, 0x68, 0xA9, 0xE8, 0xE9})
-_NO_OPERAND = frozenset(set(range(0x50, 0x60)) | {0x90, 0x98, 0x99, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F, 0xA4, 0xA5, 0xA6, 0xA7, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xC3, 0xC9, 0xCB, 0xCC, 0xF5, 0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xEC, 0xED, 0xEE, 0xEF})
-_OF_NO_MODRM = frozenset({0x05, 0x07, 0x0B, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x77, 0xA0, 0xA1, 0xA2, 0xA8, 0xA9, 0xAA} | set(range(0xC8, 0xD0)))
-_OF_IMM8_MODRM = frozenset({0x70, 0x71, 0x72, 0x73, 0xA4, 0xAC, 0xBA, 0xC2, 0xC4, 0xC5, 0xC6})
-_OF_MODRM = frozenset(
-    {
-        0x01, 0x10, 0x11, 0x1E, 0x1F, 0x28, 0x29, 0x2E, 0x2F,
-        0x54, 0x55, 0x56, 0x57, 0x58, 0x59, 0x5C, 0x5D, 0x5E, 0x5F,
-        0x62, 0x6C, 0x6E, 0x6F, 0x7E, 0x7F, 0xAE, 0xB6, 0xB7, 0xEF, 0xD6,
-    }
-    | set(range(0x40, 0x50))
-    | set(range(0x90, 0xA0))
-)
-_MODRM_IMM8 = frozenset({0x6B, 0x80, 0x82, 0x83, 0xC0, 0xC1, 0xC6})
-_MODRM_IMM32 = frozenset({0x69, 0x81, 0xC7})
+_CALL_PREFIXES = frozenset({0xF0, 0xF2, 0xF3, 0x2E, 0x36, 0x3E, 0x26, 0x64, 0x65, 0x66, 0x67})
 
 
-def _parse_modrm(code: bytes, index: int) -> tuple[int, int] | None:
-    if index >= len(code):
-        return None
-    modrm = code[index]
-    index += 1
-    mod = modrm >> 6
-    reg = (modrm >> 3) & 7
-    rm = modrm & 7
-    if mod != 3 and rm == 4:
-        if index >= len(code):
-            return None
-        sib = code[index]
-        index += 1
-        if mod == 0 and (sib & 7) == 5:
-            index += 4
-        elif mod == 1:
-            index += 1
-        elif mod == 2:
-            index += 4
-    elif mod == 0 and rm == 5:
-        index += 4
-    elif mod == 1:
-        index += 1
-    elif mod == 2:
-        index += 4
-    if index > len(code):
-        return None
-    return index, reg
-
-
-def _imm_size(prefix66: bool, rex_w: bool, wide: bool) -> int:
-    if rex_w and wide:
-        return 8
-    if prefix66:
-        return 2
-    return 4
-
-
-def decode_loaded_calls(code: bytes, base: int) -> dict[str, object]:
-    """Linear 64-bit decode. An unknown or truncated opcode establishes no call."""
-    edges: list[dict[str, object]] = []
-    index = 0
-    limit = len(code)
-    while index < limit:
-        start = index
-        prefix66 = False
-        prefix_count = 0
-        while index < limit and code[index] in _LEGACY_PREFIXES:
-            if code[index] == 0x66:
-                prefix66 = True
-            elif code[index] == 0x67:
-                return _undecoded("unsupported")
-            index += 1
-            prefix_count += 1
-            if prefix_count > 14:
-                return _undecoded("unsupported")
-        rex = 0
-        if index < limit and 0x40 <= code[index] <= 0x4F:
-            rex = code[index]
-            index += 1
-        if index >= limit:
-            return _undecoded("truncated")
-        primary = code[index]
-        index += 1
-        two_byte = False
-        opcode = primary
-        if primary == 0x0F:
-            if index >= limit:
-                return _undecoded("truncated")
-            opcode = code[index]
-            index += 1
-            two_byte = True
-            if opcode in {0x38, 0x3A}:
-                return _undecoded("unsupported")
-        rex_w = bool(rex & 0x08)
-        kind = None
-        immediate = 0
-        has_modrm = False
-        group_imm = None
-        if two_byte:
-            if opcode in set(range(0x80, 0x90)):
-                immediate = 4
-            elif opcode in _OF_NO_MODRM:
-                immediate = 0
-            elif opcode in _OF_IMM8_MODRM:
-                has_modrm = True
-                immediate = 1
-            elif opcode in _OF_MODRM:
-                has_modrm = True
-            else:
-                return _undecoded("unsupported")
-        elif opcode in _IMM8_ONLY:
-            immediate = 1
-        elif opcode in _IMM32_ONLY:
-            immediate = 4
-            kind = "direct" if opcode == 0xE8 else None
-        elif opcode in _NO_OPERAND:
-            immediate = 0
-        elif opcode in set(range(0xB0, 0xB8)):
-            immediate = 1
-        elif opcode in set(range(0xB8, 0xC0)):
-            immediate = _imm_size(prefix66, rex_w, True)
-        elif opcode in {0xC2, 0xCA}:
-            immediate = 2
-        elif opcode in _MODRM_OPCODES:
-            has_modrm = True
-            if opcode in _MODRM_IMM8:
-                immediate = 1
-            elif opcode in _MODRM_IMM32:
-                immediate = 2 if prefix66 else 4
-            elif opcode in {0xF6, 0xF7}:
-                group_imm = "byte" if opcode == 0xF6 else "wide"
-        else:
-            return _undecoded("unsupported")
-        reg = 0
-        if has_modrm:
-            parsed = _parse_modrm(code, index)
-            if parsed is None:
-                return _undecoded("truncated")
-            index, reg = parsed
-            if group_imm is not None and reg in {0, 1}:
-                immediate = 1 if group_imm == "byte" else (2 if prefix66 else 4)
-            if not two_byte and opcode == 0xFF and reg == 2:
-                kind = "indirect"
-        if index + immediate > limit:
-            return _undecoded("truncated")
-        immediate_at = index
-        index += immediate
-        if kind == "direct":
-            displacement = int.from_bytes(code[immediate_at:index], "little", signed=True)
-            edges.append(_call_edge("direct", "e8", start, base + index + displacement, None, None))
-        elif kind == "indirect":
-            displacement = _rip_displacement(code[start:index])
-            if displacement is None:
-                return _undecoded("unsupported")
-            target = base + index + displacement
-            edges.append(_call_edge("indirect", "ff15", start, target, target, None))
+def _decoder_record(coverage: str, classification: str, edges: list[dict[str, object]]) -> dict[str, object]:
     return {
-        "classification": "OBSERVED",
-        "decoder": "x86-64 linear sweep",
+        "classification": classification,
+        "decoder": "capstone",
+        "decoder_version": capstone.__version__,
         "mode": "64-bit",
-        "coverage": "complete",
+        "coverage": coverage,
         "edges": edges,
     }
 
 
-def _rip_displacement(instruction: bytes) -> int | None:
-    marker = instruction.rfind(b"\xff\x15")
-    if marker < 0 or marker + 6 != len(instruction):
-        return None
-    return int.from_bytes(instruction[marker + 2:marker + 6], "little", signed=True)
+def _capstone_call_edge(instruction: capstone.CsInsn, base: int) -> dict[str, object] | None:
+    raw = bytes(instruction.bytes)
+    index = 0
+    while index < len(raw) and raw[index] in _CALL_PREFIXES:
+        index += 1
+    if index < len(raw) and 0x40 <= raw[index] <= 0x4F:
+        index += 1
+    body = raw[index:]
+    offset = instruction.address - base
+    if body.startswith(b"\xe8") and len(body) >= 5:
+        displacement = int.from_bytes(body[1:5], "little", signed=True)
+        target = instruction.address + instruction.size + displacement
+        return _call_edge("direct", "e8", offset, target, None, None)
+    marker = body.find(b"\xff\x15")
+    if marker >= 0 and marker + 6 == len(body):
+        displacement = int.from_bytes(body[marker + 2:marker + 6], "little", signed=True)
+        target = instruction.address + instruction.size + displacement
+        return _call_edge("indirect", "ff15", offset, target, target, None)
+    return None
+
+
+def decode_loaded_calls(code: bytes, base: int) -> dict[str, object]:
+    """Decode captured bytes with Capstone. An incomplete sweep establishes no call."""
+    if not code:
+        return _decoder_record("truncated", "NOT ESTABLISHED", [])
+    decoder = Cs(CS_ARCH_X86, CS_MODE_64)
+    decoder.detail = True
+    try:
+        instructions = list(decoder.disasm(code, base))
+    except CsError:
+        return _decoder_record("unsupported", "NOT ESTABLISHED", [])
+    edges: list[dict[str, object]] = []
+    consumed = 0
+    for instruction in instructions:
+        if instruction.address != base + consumed:
+            return _decoder_record("unsupported", "NOT ESTABLISHED", [])
+        if instruction.mnemonic == "call":
+            edge = _capstone_call_edge(instruction, base)
+            if edge is None:
+                return _decoder_record("unsupported", "NOT ESTABLISHED", [])
+            edges.append(edge)
+        consumed += instruction.size
+    if consumed != len(code):
+        coverage = "truncated" if consumed == 0 and code[0] == 0xE8 else "unsupported"
+        return _decoder_record(coverage, "NOT ESTABLISHED", [])
+    return _decoder_record("complete", "OBSERVED", edges)
 
 
 def _call_edge(
@@ -469,13 +349,7 @@ def _call_edge(
 
 
 def _undecoded(coverage: str) -> dict[str, object]:
-    return {
-        "classification": "NOT ESTABLISHED",
-        "decoder": "x86-64 linear sweep",
-        "mode": "64-bit",
-        "coverage": coverage,
-        "edges": [],
-    }
+    return _decoder_record(coverage, "NOT ESTABLISHED", [])
 
 
 def call_edges_from_loaded_bytes(code: bytes, base: int) -> list[dict[str, object]]:
@@ -906,6 +780,69 @@ def _annotate_loaded_edge(edge: Mapping[str, object]) -> dict[str, object]:
     return recorded
 
 
+def _hex_bytes(value: object) -> bytes:
+    if not isinstance(value, str) or not value:
+        return b""
+    try:
+        return bytes.fromhex(value)
+    except ValueError:
+        return b""
+
+
+def assess_helper_connection(evidence: Mapping[str, object]) -> dict[str, object]:
+    """Recompute the call, stub, GOT, qword, and helper range. Annotations are ignored."""
+    blocked = {
+        "classification": "NOT ESTABLISHED",
+        "address_annotation_establishes_connection": False,
+    }
+    read_bytes = evidence.get("read_state_bytes")
+    read_address = evidence.get("read_state_address")
+    stubs = evidence.get("stub_bytes_by_address")
+    qwords = evidence.get("qword_by_slot")
+    helper_address = evidence.get("helper_address")
+    helper_range = evidence.get("helper_range_bytes")
+    helper_file = evidence.get("helper_file_bytes")
+    if (
+        not isinstance(read_bytes, (bytes, bytearray))
+        or not isinstance(read_address, int)
+        or not isinstance(stubs, Mapping)
+        or not isinstance(qwords, Mapping)
+        or not isinstance(helper_address, int)
+        or not isinstance(helper_range, (bytes, bytearray))
+        or not isinstance(helper_file, (bytes, bytearray))
+        or not helper_range
+        or bytes(helper_range) != bytes(helper_file)
+    ):
+        return blocked
+    decoded = decode_loaded_calls(bytes(read_bytes), read_address)
+    if decoded.get("classification") != "OBSERVED" or decoded.get("coverage") != "complete":
+        return blocked
+    for edge in decoded.get("edges") or []:
+        if not isinstance(edge, Mapping) or edge.get("kind") != "direct" or not isinstance(edge.get("target"), str):
+            continue
+        target = int(str(edge["target"]), 16)
+        stub = stubs.get(target)
+        if not isinstance(stub, (bytes, bytearray)) or len(stub) < 6:
+            continue
+        got = plt_got_address(bytes(stub), target)
+        qword = None if got is None else qwords.get(got)
+        if got is None or not isinstance(qword, int) or qword != helper_address:
+            continue
+        return {
+            "classification": "OBSERVED",
+            "call_offset": edge.get("offset"),
+            "plt_destination": hex(target),
+            "plt_stub_bytes_hex": bytes(stub).hex(),
+            "got_slot": hex(got),
+            "observed_qword": hex(qword),
+            "helper_address": hex(helper_address),
+            "helper_range_matches": True,
+            "resolved_callee": hex(qword),
+            "address_annotation_establishes_connection": False,
+        }
+    return blocked
+
+
 def _bind_probe_helper_edges(measurement: dict[str, object]) -> None:
     """Re-read GOT slots after read_state. Symbol bytes do not create the edge."""
     ranges = measurement.get("consumed_instruction_ranges")
@@ -919,11 +856,38 @@ def _bind_probe_helper_edges(measurement: dict[str, object]) -> None:
     annotated = [_annotate_loaded_edge(edge) for edge in reader.get("call_edges") or [] if isinstance(edge, dict)]
     reader["call_edges"] = annotated
     reader["symbol_bytes_establish_edge"] = False
-    helper_address = helper.get("address") if isinstance(helper, dict) else None
-    reader["helper_call_established"] = any(
-        edge.get("resolved_callee") == helper_address and edge.get("plt_destination") != helper_address
-        for edge in annotated
+    read_address = int(reader["address"], 16) if isinstance(reader.get("address"), str) else None
+    helper_address = int(helper["address"], 16) if isinstance(helper, dict) and isinstance(helper.get("address"), str) else None
+    stubs: dict[int, bytes] = {}
+    qwords: dict[int, int] = {}
+    read_bytes = _hex_bytes(reader.get("loaded_bytes_hex"))
+    if read_address is not None:
+        decoded = decode_loaded_calls(read_bytes, read_address)
+        for edge in decoded.get("edges") or []:
+            if not isinstance(edge, Mapping) or edge.get("kind") != "direct" or not isinstance(edge.get("target"), str):
+                continue
+            target = int(str(edge["target"]), 16)
+            stub = _readable_process_bytes(target, 16)
+            if stub is None:
+                continue
+            stubs[target] = stub
+            got = plt_got_address(stub, target)
+            pointer = None if got is None else _read_qword(got)
+            if got is not None and pointer is not None:
+                qwords[got] = pointer
+    connection = assess_helper_connection(
+        {
+            "read_state_bytes": read_bytes,
+            "read_state_address": read_address,
+            "stub_bytes_by_address": stubs,
+            "qword_by_slot": qwords,
+            "helper_address": helper_address,
+            "helper_range_bytes": _hex_bytes(helper.get("loaded_bytes_hex")) if isinstance(helper, dict) else b"",
+            "helper_file_bytes": _hex_bytes(helper.get("file_bytes_hex")) if isinstance(helper, dict) else b"",
+        }
     )
+    reader["helper_connection"] = connection
+    reader["helper_call_established"] = connection["classification"] == "OBSERVED"
 
 
 def _c_function_address(function: object) -> int | None:

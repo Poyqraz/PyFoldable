@@ -6,6 +6,7 @@ calls stay at zero. PRE-CALL READY FOR REVIEW is not execution authorization.
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 from pathlib import Path
@@ -375,20 +376,42 @@ def _constants_identity(cosine: Mapping[str, object]) -> str:
 
 
 def _body_argument_established(cosine: Mapping[str, object]) -> bool:
-    """Disagreement is not clearance. An alternative must name this captured path."""
+    """A caller dictionary is not a reviewed transfer. Disagreement stays blocked."""
     if cosine.get("libm_body_argument") == "APPLIES":
         return True
-    alternative = cosine.get("alternative_transfer_argument")
-    if not isinstance(alternative, Mapping):
+    artifact = cosine.get("reviewed_transfer_artifact")
+    review = cosine.get("reviewed_transfer_review")
+    if not isinstance(artifact, (bytes, bytearray)) or not isinstance(review, Mapping):
         return False
-    scope = alternative.get("scope")
+    digest = sha256_bytes(bytes(artifact))
+    if review.get("artifact_sha256") != digest:
+        return False
+    provenance = review.get("provenance")
+    assumptions = review.get("assumptions")
+    scope = review.get("scope")
+    if not isinstance(provenance, str) or not provenance:
+        return False
+    if not isinstance(scope, str) or not scope:
+        return False
+    if not isinstance(assumptions, list) or not assumptions or not all(isinstance(item, str) and item for item in assumptions):
+        return False
+    if review.get("binds_captured_path") is not True:
+        return False
+    try:
+        document = json.loads(bytes(artifact).decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return False
+    if not isinstance(document, dict) or document.get("assumptions") != assumptions:
+        return False
+    binding = document.get("applies_to")
+    if not isinstance(binding, Mapping):
+        return False
     return (
-        alternative.get("applicable") is True
-        and isinstance(scope, str)
-        and bool(scope)
-        and alternative.get("binds_captured_path") is True
-        and alternative.get("body_sha256") == cosine.get("body_sha256")
-        and alternative.get("constants_identity") == _constants_identity(cosine)
+        binding.get("body_sha256") == cosine.get("body_sha256")
+        and binding.get("constants_identity") == _constants_identity(cosine)
+        and binding.get("path") == cosine.get("selected_address")
+        and isinstance(binding.get("path"), str)
+        and bool(binding.get("path"))
     )
 
 
@@ -415,18 +438,21 @@ def _decode_matches_stored_edges(row: Mapping[str, object]) -> bool:
 
 
 def _helper_call_bound(reader: Mapping[str, object], helper: Mapping[str, object]) -> bool:
-    if reader.get("symbol_bytes_establish_edge") is not False:
+    """Address annotations do not establish the probe-to-helper chain."""
+    connection = reader.get("helper_connection")
+    if not isinstance(connection, Mapping):
+        return False
+    if connection.get("address_annotation_establishes_connection") is not False:
+        return False
+    if connection.get("classification") != "OBSERVED" or connection.get("helper_range_matches") is not True:
+        return False
+    if not _nonempty_text(connection.get("plt_stub_bytes_hex")) or not _nonempty_text(connection.get("got_slot")):
         return False
     helper_address = helper.get("address")
-    edges = reader.get("call_edges")
-    if not isinstance(helper_address, str) or not isinstance(edges, list) or not edges:
-        return False
-    return any(
-        isinstance(edge, Mapping)
-        and edge.get("symbol_bytes_establish_edge") is False
-        and edge.get("resolved_callee") == helper_address
-        and edge.get("plt_destination") != helper_address
-        for edge in edges
+    return (
+        isinstance(helper_address, str)
+        and connection.get("observed_qword") == helper_address
+        and connection.get("plt_destination") not in (None, helper_address)
     )
 
 
