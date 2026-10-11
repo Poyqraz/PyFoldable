@@ -20,6 +20,7 @@ from typing import Callable, Mapping
 from pyfoldable.application.c2v09_binding_collector import collect_binding_record
 from pyfoldable.application.c2v09_cosine_path_certificate import prepare_cosine_path_certificate
 from pyfoldable.application.c2v09_declared_operations import (
+    DECLARED_QUALNAMES,
     capture_operation_bindings,
     operation_bindings_hold,
     resolve_qualname,
@@ -224,12 +225,12 @@ def _loads(text: str) -> dict[str, object]:
     return parsed
 
 
-def _consumed_active(qualname: str, fallback: object) -> object:
-    """Call-site callee when this qualname is declared; otherwise the supplied callable."""
-    resolved = resolve_qualname(qualname)
-    if resolved is None:
-        return fallback
-    return resolved.callee
+def _consumed_active(qualname: str, fallback: object) -> object | None:
+    """Declared qualnames resolve at the call site. A supplied callable is not that path."""
+    if qualname in DECLARED_QUALNAMES:
+        resolved = resolve_qualname(qualname)
+        return None if resolved is None else resolved.callee
+    return fallback
 
 
 def _compare_active(root: Path) -> list[dict[str, object]]:
@@ -854,7 +855,14 @@ def revalidate_initial_call_binding(value: object) -> InitialCallRevalidation:
     namespace = evaluator.__call__.__globals__
     if namespace.get(SOURCE_BINDING) is not value.retained[SOURCE_BINDING] or namespace.get(MAPPER_BINDING) is not value.retained[MAPPER_BINDING]:
         return InitialCallRevalidation("INVALIDATED")
-    if value.retained[SOURCE_BINDING] is not solve_foldable_bem_rotor or value.retained[MAPPER_BINDING] is not map_foldable_bem_aero_loads:
+    source = resolve_qualname("solve_foldable_bem_rotor")
+    mapper = resolve_qualname("map_foldable_bem_aero_loads")
+    if (
+        source is None
+        or mapper is None
+        or value.retained[SOURCE_BINDING] is not source.callee
+        or value.retained[MAPPER_BINDING] is not mapper.callee
+    ):
         return InitialCallRevalidation("INVALIDATED")
     if evaluator.__call__.__code__ is not value.retained["__call_code__"]:
         return InitialCallRevalidation("INVALIDATED")
@@ -868,7 +876,7 @@ def revalidate_initial_call_binding(value: object) -> InitialCallRevalidation:
         return InitialCallRevalidation("INVALIDATED")
     for path, qualname, function in _ACTIVE_CODE:
         function = _consumed_active(qualname, function)
-        if function.__code__ is not value.retained["active_codes"][qualname]:
+        if function is None or function.__code__ is not value.retained["active_codes"][qualname]:
             return InitialCallRevalidation("INVALIDATED")
         defaults = value.retained["defaults"][qualname]
         if function.__defaults__ != defaults["defaults"] or function.__kwdefaults__ != defaults["kwdefaults"]:

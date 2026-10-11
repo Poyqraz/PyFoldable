@@ -16,7 +16,7 @@ from pyfoldable.application.c2v09_cosine_path_certificate import observe_ulp_ter
 from pyfoldable.application.c2v09_declared_operations import (
     ARITHMETIC_QUALNAMES,
     REQUIRED_GRAPH_QUALNAMES,
-    resolve_qualname,
+    arithmetic_operation_record,
 )
 from pyfoldable.application.c2v09_initial_applicability import (
     CONTRACT_BLOCKED,
@@ -49,6 +49,18 @@ _REQUIRED_DISPOSITIONS = (
     "libm",
 )
 _CONSUMED_PROBE_SYMBOLS = ("read_state", "xcr0_read_permitted")
+_EMBEDDED_ARITHMETIC = (
+    "project_foldable_blade.kernel_radius",
+    "solve_bem_rotor.annulus_edge",
+    "solve_bem_rotor.midpoint",
+)
+_ARITHMETIC_OPCODES = {
+    "FoldableRotorState.angle_from_deployed_rad": "BINARY_OP -",
+    "BladeGeometry.radius_m": "BINARY_OP /",
+    "project_foldable_blade.kernel_radius": "BINARY_OP *",
+    "solve_bem_rotor.annulus_edge": "STORE_FAST outer",
+    "solve_bem_rotor.midpoint": "STORE_FAST midpoint",
+}
 _FILE_DELTA_ROLES = {
     "pyfoldable/application/cmm2_coupled_transient_service.py": (
         "consumed by the initial evaluator constructor and call; "
@@ -217,18 +229,7 @@ def _ulp_path_established(ulp: Mapping[str, object]) -> bool:
 
 def interpreter_arithmetic_record(native: Mapping[str, object]) -> dict[str, object]:
     """Bytecode of the consumed arithmetic operations. Do not execute them."""
-    operations = []
-    for qualname in ARITHMETIC_QUALNAMES:
-        resolved = resolve_qualname(qualname)
-        code = None if resolved is None else resolved.code
-        operations.append(
-            {
-                "qualname": qualname,
-                "co_code_hex": None if code is None else code.co_code.hex(),
-                "callee_qualname": None if code is None else getattr(code, "co_qualname", code.co_name),
-                "output_sampled": False,
-            }
-        )
+    operations = [arithmetic_operation_record(qualname) for qualname in ARITHMETIC_QUALNAMES]
     controls = native.get("controls") if isinstance(native.get("controls"), Mapping) else {}
     same_recording = (
         native.get("kind") == "genuine"
@@ -255,10 +256,35 @@ def _arithmetic_established(record: object) -> bool:
     if not isinstance(rows, list):
         return False
     found = {row.get("qualname"): row for row in rows if isinstance(row, Mapping)}
+    slices: dict[str, str] = {}
     for qualname in ARITHMETIC_QUALNAMES:
         row = found.get(qualname)
-        if not isinstance(row, Mapping) or row.get("output_sampled") is not False or not _nonempty_text(row.get("co_code_hex")):
+        if not isinstance(row, Mapping) or row.get("output_sampled") is not False:
             return False
+        start = row.get("start_offset")
+        end = row.get("end_offset")
+        parent = row.get("parent_co_code_length")
+        opcodes = row.get("opcodes")
+        blob = row.get("co_code_hex")
+        if not isinstance(start, int) or not isinstance(end, int) or end <= start:
+            return False
+        if not isinstance(parent, int) or parent < end:
+            return False
+        if not isinstance(opcodes, list) or _ARITHMETIC_OPCODES[qualname] not in opcodes:
+            return False
+        if not isinstance(blob, str):
+            return False
+        try:
+            raw = bytes.fromhex(blob)
+        except ValueError:
+            return False
+        if len(raw) != end - start:
+            return False
+        if qualname in _EMBEDDED_ARITHMETIC and end - start >= parent:
+            return False
+        slices[qualname] = blob
+    if len({slices[qualname] for qualname in _EMBEDDED_ARITHMETIC}) != len(_EMBEDDED_ARITHMETIC):
+        return False
     return True
 
 
@@ -273,17 +299,36 @@ def _cosine_established(native: Mapping[str, object]) -> bool:
         return False
     conversion = cosine.get("conversion")
     constants = cosine.get("constants")
+    call_edges = cosine.get("cosine_call_edges")
     constants_known = (
         isinstance(constants, list)
         and bool(constants)
         and all(isinstance(row, Mapping) and row.get("classification") in {"MATCH", "MISMATCH"} for row in constants)
     )
+    edges_known = (
+        isinstance(call_edges, list)
+        and bool(call_edges)
+        and all(
+            isinstance(edge, Mapping)
+            and edge.get("kind") == "direct"
+            and edge.get("source") == "loaded bytes"
+            and edge.get("loaded_bytes_match_file") is True
+            and edge.get("disk_disassembly_is_proof") is False
+            and _nonempty_text(edge.get("target"))
+            for edge in call_edges
+        )
+    )
+    targets = {edge.get("target") for edge in call_edges} if isinstance(call_edges, list) else set()
     return (
         cosine.get("loaded_wrapper_matches_file") is True
         and _nonempty_text(cosine.get("loaded_wrapper_bytes_hex"))
         and _nonempty_text(cosine.get("file_wrapper_bytes_hex"))
+        and edges_known
+        and cosine.get("plt_stub") in targets
         and isinstance(conversion, Mapping)
         and conversion.get("classification") == "OBSERVED"
+        and conversion.get("kind") == "direct"
+        and _nonempty_text(conversion.get("target"))
         and conversion.get("source") == "loaded bytes"
         and conversion.get("loaded_bytes_match_file") is True
         and conversion.get("disk_disassembly_is_proof") is False

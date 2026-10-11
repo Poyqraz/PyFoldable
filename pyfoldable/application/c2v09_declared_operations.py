@@ -6,6 +6,7 @@ class dictionary, so the descriptor protocol does not run.
 
 from __future__ import annotations
 
+import dis
 import sys
 import types
 from dataclasses import dataclass
@@ -299,6 +300,7 @@ OPERATION_SPECS: tuple[OperationSpec, ...] = (
 )
 
 REQUIRED_GRAPH_QUALNAMES: tuple[str, ...] = tuple(spec.qualname for spec in OPERATION_SPECS) + ("math.ulp",)
+DECLARED_QUALNAMES = frozenset(spec.qualname for spec in OPERATION_SPECS)
 ARITHMETIC_QUALNAMES: tuple[str, ...] = (
     "FoldableRotorState.angle_from_deployed_rad",
     "BladeGeometry.radius_m",
@@ -342,13 +344,6 @@ def resolve_qualname(qualname: str) -> ResolvedOperation | None:
     return None
 
 
-def _keyword_snapshot(function: types.FunctionType) -> dict[str, object] | None:
-    keywords = function.__kwdefaults__
-    if keywords is None:
-        return None
-    return dict(keywords)
-
-
 def _binding_record(resolved: ResolvedOperation) -> dict[str, object]:
     callee = resolved.callee
     return {
@@ -356,7 +351,7 @@ def _binding_record(resolved: ResolvedOperation) -> dict[str, object]:
         "callee": callee,
         "code": callee.__code__,
         "defaults": callee.__defaults__,
-        "kwdefaults": _keyword_snapshot(callee),
+        "kwdefaults": callee.__kwdefaults__,
     }
 
 
@@ -384,6 +379,8 @@ def operation_bindings_hold(snapshot: object) -> bool:
             saved.get("descriptor") is not current["descriptor"]
             or saved.get("callee") is not current["callee"]
             or saved.get("code") is not current["code"]
+            or saved.get("defaults") is not current["defaults"]
+            or saved.get("kwdefaults") is not current["kwdefaults"]
             or saved.get("defaults") != current["defaults"]
             or saved.get("kwdefaults") != current["kwdefaults"]
         ):
@@ -399,6 +396,113 @@ def operation_markers(code: types.CodeType, spec: OperationSpec) -> str:
     if named and variables and constants:
         return "MATCH"
     return "NOT ESTABLISHED"
+
+
+def _real_instructions(code: types.CodeType) -> list[dis.Instruction]:
+    return [instruction for instruction in dis.get_instructions(code) if instruction.opname != "CACHE"]
+
+
+def _find_instruction(instructions: list[dis.Instruction], opname: str, argrepr: str, start: int = 0) -> dis.Instruction | None:
+    for instruction in instructions:
+        if instruction.offset >= start and instruction.opname == opname and instruction.argrepr == argrepr:
+            return instruction
+    return None
+
+
+def _window(code: types.CodeType, start: int, last: int) -> dict[str, object] | None:
+    instructions = _real_instructions(code)
+    opcodes: list[str] = []
+    end = None
+    for index, instruction in enumerate(instructions):
+        if instruction.offset < start:
+            continue
+        if not opcodes and instruction.offset != start:
+            return None
+        opcodes.append(instruction.opname if not instruction.argrepr else f"{instruction.opname} {instruction.argrepr}")
+        if instruction.offset == last:
+            end = instructions[index + 1].offset if index + 1 < len(instructions) else len(code.co_code)
+            break
+    if end is None or end <= start:
+        return None
+    return {
+        "start_offset": start,
+        "end_offset": end,
+        "co_code_hex": code.co_code[start:end].hex(),
+        "opcodes": opcodes,
+        "parent_co_code_length": len(code.co_code),
+        "output_sampled": False,
+    }
+
+
+def _arithmetic_bounds(qualname: str, code: types.CodeType) -> tuple[int, int] | None:
+    instructions = _real_instructions(code)
+    if qualname == "FoldableRotorState.angle_from_deployed_rad":
+        start = _find_instruction(instructions, "LOAD_ATTR", "opening_angle_rad")
+        last = None if start is None else _find_instruction(instructions, "BINARY_OP", "-", start.offset)
+    elif qualname == "BladeGeometry.radius_m":
+        start = _find_instruction(instructions, "LOAD_ATTR", "diameter_m")
+        last = None if start is None else _find_instruction(instructions, "BINARY_OP", "/", start.offset)
+    elif qualname == "project_foldable_blade.kernel_radius":
+        start = None
+        last = None
+        for index, instruction in enumerate(instructions):
+            if instruction.opname != "LOAD_ATTR" or instruction.argrepr != "r_over_R":
+                continue
+            window = instructions[index:index + 12]
+            pairs = {(item.opname, item.argrepr) for item in window}
+            if ("LOAD_ATTR", "radius_m") in pairs and ("BINARY_OP", "*") in pairs and ("STORE_FAST", "nominal_radius") in pairs:
+                start = instruction
+                last = next(item for item in window if item.opname == "STORE_FAST" and item.argrepr == "nominal_radius")
+                break
+    elif qualname == "solve_bem_rotor.annulus_edge":
+        store = _find_instruction(instructions, "STORE_FAST", "inner")
+        last = None if store is None else _find_instruction(instructions, "STORE_FAST", "outer", store.offset)
+        start = None
+        if store is not None:
+            for instruction in instructions:
+                if instruction.offset >= store.offset:
+                    break
+                if instruction.opname == "LOAD_FAST" and instruction.argrepr == "inner_radius":
+                    start = instruction
+    elif qualname == "solve_bem_rotor.midpoint":
+        start = None
+        last = None
+        for instruction in instructions:
+            if instruction.opname == "LOAD_CONST" and instruction.argrepr == "0.5":
+                store = _find_instruction(instructions, "STORE_FAST", "midpoint", instruction.offset)
+                if store is not None and store.offset - instruction.offset < 40:
+                    start = instruction
+                    last = store
+                    break
+    else:
+        return None
+    if start is None or last is None:
+        return None
+    return start.offset, last.offset
+
+
+def arithmetic_operation_record(qualname: str) -> dict[str, object]:
+    """The bytecode window for one arithmetic or store operation. Do not execute it."""
+    resolved = resolve_qualname(qualname)
+    empty: dict[str, object] = {
+        "qualname": qualname,
+        "start_offset": None,
+        "end_offset": None,
+        "co_code_hex": None,
+        "opcodes": [],
+        "parent_co_code_length": None,
+        "output_sampled": False,
+    }
+    if resolved is None:
+        return empty
+    bounds = _arithmetic_bounds(qualname, resolved.code)
+    if bounds is None:
+        return empty
+    window = _window(resolved.code, bounds[0], bounds[1])
+    if window is None:
+        return empty
+    window["qualname"] = qualname
+    return window
 
 
 def classify_resolved_operation(root: Path, spec: OperationSpec, resolved: ResolvedOperation | None) -> dict[str, str]:

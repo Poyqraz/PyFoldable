@@ -15,7 +15,7 @@ from pyfoldable.application.c2v09_cosine_path_certificate import (
     call_edges_from_loaded_bytes,
     observe_ulp_terminal_guard,
 )
-from pyfoldable.application.c2v09_declared_operations import REQUIRED_GRAPH_QUALNAMES
+from pyfoldable.application.c2v09_declared_operations import REQUIRED_GRAPH_QUALNAMES, resolve_qualname
 from pyfoldable.application.c2v09_initial_call_binding import bind_initial_call, revalidate_initial_call_binding
 from pyfoldable.application.c2v09_pre_call_admission import prepare_pre_call_admission
 from pyfoldable.application.c2v09_pre_call_package import (
@@ -436,10 +436,23 @@ def _ready_native() -> dict[str, object]:
                 "file_wrapper_bytes_hex": "cc",
                 "conversion": {
                     "classification": "OBSERVED",
+                    "kind": "direct",
+                    "target": "0x70",
                     "source": "loaded bytes",
                     "loaded_bytes_match_file": True,
                     "disk_disassembly_is_proof": False,
                 },
+                "plt_stub": "0x60",
+                "cosine_call_edges": [
+                    {
+                        "kind": "direct",
+                        "opcode": "e8",
+                        "target": "0x60",
+                        "source": "loaded bytes",
+                        "loaded_bytes_match_file": True,
+                        "disk_disassembly_is_proof": False,
+                    }
+                ],
                 "plt_stub_bytes_hex": "ff25",
                 "got_slot": "0x40",
                 "selected_address": "0x50",
@@ -483,14 +496,51 @@ def _ready_context() -> dict[str, object]:
             "same_recording_as_probe": True,
             "controls_classification": "OBSERVED",
             "operations": [
-                {"qualname": qualname, "co_code_hex": "aa", "output_sampled": False}
-                for qualname in (
-                    "FoldableRotorState.angle_from_deployed_rad",
-                    "BladeGeometry.radius_m",
-                    "project_foldable_blade.kernel_radius",
-                    "solve_bem_rotor.annulus_edge",
-                    "solve_bem_rotor.midpoint",
-                )
+                {
+                    "qualname": "FoldableRotorState.angle_from_deployed_rad",
+                    "co_code_hex": "aa",
+                    "start_offset": 0,
+                    "end_offset": 1,
+                    "parent_co_code_length": 1,
+                    "opcodes": ["BINARY_OP -"],
+                    "output_sampled": False,
+                },
+                {
+                    "qualname": "BladeGeometry.radius_m",
+                    "co_code_hex": "bb",
+                    "start_offset": 0,
+                    "end_offset": 1,
+                    "parent_co_code_length": 1,
+                    "opcodes": ["BINARY_OP /"],
+                    "output_sampled": False,
+                },
+                {
+                    "qualname": "project_foldable_blade.kernel_radius",
+                    "co_code_hex": "cc",
+                    "start_offset": 0,
+                    "end_offset": 1,
+                    "parent_co_code_length": 8,
+                    "opcodes": ["BINARY_OP *"],
+                    "output_sampled": False,
+                },
+                {
+                    "qualname": "solve_bem_rotor.annulus_edge",
+                    "co_code_hex": "dd",
+                    "start_offset": 0,
+                    "end_offset": 1,
+                    "parent_co_code_length": 8,
+                    "opcodes": ["STORE_FAST outer"],
+                    "output_sampled": False,
+                },
+                {
+                    "qualname": "solve_bem_rotor.midpoint",
+                    "co_code_hex": "ee",
+                    "start_offset": 0,
+                    "end_offset": 1,
+                    "parent_co_code_length": 8,
+                    "opcodes": ["STORE_FAST midpoint"],
+                    "output_sampled": False,
+                },
             ],
         },
     }
@@ -534,6 +584,44 @@ def test_package_names_a_geometric_mismatch_and_keeps_time_controls() -> None:
     names = {row["name"] for row in payload["unresolved_pre_call"]}
     assert "FoldableRotorState.angle_from_deployed_rad" in names
     assert "native observation" in names
+
+
+def test_equal_default_object_is_not_the_retained_binding() -> None:
+    bound = _bind()
+    resolved = resolve_qualname("solve_bem_rotor")
+    assert resolved is not None
+    function = resolved.callee
+    original = function.__kwdefaults__
+    try:
+        function.__kwdefaults__ = None if original is None else dict(original)
+        assert revalidate_initial_call_binding(bound).classification == "INVALIDATED"
+    finally:
+        function.__kwdefaults__ = original
+    assert revalidate_initial_call_binding(bound).classification == "REVALIDATED"
+
+
+def test_stub_bytes_without_a_loaded_call_edge_stay_unresolved() -> None:
+    context = _ready_context()
+    cosine = context["native"]["runtime_correspondence"]["cosine"]
+    cosine.pop("cosine_call_edges", None)
+    label, unresolved = _label(False, _ready_graph(), _ready_ulp(), **context)
+    assert label == UNRESOLVED
+    assert any(row["name"] == "cosine path" for row in unresolved)
+
+
+def test_shared_parent_bytecode_is_not_two_arithmetic_paths() -> None:
+    context = _ready_context()
+    arithmetic = context["interpreter_arithmetic"]
+    for row in arithmetic["operations"]:
+        if row["qualname"] in {"solve_bem_rotor.annulus_edge", "solve_bem_rotor.midpoint"}:
+            row["co_code_hex"] = "abcd"
+            row["start_offset"] = 0
+            row["end_offset"] = 2
+            row["parent_co_code_length"] = 2
+            row["opcodes"] = ["BINARY_OP *"]
+    label, unresolved = _label(False, _ready_graph(), _ready_ulp(), **context)
+    assert label == UNRESOLVED
+    assert any(row["name"] == "interpreter binary64 arithmetic" for row in unresolved)
 
 
 def test_historical_capsule_bytes_remain_the_earlier_record() -> None:

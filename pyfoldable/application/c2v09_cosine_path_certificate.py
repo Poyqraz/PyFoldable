@@ -43,7 +43,6 @@ DIGEST_SCOPE = (
     "canonical_sha256 and digest_scope are outside that payload."
 )
 _CALL = re.compile(r"^\s*[0-9a-f]+:.*\bcall\s+([0-9a-f]+)\s+<([^>]+)>", re.IGNORECASE)
-_INSTRUCTION = re.compile(r"^\s*([0-9a-f]+):", re.IGNORECASE)
 
 
 def xcr0_read_permitted(leaf1_ecx: int, leaf7_ecx: int) -> bool:
@@ -251,17 +250,6 @@ def _disassemble(path: str, start: int, stop: int) -> str | None:
         return None
 
 
-def _cos_plt_vaddr(disassembly: str) -> int | None:
-    for line in disassembly.splitlines():
-        match = _CALL.match(line)
-        if match is None:
-            continue
-        symbol = match.group(2)
-        if symbol == "cos@plt" or symbol.startswith("cos@GLIBC"):
-            return int(match.group(1), 16)
-    return None
-
-
 def _calls_symbol(disassembly: str, name: str) -> bool:
     return any(match.group(2).startswith(name) for line in disassembly.splitlines() if (match := _CALL.match(line)))
 
@@ -310,36 +298,166 @@ def call_edges_from_loaded_bytes(code: bytes, base: int) -> list[dict[str, objec
     return edges
 
 
-def _loaded_symbol_calls(
-    wrapper_runtime: int,
-    located: tuple[str, int],
-    disassembly: str,
-    symbol: str,
-) -> list[dict[str, object]]:
-    """Use disassembly only to choose an instruction. The edge comes from loaded bytes."""
-    path, wrapper_vaddr = located
-    edges: list[dict[str, object]] = []
-    for line in disassembly.splitlines():
-        match = _CALL.match(line)
-        located_instruction = _INSTRUCTION.match(line)
-        if match is None or located_instruction is None or not match.group(2).startswith(symbol):
+def _section_headers(data: bytes) -> list[tuple[str, tuple[int, ...]]] | None:
+    if len(data) < 64 or data[:4] != b"\x7fELF" or data[4] != 2:
+        return None
+    section_offset = struct.unpack_from("<Q", data, 40)[0]
+    entry_size, count, strings_index = struct.unpack_from("<HHH", data, 58)
+    if section_offset <= 0 or count <= 0 or strings_index >= count:
+        return None
+
+    def header(index: int) -> tuple[int, ...]:
+        return struct.unpack_from("<IIQQQQIIQQ", data, section_offset + index * entry_size)
+
+    names = header(strings_index)
+
+    def text(index: int) -> str:
+        start = names[4] + index
+        stop = data.find(b"\0", start)
+        return data[start:stop].decode("ascii", "replace")
+
+    return [(text(header(index)[0]), header(index)) for index in range(count)]
+
+
+def _section(data: bytes, name: str) -> tuple[int, ...] | None:
+    headers = _section_headers(data)
+    if headers is None:
+        return None
+    for section_name, header in headers:
+        if section_name == name:
+            return header
+    return None
+
+
+def _symbol_text(data: bytes, strings: tuple[int, ...], name_index: int) -> str:
+    start = strings[4] + name_index
+    stop = data.find(b"\0", start)
+    return data[start:stop].decode("ascii", "replace")
+
+
+def _jump_slot_vaddr(path: str, symbol: str) -> int | None:
+    data = Path(path).read_bytes()
+    symbols = _section(data, ".dynsym")
+    strings = _section(data, ".dynstr")
+    relocations = _section(data, ".rela.plt")
+    if symbols is None or strings is None or relocations is None or symbols[9] != 24 or relocations[9] != 24:
+        return None
+    for index in range(relocations[5] // 24):
+        slot, info, _addend = struct.unpack_from("<QQq", data, relocations[4] + index * 24)
+        if (info & 0xFFFFFFFF) != 7:
             continue
-        instruction_vaddr = int(located_instruction.group(1), 16)
-        runtime = wrapper_runtime + (instruction_vaddr - wrapper_vaddr)
-        file_bytes = _elf_bytes(path, instruction_vaddr, 5)
-        loaded = _readable_process_bytes(runtime, 5)
-        if file_bytes is None or loaded is None or file_bytes != loaded or not loaded.startswith(b"\xe8"):
+        name_index = struct.unpack_from("<I", data, symbols[4] + (info >> 32) * 24)[0]
+        if _symbol_text(data, strings, name_index) == symbol:
+            return int(slot)
+    return None
+
+
+def _defined_symbol_vaddr(path: str, symbol: str) -> int | None:
+    data = Path(path).read_bytes()
+    symbols = _section(data, ".dynsym")
+    strings = _section(data, ".dynstr")
+    if symbols is None or strings is None or symbols[9] != 24:
+        return None
+    for index in range(symbols[5] // 24):
+        name_index, _info, _other, section, value, _size = struct.unpack_from("<IBBHQQ", data, symbols[4] + index * 24)
+        if section != 0 and value and _symbol_text(data, strings, name_index) == symbol:
+            return int(value)
+    return None
+
+
+def _vaddr_to_runtime(path: str, vaddr: int) -> int | None:
+    file_offset = _file_offset_for_vaddr(Path(path), vaddr)
+    if file_offset is None:
+        return None
+    for start, end, map_offset, mapped in _map_rows():
+        if mapped == path and map_offset <= file_offset < map_offset + (end - start):
+            return start + (file_offset - map_offset)
+    return None
+
+
+def _loaded_direct_calls(loaded: bytes, file_bytes: bytes, base: int, accept: object) -> list[dict[str, object]]:
+    if loaded != file_bytes or not callable(accept):
+        return []
+    found = []
+    for edge in call_edges_from_loaded_bytes(loaded, base):
+        if edge["kind"] != "direct" or not accept(edge):
             continue
-        decoded = call_edges_from_loaded_bytes(loaded, runtime)
-        if not decoded:
+        recorded = dict(edge)
+        offset = int(recorded["offset"])
+        recorded["loaded_instruction_bytes_hex"] = loaded[offset:offset + 5].hex()
+        recorded["file_instruction_bytes_hex"] = file_bytes[offset:offset + 5].hex()
+        recorded["loaded_bytes_match_file"] = True
+        recorded["disk_disassembly_is_proof"] = False
+        found.append(recorded)
+    return found
+
+
+def _loaded_jump_slot_calls(path: str, loaded: bytes, file_bytes: bytes, base: int, symbol: str) -> list[dict[str, object]]:
+    """Direct calls whose loaded stub uses this symbol's JUMP_SLOT."""
+    slot = _jump_slot_vaddr(path, symbol)
+    runtime = None if slot is None else _vaddr_to_runtime(path, slot)
+    if runtime is None:
+        return []
+
+    def accept(edge: dict[str, object]) -> bool:
+        target = int(str(edge["target"]), 16)
+        stub = _readable_process_bytes(target, 16)
+        return stub is not None and plt_got_address(stub, target) == runtime
+
+    edges = _loaded_direct_calls(loaded, file_bytes, base, accept)
+    for edge in edges:
+        edge["symbol"] = symbol
+    return edges
+
+
+def _plt_entry_vaddr(path: str, slot_vaddr: int) -> int | None:
+    data = Path(path).read_bytes()
+    plt = _section(data, ".plt")
+    if plt is None:
+        return None
+    blob = data[plt[4]:plt[4] + plt[5]]
+    base = plt[3]
+    endbr = b"\xf3\x0f\x1e\xfa"
+    for index in range(len(blob) - 6):
+        if blob[index] != 0xFF or blob[index + 1] != 0x25:
             continue
-        edge = dict(decoded[0])
-        edge["symbol"] = match.group(2)
-        edge["loaded_bytes_match_file"] = True
-        edge["loaded_instruction_bytes_hex"] = loaded.hex()
-        edge["file_instruction_bytes_hex"] = file_bytes.hex()
-        edge["disk_disassembly_is_proof"] = False
-        edges.append(edge)
+        displacement = int.from_bytes(blob[index + 2:index + 6], "little", signed=True)
+        if base + index + 6 + displacement != slot_vaddr:
+            continue
+        entry = index - 4 if index >= 4 and blob[index - 4:index] == endbr else index
+        return base + entry
+    return None
+
+
+def _raw_jump_slot_pointer(path: str, symbol: str) -> str | None:
+    """A GOT qword without a matched loaded call. It does not establish the path."""
+    slot = _jump_slot_vaddr(path, symbol)
+    entry = None if slot is None else _plt_entry_vaddr(path, slot)
+    runtime = None if entry is None else _vaddr_to_runtime(path, entry)
+    if runtime is None or _runtime_owner(runtime) is None:
+        return None
+    try:
+        stub = ctypes.string_at(runtime, 16)
+    except (OSError, ValueError):
+        return None
+    got = plt_got_address(stub, runtime)
+    pointer = None if got is None else _read_qword(got)
+    return None if pointer is None else hex(pointer)
+
+
+def _loaded_defined_symbol_calls(path: str, loaded: bytes, file_bytes: bytes, base: int, symbol: str) -> list[dict[str, object]]:
+    """Direct calls whose loaded target is this defined symbol."""
+    vaddr = _defined_symbol_vaddr(path, symbol)
+    runtime = None if vaddr is None else _vaddr_to_runtime(path, vaddr)
+    if runtime is None:
+        return []
+
+    def accept(edge: dict[str, object]) -> bool:
+        return int(str(edge["target"]), 16) == runtime
+
+    edges = _loaded_direct_calls(loaded, file_bytes, base, accept)
+    for edge in edges:
+        edge["symbol"] = symbol
     return edges
 
 
@@ -608,12 +726,9 @@ def observe_ulp_terminal_guard() -> dict[str, object]:
         "historical_equality_assumed": False,
         "settles_applicability": False,
     }
-    if address is None or located is None or not matches:
+    if address is None or located is None or not matches or loaded is None or file_bytes is None:
         return record
-    disassembly = _disassemble(located[0], located[1], located[1] + 0x180)
-    if disassembly is None:
-        return record
-    edges = _loaded_symbol_calls(address, located, disassembly, "nextafter")
+    edges = _loaded_jump_slot_calls(located[0], loaded, file_bytes, address, "nextafter")
     record["call_edges"] = edges
     if not edges:
         return record
@@ -733,36 +848,43 @@ def prepare_cosine_path_certificate(root: Path) -> dict[str, object]:
     located = None
     wrapper = _wrapper_address()
     disassembly = None
-    plt_vaddr = None
     if wrapper is not None:
         located = _runtime_to_vaddr(wrapper)
     if located is not None:
         path, vaddr = located
         disassembly = _disassemble(path, vaddr, vaddr + 0xC0)
-        if disassembly is not None:
-            plt_vaddr = _cos_plt_vaddr(disassembly)
+    loaded_wrapper = None if wrapper is None else _readable_process_bytes(wrapper, 0xC0)
+    elf_wrapper = None if located is None else _elf_bytes(located[0], located[1], 0xC0)
+    wrapper_matches = loaded_wrapper is not None and elf_wrapper is not None and loaded_wrapper == elf_wrapper
+    cosine_edges: list[dict[str, object]] = []
+    conversion_edges: list[dict[str, object]] = []
+    if wrapper is not None and located is not None and wrapper_matches and loaded_wrapper is not None and elf_wrapper is not None:
+        cosine_edges = _loaded_jump_slot_calls(located[0], loaded_wrapper, elf_wrapper, wrapper, "cos")
+        conversion_edges = _loaded_defined_symbol_calls(located[0], loaded_wrapper, elf_wrapper, wrapper, "PyFloat_AsDouble")
     selected: dict[str, object]
     body_sha = None
     body_bytes = None
     body_vaddr = None
     libm_path = None
     constants: list[dict[str, object]] = []
-    if wrapper is None or located is None or disassembly is None or plt_vaddr is None:
+    if not cosine_edges or located is None:
         cdll = _cdll_cos()
         selected = {
             "classification": "NOT ESTABLISHED",
             "address": None,
+            "raw_got_pointer": None if located is None else _raw_jump_slot_pointer(located[0], "cos"),
             "evidence": "python wrapper plt got",
             "method": (
-                "Disassemble PyCFunction_GetFunction(math.cos) with objdump and follow call cos@plt "
-                "to its GOT slot. ctypes.CDLL(libm).cos is not this observation."
+                "The loaded wrapper bytes do not contain a matched direct call to the cos JUMP_SLOT. "
+                "A GOT qword read from the PLT entry is a raw observation and is not the selected target. "
+                "Disk disassembly is not this observation."
             ),
             "independent_cdll_libm_cos": None if cdll is None else hex(cdll),
             "independent_cdll_is_evidence": False,
         }
     else:
-        path, wrapper_vaddr = located
-        stub_runtime = wrapper + (plt_vaddr - wrapper_vaddr)
+        path = located[0]
+        stub_runtime = int(str(cosine_edges[0]["target"]), 16)
         stub = b"" if _runtime_owner(stub_runtime) is None else ctypes.string_at(stub_runtime, 16)
         got = plt_got_address(stub, stub_runtime)
         if got is None:
@@ -834,8 +956,6 @@ def prepare_cosine_path_certificate(root: Path) -> dict[str, object]:
         wrapper_argument = "BLOCKED"
     else:
         wrapper_argument = "DOES NOT APPLY"
-    loaded_wrapper = None if wrapper is None else _readable_process_bytes(wrapper, 0xC0)
-    elf_wrapper = None if located is None else _elf_bytes(located[0], located[1], 0xC0)
     attributed = attribute_loaded_wrapper(
         raw_selected=selected,
         loaded_wrapper=loaded_wrapper,
@@ -849,11 +969,6 @@ def prepare_cosine_path_certificate(root: Path) -> dict[str, object]:
     )
     selected = attributed["selected_call_target"]
     libm_argument = attributed["libm_body_argument"]
-    conversion_edges = []
-    cosine_edges = []
-    if wrapper is not None and located is not None and disassembly is not None:
-        conversion_edges = _loaded_symbol_calls(wrapper, located, disassembly, "PyFloat_AsDouble")
-        cosine_edges = _loaded_symbol_calls(wrapper, located, disassembly, "cos@")
     conversion: dict[str, object]
     if conversion_edges:
         conversion = dict(conversion_edges[0])
@@ -914,7 +1029,7 @@ def prepare_cosine_path_certificate(root: Path) -> dict[str, object]:
             "mapped_file": None if located is None else located[0],
             "elf_vaddr": None if located is None else hex(located[1]),
             "calls_pyfloat_asdouble": bool(disassembly and _calls_symbol(disassembly, "PyFloat_AsDouble")),
-            "calls_cos_plt": plt_vaddr is not None,
+            "calls_cos_plt": bool(cosine_edges),
             "disassembly_source": "objdump of the on-disk ELF; loaded bytes are compared separately",
             "disassembly": disassembly,
             "loaded_wrapper_sha256": None if loaded_wrapper is None else sha256_bytes(loaded_wrapper),
