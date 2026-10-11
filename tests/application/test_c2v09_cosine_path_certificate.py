@@ -465,6 +465,8 @@ print(json.dumps({{
     "cdll_evidence": selected["independent_cdll_is_evidence"],
     "evidence": selected["evidence"],
     "method": selected["method"],
+    "plt_stub": payload["runtime_correspondence"]["cosine"].get("plt_stub"),
+    "call_targets": [edge.get("target") for edge in payload["runtime_correspondence"]["cosine"].get("cosine_call_edges") or []],
 }}))
 """
     env = os.environ.copy()
@@ -485,6 +487,7 @@ def _resolved_matched_path(root: Path) -> dict:
     baseline = _child_certificate(root, "matched")
     if baseline["classification"] != "OBSERVED" or baseline["match"] is not True:
         pytest.skip("bind-now did not resolve a wrapper that matches its ELF bytes")
+    assert baseline["plt_stub"] in baseline["call_targets"]
     return baseline
 
 

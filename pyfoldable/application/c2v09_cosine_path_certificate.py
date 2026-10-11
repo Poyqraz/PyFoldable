@@ -990,6 +990,7 @@ def prepare_cosine_path_certificate(root: Path) -> dict[str, object]:
             "loaded_wrapper_matches_file": attributed["loaded_wrapper_matches_elf"] is True,
             "conversion": conversion,
             "cosine_call_edges": cosine_edges,
+            "plt_stub": selected.get("plt_stub"),
             "plt_stub_bytes_hex": selected.get("plt_stub_bytes_hex"),
             "plt_jmp_bytes_hex": selected.get("plt_jmp_bytes_hex"),
             "got_slot": selected.get("got_slot"),
