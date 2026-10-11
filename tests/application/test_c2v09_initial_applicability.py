@@ -2,12 +2,51 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from pyfoldable.application.c2v09_initial_applicability import (
     ACCEPTED_REPAIR_HEAD,
     build_applicability_dossier,
     declare_initial_operation_graph,
 )
-from tests.application.test_c2v09_initial_call_binding import _bind, _repository
+from pyfoldable.application.c2v09_initial_call_binding import bind_initial_call
+from pyfoldable.application.c2v09_pre_call_admission import prepare_pre_call_admission
+from pyfoldable.application.c2v09_pre_call_binding import observe_pre_call_binding
+
+
+def _repository() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def _native_unavailable(_root):
+    return {
+        "canonical_payload": {
+            "selected_call_target": {"classification": "NOT ESTABLISHED"},
+            "cosine_function_calls": 0,
+            "eligibility_evidence": False,
+        }
+    }
+
+
+def _observer(root):
+    return observe_pre_call_binding(root, cosine_observer=_native_unavailable)
+
+
+def _collector(_root):
+    return {"canonical_payload": {"executing_dependencies": {}, "observations": {}, "source_callbacks": 0}}
+
+
+def _native_double(_root):
+    return {"canonical_payload": {"cosine_function_calls": 0, "compiled_probe_image_sha256": "ab" * 32}}
+
+
+def _bind():
+    admission = prepare_pre_call_admission(
+        _repository(),
+        pre_call_observer=_observer,
+        dependency_collector=_collector,
+    )
+    return bind_initial_call(_repository(), admission=admission, native_observer=_native_double)
 
 
 def test_declared_graph_separates_geometry_from_bem_numerics() -> None:
