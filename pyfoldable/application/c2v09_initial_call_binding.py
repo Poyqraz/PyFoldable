@@ -7,10 +7,12 @@ Radau and integration routines stay uncleared. Applicability stays blocked.
 from __future__ import annotations
 
 import json
+import math
 import os
 import platform
 import sys
 import types
+from decimal import Decimal, InvalidOperation
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Mapping
@@ -65,6 +67,60 @@ _ACTIVE_CODE = (
     ("pyfoldable/core/foldable_aero_load.py", "map_foldable_bem_aero_loads", map_foldable_bem_aero_loads),
     ("pyfoldable/core/config.py", "load_design_config", load_design_config),
 )
+
+
+INITIAL_TRANSACTION_TIME_HEX = "0x0.0p+0"
+INITIAL_TIME_RATIONALE = (
+    "The isolated initial transaction uses the integrator origin: absolute time "
+    "is the first immutable actuation knot plus a zero relative time. The "
+    "authorized declaration is +0.0 s only when that knot has the same binary64 "
+    "bits. The knot list is not sole authority."
+)
+
+
+def _knot_hex(value: object) -> str | None:
+    """Binary64 text only when the knot is that exact value."""
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        return None
+    if isinstance(value, str):
+        try:
+            exact = Decimal(value)
+            parsed = float(value)
+        except (ValueError, InvalidOperation, OverflowError):
+            return None
+        if not math.isfinite(parsed) or exact != Decimal.from_float(parsed):
+            return None
+        return binary64_hex(parsed)
+    if isinstance(value, int):
+        try:
+            parsed = float(value)
+        except OverflowError:
+            return None
+        if not math.isfinite(parsed) or int(parsed) != value:
+            return None
+        return binary64_hex(parsed)
+    if not math.isfinite(value):
+        return None
+    return binary64_hex(value)
+
+
+def declare_initial_transaction_time(effective: Mapping[str, object]) -> dict[str, object]:
+    """Declare +0.0 s only when the immutable manifest knot agrees."""
+    actuation = effective.get("actuation")
+    knots = actuation.get("time_s") if isinstance(actuation, Mapping) else None
+    knot_hex = None
+    if isinstance(knots, list) and knots:
+        knot_hex = _knot_hex(knots[0])
+    conflict = knot_hex != INITIAL_TRANSACTION_TIME_HEX
+    return {
+        "declared_hex": INITIAL_TRANSACTION_TIME_HEX,
+        "manifest_first_knot_hex": knot_hex,
+        "conflict": conflict,
+        "used": not conflict,
+        "time_s_hex": "NOT ESTABLISHED" if conflict else INITIAL_TRANSACTION_TIME_HEX,
+        "knot_is_sole_authority": False,
+        "governing_rationale": INITIAL_TIME_RATIONALE,
+    }
 
 
 def binary64_hex(value: float) -> str:
@@ -699,8 +755,17 @@ def bind_initial_call(
         "fingerprint": _frozen(_input_fingerprint(evaluator)),
         "evidence_role": "parsed draft and verified manifest bytes",
     }
+    time_declaration = declare_initial_transaction_time(effective)
     arguments = {
-        "time_s": "NOT ESTABLISHED",
+        "time_s": time_declaration["time_s_hex"],
+        "time_declaration": {
+            "declared_hex": time_declaration["declared_hex"],
+            "manifest_first_knot_hex": time_declaration["manifest_first_knot_hex"],
+            "conflict": time_declaration["conflict"],
+            "used": time_declaration["used"],
+            "knot_is_sole_authority": False,
+            "governing_rationale": time_declaration["governing_rationale"],
+        },
         "theta_rad_hex": binary64_hex(float(effective["initial_angle_rad"])),
         "theta_dot_rad_s_hex": binary64_hex(float(effective["initial_angular_velocity_rad_s"])),
         "omega_rad_s_hex": binary64_hex(float(effective["initial_omega_rad_s"])),

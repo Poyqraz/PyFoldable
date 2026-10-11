@@ -39,10 +39,14 @@ from pyfoldable.core.bem_rotor import _interpolate_station, _radial_limits, solv
 from pyfoldable.core.config import load_design_config
 from pyfoldable.core.foldable_aero_load import (
     _native_terminal_annuli,
+    _projection_factor,
     map_foldable_bem_aero_loads,
     map_projected_material_loads,
+    projected_radius_m,
 )
 from pyfoldable.core.foldable_rotor import (
+    FoldableRotorState,
+    _station_at_hinge,
     project_foldable_blade,
     project_spanwise_polar_schedule,
     solve_foldable_bem_rotor,
@@ -63,12 +67,16 @@ _DECLARED_OPERATIONS = (
     ("pyfoldable/core/foldable_rotor.py", "solve_foldable_bem_rotor", solve_foldable_bem_rotor, "source call", "transaction"),
     ("pyfoldable/core/foldable_aero_load.py", "map_foldable_bem_aero_loads", map_foldable_bem_aero_loads, "mapper call", "transaction"),
     ("pyfoldable/core/config.py", "load_design_config", load_design_config, "draft parse", "transaction"),
-    ("pyfoldable/core/foldable_rotor.py", "project_foldable_blade", project_foldable_blade, "radial projection", "geometric lemma"),
-    ("pyfoldable/core/foldable_rotor.py", "project_spanwise_polar_schedule", project_spanwise_polar_schedule, "spanwise polar projection", "geometric lemma"),
+    ("pyfoldable/core/foldable_rotor.py", "FoldableRotorState.angle_from_deployed_rad", FoldableRotorState.angle_from_deployed_rad.fget, "angle from deployed", "geometric lemma"),
+    ("pyfoldable/core/foldable_rotor.py", "project_foldable_blade", project_foldable_blade, "source cosine projection and kernel-radius product", "geometric lemma"),
+    ("pyfoldable/core/foldable_rotor.py", "project_spanwise_polar_schedule", project_spanwise_polar_schedule, "spanwise anchor projection", "geometric lemma"),
+    ("pyfoldable/core/foldable_aero_load.py", "_projection_factor", _projection_factor, "mapper cosine input", "geometric lemma"),
+    ("pyfoldable/core/foldable_rotor.py", "_station_at_hinge", _station_at_hinge, "hinge station construction", "geometric lemma"),
     ("pyfoldable/core/bem_rotor.py", "_radial_limits", _radial_limits, "radial domain construction", "geometric lemma"),
-    ("pyfoldable/core/bem_rotor.py", "_interpolate_station", _interpolate_station, "radial station interpolation", "geometric lemma"),
-    ("pyfoldable/core/polar.py", "PolarFamily.query", PolarFamily.query, "polar coefficient query", "geometric lemma"),
-    ("pyfoldable/core/polar_spanwise.py", "SpanwisePolarSchedule.section", SpanwisePolarSchedule.section, "spanwise section query", "geometric lemma"),
+    ("pyfoldable/core/bem_rotor.py", "_interpolate_station", _interpolate_station, "normalized radial query", "geometric lemma"),
+    ("pyfoldable/core/polar.py", "PolarFamily.query", PolarFamily.query, "polar query branches", "geometric lemma"),
+    ("pyfoldable/core/polar_spanwise.py", "SpanwisePolarSchedule.section", SpanwisePolarSchedule.section, "spanwise normalized query", "geometric lemma"),
+    ("pyfoldable/core/foldable_aero_load.py", "projected_radius_m", projected_radius_m, "mapper projected radius", "geometric lemma"),
     ("pyfoldable/core/foldable_aero_load.py", "map_projected_material_loads", map_projected_material_loads, "mapper interval ownership", "geometric lemma"),
     ("pyfoldable/core/foldable_aero_load.py", "_native_terminal_annuli", _native_terminal_annuli, "python terminal-guard helper", "native terminal guard"),
     ("pyfoldable/core/bem_rotor.py", "solve_bem_rotor", solve_bem_rotor, "bem numerical solution", "bem numerical dependency"),
@@ -304,12 +312,13 @@ def build_applicability_dossier(
     unmet = [
         _blocked("returned source object", POST_RETURN_ONLY, "POST-RETURN ONLY"),
         _blocked("mapped interval consumption", POST_RETURN_ONLY, "POST-RETURN ONLY"),
-        _blocked("time_s", str(prepared.initial_arguments.get("time_s")), "pre-call"),
         _blocked("solve_cmm2_transient", str(prepared.deferred_routines.get("solve_cmm2_transient")), "deferred integration"),
         _blocked("first_radau_contact", str(prepared.deferred_routines.get("cmm2_radau_dense")), "deferred integration"),
         _blocked("native terminal guard historical path", "NOT ESTABLISHED", "pre-call"),
         _blocked("applicability review", "UNREVIEWED", "pre-call"),
     ]
+    if prepared.initial_arguments.get("time_s") != "0x0.0p+0":
+        unmet.append(_blocked("time_s", str(prepared.initial_arguments.get("time_s")), "pre-call"))
     if correspondence != "MATCH":
         unmet.append(_blocked("loaded probe-image correspondence", "NOT ESTABLISHED", "pre-call"))
     for row in graph:

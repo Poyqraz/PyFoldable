@@ -91,6 +91,61 @@ def _bind(**kwargs):
     return bind_initial_call(_repository(), **arguments)
 
 
+def test_manifest_time_conflict_is_not_used(monkeypatch) -> None:
+    original = binding_module._candidate
+
+    def shifted(root):
+        manifest = original(root)
+        effective = dict(manifest["effective_binding"])
+        actuation = dict(effective["actuation"])
+        actuation["time_s"] = [-0.0, 0.004]
+        effective["actuation"] = actuation
+        manifest["effective_binding"] = effective
+        return manifest
+
+    monkeypatch.setattr(binding_module, "_candidate", shifted)
+    bound = _bind()
+    assert bound.initial_arguments["time_declaration"]["conflict"] is True
+    assert bound.initial_arguments["time_s"] == "NOT ESTABLISHED"
+    assert bound.initial_arguments["time_declaration"]["knot_is_sole_authority"] is False
+
+
+def test_underflowing_knot_text_conflicts_with_declared_zero(monkeypatch) -> None:
+    original = binding_module._candidate
+
+    def shifted(root):
+        manifest = original(root)
+        effective = dict(manifest["effective_binding"])
+        actuation = dict(effective["actuation"])
+        actuation["time_s"] = ["1e-4000", 0.004]
+        effective["actuation"] = actuation
+        manifest["effective_binding"] = effective
+        return manifest
+
+    monkeypatch.setattr(binding_module, "_candidate", shifted)
+    bound = _bind()
+    assert bound.initial_arguments["time_declaration"]["conflict"] is True
+    assert bound.initial_arguments["time_s"] == "NOT ESTABLISHED"
+
+
+def test_overflowing_integer_knot_conflicts(monkeypatch) -> None:
+    original = binding_module._candidate
+
+    def shifted(root):
+        manifest = original(root)
+        effective = dict(manifest["effective_binding"])
+        actuation = dict(effective["actuation"])
+        actuation["time_s"] = [10**400, 0.004]
+        effective["actuation"] = actuation
+        manifest["effective_binding"] = effective
+        return manifest
+
+    monkeypatch.setattr(binding_module, "_candidate", shifted)
+    bound = _bind()
+    assert bound.initial_arguments["time_declaration"]["conflict"] is True
+    assert bound.initial_arguments["time_s"] == "NOT ESTABLISHED"
+
+
 def test_signed_zero_is_distinct_binary64() -> None:
     assert binary64_hex(-0.0) == "-0x0.0p+0"
     assert binary64_hex(0.0) == "0x0.0p+0"
@@ -108,7 +163,7 @@ def test_binding_uses_parsed_inputs_and_does_not_call_the_evaluator() -> None:
     assert bound.input_identity["hinge_radius_hex"] == binary64_hex(evaluator.hinge_radius_m)
     assert bound.input_identity["parsed_draft_matches_manifest"] is True
     assert bound.caller_claims_role == "not actual-input evidence"
-    assert bound.initial_arguments["time_s"] == "NOT ESTABLISHED"
+    assert bound.initial_arguments["time_s"] == "0x0.0p+0"
     assert bound.deferred_routines["clearance_granted"] is False
     for row in bound.active_graph:
         if row["globals"] == "NOT ESTABLISHED" or row["constants"] == "NOT ESTABLISHED" or row["defaults"] == "NOT ESTABLISHED":
@@ -235,7 +290,7 @@ def test_numerical_controls_and_polar_coordinates_invalidate() -> None:
 
 def test_pending_argument_payload_is_retained_apart_from_the_mutable_dict() -> None:
     bound = _bind()
-    assert bound.initial_arguments["time_s"] == "NOT ESTABLISHED"
+    assert bound.initial_arguments["time_s"] == "0x0.0p+0"
     snapshot = bound.retained["initial_argument_snapshot"]
     assert snapshot is not bound.initial_arguments
     original = dict(bound.initial_arguments)
@@ -255,12 +310,12 @@ def test_pending_argument_payload_is_retained_apart_from_the_mutable_dict() -> N
     try:
         bound.initial_arguments = {}
         assert revalidate_initial_call_binding(bound).classification == "INVALIDATED"
-        bound.initial_arguments = {"time_s": "0x0.0p+0"}
+        bound.initial_arguments = {"time_s": "-0x0.0p+0"}
         assert revalidate_initial_call_binding(bound).classification == "INVALIDATED"
     finally:
         bound.initial_arguments = current
     assert revalidate_initial_call_binding(bound).classification == "REVALIDATED"
-    assert bound.initial_arguments["time_s"] == "NOT ESTABLISHED"
+    assert bound.initial_arguments["time_s"] == "0x0.0p+0"
 
 
 def test_unresolved_direct_callee_constant_is_not_a_match(tmp_path: Path, monkeypatch) -> None:

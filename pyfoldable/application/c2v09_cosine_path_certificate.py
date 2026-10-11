@@ -17,6 +17,7 @@ import sys
 import tempfile
 import threading
 from pathlib import Path
+from typing import Mapping
 
 from pyfoldable.application.c2v09_binding_collector import read_loaded_vaddr
 from pyfoldable.application.c2v09_ordered_declaration import (
@@ -345,8 +346,12 @@ def _probe_words(source: Path) -> tuple[list[int], dict[str, object]] | None:
             if compiled.returncode != 0 or not binary.is_file():
                 return None
             library = ctypes.CDLL(str(binary))
-            address = ctypes.cast(library.read_state, ctypes.c_void_p).value
-            measurement = _measurement_image(source, binary, None if address is None else int(address))
+            symbols = {}
+            for name in ("read_state", "xcr0_read_permitted"):
+                value = ctypes.cast(getattr(library, name), ctypes.c_void_p).value
+                symbols[name] = None if value is None else int(value)
+            address = symbols.get("read_state")
+            measurement = _measurement_image(source, binary, address, symbols)
             state = (ctypes.c_uint32 * 12)()
             library.read_state(state)
             measurement["read_state_calls"] = 1
@@ -355,7 +360,12 @@ def _probe_words(source: Path) -> tuple[list[int], dict[str, object]] | None:
         return None
 
 
-def _measurement_image(source: Path, binary: Path, address: int | None) -> dict[str, object]:
+def _measurement_image(
+    source: Path,
+    binary: Path,
+    address: int | None,
+    symbols: Mapping[str, int | None] | None = None,
+) -> dict[str, object]:
     """File digest and loaded-byte correspondence are separate facts."""
     file_bytes = binary.read_bytes()
     file_sha = sha256_bytes(file_bytes)
@@ -397,7 +407,105 @@ def _measurement_image(source: Path, binary: Path, address: int | None) -> dict[
         "read_state_calls": 0,
     }
     record.update(inspected)
+    record["consumed_instruction_ranges"] = _consumed_symbol_ranges(binary, symbols or {})
+    record["whole_elf_required"] = False
     return record
+
+
+def _file_offset_for_vaddr(path: Path, vaddr: int) -> int | None:
+    for load_off, load_vaddr, filesz in _pt_loads(str(path)):
+        if load_vaddr <= vaddr < load_vaddr + filesz:
+            return load_off + (vaddr - load_vaddr)
+    return None
+
+
+def _nm_symbols(binary: Path) -> dict[str, tuple[int, int]]:
+    try:
+        text = subprocess.check_output(["nm", "-P", str(binary)], text=True, stderr=subprocess.DEVNULL)
+    except (OSError, subprocess.CalledProcessError):
+        return {}
+    found: dict[str, tuple[int, int]] = {}
+    for line in text.splitlines():
+        parts = line.split()
+        if len(parts) < 4:
+            continue
+        name, _kind, value, size = parts[0], parts[1], parts[2], parts[3]
+        if name not in {"read_state", "xcr0_read_permitted"}:
+            continue
+        try:
+            found[name] = (int(value, 16), int(size, 16))
+        except ValueError:
+            continue
+    return found
+
+
+def _consumed_symbol_ranges(binary: Path, symbols: Mapping[str, int | None]) -> list[dict[str, object]]:
+    """Compare only the reached probe symbols. This is not whole-ELF equality."""
+    table = _nm_symbols(binary)
+    data = binary.read_bytes()
+    rows = []
+    for name, address in symbols.items():
+        spec = table.get(name)
+        if address is None or spec is None:
+            rows.append({"name": name, "correspondence": "NOT ESTABLISHED", "coverage": "symbol range", "whole_elf": False})
+            continue
+        file_off = _file_offset_for_vaddr(binary, spec[0])
+        size = spec[1]
+        loaded = None if size <= 0 or file_off is None else _readable_process_bytes(address, size)
+        if loaded is None or file_off is None or file_off + size > len(data):
+            correspondence = "NOT ESTABLISHED"
+            difference = "unavailable"
+        elif data[file_off:file_off + size] == loaded:
+            correspondence = "MATCH"
+            difference = None
+        else:
+            correspondence = "MISMATCH"
+            difference = "observed"
+        rows.append(
+            {
+                "name": name,
+                "address": hex(address),
+                "file_offset": file_off,
+                "length": size,
+                "end_address": hex(address + size),
+                "correspondence": correspondence,
+                "difference": difference,
+                "coverage": "symbol range",
+                "whole_elf": False,
+            }
+        )
+    return rows
+
+
+def observe_ulp_terminal_guard() -> dict[str, object]:
+    """Disassemble math.ulp. Do not call math.ulp or nextafter."""
+    address = None
+    getter = ctypes.pythonapi.PyCFunction_GetFunction
+    getter.argtypes = [ctypes.py_object]
+    getter.restype = ctypes.c_void_p
+    try:
+        value = getter(math.ulp)
+        address = int(value) if value else None
+    except (OSError, ValueError, TypeError):
+        address = None
+    if not address:
+        ctypes.pythonapi.PyErr_Clear()
+    disassembly = None
+    if address is not None:
+        located = _runtime_to_vaddr(address)
+        if located is not None:
+            disassembly = _disassemble(located[0], located[1], located[1] + 0x180)
+    calls_nextafter = bool(disassembly and _calls_symbol(disassembly, "nextafter"))
+    return {
+        "ulp_function_calls": 0,
+        "nextafter_function_calls": 0,
+        "output_sampled": False,
+        "wrapper_address": None if address is None else hex(address),
+        "calls_nextafter_plt": calls_nextafter,
+        "selected_nextafter": "OBSERVED IN WRAPPER DISASSEMBLY" if calls_nextafter else "NOT ESTABLISHED",
+        "historical_equality_assumed": False,
+        "settles_applicability": False,
+    }
 
 
 def _fegetround() -> str | None:

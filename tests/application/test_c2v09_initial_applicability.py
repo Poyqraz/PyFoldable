@@ -12,6 +12,7 @@ from pyfoldable.application.c2v09_initial_applicability import (
 )
 from pyfoldable.application.c2v09_initial_call_binding import bind_initial_call
 from pyfoldable.application.c2v09_pre_call_admission import prepare_pre_call_admission
+from pyfoldable.application.c2v09_pre_call_package import PRE_CALL_READY, prepare_pre_call_package
 from pyfoldable.application.c2v09_pre_call_binding import observe_pre_call_binding
 
 
@@ -130,7 +131,7 @@ def test_dossier_blocks_unresolved_items_and_rejects_test_doubles() -> None:
     assert dossier["physical_qualification"] is False
     assert dossier["candidate29_disposition"] == "NOT SELECTED"
     assert dossier["accepted_repair"]["head"] == ACCEPTED_REPAIR_HEAD
-    assert dossier["time_s"] == "NOT ESTABLISHED"
+    assert dossier["time_s"] == "0x0.0p+0"
     assert dossier["post_return"]["returned_source_object"] == "POST-RETURN ONLY"
     assert dossier["post_return"]["mapped_interval_consumption"] == "POST-RETURN ONLY"
     assert dossier["dependent_counters"]["source"] == 0
@@ -151,11 +152,34 @@ def test_dossier_blocks_unresolved_items_and_rejects_test_doubles() -> None:
     assert timed["returned source object"]["demanded_before_it_exists"] is False
     assert timed["solve_cmm2_transient"]["timing"] == "deferred integration"
     assert timed["solve_cmm2_transient"]["prerequisite_for_isolated_source_attempt"] is False
-    assert timed["time_s"]["timing"] == "pre-call"
+    assert timed["returned source object"]["timing"] == "POST-RETURN ONLY"
     assert dossier["current_implementation"]["module_digest_clears_any_row"] is False
     names = {row["name"] for row in dossier["unmet_hypotheses"]}
     assert "returned source object" in names
-    assert "time_s" in names
+    assert "time_s" not in names
     assert "math.ulp" in names
     assert bound.evaluator.successful_bem_solves == 0
     assert bound.evaluator.successful_map_calls == 0
+
+
+def test_package_keeps_file_mismatches_and_does_not_authorize_execution() -> None:
+    package = prepare_pre_call_package(_repository(), binding=_bind())
+    payload = package["canonical_payload"]
+    assert "canonical_sha256" not in payload
+    assert package["authorizes_execution"] is False
+    assert package["revalidation"] == "REVALIDATED"
+    assert payload["time_s"] == "0x0.0p+0"
+    assert payload["time_declaration"]["knot_is_sole_authority"] is False
+    assert payload["deferred_radau_is_prerequisite_for_isolated_source_attempt"] is False
+    assert payload["post_return_demanded_before_existence"] is False
+    assert payload["future_v2_seal_required"] is False
+    assert payload["every_angle_bem_convergence_required"] is False
+    assert payload["geometric_applicability_argument"]["code_identity_is_lemma_transfer"] is False
+    assert payload["geometric_applicability_argument"]["bem_numerical_success_reuses_geometric_proof"] is False
+    assert payload["ulp_terminal_guard"]["ulp_function_calls"] == 0
+    assert payload["ulp_terminal_guard"]["output_sampled"] is False
+    assert payload["historical_file_deltas"]
+    assert all(row["waived"] is False and row["hash_relabelled"] is False for row in payload["historical_file_deltas"])
+    assert all(row["settles_applicability"] is False for row in payload["runtime_dispositions"])
+    assert package["label"] == PRE_CALL_READY
+    assert package["binding"].evaluator.successful_bem_solves == 0
