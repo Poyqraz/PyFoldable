@@ -363,7 +363,25 @@ def test_replacing_export_and_evaluator_binding_is_not_source_conformance(monkey
     assert observation.source_callbacks == 0
 
 
-def test_unsupported_objects_do_not_compare_equal_by_type_name() -> None:
+def test_frozenset_constants_match_exactly_and_reject_changes() -> None:
+    def probe():
+        return None
+
+    same = probe.__code__.replace(co_consts=(frozenset({1, 2}),))
+    reordered = probe.__code__.replace(co_consts=(frozenset({2, 1}),))
+    changed = probe.__code__.replace(co_consts=(frozenset({1, 3}),))
+    positive = probe.__code__.replace(co_consts=(frozenset({0.0}),))
+    negative = probe.__code__.replace(co_consts=(frozenset({-0.0}),))
+    assert compare_code_structure(same, reordered) == "MATCH"
+    assert compare_code_structure(same, changed) == "MISMATCH"
+    assert compare_code_structure(positive, negative) == "MISMATCH"
+    integer = probe.__code__.replace(co_consts=((1,),))
+    boolean = probe.__code__.replace(co_consts=((True,),))
+    assert compare_code_structure(integer, boolean) == "MISMATCH"
+    assert compare_code_structure(
+        probe.__code__.replace(co_consts=(frozenset({1}),)),
+        probe.__code__.replace(co_consts=(frozenset({True}),)),
+    ) == "MISMATCH"
     class Marker:
         pass
 

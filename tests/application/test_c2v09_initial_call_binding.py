@@ -266,7 +266,7 @@ def test_pending_argument_payload_is_retained_apart_from_the_mutable_dict() -> N
 def test_unresolved_direct_callee_constant_is_not_a_match(tmp_path: Path, monkeypatch) -> None:
     source = tmp_path / "inert_callee.py"
     source.write_text(
-        "def callee(value):\n    return value in {1}\n\ndef caller():\n    return callee(0)\n",
+        "def callee():\n    return 1j\n\ndef caller():\n    return callee()\n",
         encoding="utf-8",
     )
     spec = importlib.util.spec_from_file_location("inert_callee_binding", source)
@@ -479,6 +479,12 @@ def test_bind_now_process_keeps_probe_image_and_control_changes(tmp_path: Path) 
         "    'wrapper_address': native['wrapper_address'],\n"
         "    'selected_address': native['selected_address'],\n"
         "    'compiled_probe_image_sha256': native['compiled_probe_image_sha256'],\n"
+        "    'measurement_handle': native['measurement_image']['handle_associated'],\n"
+        "    'measurement_second': native['measurement_image']['second_compilation_is_evidence'],\n"
+        "    'measurement_source_is_image': native['measurement_image']['source_hash_is_the_image'],\n"
+        "    'measurement_correspondence': native['measurement_image']['loaded_code_correspondence'],\n"
+        "    'measurement_flags': native['measurement_image']['flags'],\n"
+        "    'measurement_calls': native['measurement_image']['read_state_calls'],\n"
         "    'probe_source_sha256': native['probe_source_sha256'],\n"
         "    'body_sha256': native['loaded_body_sha256'],\n"
         "    'calls': native['cosine_function_calls'],\n"
@@ -520,6 +526,12 @@ def test_bind_now_process_keeps_probe_image_and_control_changes(tmp_path: Path) 
     assert payload["selected_address"]
     assert payload["compiled_probe_image_sha256"]
     assert payload["compiled_probe_image_sha256"] != payload["probe_source_sha256"]
+    assert payload["measurement_handle"] is True
+    assert payload["measurement_second"] is False
+    assert payload["measurement_source_is_image"] is False
+    assert payload["measurement_correspondence"] in {"MATCH", "NOT ESTABLISHED"}
+    assert payload["measurement_flags"] == ["-O2", "-shared", "-fPIC"]
+    assert payload["measurement_calls"] == 1
     assert payload["calls"] == 0
     assert payload["solves"] == 0
     assert payload["applicability"] == "CONTRACT BLOCKED"

@@ -9,9 +9,7 @@ from __future__ import annotations
 import json
 import os
 import platform
-import subprocess
 import sys
-import tempfile
 import types
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -390,27 +388,6 @@ def _input_fingerprint(evaluator: Cmm2FoldableBemMappedAeroEvaluator) -> dict[st
     }
 
 
-def _compiled_probe_image(root: Path) -> str | None:
-    """Hash one gcc -O2 image of the probe. Do not call read_state or cosine."""
-    source = root / "pyfoldable/application/c2v09_cosine_path_probe.c"
-    if not source.is_file():
-        return None
-    try:
-        with tempfile.TemporaryDirectory(prefix="c2v09-initial-probe-") as work:
-            binary = Path(work) / "probe.so"
-            compiled = subprocess.run(
-                ["gcc", "-O2", "-shared", "-fPIC", "-o", str(binary), str(source)],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if compiled.returncode != 0 or not binary.is_file():
-                return None
-            return sha256_bytes(binary.read_bytes())
-    except OSError:
-        return None
-
-
 def _document_alpha_hex(document: Mapping[str, object]) -> list[str] | None:
     anchors = document.get("anchors")
     if not isinstance(anchors, list):
@@ -478,6 +455,13 @@ def _unestablished_native() -> dict[str, object]:
         "loaded_body_sha256": None,
         "loaded_constants": None,
         "compiled_probe_image_sha256": None,
+        "measurement_image": {
+            "file_image_identity": "NOT ESTABLISHED",
+            "loaded_code_correspondence": "NOT ESTABLISHED",
+            "handle_associated": False,
+            "second_compilation_is_evidence": False,
+            "source_hash_is_the_image": False,
+        },
         "probe_source_sha256": None,
         "controls": {"classification": "NOT ESTABLISHED"},
         "cosine_function_calls": 0,
@@ -511,8 +495,16 @@ def _fresh_native(root: Path, observer: Callable[[Path], object]) -> dict[str, o
             for name in ("libm", "libc", "loader")
         }
         source_sha = payload.get("probe_source_sha256")
-        image = _compiled_probe_image(root)
-        image_ok = _valid_digest(image) and image != source_sha
+        measurement = _mapping(payload.get("measurement_image"))
+        image = measurement.get("file_image_sha256")
+        image_ok = (
+            _valid_digest(image)
+            and image != source_sha
+            and measurement.get("handle_associated") is True
+            and measurement.get("second_compilation_is_evidence") is False
+            and measurement.get("source_hash_is_the_image") is False
+            and measurement.get("read_state_calls") == 1
+        )
         compared = compare_native_obligations(
             {
                 "loaded_body": body,
@@ -550,6 +542,13 @@ def _fresh_native(root: Path, observer: Callable[[Path], object]) -> dict[str, o
         "loaded_constants": payload.get("loaded_constants"),
         "compiled_probe_image_sha256": image if image_ok else None,
         "probe_source_sha256": source_sha if isinstance(source_sha, str) else None,
+        "measurement_image": dict(measurement) if image_ok else {
+            "file_image_identity": "NOT ESTABLISHED",
+            "loaded_code_correspondence": measurement.get("loaded_code_correspondence", "NOT ESTABLISHED"),
+            "handle_associated": False,
+            "second_compilation_is_evidence": False,
+            "source_hash_is_the_image": False,
+        },
         "controls": {
             "classification": controls.get("classification"),
             "mxcsr": controls.get("mxcsr"),
@@ -582,7 +581,7 @@ def _applicability(native: Mapping[str, object]) -> dict[str, object]:
             "exact_historical_equality": "NOT A PROOF",
             "equivalence": "NOT A PROOF",
             "body_match": "historical libm body predicate only",
-            "compiled_probe_image": "gcc -O2 -shared -fPIC image of the probe source in this process; not the C source hash and not a historical probe",
+            "compiled_probe_image": "file digest of the probe image whose read_state ran in this observation; not a second compilation and not the C source hash",
             "wrapper_plt_got": "this process selected cosine target; not a historical address",
         },
         "body_match_proof_role": "historical libm body predicate only; not wrapper, GOT, executable, library, or XCR0 identity",

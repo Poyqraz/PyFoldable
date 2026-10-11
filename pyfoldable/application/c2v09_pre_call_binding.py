@@ -112,24 +112,44 @@ def _compiler_settings() -> dict[str, object]:
     }
 
 
+def _constant_token(value: object) -> object:
+    """Exact immutable token. Unsupported objects stay unresolved."""
+    if isinstance(value, float):
+        return ("binary64", value.hex())
+    if isinstance(value, bool):
+        return ("bool", value)
+    if isinstance(value, int):
+        return ("int", value)
+    if value is None or isinstance(value, (str, bytes)):
+        return ("literal", value)
+    if isinstance(value, tuple):
+        items = []
+        for item in value:
+            token = _constant_token(item)
+            if token is None:
+                return None
+            items.append(token)
+        return ("tuple", tuple(items))
+    if isinstance(value, frozenset):
+        items = []
+        for item in value:
+            token = _constant_token(item)
+            if token is None:
+                return None
+            items.append(token)
+        return ("frozenset", tuple(sorted(items, key=repr)))
+    return None
+
+
 def _values_equal(expected: object, loaded: object) -> str:
     """Supported literals only. A shared type name is not equality."""
     if type(expected) is not type(loaded):
         return "MISMATCH"
-    if isinstance(expected, float):
-        return "MATCH" if expected.hex() == loaded.hex() else "MISMATCH"
-    if isinstance(expected, tuple):
-        if len(expected) != len(loaded):
-            return "MISMATCH"
-        states = [_values_equal(left, right) for left, right in zip(expected, loaded)]
-        if "MISMATCH" in states:
-            return "MISMATCH"
-        if "NOT ESTABLISHED" in states:
-            return "NOT ESTABLISHED"
-        return "MATCH"
-    if expected is None or isinstance(expected, (bool, int, str, bytes)):
-        return "MATCH" if expected == loaded else "MISMATCH"
-    return "NOT ESTABLISHED"
+    left = _constant_token(expected)
+    right = _constant_token(loaded)
+    if left is None or right is None:
+        return "NOT ESTABLISHED"
+    return "MATCH" if left == right else "MISMATCH"
 
 
 def compare_code_structure(loaded: object, expected: object) -> str:

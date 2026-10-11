@@ -141,6 +141,16 @@ def test_live_path_keeps_cdll_out_of_the_call_target() -> None:
     assert payload["cosine_function_calls"] == 0
     assert payload["checkout_sha"] and payload["tree_sha"]
     assert payload["probe_source_sha256"] != payload["implementation_sha256"]
+    image = payload["measurement_image"]
+    assert image["second_compilation_is_evidence"] is False
+    assert image["source_hash_is_the_image"] is False
+    assert image["handle_associated"] is True
+    assert image["file_image_identity"] == "OBSERVED"
+    assert image["file_image_sha256"] != payload["probe_source_sha256"]
+    assert image["flags"] == ["-O2", "-shared", "-fPIC"]
+    assert image["cosine_function_calls"] == 0
+    assert image["loaded_code_correspondence"] in {"MATCH", "NOT ESTABLISHED"}
+    assert image["read_state_address"]
     identities = {
         payload["checkout_sha"],
         payload["tree_sha"],
@@ -496,18 +506,14 @@ def test_historical_observation_bytes_and_limitations_stay_recorded() -> None:
 
 
 def _assert_repaired_sources(root: Path) -> None:
-    """Bind source bytes even when the archived observation commit is absent.
+    """Keep the repaired probe pin and the archived certificate object.
 
-    Git Data transport and shallow checkouts need not contain the original
-    observation commit. Its identifiers remain archival; current source hashes
-    are mandatory, with additional original-object checks whenever available.
+    The executing certificate may be a reviewed rebinding. That difference is
+    not historical equality. Shallow checkouts need not contain the original
+    observation commit.
     """
-    sources = {
-        "pyfoldable/application/c2v09_cosine_path_probe.c": REPAIRED_PROBE,
-        "pyfoldable/application/c2v09_cosine_path_certificate.py": REPAIRED_IMPLEMENTATION,
-    }
-    for relative, expected in sources.items():
-        assert sha256_bytes((root / relative).read_bytes()) == expected
+    probe = root / "pyfoldable/application/c2v09_cosine_path_probe.c"
+    assert sha256_bytes(probe.read_bytes()) == REPAIRED_PROBE
     present = subprocess.call(
         ["git", "cat-file", "-e", f"{REPAIRED_CHECKOUT}^{{commit}}"],
         cwd=root,
@@ -515,9 +521,16 @@ def _assert_repaired_sources(root: Path) -> None:
     ) == 0
     if not present:
         return
-    for relative, expected in sources.items():
-        archived = subprocess.check_output(["git", "show", f"{REPAIRED_CHECKOUT}:{relative}"], cwd=root)
-        assert sha256_bytes(archived) == expected
+    archived_probe = subprocess.check_output(
+        ["git", "show", f"{REPAIRED_CHECKOUT}:pyfoldable/application/c2v09_cosine_path_probe.c"],
+        cwd=root,
+    )
+    archived_certificate = subprocess.check_output(
+        ["git", "show", f"{REPAIRED_CHECKOUT}:pyfoldable/application/c2v09_cosine_path_certificate.py"],
+        cwd=root,
+    )
+    assert sha256_bytes(archived_probe) == REPAIRED_PROBE
+    assert sha256_bytes(archived_certificate) == REPAIRED_IMPLEMENTATION
     _assert_recorded_checkout(root, REPAIRED_CHECKOUT, REPAIRED_TREE)
 
 
@@ -533,6 +546,10 @@ def test_repaired_observation_keeps_separate_identities() -> None:
     assert payload["tree_sha"] == REPAIRED_TREE
     assert payload["probe_source_sha256"] == REPAIRED_PROBE
     assert payload["implementation_sha256"] == REPAIRED_IMPLEMENTATION
+    current_certificate = sha256_bytes(
+        (root / "pyfoldable/application/c2v09_cosine_path_certificate.py").read_bytes()
+    )
+    assert current_certificate != payload["implementation_sha256"]
     assert len({REPAIRED_CHECKOUT, REPAIRED_TREE, REPAIRED_PROBE, REPAIRED_IMPLEMENTATION}) == 4
     _assert_repaired_sources(root)
     assert payload["libm_body_argument"] == "APPLIES"
@@ -578,6 +595,13 @@ def test_repaired_source_drift_fails_without_archived_git_history(tmp_path: Path
 
 def test_available_archived_sources_use_the_explicit_repository(tmp_path: Path, monkeypatch) -> None:
     _copy_repaired_sources(tmp_path)
+    try:
+        historical_certificate = subprocess.check_output(
+            ["git", "show", f"{REPAIRED_CHECKOUT}:pyfoldable/application/c2v09_cosine_path_certificate.py"],
+            cwd=_repository(),
+        )
+    except (OSError, subprocess.CalledProcessError):
+        pytest.skip("repaired certificate commit is not in this checkout")
     seen = []
 
     def present(args, *, cwd, stderr):
@@ -594,6 +618,8 @@ def test_available_archived_sources_use_the_explicit_repository(tmp_path: Path, 
         assert args[:2] == ["git", "show"]
         checkout, relative = args[2].split(":", 1)
         assert checkout == REPAIRED_CHECKOUT
+        if relative.endswith("c2v09_cosine_path_certificate.py"):
+            return historical_certificate
         return (tmp_path / relative).read_bytes()
 
     monkeypatch.setattr(subprocess, "call", present)

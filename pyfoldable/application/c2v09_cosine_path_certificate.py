@@ -285,24 +285,77 @@ def _read_qword(address: int) -> int | None:
     return int(value)
 
 
-def _probe_words(source: Path) -> list[int] | None:
+PROBE_BUILD_FLAGS = ("-O2", "-shared", "-fPIC")
+
+
+def _probe_words(source: Path) -> tuple[list[int], dict[str, object]] | None:
+    """Compile, load, and call read_state. Record that image before cleanup."""
     try:
         with tempfile.TemporaryDirectory(prefix="c2v09-cosine-probe-") as work:
             binary = Path(work) / "probe.so"
             compiled = subprocess.run(
-                ["gcc", "-O2", "-shared", "-fPIC", "-o", str(binary), str(source)],
+                ["gcc", *PROBE_BUILD_FLAGS, "-o", str(binary), str(source)],
                 capture_output=True,
                 text=True,
                 check=False,
             )
-            if compiled.returncode != 0:
+            if compiled.returncode != 0 or not binary.is_file():
                 return None
             library = ctypes.CDLL(str(binary))
+            address = ctypes.cast(library.read_state, ctypes.c_void_p).value
+            measurement = _measurement_image(source, binary, None if address is None else int(address))
             state = (ctypes.c_uint32 * 12)()
             library.read_state(state)
-            return [int(word) for word in state]
+            measurement["read_state_calls"] = 1
+            return [int(word) for word in state], measurement
     except (OSError, AttributeError):
         return None
+
+
+def _measurement_image(source: Path, binary: Path, address: int | None) -> dict[str, object]:
+    """File digest and loaded-byte correspondence are separate facts."""
+    file_bytes = binary.read_bytes()
+    file_sha = sha256_bytes(file_bytes)
+    source_sha = sha256_bytes(source.read_bytes())
+    loaded_path = None
+    correspondence = "NOT ESTABLISHED"
+    owner = None if address is None else _runtime_owner(address)
+    if owner is not None and address is not None:
+        start, end, map_off, path = owner
+        loaded_path = path
+        try:
+            mapped = Path(path).read_bytes()
+        except OSError:
+            mapped = None
+        length = min(64, end - address)
+        file_off = map_off + (address - start)
+        loaded = None if length <= 0 else _readable_process_bytes(address, length)
+        if (
+            mapped is not None
+            and loaded is not None
+            and sha256_bytes(mapped) == file_sha
+            and 0 <= file_off
+            and file_off + length <= len(mapped)
+            and mapped[file_off:file_off + length] == loaded
+        ):
+            correspondence = "MATCH"
+    return {
+        "role": "actual loaded probe image used for read_state",
+        "compiler": "gcc",
+        "flags": list(PROBE_BUILD_FLAGS),
+        "source_path": PROBE_SOURCE,
+        "source_sha256": source_sha,
+        "file_image_sha256": file_sha,
+        "file_image_identity": "OBSERVED",
+        "loaded_path": loaded_path,
+        "read_state_address": None if address is None else hex(address),
+        "handle_associated": address is not None,
+        "loaded_code_correspondence": correspondence,
+        "second_compilation_is_evidence": False,
+        "source_hash_is_the_image": False,
+        "cosine_function_calls": 0,
+        "read_state_calls": 0,
+    }
 
 
 def _fegetround() -> str | None:
@@ -480,7 +533,9 @@ def prepare_cosine_path_certificate(root: Path) -> dict[str, object]:
                     "classification": "NOT ESTABLISHED" if observed is None else ("MATCH" if observed == expected else "MISMATCH"),
                 }
             )
-    words = _probe_words(root / PROBE_SOURCE)
+    probed = _probe_words(root / PROBE_SOURCE)
+    words = None if probed is None else probed[0]
+    measurement_image = None if probed is None else probed[1]
     rounding = _fegetround()
     features = _feature_record(words, rounding)
     executable = Path(sys.executable).resolve()
@@ -548,6 +603,15 @@ def prepare_cosine_path_certificate(root: Path) -> dict[str, object]:
         ),
         "historical_body_sha256": HISTORICAL_BODY_SHA256,
         "probe_source_sha256": sha256_bytes((root / PROBE_SOURCE).read_bytes()),
+        "measurement_image": measurement_image or {
+            "role": "actual loaded probe image used for read_state",
+            "file_image_identity": "NOT ESTABLISHED",
+            "loaded_code_correspondence": "NOT ESTABLISHED",
+            "handle_associated": False,
+            "second_compilation_is_evidence": False,
+            "source_hash_is_the_image": False,
+            "cosine_function_calls": 0,
+        },
         "implementation_sha256": sha256_bytes((root / IMPLEMENTATION_SOURCE).read_bytes()),
     }
     return {
