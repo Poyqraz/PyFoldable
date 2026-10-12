@@ -387,6 +387,28 @@ def _apply_alias_instruction(
             updated, hit = _write_slot(updated, level, pointer)
             if not hit and pointer is not None:
                 updated = _poison_slots(updated)
+    if insn.mnemonic in {"cmpxchg", "cmpxchg8b", "cmpxchg16b"}:
+        # The unequal path writes RAX with the old destination. Capstone may not report that write.
+        involved = False
+        for operand in getattr(insn, "operands", ()):
+            width = _operand_width(insn, operand)
+            if width is not None and (width[0] in tracked or width[0] == "rsp"):
+                involved = True
+                if width[0] != "rsp":
+                    tracked[width[0]] = _AMBIGUOUS
+            elif getattr(operand, "type", None) == capstone.x86.X86_OP_MEM:
+                level = _address_level(insn, operand, tracked, updated)
+                if isinstance(level, int):
+                    involved = True
+                    updated, _hit = _write_slot(updated, level, _AMBIGUOUS)
+                elif level == _AMBIGUOUS:
+                    involved = True
+                    updated = _poison_slots(updated)
+        if involved:
+            tracked["rax"] = _AMBIGUOUS
+            if insn.mnemonic != "cmpxchg":
+                tracked["rdx"] = _AMBIGUOUS
+        return tracked, updated
     defined = _pointer_definitions(insn, tracked, updated)
     written = _written_canonicals(insn)
     reads = _read_canonicals(insn)
@@ -563,6 +585,17 @@ def prove_entry_restore(
                 pending.append((target, values["r14"], values["rbx"], slots, aliases, broken))
             if insn.mnemonic != "jmp":
                 pending.append((insn.address + insn.size, values["r14"], values["rbx"], slots, () if broken else aliases, broken))
+            continue
+        if insn.mnemonic in {"loop", "loope", "loopne", "loopz", "loopnz"}:
+            target = _direct_target(insn)
+            state = () if broken else aliases
+            if target is None:
+                unresolved.append(hex(insn.address))
+                broken = True
+                state = ()
+            else:
+                pending.append((target, values["r14"], values["rbx"], slots, state, broken))
+            pending.append((insn.address + insn.size, values["r14"], values["rbx"], slots, state, broken))
             continue
         pending.append((insn.address + insn.size, values["r14"], values["rbx"], slots, aliases, broken))
     def _unique(rows: list[dict[str, object]]) -> list[dict[str, object]]:

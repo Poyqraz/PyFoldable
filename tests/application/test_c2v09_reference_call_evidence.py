@@ -139,6 +139,21 @@ def test_saved_stack_slot_alias_does_not_restore_entry() -> None:
     both = prove_entry_restore(_decoded("415653545848c700010000005b415ec3"), 0x2000)
     assert both["established"] is False
     assert all(row["rbx"] != "entry" for row in both["returns"])
+    compared = prove_entry_restore(
+        _decoded("415631c04889e1480fb1c148c70001000000415ec3"),
+        0x2000,
+    )
+    assert compared["established"] is False
+    assert all(row["r14"] != "entry" for row in compared["returns"])
+    assert analyze_reference_call(newref, _decoded("415631c04889e1480fb1c148c70001000000415ec3"), [])[
+        "preservation_established"
+    ] is False
+    looped = prove_entry_restore(
+        _decoded("41564889e0b902000000e203415ec348c70001000000415ec3"),
+        0x2000,
+    )
+    assert looped["established"] is False
+    assert any(row["r14"] != "entry" for row in looped["returns"])
 
 
 def test_archived_reference_call_replay_keeps_the_recorded_events() -> None:
