@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 
+from pyfoldable.application.c2v09_ordered_declaration import canonical_bytes, sha256_bytes
 from pyfoldable.application.c2v09_runtime_semantic_correspondence import (
     ESTABLISHED_CONDITIONALLY,
     MISMATCHED,
@@ -220,3 +222,24 @@ def test_live_package_does_not_admit_the_three_hypotheses() -> None:
     root = Path(__file__).resolve().parents[2] / "reports" / "c2v09_pre_call_capsule"
     for name, digest in _CAPSULES.items():
         assert hashlib.sha256((root / name).read_bytes()).hexdigest() == digest
+
+
+def test_correspondence_record_is_not_the_measurement_commit() -> None:
+    path = Path(__file__).resolve().parents[2] / "reports" / "c2v09_pre_call_capsule" / "runtime_semantic_correspondence.json"
+    raw = path.read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == "ea568b8353043ef5bb5d883efe494dae876f6e166757bc27a0eb0ae8adbc2624"
+    document = json.loads(raw)
+    payload = document["canonical_payload"]
+    assert payload["measurement_implementation_head"] == "7743c8007b3816511c6a445d7b9eaa39fe6ea629"
+    assert payload["measurement_implementation_tree"] == "037f6ec33c808dd439fcaae8cd70d97f6263631f"
+    assert payload["record_commit_is_measurement_commit"] is False
+    assert payload["readiness_hypotheses_admitted"] is False
+    assert "canonical_sha256" not in payload
+    assert document["canonical_sha256"] == "38b4edff8614cd59cc9f1e7a5a973e93bf5c32714aeaad7b7805f30757799641"
+    assert sha256_bytes(canonical_bytes(payload)) == document["canonical_sha256"]
+    statuses = {row["name"]: row["status"] for row in payload["hypotheses"]}
+    assert statuses == {
+        "interpreter binary64 arithmetic semantics": "ESTABLISHED CONDITIONALLY",
+        "PyFloat_AsDouble conversion semantics": "ESTABLISHED CONDITIONALLY",
+        "selected nextafter semantics": "NOT ESTABLISHED",
+    }
