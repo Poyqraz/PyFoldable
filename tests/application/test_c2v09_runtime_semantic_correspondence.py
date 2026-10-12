@@ -402,15 +402,15 @@ def test_correspondence_record_is_not_the_measurement_commit() -> None:
 def test_fail_closed_record_is_a_later_observation() -> None:
     path = Path(__file__).resolve().parents[2] / "reports" / "c2v09_pre_call_capsule" / "runtime_semantic_fail_closed.json"
     raw = path.read_bytes()
-    assert hashlib.sha256(raw).hexdigest() == "c5f36955d9082df11141fc31c4a161b0391f104cd4bf0449620c600ff48b279e"
+    assert hashlib.sha256(raw).hexdigest() == "67cff33b9d5cfc1ec5724011fa9d652a756434b0123d4cdfe04d6caa1d8705d2"
     document = json.loads(raw)
     payload = document["canonical_payload"]
-    assert payload["measurement_implementation_head"] == "51abb91c984b77438516818635e046e30cbb1b42"
-    assert payload["measurement_implementation_tree"] == "ca4f15fb576522d8646baa5c2bc9e22ceb21a35c"
+    assert payload["measurement_implementation_head"] == "72455a01b8e60053a1336b4477be0ebd24c79665"
+    assert payload["measurement_implementation_tree"] == "e6d31feac44c1c0af9afc559fb179c9936cb5fc9"
     assert payload["record_commit_is_measurement_commit"] is False
     assert payload["readiness_hypotheses_admitted"] is False
     assert "canonical_sha256" not in payload
-    assert document["canonical_sha256"] == "695121f0eb2fe5009cb37e36eb2fb73b6d4e16e9a5274ad29e0b8ba8d290e448"
+    assert document["canonical_sha256"] == "93dddef2aed82930bc1a5801c3aa8a6856663e5470fe27046cf8f148d0172bac"
     assert sha256_bytes(canonical_bytes(payload)) == document["canonical_sha256"]
     statuses = {row["name"]: row["status"] for row in payload["hypotheses"]}
     assert statuses == {
