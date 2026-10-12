@@ -116,6 +116,9 @@ def _unmodeled_stack(insn: capstone.CsInsn) -> bool:
         return False
     if insn.mnemonic in {"add", "sub"} and text.startswith("rsp,"):
         return False
+    written = _written_canonicals(insn)
+    if written is not None and "rsp" in written:
+        return True
     return _reads_rsp(insn)
 
 

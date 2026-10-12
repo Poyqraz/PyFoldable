@@ -61,6 +61,7 @@ def test_a_push_is_not_a_restore() -> None:
         "41564883e4f0415ec3",
         "4156415641be010000005c415ec3",
         "415641be010000004889e048c70000000000415ec3",
+        "415641be0100000089c4415ec3",
     ):
         assert prove_entry_restore(_decoded(blob), 0x2000)["established"] is False
 
