@@ -794,3 +794,28 @@ def test_exit_walk_record_is_a_later_observation() -> None:
     assert guard["ulp"] == "2^-56"
     assert guard["two_ulp_allowance"] == "2^-55"
     assert guard["unchanged_guard_ulps"] == 2
+
+
+def test_slot_walk_record_is_a_later_observation() -> None:
+    path = Path(__file__).resolve().parents[2] / "reports" / "c2v09_pre_call_capsule" / "runtime_semantic_slot_walk.json"
+    raw = path.read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == "d12be39499170320fc2a27bfdf3e1a084dc3273a3da783b400cc1216f7e0dd19"
+    document = json.loads(raw)
+    payload = document["canonical_payload"]
+    assert payload["measurement_implementation_head"] == "d68710e6fda159b2ac64613df8f0a62ae4b19256"
+    assert payload["measurement_implementation_tree"] == "2fce9f4184db4f4f174c2b0500b5b68033ddf3e5"
+    assert payload["record_commit_is_measurement_commit"] is False
+    assert payload["readiness_hypotheses_admitted"] is False
+    assert payload["candidate29_disposition"] == "NOT SELECTED"
+    assert payload["eligibility_evidence"] is False
+    assert payload["physical_qualification"] is False
+    assert payload["accept_closed"] is True
+    assert "canonical_sha256" not in payload
+    assert document["canonical_sha256"] == "5f4f689ff845c1712597019105e0a40732381e3a68ba9e479636e8343388659c"
+    assert sha256_bytes(canonical_bytes(payload)) == document["canonical_sha256"]
+    statuses = {row["name"]: row["status"] for row in payload["hypotheses"]}
+    assert statuses == {
+        "interpreter binary64 arithmetic semantics": "NOT ESTABLISHED",
+        "PyFloat_AsDouble conversion semantics": "NOT ESTABLISHED",
+        "selected nextafter semantics": "ESTABLISHED CONDITIONALLY",
+    }
