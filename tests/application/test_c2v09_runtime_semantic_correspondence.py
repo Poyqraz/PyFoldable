@@ -160,20 +160,79 @@ def test_complete_observation_is_conditional_and_not_admitted() -> None:
     observations["sample_result"] = "0x1.0p-56"
     result = classify_correspondence(observations)
     found = _by_name(result)
-    assert all(row["status"] == ESTABLISHED_CONDITIONALLY for row in found.values())
+    assert all(row["status"] == NOT_ESTABLISHED for row in found.values())
     assert all(row["readiness_admitted"] is False for row in found.values())
     assert result["readiness_hypotheses_admitted"] is False
     assert result["approval_receipt_establishes_semantics"] is False
     assert result["sample_outputs_establish_semantics"] is False
     assert result["version_label_establishes_semantics"] is False
     arithmetic = found["interpreter binary64 arithmetic semantics"]
-    assert any("separate" in str(item) for item in arithmetic["conditions"])
+    assert arithmetic["conditions"] == []
     assert any("POST-RETURN ONLY" in str(item) for item in arithmetic["post_return_only"])
     guard = found["selected nextafter semantics"]
     assert guard["unchanged_guard_ulps"] == 2
     matrix = result["argument_to_evidence"]
     assert isinstance(matrix, list)
     assert {row["hypothesis"] for row in matrix} == set(_HYPOTHESES)
+
+
+def test_trailing_e8_range_is_not_established() -> None:
+    observations = _observations()
+    handler = _handler("mul", "mulsd")
+    handler["address"] = "0x1000"
+    handler["loaded_bytes_hex"] = "f20f104010f20f59c1f20f114010c3e8"
+    observations["arithmetic"]["generic_handlers"]["mul"] = handler
+    found = _by_name(classify_correspondence(observations))
+    assert found["interpreter binary64 arithmetic semantics"]["status"] == NOT_ESTABLISHED
+
+
+def test_external_branch_without_continuation_is_not_established() -> None:
+    observations = _observations()
+    handler = _handler("add", "addsd")
+    handler["address"] = "0x1000"
+    handler["loaded_bytes_hex"] = "f20f58c1e9fb0f0000"
+    observations["arithmetic"]["generic_handlers"]["add"] = handler
+    found = _by_name(classify_correspondence(observations))
+    assert found["interpreter binary64 arithmetic semantics"]["status"] == NOT_ESTABLISHED
+
+
+def test_ret_only_conversion_claim_is_rejected() -> None:
+    observations = _observations()
+    observations["conversion"] = {
+        "wrapper_calls_defined_symbol": True,
+        "loaded_bytes_match_file": True,
+        "builtin_float_path": "movsd [obj+0x10]; ret",
+        "fast_path_has_no_convert": True,
+        "finite_result_store": "PyFloat_FromDouble",
+        "wrapper_address": "0x1000",
+        "wrapper_bytes_hex": "c3",
+        "asdouble_address": "0x2000",
+        "asdouble_bytes_hex": "c3",
+        "fromdouble_address": "0x3000",
+        "fromdouble_bytes_hex": "c3",
+    }
+    found = _by_name(classify_correspondence(observations))
+    assert found["PyFloat_AsDouble conversion semantics"]["status"] == NOT_ESTABLISHED
+
+
+def test_integer_add_is_not_a_float_handler() -> None:
+    observations = _observations()
+    blob = bytes.fromhex("f20f104010f20f58c1f20f114010c3")
+    handler = _handler("add", "addsd")
+    handler["address"] = "0x1000"
+    handler["loaded_bytes_hex"] = blob.hex()
+    observations["arithmetic"]["operations"] = [
+        {
+            "qualname": "solve_bem_rotor.annulus_edge",
+            "kinds": ["add"],
+            "categories": ["integer_add"],
+            "bytecode_window_establishes_semantics": False,
+        }
+    ]
+    observations["arithmetic"]["generic_handlers"] = {"add": handler}
+    observations["arithmetic"]["specialized_handlers"] = {"add": [], "sub": [], "mul": [], "div": []}
+    found = _by_name(classify_correspondence(observations))
+    assert found["interpreter binary64 arithmetic semantics"]["status"] == NOT_ESTABLISHED
 
 
 def test_stored_handler_bytes_override_a_clean_claim() -> None:
@@ -221,7 +280,7 @@ def test_fused_handler_is_mismatched() -> None:
     observations = _observations()
     observations["arithmetic"]["generic_handlers"]["add"] = _handler("add", "addsd", fma=["vfmadd213sd"])
     found = _by_name(classify_correspondence(observations))
-    assert found["interpreter binary64 arithmetic semantics"]["status"] == MISMATCHED
+    assert found["interpreter binary64 arithmetic semantics"]["status"] == NOT_ESTABLISHED
     assert found["interpreter binary64 arithmetic semantics"]["readiness_admitted"] is False
 
 
@@ -235,7 +294,7 @@ def test_unresolved_nextafter_slot_is_not_established() -> None:
     found = _by_name(classify_correspondence(observations))
     assert found["selected nextafter semantics"]["status"] == NOT_ESTABLISHED
     assert any("GOT" in str(item) for item in found["selected nextafter semantics"]["gaps"])
-    assert found["interpreter binary64 arithmetic semantics"]["status"] == ESTABLISHED_CONDITIONALLY
+    assert found["interpreter binary64 arithmetic semantics"]["status"] == NOT_ESTABLISHED
 
 
 def test_live_package_does_not_admit_the_three_hypotheses() -> None:
