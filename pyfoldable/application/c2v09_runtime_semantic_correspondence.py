@@ -78,6 +78,15 @@ _KIND_BY_MNEMONIC = {
     "vdivsd": "div",
 }
 _SCALAR = frozenset(_KIND_BY_MNEMONIC)
+_CONTROL_GROUPS = frozenset({
+    capstone.CS_GRP_JUMP,
+    capstone.CS_GRP_CALL,
+    capstone.CS_GRP_RET,
+    capstone.CS_GRP_BRANCH_RELATIVE,
+    capstone.CS_GRP_INT,
+    capstone.CS_GRP_IRET,
+    capstone.CS_GRP_PRIVILEGE,
+})
 _SLOT_INDEX = {"add": 0, "sub": 1, "mul": 2, "div": 30}
 _CONVERT = frozenset({"cvtsi2sd", "vcvtsi2sd", "cvtss2sd", "vcvtss2sd", "cvtsd2ss", "vcvtsd2ss"})
 
@@ -89,7 +98,7 @@ def _thread_id() -> str:
 
 def _decoder() -> Cs:
     decoder = Cs(CS_ARCH_X86, CS_MODE_64)
-    decoder.detail = False
+    decoder.detail = True
     return decoder
 
 
@@ -253,12 +262,14 @@ def _direct_target(insn: capstone.CsInsn) -> int | None:
     return int(insn.op_str, 16)
 
 
-def _unmodeled_control(mnemonic: str) -> bool:
-    """A direct branch this walk does not follow. Falling through it is not a finished path."""
-    if mnemonic in {"loop", "loope", "loopne", "loopz", "loopnz"}:
+def _unmodeled_control(insn: capstone.CsInsn) -> bool:
+    """A control transfer this walk does not follow. Falling through it is not a finished path."""
+    mnemonic = insn.mnemonic
+    if mnemonic in {"jmp", "call", "ret"} or (mnemonic.startswith("j") and " " not in mnemonic):
+        return False
+    if mnemonic in {"loop", "loope", "loopne", "loopz", "loopnz", "ud0", "ud1", "ud2"}:
         return True
-    bare = mnemonic.split()[-1]
-    return (bare == "jmp" or bare.startswith("j")) and mnemonic != bare
+    return any(group in _CONTROL_GROUPS for group in insn.groups)
 
 
 def _scalar_dest(insn: capstone.CsInsn) -> str | None:
@@ -1505,7 +1516,7 @@ def _pointer_states(
         seen.add(key)
         visited.add(index)
         insn = instructions[index]
-        if _unmodeled_control(insn.mnemonic):
+        if _unmodeled_control(insn):
             return arriving, False
         updated = _pointer_update(pointers, insn)
         next_address = insn.address + insn.size
@@ -1643,7 +1654,7 @@ def _path_exits(
         if target is not None and target in calls and next_address in inside:
             return [("go", next_address)]
         return [("unresolved", None)]
-    if _unmodeled_control(mnemonic):
+    if _unmodeled_control(insn):
         return [("unresolved", None)]
     if next_address in inside:
         return [("go", next_address)]
