@@ -1098,11 +1098,10 @@ def _handler_path_status(handler: Mapping[str, object], kind: str) -> str:
         next_stored = stored or (
             next_scalars == 1 and (_is_store_instruction(insn, from_double, from_double_end) or bit_store)
         )
-        if insn.mnemonic == "ret" or index == len(instructions) - 1:
+        if insn.mnemonic == "ret":
             if next_scalars == 1 and next_stored:
                 completed = True
-            if insn.mnemonic == "ret":
-                continue
+            continue
         packed = tuple(sorted(next_moved))
         for target in successors.get(index, []):
             stack.append((by_address[target], next_scalars, next_stored, packed))
@@ -1332,9 +1331,7 @@ def _builtin_float_load(instructions: list[capstone.CsInsn]) -> bool:
 
 
 def _fromdouble_stores_result(instructions: list[capstone.CsInsn]) -> bool:
-    return _result_bits_stored(instructions) or any(
-        insn.mnemonic == "mov" and "+ 0x10]" in insn.op_str for insn in instructions
-    )
+    return _result_bits_stored(instructions)
 
 
 def _conversion_argument(observations: Mapping[str, object]) -> dict[str, object]:
@@ -1381,24 +1378,56 @@ def _conversion_argument(observations: Mapping[str, object]) -> dict[str, object
 
 
 def _positive_normal_carry(instructions: list[capstone.CsInsn]) -> bool:
-    """The finite compare must reach a low-word increment that carries into the high word."""
-    finite = False
+    """The finite compare's taken branch must reach the carrying bit-pattern increment."""
+    starts: list[int] = []
     for index, insn in enumerate(instructions[:-1]):
-        if insn.mnemonic == "cmp" and "0x7fefffff" in insn.op_str and instructions[index + 1].mnemonic == "jbe":
-            finite = True
-            break
-    carry = False
-    for index, insn in enumerate(instructions[:-2]):
+        branch = instructions[index + 1]
         if (
-            insn.mnemonic == "add"
-            and insn.op_str.endswith(", 1")
-            and instructions[index + 1].mnemonic == "jne"
-            and instructions[index + 2].mnemonic == "add"
-            and instructions[index + 2].op_str.endswith(", 1")
+            insn.mnemonic == "cmp"
+            and "0x7fefffff" in insn.op_str
+            and branch.mnemonic == "jbe"
+            and branch.op_str.startswith("0x")
         ):
-            carry = True
-            break
-    return finite and carry
+            starts.append(int(branch.op_str, 16))
+    carry_at = {
+        index
+        for index, insn in enumerate(instructions[:-2])
+        if insn.mnemonic == "add"
+        and insn.op_str.endswith(", 1")
+        and instructions[index + 1].mnemonic == "jne"
+        and instructions[index + 2].mnemonic == "add"
+        and instructions[index + 2].op_str.endswith(", 1")
+    }
+    if not starts or not carry_at:
+        return False
+    by_address = {insn.address: index for index, insn in enumerate(instructions)}
+    for start in starts:
+        if start not in by_address:
+            continue
+        stack = [by_address[start]]
+        seen: set[int] = set()
+        while stack:
+            index = stack.pop()
+            if index in seen:
+                continue
+            seen.add(index)
+            if index in carry_at:
+                return True
+            insn = instructions[index]
+            next_address = insn.address + insn.size
+            if insn.mnemonic == "ret":
+                continue
+            if insn.mnemonic == "jmp" or insn.mnemonic.startswith("j"):
+                if insn.op_str.startswith("0x"):
+                    target = int(insn.op_str, 16)
+                    if target in by_address:
+                        stack.append(by_address[target])
+                if insn.mnemonic != "jmp" and next_address in by_address:
+                    stack.append(by_address[next_address])
+                continue
+            if next_address in by_address:
+                stack.append(by_address[next_address])
+    return False
 
 
 def _guard_argument(observations: Mapping[str, object]) -> dict[str, object]:
@@ -1421,16 +1450,32 @@ def _guard_argument(observations: Mapping[str, object]) -> dict[str, object]:
             gaps.append("the selected body does not show the positive-finite compare reaching a carrying bit-pattern increment")
         else:
             evidence.append("positive-finite compare 0x7fefffff reaches the carrying increment")
-        call_addresses = [
-            insn.address for insn in wrapper
-            if insn.mnemonic == "call"
+        plt_address = _hex_int(guard.get("plt_address"))
+        plt_calls = [
+            insn.address
+            for insn in wrapper
+            if insn.mnemonic == "call" and insn.op_str.startswith("0x") and plt_address is not None and int(insn.op_str, 16) == plt_address
         ]
         subtracts = [insn.address for insn in wrapper if insn.mnemonic == "subsd"]
-        if call_addresses and subtracts and min(subtracts) > min(call_addresses):
+        if plt_calls and subtracts and min(subtracts) > min(plt_calls):
             evidence.append("wrapper subsd follows the nextafter call")
         else:
             gaps.append("the wrapper subtraction is not on the path after the nextafter call")
-    if guard.get("got_resolved") is not True:
+    stub_text = guard.get("plt_stub_bytes_hex")
+    plt_address = _hex_int(guard.get("plt_address"))
+    selected = _hex_int(guard.get("selected_address"))
+    stub_bytes = b""
+    if isinstance(stub_text, str):
+        try:
+            stub_bytes = bytes.fromhex(stub_text)
+        except ValueError:
+            stub_bytes = b""
+    if (
+        plt_address is None
+        or selected is None
+        or not stub_bytes
+        or not nextafter_got_resolved(plt_address, selected, stub_bytes)
+    ):
         gaps.append("the nextafter GOT is unresolved, so the selected implementation bytes are not bound")
     if guard.get("independent_symbol_establishes_selected_path") is not False:
         gaps.append("an independent symbol lookup was treated as the selected path")

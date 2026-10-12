@@ -186,6 +186,38 @@ def test_trailing_e8_range_is_not_established() -> None:
     assert found["interpreter binary64 arithmetic semantics"]["status"] == NOT_ESTABLISHED
 
 
+def test_unresolved_side_branch_does_not_complete_the_store_path() -> None:
+    observations = _observations()
+    for blob in (
+        "f20f58c1f20f114010e900000000",
+        "f20f58c10f8500100000f20f114010c3",
+        "f20f58c1f20f114010",
+    ):
+        handler = _handler("add", "addsd")
+        handler["address"] = "0x1000"
+        handler["loaded_bytes_hex"] = blob
+        observations["arithmetic"]["generic_handlers"]["add"] = handler
+        found = _by_name(classify_correspondence(observations))
+        assert found["interpreter binary64 arithmetic semantics"]["status"] == NOT_ESTABLISHED
+
+
+def test_fromdouble_load_is_not_a_store() -> None:
+    observations = _observations()
+    observations["conversion"] = {
+        "wrapper_address": "0x1000",
+        "wrapper_bytes_hex": "e8fb0f0000c3",
+        "asdouble_address": "0x2000",
+        "asdouble_bytes_hex": "f20f104010c3",
+        "fromdouble_address": "0x3000",
+        "fromdouble_bytes_hex": "488b4710c3",
+        "ulp_function_calls": 0,
+        "nextafter_function_calls": 0,
+        "output_sampled": False,
+    }
+    found = _by_name(classify_correspondence(observations))
+    assert found["PyFloat_AsDouble conversion semantics"]["status"] == NOT_ESTABLISHED
+
+
 def test_external_branch_without_continuation_is_not_established() -> None:
     observations = _observations()
     handler = _handler("add", "addsd")
