@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 
 from pyfoldable.application.c2v09_fromdouble_storage import (
     _inventory_from_observation,
     capture_fromdouble_storage,
 )
+from pyfoldable.application.c2v09_ordered_declaration import canonical_bytes, sha256_bytes
 from pyfoldable.application.c2v09_runtime_semantic_correspondence import (
     NOT_ESTABLISHED,
     _decode_complete,
@@ -70,6 +72,39 @@ def test_storage_capture_keeps_failure_paths_unsuccessful() -> None:
     root = _ROOT / "reports" / "c2v09_pre_call_capsule"
     for name, digest in _CAPSULES.items():
         assert hashlib.sha256((root / name).read_bytes()).hexdigest() == digest
+
+
+def test_fromdouble_storage_record_is_not_the_measurement_commit() -> None:
+    path = _ROOT / "reports" / "c2v09_pre_call_capsule" / "fromdouble_storage.json"
+    raw = path.read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == "ff96dc2154daf188b2f690c2840f87bf3164ed2d32a5b9bd0cd5bf5917d36f12"
+    document = json.loads(raw)
+    payload = document["canonical_payload"]
+    assert payload["measurement_implementation_head"] == "7084b100d76a10bb3cab9d88bd314178eb1048b6"
+    assert payload["measurement_implementation_tree"] == "1bbf0eb34aadc356d43d487d9cb84d7075dfbe81"
+    assert payload["record_commit_is_measurement_commit"] is False
+    assert payload["readiness_hypotheses_admitted"] is False
+    assert payload["accept_closed"] is True
+    assert payload["candidate29_disposition"] == "NOT SELECTED"
+    assert payload["eligibility_evidence"] is False
+    assert payload["physical_qualification"] is False
+    assert payload["status"] == "NOT ESTABLISHED"
+    assert payload["archived_reference_not_evidence"]["used_as_evidence"] is False
+    assert payload["pid"] == payload["controls"]["pid"]
+    assert payload["thread_id"] == payload["controls"]["thread_id"]
+    assert payload["controls"]["bind_now"] is True
+    trace = payload["inventory"]["bit_trace"]
+    assert trace["source"] == "xmm0"
+    assert trace["carrier"] == "r14"
+    assert trace["store_operands"] == "qword ptr [rbx + 0x10], r14"
+    failure = next(row for row in payload["inventory"]["paths"] if row["name"] == "allocation_failure")
+    assert failure["result"] == "not_a_successful_result"
+    assert failure["null_return_reachable"] is True
+    assert failure["unresolved_sibling"] is True
+    assert "canonical_sha256" not in payload
+    assert document["canonical_sha256"] == "3268f060342fce6160eff72ae4e1812aa980c0913030ba0d6f413731181f6dd1"
+    assert sha256_bytes(canonical_bytes(payload)) == document["canonical_sha256"]
+    assert _inventory_from_observation(payload)["branch_table"] == payload["inventory"]["branch_table"]
 
 
 def test_historical_capsules_stay_byte_for_byte() -> None:
