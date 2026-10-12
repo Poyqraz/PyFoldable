@@ -190,12 +190,18 @@ def _result_bits_stored(instructions: list[capstone.CsInsn]) -> bool:
     return False
 
 
-def _store_kind(instructions: list[capstone.CsInsn], from_double: int | None) -> str:
+def _store_kind(
+    instructions: list[capstone.CsInsn],
+    from_double: int | None,
+    from_double_end: int | None = None,
+) -> str:
     reaches_from = False
     inplace = False
+    end = from_double + 1 if from_double is not None and from_double_end is None else from_double_end
     for insn in instructions:
-        if insn.mnemonic in {"call", "jmp"} and insn.op_str.startswith("0x") and from_double is not None:
-            if int(insn.op_str, 16) == from_double:
+        if insn.mnemonic in {"call", "jmp"} and insn.op_str.startswith("0x") and from_double is not None and end is not None:
+            target = int(insn.op_str, 16)
+            if from_double <= target < end:
                 reaches_from = True
         if insn.mnemonic == "movsd" and "+ 0x10]" in insn.op_str and ", xmm" in insn.op_str:
             inplace = True
@@ -218,6 +224,7 @@ def _handler_from_bytes(
     elf_vaddr: int | None,
     image: str,
     from_double: int | None,
+    from_double_end: int | None = None,
 ) -> dict[str, object]:
     instructions = _cut_at_next_function(_disassemble(blob, base))
     scalar = [insn.mnemonic for insn in instructions if insn.mnemonic in _SCALAR]
@@ -234,8 +241,10 @@ def _handler_from_bytes(
         "scalar_mnemonics": scalar,
         "paths_execute_one_scalar_op": one_path,
         "fma_mnemonics": fma,
-        "store": _store_kind(instructions, from_double),
+        "store": _store_kind(instructions, from_double, from_double_end),
         "ob_fval_load": loads_ob_fval,
+        "from_double_address": None if from_double is None else hex(from_double),
+        "from_double_end": None if from_double_end is None else hex(from_double_end),
         "decoder": "capstone",
         "decoder_version": capstone.__version__,
         "mode": "64-bit",
@@ -243,7 +252,7 @@ def _handler_from_bytes(
     }
 
 
-def _float_slots(image: str) -> tuple[dict[str, int], int | None] | None:
+def _float_slots(image: str) -> tuple[dict[str, int], tuple[int, int] | None] | None:
     defined = _defined_symbol(image, "PyFloat_Type")
     from_double = _symbol_runtime(image, "PyFloat_FromDouble")
     if defined is None:
@@ -266,14 +275,16 @@ def _float_slots(image: str) -> tuple[dict[str, int], int | None] | None:
     found = {kind: struct.unpack_from("<Q", slots, index * 8)[0] for kind, index in _SLOT_INDEX.items()}
     if any(address == 0 for address in found.values()):
         return None
-    return found, None if from_double is None else from_double[0]
+    return found, None if from_double is None else (from_double[0], from_double[0] + from_double[2])
 
 
 def _capture_generic_handlers(image: str) -> dict[str, dict[str, object]]:
     located = _float_slots(image)
     if located is None:
         return {}
-    slots, from_double = located
+    slots, from_double_range = located
+    from_double = None if from_double_range is None else from_double_range[0]
+    from_double_end = None if from_double_range is None else from_double_range[1]
     anchors = [address for address in slots.values() if address]
     if from_double is not None:
         anchors.append(from_double)
@@ -295,6 +306,7 @@ def _capture_generic_handlers(image: str) -> dict[str, dict[str, object]]:
             elf_vaddr=elf_vaddr,
             image=image,
             from_double=from_double,
+            from_double_end=from_double_end,
         )
     return handlers
 
@@ -319,7 +331,11 @@ def _follows_from_double(instructions: list[capstone.CsInsn], index: int, from_d
     return False
 
 
-def _capture_specialized_handlers(image: str, from_double: int | None) -> tuple[dict[str, list[dict[str, object]]], str, int]:
+def _capture_specialized_handlers(
+    image: str,
+    from_double: int | None,
+    from_double_end: int | None = None,
+) -> tuple[dict[str, list[dict[str, object]]], str, int]:
     defined = _symbol_runtime(image, "_PyEval_EvalFrameDefault")
     if defined is None or from_double is None:
         return {}, "unavailable", 0
@@ -365,6 +381,8 @@ def _capture_specialized_handlers(image: str, from_double: int | None) -> tuple[
                 "fma_mnemonics": [],
                 "store": "in-place ob_fval or PyFloat_FromDouble" if inplace else "PyFloat_FromDouble",
                 "ob_fval_load": True,
+                "from_double_address": None if from_double is None else hex(from_double),
+                "from_double_end": None if from_double_end is None else hex(from_double_end),
                 "decoder": "capstone",
                 "decoder_version": capstone.__version__,
                 "mode": "64-bit",
@@ -541,7 +559,11 @@ def capture_observations(root: Path) -> dict[str, object]:
     if image is not None and wrapper is not None:
         generic = _capture_generic_handlers(image)
         from_double = _symbol_runtime(image, "PyFloat_FromDouble")
-        specialized, scan, unclassified = _capture_specialized_handlers(image, None if from_double is None else from_double[0])
+        specialized, scan, unclassified = _capture_specialized_handlers(
+            image,
+            None if from_double is None else from_double[0],
+            None if from_double is None else from_double[0] + from_double[2],
+        )
         conversion = _capture_conversion(image, wrapper)
     same_thread = controls.get("thread_id") == thread_id
     return {
@@ -608,7 +630,15 @@ def _handler_status(handler: Mapping[str, object], kind: str) -> str:
         fma = [insn.mnemonic for insn in instructions if _is_fma(insn.mnemonic)]
         one_path = _one_scalar_per_path(instructions)
         loads_ob_fval = any(insn.mnemonic == "movsd" and "+ 0x10]" in insn.op_str for insn in instructions)
-        store = _store_kind(instructions, None)
+        from_double_text = handler.get("from_double_address")
+        end_text = handler.get("from_double_end")
+        try:
+            from_double = int(from_double_text, 16) if isinstance(from_double_text, str) else None
+            from_double_end = int(end_text, 16) if isinstance(end_text, str) else None
+        except ValueError:
+            from_double = None
+            from_double_end = None
+        store = _store_kind(instructions, from_double, from_double_end)
     else:
         claimed = handler.get("scalar_mnemonics")
         mnemonics = [str(item) for item in claimed] if isinstance(claimed, list) else []
