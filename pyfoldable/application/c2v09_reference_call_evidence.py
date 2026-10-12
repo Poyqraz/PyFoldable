@@ -2,7 +2,8 @@
 
 The slice reads loaded bytes in one LD_BIND_NOW process. It does not call
 PyFloat_FromDouble, _Py_NewReference, or the callee. A push is not a restore.
-An ABI name is not evidence that a callee preserves a register.
+A later store through a copied stack address replaces the saved slot. An ABI
+name is not evidence that a callee preserves a register.
 """
 
 from __future__ import annotations
@@ -100,8 +101,67 @@ def _reads_rsp(insn: capstone.CsInsn) -> bool:
     return False
 
 
+_AMBIGUOUS = "amb"
+_MAX_ALIAS_REGISTERS = 16
+
+
+def _alias_key(aliases: Mapping[str, object]) -> tuple[tuple[str, object], ...]:
+    return tuple(sorted(aliases.items()))
+
+
+def _rsp_level(slots: tuple[tuple[object, ...], ...]) -> int:
+    return int(slots[-1][3]) if slots else 0
+
+
+def _poison_slots(slots: tuple[tuple[object, ...], ...]) -> tuple[tuple[object, ...], ...]:
+    return tuple((name, _OTHER, _AMBIGUOUS, level) for name, _value, _ptr, level in slots)
+
+
+def _write_slot(
+    slots: tuple[tuple[object, ...], ...],
+    level: int,
+    pointer: object,
+) -> tuple[tuple[tuple[object, ...], ...], bool]:
+    index = next((item for item, slot in enumerate(slots) if slot[3] == level), None)
+    if index is None:
+        return slots, False
+    items = list(slots)
+    name, _value, _ptr, slot_level = items[index]
+    items[index] = (name, _OTHER, pointer, slot_level)
+    return tuple(items), True
+
+
+def _operand_width(insn: capstone.CsInsn, operand: object) -> tuple[str, int] | None:
+    if getattr(operand, "type", None) != capstone.x86.X86_OP_REG:
+        return None
+    return _register_width(insn.reg_name(operand.reg))
+
+
+def _plain_stack_pointer_copy(insn: capstone.CsInsn) -> bool:
+    """A full copy or aligned lea of rsp. The walker tracks where it points."""
+    operands = getattr(insn, "operands", ())
+    if insn.mnemonic == "mov" and len(operands) == 2:
+        dest = _operand_width(insn, operands[0])
+        src = _operand_width(insn, operands[1])
+        return bool(dest and src and dest[1] == 64 and src[1] == 64 and src[0] == "rsp" and dest[0] != "rsp")
+    if insn.mnemonic == "lea" and len(operands) == 2 and not operands[1].mem.index:
+        dest = _operand_width(insn, operands[0])
+        base = _register_width(insn.reg_name(operands[1].mem.base) if operands[1].mem.base else None)
+        return bool(
+            dest
+            and base
+            and dest[1] == 64
+            and base[0] == "rsp"
+            and operands[1].type == capstone.x86.X86_OP_MEM
+            and operands[1].mem.disp % 8 == 0
+        )
+    return False
+
+
 def _unmodeled_stack(insn: capstone.CsInsn) -> bool:
-    """A stack slot write, rsp copy, or rsp change this model does not track."""
+    """A stack write or rsp change whose slot effect this walker does not track."""
+    if _plain_stack_pointer_copy(insn):
+        return False
     text = insn.op_str
     if "[" in text and any(name in text for name in ("rsp", "rbp", "esp", "ebp")):
         return True
@@ -120,6 +180,240 @@ def _unmodeled_stack(insn: capstone.CsInsn) -> bool:
     if written is not None and "rsp" in written:
         return True
     return _reads_rsp(insn)
+
+
+def _read_canonicals(insn: capstone.CsInsn) -> set[str] | None:
+    try:
+        reads, _written = insn.regs_access()
+    except capstone.CsError:
+        return None
+    canonical: set[str] = set()
+    for reg in reads:
+        width = _register_width(insn.reg_name(reg))
+        if width is not None:
+            canonical.add(width[0])
+    return canonical
+
+
+def _writes_memory(insn: capstone.CsInsn) -> bool:
+    operands = getattr(insn, "operands", ())
+    if insn.mnemonic in {"lea", "cmp", "test", "push"}:
+        return False
+    if not any(operand.type == capstone.x86.X86_OP_MEM for operand in operands):
+        return False
+    if insn.mnemonic in {"mov", "movzx", "movsx", "movsxd", "movabs"}:
+        return bool(operands) and operands[0].type == capstone.x86.X86_OP_MEM
+    return True
+
+
+def _stored_pointer(insn: capstone.CsInsn, aliases: Mapping[str, object], slots: tuple[tuple[object, ...], ...]) -> object:
+    """Pointer identity written by a full mov. Anything else can overlap a saved slot."""
+    if insn.mnemonic != "mov":
+        return _AMBIGUOUS
+    operands = insn.operands
+    if len(operands) < 2 or operands[0].type != capstone.x86.X86_OP_MEM:
+        return _AMBIGUOUS
+    source = operands[1]
+    if source.type == capstone.x86.X86_OP_IMM:
+        return None
+    width = _operand_width(insn, source)
+    if width is None or width[1] != 64:
+        return _AMBIGUOUS
+    if width[0] == "rsp":
+        return _rsp_level(slots)
+    if width[0] in aliases:
+        return aliases[width[0]]
+    return None
+
+
+def _address_level(
+    insn: capstone.CsInsn,
+    operand: object,
+    aliases: Mapping[str, object],
+    slots: tuple[tuple[object, ...], ...],
+) -> object:
+    """Absolute stack level, ambiguous, or None when the address is not a tracked pointer."""
+    base = _register_width(insn.reg_name(operand.mem.base) if operand.mem.base else None)
+    index = _register_width(insn.reg_name(operand.mem.index) if operand.mem.index else None)
+    if index is not None or base is None or operand.mem.disp % 8:
+        if base is not None and (base[0] in aliases or base[0] == "rsp" or (index is not None and index[0] in aliases)):
+            return _AMBIGUOUS
+        return None
+    if base[0] == "rsp":
+        return _rsp_level(slots) - operand.mem.disp // 8
+    if base[0] not in aliases:
+        return None
+    known = aliases[base[0]]
+    if known == _AMBIGUOUS:
+        return _AMBIGUOUS
+    return int(known) - operand.mem.disp // 8
+
+
+def _loaded_pointer(
+    operand: object,
+    insn: capstone.CsInsn,
+    aliases: Mapping[str, object],
+    slots: tuple[tuple[object, ...], ...],
+) -> object:
+    level = _address_level(insn, operand, aliases, slots)
+    if level == _AMBIGUOUS:
+        return _AMBIGUOUS
+    if not isinstance(level, int):
+        return "clear"
+    slot = next((item for item in slots if item[3] == level), None)
+    if slot is None or slot[2] is None:
+        return "clear"
+    return slot[2]
+
+
+def _pointer_definitions(
+    insn: capstone.CsInsn,
+    aliases: Mapping[str, object],
+    slots: tuple[tuple[object, ...], ...],
+) -> dict[str, object] | None:
+    """Supported copies of a stack address. None means an unsupported write."""
+    operands = getattr(insn, "operands", ())
+    if insn.mnemonic == "mov" and len(operands) == 2 and operands[0].type == capstone.x86.X86_OP_REG:
+        dest = _operand_width(insn, operands[0])
+        if dest is None or dest[0] == "rsp":
+            return None
+        source = operands[1]
+        if source.type == capstone.x86.X86_OP_REG:
+            src = _operand_width(insn, source)
+            if src and src[0] == "rsp" and dest[1] == 64 and src[1] == 64:
+                return {dest[0]: _rsp_level(slots)}
+            if src and dest[1] == 64 and src[1] == 64:
+                return {dest[0]: aliases[src[0]]} if src[0] in aliases else {dest[0]: "clear"}
+            if src and (src[0] in aliases or src[0] == "rsp"):
+                return {dest[0]: _AMBIGUOUS}
+        if source.type == capstone.x86.X86_OP_IMM and dest[1] >= 32:
+            return {dest[0]: "clear"}
+        if source.type == capstone.x86.X86_OP_IMM and dest[0] in aliases:
+            return {dest[0]: _AMBIGUOUS}
+        if source.type == capstone.x86.X86_OP_MEM:
+            loaded = _loaded_pointer(source, insn, aliases, slots)
+            if isinstance(loaded, int) and dest[1] == 64:
+                return {dest[0]: loaded}
+            if loaded == "clear" and (dest[1] >= 32 or dest[0] not in aliases):
+                return {dest[0]: "clear"}
+            return {dest[0]: _AMBIGUOUS}
+        if dest[0] in aliases and dest[1] == 32:
+            return {dest[0]: "clear"}
+        if dest[0] in aliases:
+            return {dest[0]: _AMBIGUOUS}
+        if dest[1] >= 32:
+            return {dest[0]: "clear"}
+        return {}
+    if insn.mnemonic == "lea" and len(operands) == 2 and operands[0].type == capstone.x86.X86_OP_REG:
+        dest = _operand_width(insn, operands[0])
+        if dest is None or dest[1] != 64:
+            return {dest[0]: _AMBIGUOUS} if dest is not None and dest[0] in aliases else {}
+        mem = operands[1]
+        if mem.type != capstone.x86.X86_OP_MEM:
+            return {dest[0]: _AMBIGUOUS}
+        base = _register_width(insn.reg_name(mem.mem.base) if mem.mem.base else None)
+        index = _register_width(insn.reg_name(mem.mem.index) if mem.mem.index else None)
+        if index is not None or base is None:
+            return {dest[0]: _AMBIGUOUS}
+        if mem.mem.disp % 8:
+            return {dest[0]: _AMBIGUOUS}
+        if base[0] == "rsp":
+            return {dest[0]: _rsp_level(slots) - mem.mem.disp // 8}
+        if base[0] not in aliases:
+            return {dest[0]: "clear"}
+        level = aliases[base[0]]
+        if level == _AMBIGUOUS:
+            return {dest[0]: _AMBIGUOUS}
+        return {dest[0]: int(level) - mem.mem.disp // 8}
+    if insn.mnemonic in {"add", "sub"} and len(operands) == 2 and operands[0].type == capstone.x86.X86_OP_REG:
+        dest = _operand_width(insn, operands[0])
+        source = _operand_width(insn, operands[1]) if operands[1].type == capstone.x86.X86_OP_REG else None
+        source_is_pointer = source is not None and (source[0] in aliases or source[0] == "rsp")
+        if dest is None:
+            return None
+        if dest[0] in aliases and operands[1].type == capstone.x86.X86_OP_IMM and dest[1] == 64 and operands[1].imm % 8 == 0:
+            level = aliases[dest[0]]
+            if level == _AMBIGUOUS:
+                return {dest[0]: _AMBIGUOUS}
+            delta = int(operands[1].imm) // 8
+            return {dest[0]: int(level) + (delta if insn.mnemonic == "sub" else -delta)}
+        if dest[0] in aliases or source_is_pointer:
+            return None
+        return {}
+    if insn.mnemonic == "xor" and len(operands) == 2:
+        dest = _operand_width(insn, operands[0])
+        src = _operand_width(insn, operands[1])
+        if dest and src and dest[0] == src[0] and dest[1] >= 32:
+            return {dest[0]: "clear"}
+        if (dest and dest[0] in aliases) or (src and (src[0] in aliases or src[0] == "rsp")):
+            return None
+        return {}
+    return None
+
+
+def _apply_alias_instruction(
+    insn: capstone.CsInsn,
+    aliases: Mapping[str, object],
+    slots: tuple[tuple[object, ...], ...],
+) -> tuple[dict[str, object], tuple[tuple[object, ...], ...]]:
+    """Update saved slots and stack-address copies. Unsupported addresses poison every slot."""
+    tracked = dict(aliases)
+    updated = slots
+    if _writes_memory(insn):
+        for operand in insn.operands:
+            if operand.type != capstone.x86.X86_OP_MEM:
+                continue
+            base = _register_width(insn.reg_name(operand.mem.base) if operand.mem.base else None)
+            index = _register_width(insn.reg_name(operand.mem.index) if operand.mem.index else None)
+            base_name = None if base is None else base[0]
+            involved = base_name in tracked or base_name == "rsp" or (index is not None and index[0] in tracked)
+            if not involved:
+                continue
+            if index is not None or base is None or operand.mem.disp % 8:
+                updated = _poison_slots(updated)
+                continue
+            if base_name == "rsp":
+                level = _rsp_level(updated) - operand.mem.disp // 8
+            else:
+                known = tracked[base_name]
+                if known == _AMBIGUOUS:
+                    updated = _poison_slots(updated)
+                    continue
+                level = int(known) - operand.mem.disp // 8
+            if operand.size > 8:
+                updated = _poison_slots(updated)
+                continue
+            pointer = _AMBIGUOUS if operand.size != 8 else _stored_pointer(insn, tracked, updated)
+            updated, hit = _write_slot(updated, level, pointer)
+            if not hit and pointer is not None:
+                updated = _poison_slots(updated)
+    defined = _pointer_definitions(insn, tracked, updated)
+    written = _written_canonicals(insn)
+    reads = _read_canonicals(insn)
+    if defined is None or written is None or reads is None or len(tracked) > _MAX_ALIAS_REGISTERS:
+        if written is None or reads is None or len(tracked) > _MAX_ALIAS_REGISTERS:
+            for name in list(tracked):
+                tracked[name] = _AMBIGUOUS
+            return tracked, _poison_slots(updated)
+        if any(name in tracked or name == "rsp" for name in reads):
+            for name in written:
+                tracked[name] = _AMBIGUOUS
+            return tracked, updated
+        for name in list(tracked):
+            if name in written:
+                tracked[name] = _AMBIGUOUS
+        return tracked, updated
+    for name, action in defined.items():
+        if action == "clear":
+            tracked.pop(name, None)
+        else:
+            tracked[name] = action
+    for name in written:
+        if name in tracked and name not in defined:
+            tracked[name] = _AMBIGUOUS
+    if len(tracked) > _MAX_ALIAS_REGISTERS:
+        return {name: _AMBIGUOUS for name in tracked}, _poison_slots(updated)
+    return tracked, updated
 
 
 def _rip_address(insn: capstone.CsInsn) -> int | None:
@@ -158,12 +452,14 @@ def prove_entry_restore(
 ) -> dict[str, object]:
     """Whether r14 and rbx still hold their entry values at every captured return.
 
-    A push records a stack slot. It does not restore the register. A call or an
-    uncaptured branch leaves the path unresolved. The walk state is finite.
+    A push records a stack slot. A later store can replace that slot, and a pop
+    restores the slot's current contents. A copied stack address keeps its
+    level across pushes. A call or an uncaptured branch leaves the path unresolved.
+    The walk state is finite.
     """
     by_address = {insn.address: insn for insn in instructions}
     seen: set[tuple] = set()
-    pending: list[tuple] = [(entry, _ENTRY, _ENTRY, (), False)]
+    pending: list[tuple] = [(entry, _ENTRY, _ENTRY, (), (), False)]
     returns: list[dict[str, object]] = []
     unresolved: list[str] = []
     calls: list[dict[str, str]] = []
@@ -172,8 +468,8 @@ def prove_entry_restore(
     overwrites: list[dict[str, str]] = []
     budget_exhausted = False
     while pending:
-        address, r14, rbx, slots, broken = pending.pop()
-        key = (address, r14, rbx, slots, broken)
+        address, r14, rbx, slots, aliases, broken = pending.pop()
+        key = (address, r14, rbx, slots, aliases, broken)
         if key in seen:
             continue
         if len(seen) >= _MAX_STATES:
@@ -198,8 +494,8 @@ def prove_entry_restore(
             else:
                 saved = operand[0]
                 pushes.append({"address": hex(insn.address), "register": saved, "value": values.get(saved, _OTHER)})
-                if not broken:
-                    slots = slots + ((saved, values.get(saved, _OTHER)),)
+                pointer = dict(aliases).get(saved)
+                slots = slots + ((saved, values.get(saved, _OTHER), pointer, _rsp_level(slots) + 1),)
         elif insn.mnemonic == "leave":
             broken = True
         elif insn.mnemonic == "pop":
@@ -208,16 +504,27 @@ def prove_entry_restore(
                 broken = True
             else:
                 restored = operand[0]
-                saved_reg, saved_value = slots[-1]
+                saved_reg, saved_value, saved_ptr, _level = slots[-1]
                 slots = slots[:-1]
-                values[restored] = saved_value if saved_reg == restored else _OTHER
-                pops.append({"address": hex(insn.address), "register": restored, "restores_entry": values[restored] == _ENTRY})
+                tracked = dict(aliases)
+                if restored in values:
+                    values[restored] = saved_value if saved_reg == restored else _OTHER
+                if saved_ptr == _AMBIGUOUS:
+                    tracked[restored] = _AMBIGUOUS
+                elif isinstance(saved_ptr, int):
+                    tracked[restored] = saved_ptr
+                else:
+                    tracked.pop(restored, None)
+                aliases = _alias_key(tracked)
+                restores_entry = restored in values and values[restored] == _ENTRY
+                pops.append({"address": hex(insn.address), "register": restored, "restores_entry": restores_entry})
         elif insn.mnemonic in {"add", "sub"} and insn.op_str.startswith("rsp,"):
             delta = _adjust_rsp(insn)
             if delta is None or broken:
                 broken = True
             elif delta > 0:
-                slots = slots + tuple(("pad", _OTHER) for _ in range(delta))
+                level = _rsp_level(slots)
+                slots = slots + tuple(("pad", _OTHER, None, level + step) for step in range(1, delta + 1))
             else:
                 for _ in range(-delta):
                     if not slots:
@@ -226,6 +533,11 @@ def prove_entry_restore(
                     slots = slots[:-1]
         elif insn.mnemonic in {"mov", "lea"} and insn.op_str.startswith("rsp"):
             broken = True
+        elif not broken and not insn.mnemonic.startswith("j") and insn.mnemonic not in {"call", "ret"}:
+            tracked, slots = _apply_alias_instruction(insn, dict(aliases), slots)
+            aliases = _alias_key(tracked)
+        if broken:
+            aliases = ()
         if insn.mnemonic == "ret":
             returns.append({"address": hex(insn.address), "r14": values["r14"], "rbx": values["rbx"], "broken": broken})
             continue
@@ -236,24 +548,22 @@ def prove_entry_restore(
         if insn.mnemonic == "call":
             target = _direct_target(insn)
             calls.append({"address": hex(insn.address), "target": None if target is None else hex(target)})
-            broken = True
             for reg in _TRACKED:
                 values[reg] = _OTHER
-            nxt = insn.address + insn.size
-            pending.append((nxt, values["r14"], values["rbx"], slots, True))
+            pending.append((insn.address + insn.size, values["r14"], values["rbx"], slots, (), True))
             continue
         if insn.mnemonic.startswith("j"):
             target = _direct_target(insn)
             if target is None:
                 unresolved.append(hex(insn.address))
                 broken = True
+                aliases = ()
             else:
-                pending.append((target, values["r14"], values["rbx"], slots, broken))
+                pending.append((target, values["r14"], values["rbx"], slots, aliases, broken))
             if insn.mnemonic != "jmp":
-                nxt = insn.address + insn.size
-                pending.append((nxt, values["r14"], values["rbx"], slots, broken))
+                pending.append((insn.address + insn.size, values["r14"], values["rbx"], slots, () if broken else aliases, broken))
             continue
-        pending.append((insn.address + insn.size, values["r14"], values["rbx"], slots, broken))
+        pending.append((insn.address + insn.size, values["r14"], values["rbx"], slots, aliases, broken))
     def _unique(rows: list[dict[str, object]]) -> list[dict[str, object]]:
         seen_rows: set[str] = set()
         unique_rows: list[dict[str, object]] = []

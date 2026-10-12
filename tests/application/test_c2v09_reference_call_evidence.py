@@ -9,6 +9,7 @@ from pathlib import Path
 from pyfoldable.application.c2v09_ordered_declaration import canonical_bytes, sha256_bytes
 
 from pyfoldable.application.c2v09_reference_call_evidence import (
+    analyze_reference_call,
     capture_reference_call,
     prove_entry_restore,
 )
@@ -29,7 +30,15 @@ _OBSERVATIONS = {
     "runtime_semantic_slot_walk.json": "d12be39499170320fc2a27bfdf3e1a084dc3273a3da783b400cc1216f7e0dd19",
     "runtime_semantic_full_store.json": "7221d7f568618a39a843d08de529d2b3e1f0a5360618c623405e9755be968d6a",
     "fromdouble_storage.json": "ff96dc2154daf188b2f690c2840f87bf3164ed2d32a5b9bd0cd5bf5917d36f12",
+    "reference_call_evidence.json": "99d4304fab2a174f83cd45203f739811e33ff18abb522de17cefbfb7d2672664",
 }
+
+
+def _newref_calling(address: int = 0x2000):
+    call = _decoded("8b050000000085c07501c3e8f00f0000", 0x1000)
+    assert call[-1].mnemonic == "call"
+    assert int(call[-1].op_str, 16) == address
+    return call
 
 
 def _decoded(blob: str, address: int = 0x2000):
@@ -64,6 +73,97 @@ def test_a_push_is_not_a_restore() -> None:
         "415641be0100000089c4415ec3",
     ):
         assert prove_entry_restore(_decoded(blob), 0x2000)["established"] is False
+
+
+def test_saved_stack_slot_alias_does_not_restore_entry() -> None:
+    """A write through a copied stack pointer replaces the saved entry value."""
+    witnesses = (
+        ("r14", "41564889e54889e848c7000100000041be02000000415ec3"),
+        ("rbx", "534889e54889e848c70001000000bb020000005bc3"),
+        ("r14", "41564889e54889e8488d0848c7010100000041be02000000415ec3"),
+    )
+    newref = _newref_calling()
+    for register, blob in witnesses:
+        instructions = _decoded(blob)
+        proof = prove_entry_restore(instructions, 0x2000)
+        assert proof["established"] is False
+        assert proof["returns"]
+        assert all(row[register] != "entry" for row in proof["returns"])
+        assert any(
+            pop["register"] == register and pop["restores_entry"] is False
+            for pop in proof["pops"]
+        )
+        analysis = analyze_reference_call(newref, instructions, [])
+        assert analysis["call"] is not None
+        assert analysis["preservation_established"] is False
+        assert analysis["callee_proof"]["established"] is False
+    partial = prove_entry_restore(
+        _decoded("41564889e54889e866b8010048c7000100000041be02000000415ec3"),
+        0x2000,
+    )
+    assert partial["established"] is False
+    assert all(row["r14"] != "entry" for row in partial["returns"])
+    joined = prove_entry_restore(
+        _decoded("41564889e54889e885c0740231c048c7000100000041be02000000415ec3"),
+        0x2000,
+    )
+    assert joined["established"] is False
+    assert any(row["r14"] != "entry" for row in joined["returns"])
+    transferred = prove_entry_restore(
+        _decoded("41564889e54889e8505948c70101000000415ec3"),
+        0x2000,
+    )
+    assert transferred["established"] is False
+    assert all(row["r14"] != "entry" for row in transferred["returns"])
+    displaced = prove_entry_restore(
+        _decoded("4156534889e0488d480848c701010000005b415ec3"),
+        0x2000,
+    )
+    assert displaced["established"] is False
+    assert all(row["r14"] != "entry" for row in displaced["returns"])
+    assert any(row["rbx"] == "entry" for row in displaced["returns"])
+    for blob in (
+        "41564889e54889e84887c848c7010100000041be02000000415ec3",
+        "41564889e54889e84801c148c7010100000041be02000000415ec3",
+    ):
+        moved = prove_entry_restore(_decoded(blob), 0x2000)
+        assert moved["established"] is False
+        assert all(row["r14"] != "entry" for row in moved["returns"])
+
+
+def test_archived_reference_call_replay_keeps_the_recorded_events() -> None:
+    path = _ROOT / "reports" / "c2v09_pre_call_capsule" / "reference_call_evidence.json"
+    document = json.loads(path.read_bytes())
+    dossier = document["canonical_payload"]["dossier"]
+    newref = _decode_complete(
+        bytes.fromhex(dossier["newref"]["loaded_bytes_hex"]),
+        int(dossier["newref"]["address"], 16),
+    )
+    callee = _decode_complete(
+        bytes.fromhex(dossier["callee"]["loaded_bytes_hex"]),
+        int(dossier["callee"]["address"], 16),
+    )
+    assert newref is not None and callee is not None
+    stubs = []
+    for record in dossier["outlined_stubs"]:
+        decoded = _decode_complete(bytes.fromhex(record["loaded_bytes_hex"]), int(record["address"], 16))
+        assert decoded is not None
+        stubs.append(decoded)
+    analysis = analyze_reference_call(newref, callee, stubs)
+    proof = analysis["callee_proof"]
+    events = dossier["callee_events"]
+    assert proof["pushes"] == events["pushes"]
+    assert proof["pops"] == events["pops"]
+    assert proof["overwrites"] == events["overwrites"]
+    assert proof["outgoing_calls"] == events["outgoing_calls"]
+    assert proof["unresolved_exits"] == events["unresolved_exits"]
+    assert proof["returns"] == events["returns"]
+    assert proof["budget_exhausted"] is False
+    assert proof["established"] is False
+    assert analysis["preservation_established"] is False
+    assert analysis["no_call_path_preserves_r14_and_rbx"] is True
+    assert len(events["outgoing_calls"]) == 16
+    assert len(events["unresolved_exits"]) == 4
 
 
 def test_reference_call_record_is_not_the_measurement_commit() -> None:
