@@ -264,16 +264,16 @@ def _apply_transfer(registers: frozenset[str], insn: capstone.CsInsn) -> frozens
 
 
 def _slot_store(insn: capstone.CsInsn) -> bool:
-    dest_text, _src = _split_operand(insn.op_str)
-    return "+ 0x10]" in dest_text and insn.mnemonic in {"movsd", "mov", "movq"}
+    dest_text, src_text = _split_operand(insn.op_str)
+    return "+ 0x10]" in dest_text and "[" in dest_text and src_text is not None
 
 
 def _stores_tracked(insn: capstone.CsInsn, registers: frozenset[str] | set[str]) -> bool:
-    dest_text, src_text = _split_operand(insn.op_str)
-    if "+ 0x10]" not in dest_text or src_text is None:
+    if not _slot_store(insn):
         return False
+    _dest_text, src_text = _split_operand(insn.op_str)
     register = _canonical_register(_leading_register(src_text))
-    return register is not None and register in registers and insn.mnemonic in {"movsd", "mov", "movq"}
+    return register is not None and register in registers
 
 
 def _store_reaches_return(
@@ -1467,8 +1467,12 @@ def _fromdouble_store_reached(handler: Mapping[str, object], landing: int | None
     return _store_reaches_return(body, landing, frozenset({"xmm0"}))
 
 
-def _dispatch_continuation_closed(instructions: list[capstone.CsInsn], stored: bool) -> bool:
-    """The indirect dispatch is the endpoint. Any other open exit fails the continuation."""
+def _dispatch_continuation_closed(
+    instructions: list[capstone.CsInsn],
+    registers: frozenset[str],
+    stored: bool,
+) -> bool:
+    """The indirect dispatch is the endpoint. A later slot write must still hold the result."""
     if not stored:
         return False
     dispatch = _dispatch_addresses(instructions)
@@ -1477,33 +1481,41 @@ def _dispatch_continuation_closed(instructions: list[capstone.CsInsn], stored: b
     by_address = {insn.address: index for index, insn in enumerate(instructions)}
     inside = set(by_address)
     reached = False
-    seen: set[int] = set()
-    stack = [0]
+    seen: set[tuple[int, tuple[str, ...], bool]] = set()
+    stack: list[tuple[int, frozenset[str], bool]] = [(0, registers, stored)]
     while stack:
-        index = stack.pop()
-        if index in seen:
+        index, regs, slot = stack.pop()
+        state = (index, tuple(sorted(regs)), slot)
+        if state in seen:
             continue
-        seen.add(index)
+        seen.add(state)
         insn = instructions[index]
+        next_registers = _apply_transfer(regs, insn)
+        next_slot = _stores_tracked(insn, next_registers) if _slot_store(insn) else slot
         if insn.address in dispatch:
+            if not next_slot:
+                return False
             reached = True
             continue
         next_address = insn.address + insn.size
         if insn.mnemonic in _SCALAR or _is_fma(insn.mnemonic) or insn.mnemonic in {"call", "ret"}:
             return False
+        targets: list[int] = []
         if insn.mnemonic == "jmp" or (insn.mnemonic.startswith("j") and insn.mnemonic != "jmp"):
             target = _direct_target(insn)
             if target not in inside:
                 return False
-            stack.append(by_address[target])
+            targets.append(target)
             if insn.mnemonic != "jmp":
                 if next_address not in inside:
                     return False
-                stack.append(by_address[next_address])
-            continue
-        if next_address not in inside:
+                targets.append(next_address)
+        elif next_address not in inside:
             return False
-        stack.append(by_address[next_address])
+        else:
+            targets.append(next_address)
+        for target in targets:
+            stack.append((by_address[target], next_registers, next_slot))
     return reached
 
 
@@ -1567,7 +1579,11 @@ def _handler_path_status(handler: Mapping[str, object], kind: str) -> str:
                 return NOT_ESTABLISHED
             if kind_exit == "dispatch_cont":
                 continuation = None if target is None else external_dispatch.get(target)
-                if continuation is None or not _dispatch_continuation_closed(continuation, next_scalars == 1 and next_stored):
+                if continuation is None or not _dispatch_continuation_closed(
+                    continuation,
+                    next_registers,
+                    next_scalars == 1 and next_stored,
+                ):
                     return NOT_ESTABLISHED
                 completed = True
                 continue
@@ -1722,6 +1738,7 @@ def _conversion_flows(instructions: list[capstone.CsInsn], call_target: int, sou
     ]
     if not starts:
         return False
+    consumed = False
     seen: set[tuple[int, tuple[str, ...]]] = set()
     stack: list[tuple[int, frozenset[str]]] = [(index, frozenset({source})) for index in starts]
     while stack:
@@ -1732,8 +1749,9 @@ def _conversion_flows(instructions: list[capstone.CsInsn], call_target: int, sou
         seen.add(state)
         insn = instructions[index]
         if insn.mnemonic in _SCALAR:
-            if registers & _source_registers(insn):
-                return True
+            if not registers & _source_registers(insn):
+                return False
+            consumed = True
             continue
         next_registers = _apply_transfer(registers, insn)
         next_address = insn.address + insn.size
@@ -1750,7 +1768,7 @@ def _conversion_flows(instructions: list[capstone.CsInsn], call_target: int, sou
             targets.append(next_address)
         for target in targets:
             stack.append((by_address[target], next_registers))
-    return False
+    return consumed
 
 
 def _mixed_conversion_bound(arithmetic: Mapping[str, object], kind: str) -> bool:

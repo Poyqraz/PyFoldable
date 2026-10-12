@@ -304,6 +304,53 @@ def test_a_register_name_does_not_justify_excluding_a_branch() -> None:
     assert _handler_path_status(typed, "mul") == NOT_ESTABLISHED
 
 
+def test_dispatch_continuation_store_must_keep_the_computed_result() -> None:
+    handler = _bare("mul", "f20f104010f20f59c1f20f114010e9ed0f0000")
+    handler["completion"] = "next_opcode_dispatch"
+    handler["continuations"] = [
+        {
+            "address": "0x2000",
+            "loaded_bytes_hex": "f20f114810410fb645044d8972f04983ea084989df450fb65d054983c5044989c6488b04c560477800ffe0",
+        }
+    ]
+    assert _handler_path_status(handler, "mul") == NOT_ESTABLISHED
+
+
+def test_later_xmmword_store_drops_the_computed_result() -> None:
+    handler = _bare("mul", "f20f104010f20f59c1f20f1140100f294810c3")
+    assert _handler_path_status(handler, "mul") == NOT_ESTABLISHED
+
+
+def test_every_scalar_path_must_consume_the_converted_bits() -> None:
+    observations = _observations()
+    handler = _bare("mul", "e80ba75600740af20f59d3f20f115010c3f20f59c1f20f114010c3")
+    handler["continuations"] = [{"address": "0x56b710", "loaded_bytes_hex": "f20f2ac0c3"}]
+    observations["arithmetic"]["pid"] = 1
+    observations["arithmetic"]["thread_id"] = "7"
+    observations["arithmetic"]["generic_handlers"] = {"mul": handler}
+    observations["arithmetic"]["number_slots"] = {
+        "type_address": "0xa396c0",
+        "type_name_bytes_hex": "666c6f617400",
+        "basicsize": 24,
+        "tp_as_number": "0xabc000",
+        "slots": {"mul": {"index": 2, "target": "0x1000"}},
+    }
+    observations["arithmetic"]["operations"] = [
+        {
+            "qualname": "solve_bem_rotor.annulus_edge",
+            "kinds": ["mul"],
+            "categories": ["mixed_integer_float_multiply"],
+            "bytecode_window_establishes_semantics": False,
+        }
+    ]
+    observations["arithmetic"]["declared_annulus_count"] = 4
+    observations["arithmetic"]["specialized_handlers"] = {"mul": []}
+    observations["arithmetic"]["specialized_scan"] = "complete"
+    observations["arithmetic"]["unclassified_scalar_sites"] = 0
+    found = _by_name(classify_correspondence(observations))
+    assert found["interpreter binary64 arithmetic semantics"]["status"] == NOT_ESTABLISHED
+
+
 def test_specialized_handler_may_stop_at_a_loaded_dispatch_boundary() -> None:
     blob = "f20f104010f20f59c1f20f114010410fb645044d8972f04983ea084989df450fb65d054983c5044989c6488b04c560477800ffe0"
     handler = _bare("mul", blob)
