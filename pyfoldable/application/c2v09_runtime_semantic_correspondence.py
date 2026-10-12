@@ -1396,23 +1396,142 @@ def _target_in_range(target: int | None, start: int | None, end: int | None) -> 
     return start <= target < limit
 
 
-def _exit_excluded(handler: Mapping[str, object], instructions: list[capstone.CsInsn], index: int) -> bool:
-    """Exclude only a decoded type-slot mismatch. Syntax and immediates are not a premise."""
-    insn = instructions[index]
-    if insn.mnemonic not in {"jne", "jnz"} or index == 0:
+def _bracket_base_disp(text: str) -> tuple[str, int] | None:
+    """Base and displacement of [reg], [reg + disp], or [reg - disp]. Indexed forms are unsupported."""
+    if "[" not in text or "]" not in text:
+        return None
+    inner = text[text.find("[") + 1:text.rfind("]")].strip()
+    if "," in inner or "*" in inner or "rip" in inner:
+        return None
+    if " + " in inner:
+        base, disp = inner.split(" + ", 1)
+        try:
+            return base.strip(), int(disp, 0)
+        except ValueError:
+            return None
+    if " - " in inner:
+        base, disp = inner.split(" - ", 1)
+        try:
+            return base.strip(), -int(disp, 0)
+        except ValueError:
+            return None
+    if _register_width(inner) is None:
+        return None
+    return inner, 0
+
+
+def _pointer_update(
+    pointers: frozenset[tuple[str, int]],
+    insn: capstone.CsInsn,
+) -> frozenset[tuple[str, int]]:
+    """Track full-width copies and constant displacements from the ABI operand pointers."""
+    if insn.mnemonic in {"cmp", "test", "ucomisd", "comisd", "vucomisd", "vcomisd"} or insn.mnemonic.startswith("j"):
+        return pointers
+    known = dict(pointers)
+    if insn.mnemonic == "call":
+        return frozenset((reg, offset) for reg, offset in known.items() if reg not in _VOLATILE)
+    dest_text, src_text = _split_operand(insn.op_str)
+    dest = _register_width(_leading_register(dest_text))
+    src = _register_width(_leading_register(src_text))
+    if dest is None or dest[0].startswith("xmm"):
+        return pointers
+    if insn.mnemonic in {"xchg", "xadd"}:
+        known.pop(dest[0], None)
+        if src is not None and not src[0].startswith("xmm"):
+            known.pop(src[0], None)
+        return frozenset(known.items())
+    if dest[1] != 64:
+        known.pop(dest[0], None)
+        return frozenset(known.items())
+    if insn.mnemonic == "mov" and "[" not in dest_text and src is not None and src[1] == 64 and src[0] in known:
+        known[dest[0]] = known[src[0]]
+        return frozenset(known.items())
+    if insn.mnemonic == "lea" and src_text is not None:
+        parsed = _bracket_base_disp(src_text)
+        base = None if parsed is None else _register_width(parsed[0])
+        if parsed is not None and base is not None and base[1] == 64 and base[0] in known:
+            known[dest[0]] = known[base[0]] + parsed[1]
+            return frozenset(known.items())
+    if insn.mnemonic in {"add", "sub"} and dest[0] in known and src_text is not None and src_text.startswith(("0x", "-")):
+        try:
+            immediate = int(src_text, 0)
+        except ValueError:
+            immediate = None
+        if immediate is not None:
+            if insn.mnemonic == "sub":
+                immediate = -immediate
+            known[dest[0]] = known[dest[0]] + immediate
+            return frozenset(known.items())
+    known.pop(dest[0], None)
+    return frozenset(known.items())
+
+
+def _pointer_states(instructions: list[capstone.CsInsn]) -> dict[int, set[frozenset[tuple[str, int]]]]:
+    """Pointer states on arrival. ABI rdi and rsi are the admitted operand pointers."""
+    initial = frozenset({("rdi", 0), ("rsi", 0)})
+    arriving: dict[int, set[frozenset[tuple[str, int]]]] = {0: {initial}}
+    seen: set[tuple[int, tuple[tuple[str, int], ...]]] = set()
+    stack: list[tuple[int, frozenset[tuple[str, int]]]] = [(0, initial)]
+    while stack:
+        index, pointers = stack.pop()
+        key = (index, tuple(sorted(pointers)))
+        if key in seen or index >= len(instructions):
+            continue
+        seen.add(key)
+        insn = instructions[index]
+        updated = _pointer_update(pointers, insn)
+        next_address = insn.address + insn.size
+        targets: list[int] = []
+        if insn.mnemonic == "ret":
+            continue
+        if insn.mnemonic == "jmp" or (insn.mnemonic.startswith("j") and insn.mnemonic != "jmp"):
+            target = _direct_target(insn)
+            if target is not None:
+                targets.append(target)
+            if insn.mnemonic != "jmp":
+                targets.append(next_address)
+        else:
+            targets.append(next_address)
+        by_address = {item.address: position for position, item in enumerate(instructions)}
+        for target in targets:
+            successor = by_address.get(target)
+            if successor is None:
+                continue
+            arriving.setdefault(successor, set()).add(updated)
+            stack.append((successor, updated))
+    return arriving
+
+
+def _compared_type_slot(compared: str, pointers: frozenset[tuple[str, int]]) -> bool:
+    parsed = _bracket_base_disp(compared)
+    if parsed is None or not compared.startswith("qword ptr ["):
         return False
-    if _direct_target(insn) is None:
+    base = _register_width(parsed[0])
+    if base is None or base[1] != 64:
+        return False
+    known = dict(pointers)
+    if base[0] not in known:
+        return False
+    return known[base[0]] + parsed[1] == 8
+
+
+def _exit_excluded(handler: Mapping[str, object], instructions: list[capstone.CsInsn], index: int) -> bool:
+    """Exclude a not-equal branch only when every arrival compares an admitted operand's type slot."""
+    insn = instructions[index]
+    if insn.mnemonic not in {"jne", "jnz"} or index == 0 or _direct_target(insn) is None:
         return False
     predecessor = instructions[index - 1]
     type_address = _hex_int(handler.get("float_type_address"))
-    compared = predecessor.op_str
-    return bool(
-        type_address is not None
-        and predecessor.mnemonic == "cmp"
-        and compared.startswith("qword ptr [")
-        and ("+ 8]" in compared or "+ 0x8]" in compared)
-        and hex(type_address) in _operand_tokens(compared)
-    )
+    if (
+        type_address is None
+        or predecessor.mnemonic != "cmp"
+        or hex(type_address) not in _operand_tokens(predecessor.op_str)
+    ):
+        return False
+    arrivals = _pointer_states(instructions).get(index, set())
+    if not arrivals:
+        return False
+    return all(_compared_type_slot(predecessor.op_str, pointers) for pointers in arrivals)
 
 
 def _dispatch_addresses(instructions: list[capstone.CsInsn]) -> set[int]:

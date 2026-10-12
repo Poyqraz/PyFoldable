@@ -14,6 +14,8 @@ from pyfoldable.application.c2v09_runtime_semantic_correspondence import (
     NOT_ESTABLISHED,
     _handler_path_status,
     _handler_status,
+    _exit_excluded,
+    _handler_instructions,
     _store_reaches_return,
     _decode_complete,
     classify_correspondence,
@@ -269,13 +271,65 @@ def test_compare_syntax_does_not_exclude_the_branch() -> None:
     assert _handler_path_status(handler, "mul") == NOT_ESTABLISHED
 
 
+def _typed_mul(blob: str) -> dict[str, object]:
+    handler = _bare("mul", blob)
+    handler["float_type_address"] = "0xa396c0"
+    return handler
+
+
+def _arithmetic_status(handler: dict[str, object]) -> str:
+    observations = _observations()
+    observations["arithmetic"]["pid"] = 1
+    observations["arithmetic"]["thread_id"] = "7"
+    observations["arithmetic"]["generic_handlers"] = {"mul": handler}
+    observations["arithmetic"]["specialized_handlers"] = {"mul": []}
+    observations["arithmetic"]["specialized_scan"] = "complete"
+    observations["arithmetic"]["unclassified_scalar_sites"] = 0
+    observations["arithmetic"]["declared_annulus_count"] = 4
+    observations["arithmetic"]["operations"] = [
+        {
+            "qualname": "solve_bem_rotor.midpoint",
+            "kinds": ["mul"],
+            "categories": ["float_float"],
+            "bytecode_window_establishes_semantics": False,
+        }
+    ]
+    found = _by_name(classify_correspondence(observations))
+    return str(found["interpreter binary64 arithmetic semantics"]["status"])
+
+
+def _assert_type_exit_rejected(blob: str) -> None:
+    handler = _typed_mul(blob)
+    instructions = _handler_instructions(handler)
+    assert instructions is not None
+    compared = next(index for index, insn in enumerate(instructions) if insn.mnemonic == "jne")
+    assert _exit_excluded(handler, instructions, compared) is False
+    assert _handler_status(handler, "mul") == NOT_ESTABLISHED
+    assert _arithmetic_status(handler) == NOT_ESTABLISHED
+
+
+def test_shifted_pointer_is_not_the_operand_type_slot() -> None:
+    _assert_type_exit_rejected(
+        "4889f84883c01048817808c096a30075204883e810f20f104010f20f59c1f20f114010c3"
+    )
+    _assert_type_exit_rejected("488d471048817808c096a3007520f20f104010f20f59c1f20f114010c3")
+    _assert_type_exit_rejected("4889f84889d048817808c096a3007520f20f104010f20f59c1f20f114010c3")
+    _assert_type_exit_rejected("89f848817808c096a3007520f20f104010f20f59c1f20f114010c3")
+    _assert_type_exit_rejected("4889f874044883c01048817808c096a300750ff20f104010f20f59c1f20f114010c3")
+
+
+def test_full_width_operand_copy_reaches_the_type_slot() -> None:
+    handler = _typed_mul("4889f848817808c096a300750ff20f104010f20f59c1f20f114010c3")
+    assert _handler_status(handler, "mul") == ESTABLISHED_CONDITIONALLY
+    assert _arithmetic_status(handler) == ESTABLISHED_CONDITIONALLY
+
+
 def test_float_type_exclusion_needs_the_decoded_type_slot() -> None:
     scalar = "f20f104010f20f59c1f20f114010c3"
-    matched = _bare("mul", "48817808c096a300750f" + scalar)
-    matched["float_type_address"] = "0xa396c0"
-    assert _handler_path_status(matched, "mul") == ESTABLISHED_CONDITIONALLY
-    other_slot = _bare("mul", "48817810c096a300750f" + scalar)
-    other_slot["float_type_address"] = "0xa396c0"
+    matched = _typed_mul("48817808c096a300750f" + scalar)
+    assert _handler_path_status(matched, "mul") == NOT_ESTABLISHED
+    assert _arithmetic_status(matched) == NOT_ESTABLISHED
+    other_slot = _typed_mul("48817810c096a300750f" + scalar)
     assert _handler_path_status(other_slot, "mul") == NOT_ESTABLISHED
 
 
