@@ -1061,13 +1061,16 @@ def _handler_path_status(handler: Mapping[str, object], kind: str) -> str:
             if not insn.op_str.startswith("0x"):
                 continue
             target = int(insn.op_str, 16)
+            taken = False
             if target in inside:
                 successors.setdefault(index, []).append(target)
+                taken = True
             elif target in returns:
                 successors.setdefault(index, []).append(returns[target])
+                taken = True
             elif target in excluded and mnemonic != "jmp":
-                pass
-            if mnemonic != "jmp" and next_address in inside:
+                taken = True
+            if taken and mnemonic != "jmp" and next_address in inside:
                 successors.setdefault(index, []).append(next_address)
             continue
         if next_address in inside:

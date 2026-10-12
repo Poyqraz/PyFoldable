@@ -12,6 +12,7 @@ from pyfoldable.application.c2v09_runtime_semantic_correspondence import (
     ESTABLISHED_CONDITIONALLY,
     MISMATCHED,
     NOT_ESTABLISHED,
+    _handler_path_status,
     classify_correspondence,
     _decoded_store,
     nextafter_got_resolved,
@@ -184,6 +185,15 @@ def test_trailing_e8_range_is_not_established() -> None:
     observations["arithmetic"]["generic_handlers"]["mul"] = handler
     found = _by_name(classify_correspondence(observations))
     assert found["interpreter binary64 arithmetic semantics"]["status"] == NOT_ESTABLISHED
+
+
+def test_unresolved_conditional_blocks_the_fallthrough() -> None:
+    handler = {
+        "address": "0x1000",
+        "loaded_bytes_hex": "f20f58c10f8500100000f20f114010c3",
+        "loaded_bytes_match_file": True,
+    }
+    assert _handler_path_status(handler, "add") == NOT_ESTABLISHED
 
 
 def test_unresolved_side_branch_does_not_complete_the_store_path() -> None:
