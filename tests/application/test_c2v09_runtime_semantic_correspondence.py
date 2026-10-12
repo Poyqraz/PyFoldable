@@ -12,6 +12,7 @@ from pyfoldable.application.c2v09_runtime_semantic_correspondence import (
     MISMATCHED,
     NOT_ESTABLISHED,
     classify_correspondence,
+    nextafter_got_resolved,
     prepare_runtime_semantic_correspondence,
     replay_handler_scalars,
 )
@@ -171,6 +172,32 @@ def test_complete_observation_is_conditional_and_not_admitted() -> None:
     matrix = result["argument_to_evidence"]
     assert isinstance(matrix, list)
     assert {row["hypothesis"] for row in matrix} == set(_HYPOTHESES)
+
+
+def test_stored_handler_bytes_override_a_clean_claim() -> None:
+    observations = _observations()
+    sequential = bytes.fromhex("f20f58c1f20f58c1c3")
+    handler = _handler("add", "addsd")
+    handler["address"] = "0x1000"
+    handler["loaded_bytes_hex"] = sequential.hex()
+    observations["arithmetic"]["generic_handlers"]["add"] = handler
+    found = _by_name(classify_correspondence(observations))
+    assert found["interpreter binary64 arithmetic semantics"]["status"] == NOT_ESTABLISHED
+    fused = bytes.fromhex("c4e2f1a9c0c3")
+    handler = _handler("add", "addsd")
+    handler["address"] = "0x1000"
+    handler["loaded_bytes_hex"] = fused.hex()
+    observations["arithmetic"]["generic_handlers"]["add"] = handler
+    found = _by_name(classify_correspondence(observations))
+    assert found["interpreter binary64 arithmetic semantics"]["status"] == MISMATCHED
+
+
+def test_endbr_plt_slot_is_not_a_resolved_nextafter() -> None:
+    stub = bytes.fromhex("f30f1efaff2500000000")
+    target = 0x2000
+    assert nextafter_got_resolved(target, target + 10, stub) is False
+    assert nextafter_got_resolved(target, target + 6, stub) is False
+    assert nextafter_got_resolved(target, 0x8000, stub) is True
 
 
 def test_fused_handler_is_mismatched() -> None:

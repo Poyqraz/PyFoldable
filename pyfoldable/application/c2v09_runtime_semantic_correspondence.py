@@ -342,13 +342,15 @@ def _capture_specialized_handlers(image: str, from_double: int | None) -> tuple[
         checked = any(item.mnemonic == "cmp" for item in before)
         inplace = any(item.mnemonic == "movsd" and "+ 0x10]" in item.op_str and item.op_str.endswith(", xmm0") for item in after)
         stored = inplace or _follows_from_double(instructions, index, from_double)
-        fused = any(_is_fma(item.mnemonic) or item.mnemonic in _SCALAR for item in before[-4:] + after[:6])
+        checked_before = before[-8:]
+        checked_after = after[:8]
+        fused = any(_is_fma(item.mnemonic) or item.mnemonic in _SCALAR for item in checked_before + checked_after)
         if not loaded or not checked or not stored or fused:
             unclassified += 1
             continue
         kind = _KIND_BY_MNEMONIC[insn.mnemonic]
-        start = before[0].address if before else insn.address
-        stop = (after[-1].address + after[-1].size) if after else insn.address + insn.size
+        start = checked_before[0].address if checked_before else insn.address
+        stop = (checked_after[-1].address + checked_after[-1].size) if checked_after else insn.address + insn.size
         window = _readable_process_bytes(start, stop - start)
         grouped[kind].append(
             {
@@ -496,7 +498,13 @@ def _capture_terminal_guard(image: str) -> dict[str, object]:
         target = None
         if isinstance(edges, list) and edges and isinstance(edges[0], Mapping) and isinstance(edges[0].get("target"), str):
             target = int(str(edges[0]["target"]), 16)
-        resolved = qword is not None and target is not None and qword != target and qword != target + 6
+        stub = _readable_process_bytes(target, 16) if target is not None else None
+        resolved = (
+            qword is not None
+            and target is not None
+            and stub is not None
+            and nextafter_got_resolved(target, qword, stub)
+        )
         record["got_resolved"] = resolved
         if resolved and qword is not None:
             body = _readable_process_bytes(qword, 0x180)
@@ -578,23 +586,56 @@ def _controls_ok(observations: Mapping[str, object]) -> bool:
     )
 
 
+def _instructions_from_handler(handler: Mapping[str, object]) -> list[capstone.CsInsn] | None:
+    blob = handler.get("loaded_bytes_hex")
+    address = handler.get("address")
+    if not isinstance(blob, str) or not blob or not isinstance(address, str):
+        return None
+    try:
+        instructions = _cut_at_next_function(_disassemble(bytes.fromhex(blob), int(address, 16)))
+    except ValueError:
+        return None
+    return instructions or None
+
+
 def _handler_status(handler: Mapping[str, object], kind: str) -> str:
-    mnemonics = handler.get("scalar_mnemonics")
-    if not isinstance(mnemonics, list) or not mnemonics:
+    has_bytes = isinstance(handler.get("loaded_bytes_hex"), str) and bool(handler.get("loaded_bytes_hex"))
+    instructions = _instructions_from_handler(handler)
+    if has_bytes and not instructions:
         return NOT_ESTABLISHED
-    kinds = [_KIND_BY_MNEMONIC.get(str(item)) for item in mnemonics]
-    if any(item != kind for item in kinds):
+    if instructions is not None:
+        mnemonics = [insn.mnemonic for insn in instructions if insn.mnemonic in _SCALAR]
+        fma = [insn.mnemonic for insn in instructions if _is_fma(insn.mnemonic)]
+        one_path = _one_scalar_per_path(instructions)
+        loads_ob_fval = any(insn.mnemonic == "movsd" and "+ 0x10]" in insn.op_str for insn in instructions)
+        store = _store_kind(instructions, None)
+    else:
+        claimed = handler.get("scalar_mnemonics")
+        mnemonics = [str(item) for item in claimed] if isinstance(claimed, list) else []
+        claimed_fma = handler.get("fma_mnemonics")
+        fma = [str(item) for item in claimed_fma] if isinstance(claimed_fma, list) else []
+        one_path = handler.get("paths_execute_one_scalar_op")
+        loads_ob_fval = handler.get("ob_fval_load") is True
+        store = handler.get("store")
+    if fma:
         return MISMATCHED
-    if handler.get("fma_mnemonics"):
-        return MISMATCHED
-    if handler.get("loaded_bytes_match_file") is not True or handler.get("paths_execute_one_scalar_op") is not True:
+    if not mnemonics or any(_KIND_BY_MNEMONIC.get(item) != kind for item in mnemonics):
+        return MISMATCHED if mnemonics else NOT_ESTABLISHED
+    if one_path is not True or loads_ob_fval is not True or handler.get("loaded_bytes_match_file") is not True:
         return NOT_ESTABLISHED
-    if handler.get("ob_fval_load") is not True:
-        return NOT_ESTABLISHED
-    store = handler.get("store")
     if store not in {"PyFloat_FromDouble", "in-place ob_fval", "in-place ob_fval or PyFloat_FromDouble", "ob_fval"}:
         return NOT_ESTABLISHED
     return ESTABLISHED_CONDITIONALLY
+
+
+def nextafter_got_resolved(target: int, qword: int, stub: bytes) -> bool:
+    """An unresolved PLT slot, including an endbr64 stub, is not the selected body."""
+    if not stub or qword == 0:
+        return False
+    prefix = 4 if stub.startswith(b"\xf3\x0f\x1e\xfa") else 0
+    if qword == target or qword == target + prefix + 6 or target <= qword < target + len(stub):
+        return False
+    return plt_got_address(stub, target) is not None
 
 
 def _arithmetic_argument(observations: Mapping[str, object]) -> dict[str, object]:
