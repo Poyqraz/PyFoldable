@@ -75,6 +75,7 @@ def _observations() -> dict[str, object]:
             "mxcsr_daz": False,
             "mxcsr_rounding": "nearest ties-to-even",
             "fegetround": "0",
+            "pid": 1,
             "thread_id": "7",
         },
         "arithmetic": {
@@ -185,6 +186,185 @@ def test_trailing_e8_range_is_not_established() -> None:
     observations["arithmetic"]["generic_handlers"]["mul"] = handler
     found = _by_name(classify_correspondence(observations))
     assert found["interpreter binary64 arithmetic semantics"]["status"] == NOT_ESTABLISHED
+
+
+def _bare(kind: str, blob: str, address: str = "0x1000") -> dict[str, object]:
+    return {
+        "kind": kind,
+        "address": address,
+        "loaded_bytes_hex": blob,
+        "loaded_bytes_match_file": True,
+    }
+
+
+def test_one_return_cannot_hide_an_unresolved_exit() -> None:
+    handler = _bare("mul", "f20f104010f20f59c1f20f1140107402eb20c3")
+    handler["excluded_branches"] = [{"target": "0x1032", "assumption": "this branch is not taken"}]
+    assert _handler_path_status(handler, "mul") == NOT_ESTABLISHED
+
+
+def test_assumption_text_does_not_exclude_a_conditional_exit() -> None:
+    handler = _bare("mul", "83f80f7710f20f104010f20f59c1f20f114010c3")
+    handler["excluded_branches"] = [{"target": "0x1015", "assumption": "the declared count makes this branch impossible"}]
+    assert _handler_path_status(handler, "mul") == NOT_ESTABLISHED
+
+
+def test_decoded_condition_can_exclude_only_the_branch_it_matches() -> None:
+    handler = _bare("mul", "83f80f7710f20f104010f20f59c1f20f114010c3")
+    handler["excluded_branches"] = [
+        {
+            "target": "0x1015",
+            "condition": {"mnemonic": "cmp", "branch": "ja", "operand": "0xf"},
+        }
+    ]
+    assert _handler_path_status(handler, "mul") == ESTABLISHED_CONDITIONALLY
+
+
+def test_specialized_handler_may_stop_at_a_loaded_dispatch_boundary() -> None:
+    blob = "f20f104010f20f59c1f20f114010410fb645044d8972f04983ea084989df450fb65d054983c5044989c6488b04c560477800ffe0"
+    handler = _bare("mul", blob)
+    handler["completion"] = "next_opcode_dispatch"
+    assert _handler_path_status(handler, "mul") == ESTABLISHED_CONDITIONALLY
+    handler["completion"] = "return"
+    assert _handler_path_status(handler, "mul") == NOT_ESTABLISHED
+    bare = _bare("mul", "f20f104010f20f59c1f20f114010ffe0")
+    bare["completion"] = "next_opcode_dispatch"
+    assert _handler_path_status(bare, "mul") == NOT_ESTABLISHED
+
+
+def test_stored_register_must_hold_the_computed_result() -> None:
+    handler = _bare("mul", "f20f104010f20f59c1f20f115010c3")
+    assert _handler_path_status(handler, "mul") == NOT_ESTABLISHED
+
+
+def test_uncalled_conversion_continuation_does_not_bind_the_mixed_path() -> None:
+    observations = _observations()
+    handler = _bare("mul", "f20f104010f20f59c1f20f114010c3")
+    handler["continuations"] = [
+        {"address": "0x9999", "loaded_bytes_hex": "f20f2ac0c3"},
+    ]
+    observations["arithmetic"]["pid"] = 1
+    observations["arithmetic"]["thread_id"] = "7"
+    observations["arithmetic"]["generic_handlers"] = {"mul": handler}
+    observations["arithmetic"]["number_slots"] = {
+        "type_address": "0xa396c0",
+        "type_name_bytes_hex": "666c6f617400",
+        "basicsize": 24,
+        "tp_as_number": "0xabc000",
+        "slots": {"mul": {"index": 2, "target": "0x1000"}},
+    }
+    observations["arithmetic"]["operations"] = [
+        {
+            "qualname": "solve_bem_rotor.annulus_edge",
+            "kinds": ["mul"],
+            "categories": ["mixed_integer_float_multiply"],
+            "bytecode_window_establishes_semantics": False,
+        }
+    ]
+    observations["arithmetic"]["declared_annulus_count"] = 4
+    observations["arithmetic"]["specialized_handlers"] = {"mul": []}
+    observations["arithmetic"]["specialized_scan"] = "complete"
+    observations["arithmetic"]["unclassified_scalar_sites"] = 0
+    found = _by_name(classify_correspondence(observations))
+    arithmetic = found["interpreter binary64 arithmetic semantics"]
+    assert arithmetic["status"] == NOT_ESTABLISHED
+    assert any("mixed integer/float" in str(item) for item in arithmetic["gaps"])
+
+
+def test_called_conversion_result_flows_into_the_scalar() -> None:
+    observations = _observations()
+    handler = _bare("mul", "e80ba75600f20f59c1f20f114010c3")
+    handler["continuations"] = [
+        {"address": "0x9999", "loaded_bytes_hex": "f20f2ac0c3"},
+        {"address": "0x56b710", "loaded_bytes_hex": "f20f2ac0c3"},
+    ]
+    observations["arithmetic"]["pid"] = 1
+    observations["arithmetic"]["thread_id"] = "7"
+    observations["arithmetic"]["generic_handlers"] = {"mul": handler}
+    observations["arithmetic"]["number_slots"] = {
+        "type_address": "0xa396c0",
+        "type_name_bytes_hex": "666c6f617400",
+        "basicsize": 24,
+        "tp_as_number": "0xabc000",
+        "slots": {"mul": {"index": 2, "target": "0x1000"}},
+    }
+    observations["arithmetic"]["operations"] = [
+        {
+            "qualname": "solve_bem_rotor.annulus_edge",
+            "kinds": ["mul"],
+            "categories": ["mixed_integer_float_multiply"],
+            "bytecode_window_establishes_semantics": False,
+        }
+    ]
+    observations["arithmetic"]["declared_annulus_count"] = 4
+    observations["arithmetic"]["specialized_handlers"] = {"mul": []}
+    observations["arithmetic"]["specialized_scan"] = "complete"
+    observations["arithmetic"]["unclassified_scalar_sites"] = 0
+    found = _by_name(classify_correspondence(observations))
+    assert found["interpreter binary64 arithmetic semantics"]["status"] == ESTABLISHED_CONDITIONALLY
+
+
+def test_wrapper_that_only_calls_asdouble_does_not_store_the_result() -> None:
+    observations = _observations()
+    observations["conversion"] = {
+        "wrapper_address": "0x1000",
+        "wrapper_bytes_hex": "e8fb0f0000c3",
+        "asdouble_address": "0x2000",
+        "asdouble_bytes_hex": "f20f104010c3",
+        "fromdouble_address": "0x3000",
+        "fromdouble_bytes_hex": "66490f7ec64c897310c3",
+        "fromdouble_end": "0x300a",
+        "pid": 1,
+        "thread_id": "7",
+    }
+    found = _by_name(classify_correspondence(observations))
+    conversion = found["PyFloat_AsDouble conversion semantics"]
+    assert conversion["status"] == NOT_ESTABLISHED
+    assert any("PyFloat_FromDouble" in str(item) for item in conversion["gaps"])
+
+
+def test_nextafter_chain_must_match_the_observed_qword() -> None:
+    observations = _observations()
+    observations["terminal_guard"] = {
+        "bind_now": True,
+        "ulp_function_calls": 0,
+        "nextafter_function_calls": 0,
+        "output_sampled": False,
+        "unchanged_guard_ulps": 2,
+        "allowance_recomputed": False,
+        "independent_symbol_establishes_selected_path": False,
+        "wrapper_address": "0x1000",
+        "wrapper_bytes_hex": "e8fb0f0000f20f5cc1c3",
+        "plt_address": "0x2000",
+        "plt_stub_bytes_hex": "ff2500000000",
+        "got_slot": "0x2006",
+        "got_qword_hex": "0030000000000000",
+        "selected_address": "0x3000",
+        "selected_body_bytes_hex": "3dffffef7f7601c383c101750383c201c3",
+        "pid": 1,
+        "thread_id": "7",
+    }
+    found = _by_name(classify_correspondence(observations))
+    guard = found["selected nextafter semantics"]
+    assert guard["status"] == ESTABLISHED_CONDITIONALLY
+    assert guard["ulp"] == "2^-56"
+    assert guard["two_ulp_allowance"] == "2^-55"
+    assert guard["unchanged_guard_ulps"] == 2
+    observations["terminal_guard"]["got_slot"] = "0xdead"
+    found = _by_name(classify_correspondence(observations))
+    assert found["selected nextafter semantics"]["status"] == NOT_ESTABLISHED
+    observations["terminal_guard"]["got_slot"] = "0x2006"
+    observations["terminal_guard"]["selected_address"] = "0x1111"
+    found = _by_name(classify_correspondence(observations))
+    assert found["selected nextafter semantics"]["status"] == NOT_ESTABLISHED
+    observations["terminal_guard"]["selected_address"] = "0x3000"
+    observations["terminal_guard"]["pid"] = 99
+    found = _by_name(classify_correspondence(observations))
+    assert found["selected nextafter semantics"]["status"] == NOT_ESTABLISHED
+    observations["terminal_guard"]["pid"] = 1
+    observations["terminal_guard"].pop("thread_id")
+    found = _by_name(classify_correspondence(observations))
+    assert found["selected nextafter semantics"]["status"] == NOT_ESTABLISHED
 
 
 def test_unresolved_conditional_blocks_the_fallthrough() -> None:

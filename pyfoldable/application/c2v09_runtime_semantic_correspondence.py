@@ -184,16 +184,134 @@ def _cut_at_next_function(instructions: list[capstone.CsInsn]) -> list[capstone.
     return instructions
 
 
-def _result_bits_stored(instructions: list[capstone.CsInsn]) -> bool:
-    """A scalar result moved into a general register and stored at ob_fval."""
-    moved: set[str] = set()
-    for insn in instructions:
-        if insn.mnemonic == "movq" and ", xmm" in insn.op_str:
-            moved.add(insn.op_str.split(",", 1)[0].strip())
-        if insn.mnemonic == "mov" and "+ 0x10]" in insn.op_str and "," in insn.op_str:
-            if insn.op_str.split(",", 1)[1].strip() in moved:
-                return True
-    return False
+_COPY_MNEMONICS = frozenset({"movsd", "movapd", "movaps", "movq", "movdqa"})
+_WRITE_MNEMONICS = _COPY_MNEMONICS | frozenset({
+    "mov", "add", "sub", "xor", "and", "or", "imul", "lea", "pxor", "xorpd", "andpd", "andps",
+    "orpd", "pop", "inc", "dec", "shl", "shr", "sar", "neg", "not",
+})
+_VOLATILE = frozenset({"rax", "rcx", "rdx", "rsi", "rdi", "r8", "r9", "r10", "r11"})
+_REGISTER_ALIASES = {
+    "eax": "rax", "ecx": "rcx", "edx": "rdx", "ebx": "rbx",
+    "esi": "rsi", "edi": "rdi", "ebp": "rbp", "esp": "rsp",
+    "r8d": "r8", "r9d": "r9", "r10d": "r10", "r11d": "r11",
+    "r12d": "r12", "r13d": "r13", "r14d": "r14", "r15d": "r15",
+}
+
+
+def _split_operand(op_str: str) -> tuple[str, str | None]:
+    if "," not in op_str:
+        return op_str.strip(), None
+    dest, src = op_str.split(",", 1)
+    return dest.strip(), src.strip()
+
+
+def _leading_register(operand: str | None) -> str | None:
+    if operand is None or not operand:
+        return None
+    if "[" in operand or operand.startswith(("qword", "dword", "word", "byte", "xmmword")):
+        return None
+    return operand.split()[0]
+
+
+def _canonical_register(name: str | None) -> str | None:
+    if name is None:
+        return None
+    return _REGISTER_ALIASES.get(name, name)
+
+
+def _operand_tokens(op_str: str) -> set[str]:
+    return {token.strip() for token in op_str.replace(",", " ").split() if token.strip()}
+
+
+def _direct_target(insn: capstone.CsInsn) -> int | None:
+    if not insn.op_str.startswith("0x"):
+        return None
+    return int(insn.op_str, 16)
+
+
+def _scalar_dest(insn: capstone.CsInsn) -> str | None:
+    dest, _src = _split_operand(insn.op_str)
+    register = _canonical_register(_leading_register(dest))
+    if register is not None and register.startswith("xmm"):
+        return register
+    return None
+
+
+def _apply_transfer(registers: frozenset[str], insn: capstone.CsInsn) -> frozenset[str]:
+    """Copy a computed result through a supported move. Other writes drop it."""
+    current = set(registers)
+    dest_text, src_text = _split_operand(insn.op_str)
+    dest = _canonical_register(_leading_register(dest_text))
+    src = _canonical_register(_leading_register(src_text))
+    copied = False
+    if insn.mnemonic in _COPY_MNEMONICS and dest is not None and src is not None and src in current:
+        current.add(dest)
+        copied = True
+    elif insn.mnemonic == "mov" and dest is not None and src is not None and "[" not in dest_text and src in current:
+        current.add(dest)
+        copied = True
+    if dest is not None and dest in current and not copied and insn.mnemonic in _WRITE_MNEMONICS:
+        current.discard(dest)
+    if insn.mnemonic == "call":
+        current = {name for name in current if not name.startswith("xmm") and name not in _VOLATILE}
+    return frozenset(current)
+
+
+def _stores_tracked(insn: capstone.CsInsn, registers: frozenset[str] | set[str]) -> bool:
+    dest_text, src_text = _split_operand(insn.op_str)
+    if "+ 0x10]" not in dest_text or src_text is None:
+        return False
+    register = _canonical_register(_leading_register(src_text))
+    return register is not None and register in registers and insn.mnemonic in {"movsd", "mov", "movq"}
+
+
+def _store_reaches_return(
+    instructions: list[capstone.CsInsn],
+    entry: int,
+    initial: frozenset[str],
+) -> bool:
+    """The finite path stores the tracked bits and returns, with no open exit."""
+    if not instructions:
+        return False
+    by_address = {insn.address: index for index, insn in enumerate(instructions)}
+    if entry not in by_address:
+        return False
+    inside = set(by_address)
+    completed = False
+    seen: set[tuple[int, tuple[str, ...], bool]] = set()
+    stack: list[tuple[int, frozenset[str], bool]] = [(by_address[entry], initial, False)]
+    while stack:
+        index, registers, stored = stack.pop()
+        state = (index, tuple(sorted(registers)), stored)
+        if state in seen:
+            continue
+        seen.add(state)
+        insn = instructions[index]
+        next_registers = _apply_transfer(registers, insn)
+        next_stored = stored or _stores_tracked(insn, next_registers)
+        next_address = insn.address + insn.size
+        if insn.mnemonic == "ret":
+            if next_stored:
+                completed = True
+                continue
+            return False
+        exits: list[int | None] = []
+        if insn.mnemonic == "jmp" or (insn.mnemonic.startswith("j") and insn.mnemonic != "jmp"):
+            target = _direct_target(insn)
+            if target not in inside:
+                return False
+            exits.append(target)
+            if insn.mnemonic != "jmp":
+                exits.append(next_address if next_address in inside else None)
+        elif insn.mnemonic == "call":
+            exits.append(next_address if next_address in inside else None)
+        else:
+            exits.append(next_address if next_address in inside else None)
+        for target in exits:
+            if target is None:
+                return False
+            stack.append((by_address[target], next_registers, next_stored))
+    return completed
 
 
 def _store_kind(
@@ -203,20 +321,40 @@ def _store_kind(
 ) -> str:
     reaches_from = False
     inplace = False
+    bit_store = False
+    registers: frozenset[str] = frozenset()
+    seen_scalar = False
     end = from_double + 1 if from_double is not None and from_double_end is None else from_double_end
     for insn in instructions:
-        if insn.mnemonic in {"call", "jmp"} and insn.op_str.startswith("0x") and from_double is not None and end is not None:
-            target = int(insn.op_str, 16)
-            if from_double <= target < end:
-                reaches_from = True
-        if insn.mnemonic == "movsd" and "+ 0x10]" in insn.op_str and ", xmm" in insn.op_str:
-            inplace = True
-    stored = _result_bits_stored(instructions)
-    if reaches_from and (inplace or stored):
+        incoming = registers
+        if insn.mnemonic in _SCALAR:
+            dest = _scalar_dest(insn)
+            registers = frozenset({dest}) if dest is not None else frozenset()
+            seen_scalar = True
+            continue
+        registers = _apply_transfer(registers, insn)
+        if not seen_scalar:
+            continue
+        if _stores_tracked(insn, registers):
+            if insn.mnemonic == "movsd":
+                inplace = True
+            else:
+                bit_store = True
+        target = _direct_target(insn)
+        if (
+            insn.mnemonic in {"call", "jmp"}
+            and target is not None
+            and from_double is not None
+            and end is not None
+            and from_double <= target < end
+            and "xmm0" in incoming
+        ):
+            reaches_from = True
+    if reaches_from and (inplace or bit_store):
         return "in-place ob_fval or PyFloat_FromDouble"
     if reaches_from:
         return "PyFloat_FromDouble"
-    if inplace or stored:
+    if inplace or bit_store:
         return "ob_fval"
     return "not traced"
 
@@ -378,6 +516,9 @@ def _capture_specialized_handlers(
     instructions = _disassemble(blob, runtime)
     if not instructions or instructions[-1].address + instructions[-1].size - runtime != len(blob):
         return {}, "unavailable", 0
+    dispatch_at = _dispatch_addresses(instructions)
+    type_defined = _defined_symbol(image, "PyFloat_Type")
+    type_runtime = None if type_defined is None else _vaddr_to_runtime(image, type_defined[0])
     grouped: dict[str, list[dict[str, object]]] = {"add": [], "sub": [], "mul": [], "div": []}
     unclassified = 0
     for index, insn in enumerate(instructions):
@@ -398,6 +539,10 @@ def _capture_specialized_handlers(
         kind = _KIND_BY_MNEMONIC[insn.mnemonic]
         start = checked_before[0].address if checked_before else insn.address
         stop = (checked_after[-1].address + checked_after[-1].size) if checked_after else insn.address + insn.size
+        for follow in instructions[index:index + 48]:
+            if follow.address in dispatch_at and follow.address + follow.size <= insn.address + 0x90:
+                stop = max(stop, follow.address + follow.size)
+                break
         window = _readable_process_bytes(start, stop - start)
         window_vaddr = vaddr + (start - runtime)
         file_window = None if window is None else _elf_bytes(image, window_vaddr, len(window))
@@ -421,9 +566,16 @@ def _capture_specialized_handlers(
                 "decoder_version": capstone.__version__,
                 "mode": "64-bit",
                 "coverage": "complete",
+                "completion": "next_opcode_dispatch" if any(start <= address < stop for address in dispatch_at) else "return",
+                "float_type_address": None if type_runtime is None else hex(type_runtime),
             }
         )
         _attach_continuations(grouped[kind][-1])
+        if grouped[kind][-1].get("completion") != "next_opcode_dispatch":
+            for _address, continuation in _decoded_continuations(grouped[kind][-1]):
+                if _dispatch_addresses(continuation):
+                    grouped[kind][-1]["completion"] = "next_opcode_dispatch"
+                    break
     return grouped, "complete", unclassified
 
 
@@ -597,6 +749,7 @@ def _capture_conversion(image: str, wrapper: int) -> dict[str, object]:
         "asdouble_address": hex(runtime),
         "asdouble_bytes_hex": blob.hex(),
         "fromdouble_address": None if from_double is None else hex(from_double[0]),
+        "fromdouble_end": None if from_double is None else hex(from_double[0] + from_double[2]),
         "fromdouble_bytes_hex": None if from_blob is None or from_file != from_blob else from_blob.hex(),
         "symbol_address": hex(runtime),
         "elf_vaddr": hex(vaddr),
@@ -655,6 +808,8 @@ def _capture_terminal_guard(image: str) -> dict[str, object]:
         if target is not None and stub is not None:
             record["plt_address"] = hex(target)
             record["plt_stub_bytes_hex"] = stub.hex()
+        if qword_blob is not None:
+            record["got_qword_hex"] = qword_blob.hex()
         resolved = (
             qword is not None
             and target is not None
@@ -687,8 +842,11 @@ def _continuation_prefix(address: int) -> bytes | None:
         return None
     instructions = list(_decoder().disasm(blob, address))
     end = None
-    for insn in instructions:
+    for index, insn in enumerate(instructions):
         if insn.mnemonic == "ret" or (insn.mnemonic == "jmp" and insn.op_str.startswith("0x")):
+            end = insn.address + insn.size
+            break
+        if insn.mnemonic == "jmp" and insn.address in _dispatch_addresses(instructions[: index + 1]):
             end = insn.address + insn.size
             break
     if end is None:
@@ -741,15 +899,10 @@ def _capture_integer_add(image: str, declared: int | None) -> dict[str, object]:
         "address": hex(address),
         "loaded_bytes_hex": blob.hex(),
         "loaded_bytes_match_file": file_bytes == blob,
-        "excluded_branches": [
-            {
-                "target": "slow-path",
-                "assumption": (
-                    f"integer operands of index + 1 are in 1..{declared} because the "
-                    "immutable candidate declaration sets annulus_count and index iterates below it"
-                ),
-            }
-        ],
+        "type_address": hex(runtime),
+        "slot_index": 0,
+        "slot_target": hex(address),
+        "declared_annulus_count": declared,
     }
 
 
@@ -781,6 +934,18 @@ def capture_bound_nextafter() -> dict[str, object]:
         stub = _readable_process_bytes(plt_address, 16)
         if stub is not None:
             guard["plt_stub_bytes_hex"] = stub.hex()
+    wrapper_blob = guard.get("wrapper_bytes_hex")
+    wrapper_address = _hex_int(guard.get("wrapper_address"))
+    if isinstance(wrapper_blob, str) and wrapper_address is not None:
+        try:
+            wrapper_instructions = _decode_complete(bytes.fromhex(wrapper_blob), wrapper_address)
+        except ValueError:
+            wrapper_instructions = None
+        guard["wrapper_constants"] = [] if wrapper_instructions is None else _retained_wrapper_constants(wrapper_instructions)
+    else:
+        guard["wrapper_constants"] = []
+    guard["pid"] = os.getpid()
+    guard["thread_id"] = _thread_id()
     return guard
 
 
@@ -844,15 +1009,118 @@ def observe_bound_nextafter() -> dict[str, object]:
     }
 
 
-def capture_observations(root: Path) -> dict[str, object]:
-    """Read this process only. Do not call cosine, nextafter, ulp or the evaluator."""
+def _number_slot_record(image: str) -> dict[str, object]:
+    if not image:
+        return {}
+    defined = _defined_symbol(image, "PyFloat_Type")
+    if defined is None:
+        return {}
+    runtime = _vaddr_to_runtime(image, defined[0])
+    if runtime is None:
+        return {}
+    header = _readable_process_bytes(runtime, 0x70)
+    if header is None or len(header) < 0x68:
+        return {}
+    name = _readable_process_bytes(struct.unpack_from("<Q", header, 0x18)[0], 6)
+    located = _float_slots(image)
+    slots = {} if located is None else located[0]
+    return {
+        "type_address": hex(runtime),
+        "type_name_bytes_hex": None if name is None else name.hex(),
+        "basicsize": struct.unpack_from("<Q", header, 0x20)[0],
+        "tp_as_number": hex(struct.unpack_from("<Q", header, 0x60)[0]),
+        "slots": {
+            kind: {"index": _SLOT_INDEX[kind], "target": hex(address)}
+            for kind, address in slots.items()
+        },
+    }
+
+
+def _missing_bound_observation() -> dict[str, object]:
+    """A failed bound capture does not borrow this process's controls."""
+    return {
+        "pid": None,
+        "thread_id": None,
+        "single_process_thread": False,
+        "output_sampled": False,
+        "version_label": sys.version.split()[0],
+        "version_label_establishes_semantics": False,
+        "approval_receipt_establishes_semantics": False,
+        "sample_outputs_establish_semantics": False,
+        "controls": {"classification": "NOT ESTABLISHED", "pid": None, "thread_id": None},
+        "arithmetic": {
+            "operations": [],
+            "generic_handlers": {},
+            "specialized_handlers": {},
+            "specialized_scan": "unavailable",
+            "unclassified_scalar_sites": None,
+            "declared_annulus_count": None,
+            "integer_add": {},
+            "number_slots": {},
+            "pid": None,
+            "thread_id": None,
+        },
+        "conversion": {"pid": None, "thread_id": None},
+        "terminal_guard": {
+            "bind_now": False,
+            "pid": None,
+            "thread_id": None,
+            "ulp_function_calls": 0,
+            "nextafter_function_calls": 0,
+            "output_sampled": False,
+            "unchanged_guard_ulps": 2,
+            "allowance_recomputed": False,
+            "independent_symbol_establishes_selected_path": False,
+        },
+        "cosine_function_calls": 0,
+        "ulp_function_calls": 0,
+        "nextafter_function_calls": 0,
+    }
+
+
+def _capture_bound_process(root: Path) -> dict[str, object] | None:
+    env = os.environ.copy()
+    env["LD_BIND_NOW"] = "1"
+    script = (
+        "import json, sys\n"
+        "from pathlib import Path\n"
+        "from pyfoldable.application.c2v09_runtime_semantic_correspondence import capture_observations\n"
+        "print(json.dumps(capture_observations(Path(sys.argv[1]))))\n"
+    )
+    completed = subprocess.run(
+        [sys.executable, "-c", script, str(root)],
+        env=env,
+        cwd=str(root),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if completed.returncode != 0 or not completed.stdout.strip():
+        return None
+    try:
+        parsed = json.loads(completed.stdout)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(parsed, dict) or parsed.get("pid") is None:
+        return None
+    guard = parsed.get("terminal_guard")
+    if not isinstance(guard, dict) or guard.get("bind_now") is not True or guard.get("pid") != parsed.get("pid"):
+        return None
+    return parsed
+
+
+def _capture_observations_here(root: Path) -> dict[str, object]:
+    """Read this bound process only. Do not call cosine, nextafter, ulp or the evaluator."""
     thread_id = _thread_id()
+    pid = os.getpid()
     wrapper = _c_function_address(math.cos)
     image = None if wrapper is None else _image_of(wrapper)
     controls = _feature_record(None, None)
     probed = _probe_words(root / PROBE_SOURCE)
     if probed is not None:
         controls = _feature_record(probed[0], _fegetround())
+    controls["pid"] = pid
+    controls["bind_now"] = True
     generic: dict[str, dict[str, object]] = {}
     specialized: dict[str, list[dict[str, object]]] = {}
     scan = "unavailable"
@@ -867,9 +1135,11 @@ def capture_observations(root: Path) -> dict[str, object]:
             None if from_double is None else from_double[0] + from_double[2],
         )
         conversion = _capture_conversion(image, wrapper)
+    conversion["pid"] = pid
+    conversion["thread_id"] = thread_id
     same_thread = controls.get("thread_id") == thread_id
     return {
-        "pid": os.getpid(),
+        "pid": pid,
         "thread_id": thread_id,
         "single_process_thread": same_thread and probed is not None,
         "output_sampled": False,
@@ -879,6 +1149,8 @@ def capture_observations(root: Path) -> dict[str, object]:
         "sample_outputs_establish_semantics": False,
         "controls": controls,
         "arithmetic": {
+            "pid": pid,
+            "thread_id": thread_id,
             "operations": _capture_operations(),
             "generic_handlers": generic,
             "specialized_handlers": specialized,
@@ -886,13 +1158,24 @@ def capture_observations(root: Path) -> dict[str, object]:
             "unclassified_scalar_sites": unclassified,
             "declared_annulus_count": _declared_annulus_count(root),
             "integer_add": _capture_integer_add(image or "", _declared_annulus_count(root)),
+            "number_slots": _number_slot_record(image or ""),
         },
         "conversion": conversion,
-        "terminal_guard": observe_bound_nextafter(),
+        "terminal_guard": capture_bound_nextafter(),
         "cosine_function_calls": 0,
         "ulp_function_calls": 0,
         "nextafter_function_calls": 0,
     }
+
+
+def capture_observations(root: Path) -> dict[str, object]:
+    """Capture every component in one interpreter started with LD_BIND_NOW=1."""
+    if os.environ.get("LD_BIND_NOW") != "1":
+        bound = _capture_bound_process(root)
+        if bound is None:
+            return _missing_bound_observation()
+        return bound
+    return _capture_observations_here(root)
 
 
 def _controls_ok(observations: Mapping[str, object]) -> bool:
@@ -908,6 +1191,7 @@ def _controls_ok(observations: Mapping[str, object]) -> bool:
         and controls.get("mxcsr_daz") is False
         and controls.get("mxcsr_rounding") == "nearest ties-to-even"
         and controls.get("fegetround") == "0"
+        and controls.get("pid") == observations.get("pid")
         and controls.get("thread_id") == observations.get("thread_id")
     )
 
@@ -952,22 +1236,11 @@ def _from_double_bounds(handler: Mapping[str, object]) -> tuple[int | None, int 
     return start, end
 
 
-def _is_store_instruction(insn: capstone.CsInsn, from_double: int | None, from_double_end: int | None) -> bool:
-    if insn.mnemonic == "movsd" and "+ 0x10]" in insn.op_str and ", xmm" in insn.op_str:
-        return True
-    if insn.mnemonic in {"call", "jmp"} and insn.op_str.startswith("0x") and from_double is not None:
-        target = int(insn.op_str, 16)
-        end = from_double_end if from_double_end is not None else from_double + 1
-        return from_double <= target < end
-    return False
-
-
-def _continuations_return(handler: Mapping[str, object], inside: set[int]) -> dict[int, int]:
-    """External stubs that jump back into the claimed range. Other destinations stay unresolved."""
+def _decoded_continuations(handler: Mapping[str, object]) -> list[tuple[int, list[capstone.CsInsn]]]:
     rows = handler.get("continuations")
-    returns: dict[int, int] = {}
+    found: list[tuple[int, list[capstone.CsInsn]]] = []
     if not isinstance(rows, list):
-        return returns
+        return found
     for row in rows:
         if not isinstance(row, Mapping):
             continue
@@ -979,59 +1252,188 @@ def _continuations_return(handler: Mapping[str, object], inside: set[int]) -> di
             instructions = _decode_complete(bytes.fromhex(blob), address)
         except ValueError:
             continue
-        if not instructions or any(insn.mnemonic in _SCALAR or _is_fma(insn.mnemonic) for insn in instructions):
+        if instructions:
+            found.append((address, instructions))
+    return found
+
+
+def _continuation_shape(instructions: list[capstone.CsInsn]) -> str:
+    """A continuation is closed only when every exit stays inside, returns, or is its final jump."""
+    if not instructions:
+        return "open"
+    inside = {insn.address for insn in instructions}
+    for index, insn in enumerate(instructions):
+        last = index == len(instructions) - 1
+        next_address = insn.address + insn.size
+        if insn.mnemonic == "ret":
             continue
-        last = instructions[-1]
-        if last.mnemonic != "jmp" or not last.op_str.startswith("0x"):
+        if insn.mnemonic == "call":
+            return "open"
+        if insn.mnemonic == "jmp" or (insn.mnemonic.startswith("j") and insn.mnemonic != "jmp"):
+            target = _direct_target(insn)
+            if target in inside:
+                continue
+            if last and insn.mnemonic == "jmp" and target is not None:
+                continue
+            return "open"
+        if next_address not in inside and not (last and insn.mnemonic in {"ret", "jmp"}):
+            return "open"
+    last_insn = instructions[-1]
+    if last_insn.mnemonic == "ret":
+        return "return"
+    if last_insn.mnemonic == "jmp" and _direct_target(last_insn) is not None:
+        return "jump"
+    return "open"
+
+
+def _foreign_operation(instructions: list[capstone.CsInsn]) -> bool:
+    return any(insn.mnemonic in _SCALAR or _is_fma(insn.mnemonic) for insn in instructions)
+
+
+def _continuations_return(handler: Mapping[str, object], inside: set[int]) -> dict[int, int]:
+    """External stubs that jump back into the claimed range. Other destinations stay unresolved."""
+    returns: dict[int, int] = {}
+    for address, instructions in _decoded_continuations(handler):
+        if _foreign_operation(instructions) or _continuation_shape(instructions) != "jump":
             continue
-        target = int(last.op_str, 16)
+        target = _direct_target(instructions[-1])
         if target in inside:
             returns[address] = target
     return returns
 
 
-def _excluded_targets(handler: Mapping[str, object]) -> set[int]:
-    rows = handler.get("excluded_branches")
-    found: set[int] = set()
-    if not isinstance(rows, list):
-        return found
-    for row in rows:
-        if not isinstance(row, Mapping):
-            continue
-        assumption = row.get("assumption")
-        target = _hex_int(row.get("target"))
-        if target is None or not isinstance(assumption, str) or not assumption:
-            continue
-        found.add(target)
-    return found
-
-
 def _returning_calls(handler: Mapping[str, object]) -> set[int]:
-    """Callees whose captured bytes return without another binary64 operation."""
-    rows = handler.get("continuations")
+    """Callees whose captured bytes return without another binary64 operation or an open exit."""
     found: set[int] = set()
-    if not isinstance(rows, list):
-        return found
-    for row in rows:
-        if not isinstance(row, Mapping):
+    for address, instructions in _decoded_continuations(handler):
+        if _foreign_operation(instructions) or _continuation_shape(instructions) != "return":
             continue
-        address = _hex_int(row.get("address"))
-        blob = row.get("loaded_bytes_hex")
-        if address is None or not isinstance(blob, str):
-            continue
-        try:
-            instructions = _decode_complete(bytes.fromhex(blob), address)
-        except ValueError:
-            continue
-        if not instructions or any(insn.mnemonic in _SCALAR or _is_fma(insn.mnemonic) for insn in instructions):
-            continue
-        if instructions[-1].mnemonic == "ret":
-            found.add(address)
+        found.add(address)
     return found
+
+
+def _target_in_range(target: int | None, start: int | None, end: int | None) -> bool:
+    if target is None or start is None:
+        return False
+    limit = end if end is not None else start + 1
+    return start <= target < limit
+
+
+def _exit_excluded(handler: Mapping[str, object], instructions: list[capstone.CsInsn], index: int) -> bool:
+    """A branch is excluded only by the compare decoded immediately before it."""
+    insn = instructions[index]
+    if insn.mnemonic == "jmp" or not insn.mnemonic.startswith("j") or index == 0:
+        return False
+    target = _direct_target(insn)
+    if target is None:
+        return False
+    predecessor = instructions[index - 1]
+    rows = handler.get("excluded_branches")
+    if isinstance(rows, list):
+        for row in rows:
+            if not isinstance(row, Mapping):
+                continue
+            condition = row.get("condition")
+            if not isinstance(condition, Mapping) or _hex_int(row.get("target")) != target:
+                continue
+            operand = condition.get("operand")
+            if (
+                condition.get("mnemonic") == predecessor.mnemonic
+                and condition.get("branch") == insn.mnemonic
+                and isinstance(operand, str)
+                and operand in _operand_tokens(predecessor.op_str)
+            ):
+                return True
+    type_address = _hex_int(handler.get("float_type_address"))
+    return bool(
+        type_address is not None
+        and predecessor.mnemonic == "cmp"
+        and insn.mnemonic in {"jne", "jnz"}
+        and hex(type_address) in _operand_tokens(predecessor.op_str)
+    )
+
+
+def _dispatch_addresses(instructions: list[capstone.CsInsn]) -> set[int]:
+    """An indirect jump is a next-opcode dispatch only when the loaded bytes form that sequence."""
+    found: set[int] = set()
+    for index, insn in enumerate(instructions):
+        if insn.mnemonic != "jmp":
+            continue
+        dest = insn.op_str.strip()
+        if not dest or dest.startswith(("0x", "qword", "dword")):
+            continue
+        window = instructions[max(0, index - 12):index]
+        opcode_at = None
+        for item in window:
+            if item.mnemonic == "movzx" and "byte ptr" in item.op_str:
+                opcode_at = item.address
+        if opcode_at is None:
+            continue
+        tail = [item for item in window if item.address >= opcode_at]
+        if any(item.mnemonic in _SCALAR or _is_fma(item.mnemonic) or item.mnemonic in {"call", "ret"} for item in tail):
+            continue
+        table = any(
+            item.mnemonic == "mov" and item.op_str.startswith(dest + ",") and "*8" in item.op_str
+            for item in tail
+        )
+        if table:
+            found.add(insn.address)
+    return found
+
+
+def _path_exits(
+    handler: Mapping[str, object],
+    instructions: list[capstone.CsInsn],
+    index: int,
+    *,
+    inside: set[int],
+    returns: Mapping[int, int],
+    calls: set[int],
+    dispatch: set[int],
+    external_dispatch: set[int],
+    from_double: int | None,
+    from_double_end: int | None,
+) -> list[tuple[str, int | None]]:
+    insn = instructions[index]
+    mnemonic = insn.mnemonic
+    next_address = insn.address + insn.size
+    if mnemonic == "ret":
+        return [("endpoint", None)]
+    if mnemonic == "jmp" or (mnemonic.startswith("j") and mnemonic != "jmp"):
+        if mnemonic == "jmp" and insn.address in dispatch:
+            return [("endpoint", None)]
+        target = _direct_target(insn)
+        found: list[tuple[str, int | None]] = []
+        if target is None:
+            found.append(("unresolved", None))
+        elif target in inside:
+            found.append(("go", target))
+        elif target in returns:
+            found.append(("go", returns[target]))
+        elif target in external_dispatch:
+            found.append(("endpoint", None))
+        elif mnemonic == "jmp" and _target_in_range(target, from_double, from_double_end):
+            found.append(("tail", target))
+        elif _exit_excluded(handler, instructions, index):
+            found.append(("excluded", None))
+        else:
+            found.append(("unresolved", None))
+        if mnemonic != "jmp":
+            found.append(("go", next_address) if next_address in inside else ("unresolved", None))
+        return found
+    if mnemonic == "call":
+        target = _direct_target(insn)
+        if target is not None and (target in calls or _target_in_range(target, from_double, from_double_end)):
+            if next_address in inside:
+                return [("go", next_address)]
+        return [("unresolved", None)]
+    if next_address in inside:
+        return [("go", next_address)]
+    return [("unresolved", None)]
 
 
 def _handler_path_status(handler: Mapping[str, object], kind: str) -> str:
-    """Storage has to sit on a completed path. Claimed names are not evidence."""
+    """Every reachable exit is established or excluded by a decoded condition."""
     instructions = _handler_instructions(handler)
     if not instructions or handler.get("loaded_bytes_match_file") is not True:
         return NOT_ESTABLISHED
@@ -1042,72 +1444,65 @@ def _handler_path_status(handler: Mapping[str, object], kind: str) -> str:
         return MISMATCHED
     from_double, from_double_end = _from_double_bounds(handler)
     inside = {insn.address for insn in instructions}
+    by_address = {insn.address: index for index, insn in enumerate(instructions)}
     returns = _continuations_return(handler, inside)
     calls = _returning_calls(handler)
-    excluded = _excluded_targets(handler)
-    successors: dict[int, list[int]] = {}
-    for index, insn in enumerate(instructions):
-        mnemonic = insn.mnemonic
-        next_address = insn.address + insn.size
-        if mnemonic == "ret":
-            continue
-        if mnemonic == "call" and insn.op_str.startswith("0x"):
-            target = int(insn.op_str, 16)
-            end = from_double_end if from_double is not None and from_double_end is not None else None
-            in_from = from_double is not None and end is not None and from_double <= target < end
-            if not in_from and target not in calls:
-                continue
-        if mnemonic == "jmp" or (mnemonic.startswith("j") and mnemonic != "jmp"):
-            if not insn.op_str.startswith("0x"):
-                continue
-            target = int(insn.op_str, 16)
-            taken = False
-            if target in inside:
-                successors.setdefault(index, []).append(target)
-                taken = True
-            elif target in returns:
-                successors.setdefault(index, []).append(returns[target])
-                taken = True
-            elif target in excluded and mnemonic != "jmp":
-                taken = True
-            if taken and mnemonic != "jmp" and next_address in inside:
-                successors.setdefault(index, []).append(next_address)
-            continue
-        if next_address in inside:
-            successors.setdefault(index, []).append(next_address)
-    by_address = {insn.address: index for index, insn in enumerate(instructions)}
+    dispatch = _dispatch_addresses(instructions) if handler.get("completion") == "next_opcode_dispatch" else set()
+    external_dispatch: set[int] = set()
+    if handler.get("completion") == "next_opcode_dispatch":
+        for address, continuation in _decoded_continuations(handler):
+            if _dispatch_addresses(continuation):
+                external_dispatch.add(address)
     seen: set[tuple[int, int, bool, tuple[str, ...]]] = set()
-    stack: list[tuple[int, int, bool, tuple[str, ...]]] = [(0, 0, False, ())]
+    stack: list[tuple[int, int, bool, frozenset[str]]] = [(0, 0, False, frozenset())]
     completed = False
     while stack:
-        index, scalars, stored, moved = stack.pop()
-        state = (index, scalars, stored, moved)
+        index, scalars, stored, registers = stack.pop()
+        state = (index, scalars, stored, tuple(sorted(registers)))
         if state in seen:
             continue
         seen.add(state)
         insn = instructions[index]
-        next_scalars = scalars + (1 if insn.mnemonic in _SCALAR else 0)
+        if insn.mnemonic in _SCALAR:
+            dest = _scalar_dest(insn)
+            next_registers = frozenset({dest}) if dest is not None else frozenset()
+            next_scalars = scalars + 1
+        else:
+            next_registers = _apply_transfer(registers, insn)
+            next_scalars = scalars
         if next_scalars > 1:
             return NOT_ESTABLISHED
-        next_moved = set(moved)
-        if insn.mnemonic == "movq" and ", xmm" in insn.op_str:
-            next_moved.add(insn.op_str.split(",", 1)[0].strip())
-        bit_store = (
-            insn.mnemonic == "mov"
-            and "+ 0x10]" in insn.op_str
-            and "," in insn.op_str
-            and insn.op_str.split(",", 1)[1].strip() in next_moved
-        )
-        next_stored = stored or (
-            next_scalars == 1 and (_is_store_instruction(insn, from_double, from_double_end) or bit_store)
-        )
-        if insn.mnemonic == "ret":
-            if next_scalars == 1 and next_stored:
-                completed = True
-            continue
-        packed = tuple(sorted(next_moved))
-        for target in successors.get(index, []):
-            stack.append((by_address[target], next_scalars, next_stored, packed))
+        next_stored = stored or (next_scalars == 1 and _stores_tracked(insn, next_registers))
+        transferred = _direct_target(insn)
+        if (
+            next_scalars == 1
+            and insn.mnemonic in {"call", "jmp"}
+            and _target_in_range(transferred, from_double, from_double_end)
+            and "xmm0" in registers
+        ):
+            next_stored = True
+        for kind_exit, target in _path_exits(
+            handler,
+            instructions,
+            index,
+            inside=inside,
+            returns=returns,
+            calls=calls,
+            dispatch=dispatch,
+            external_dispatch=external_dispatch,
+            from_double=from_double,
+            from_double_end=from_double_end,
+        ):
+            if kind_exit == "unresolved":
+                return NOT_ESTABLISHED
+            if kind_exit in {"endpoint", "tail"}:
+                if next_scalars == 1 and next_stored:
+                    completed = True
+                    continue
+                return NOT_ESTABLISHED
+            if kind_exit == "excluded" or target is None:
+                continue
+            stack.append((by_address[target], next_scalars, next_stored, next_registers))
     if not any(insn.mnemonic in _SCALAR for insn in instructions):
         return NOT_ESTABLISHED
     return ESTABLISHED_CONDITIONALLY if completed else NOT_ESTABLISHED
@@ -1147,18 +1542,82 @@ def _integer_add_status(arithmetic: Mapping[str, object]) -> str:
         return NOT_ESTABLISHED
     if any(insn.mnemonic in _SCALAR or _is_fma(insn.mnemonic) for insn in instructions):
         return MISMATCHED
-    has_add = any(insn.mnemonic == "add" and "," in insn.op_str and not insn.op_str.endswith(", 1") for insn in instructions)
-    has_bound = any(insn.mnemonic == "cmp" and "0xf" in insn.op_str for insn in instructions)
-    rows = handler.get("excluded_branches")
-    assumption_ok = isinstance(rows, list) and any(
-        isinstance(row, Mapping)
-        and "integer" in str(row.get("assumption"))
-        and str(declared) in str(row.get("assumption"))
-        for row in rows
-    )
-    if has_add and has_bound and assumption_ok:
-        return ESTABLISHED_CONDITIONALLY
+    # cmp 0xf / ja leaves this body. A prose assumption does not close that exit.
     return NOT_ESTABLISHED
+
+
+def _slot_matches(arithmetic: Mapping[str, object], handler: Mapping[str, object], kind: str) -> bool:
+    slots = arithmetic.get("number_slots")
+    if not isinstance(slots, Mapping):
+        return False
+    if slots.get("type_name_bytes_hex") != "666c6f617400" or slots.get("basicsize") != 24:
+        return False
+    if _hex_int(slots.get("type_address")) is None or _hex_int(slots.get("tp_as_number")) is None:
+        return False
+    table = slots.get("slots")
+    if not isinstance(table, Mapping):
+        return False
+    row = table.get(kind)
+    if not isinstance(row, Mapping) or row.get("index") != _SLOT_INDEX.get(kind):
+        return False
+    return _hex_int(row.get("target")) == _hex_int(handler.get("address"))
+
+
+def _source_registers(insn: capstone.CsInsn) -> set[str]:
+    dest_text, src_text = _split_operand(insn.op_str)
+    found: set[str] = set()
+    dest = _canonical_register(_leading_register(dest_text))
+    if dest is not None and dest.startswith("xmm") and not insn.mnemonic.startswith("v"):
+        found.add(dest)
+    if src_text is not None:
+        for token in _operand_tokens(src_text):
+            register = _canonical_register(token)
+            if register is not None and (register.startswith("xmm") or register.startswith("r")):
+                found.add(register)
+    return found
+
+
+def _conversion_flows(instructions: list[capstone.CsInsn], call_target: int, source: str) -> bool:
+    by_address = {insn.address: index for index, insn in enumerate(instructions)}
+    inside = set(by_address)
+    starts = [
+        by_address[insn.address + insn.size]
+        for insn in instructions
+        if insn.mnemonic == "call"
+        and _direct_target(insn) == call_target
+        and insn.address + insn.size in by_address
+    ]
+    if not starts:
+        return False
+    seen: set[tuple[int, tuple[str, ...]]] = set()
+    stack: list[tuple[int, frozenset[str]]] = [(index, frozenset({source})) for index in starts]
+    while stack:
+        index, registers = stack.pop()
+        state = (index, tuple(sorted(registers)))
+        if state in seen:
+            continue
+        seen.add(state)
+        insn = instructions[index]
+        if insn.mnemonic in _SCALAR:
+            if registers & _source_registers(insn):
+                return True
+            continue
+        next_registers = _apply_transfer(registers, insn)
+        next_address = insn.address + insn.size
+        targets: list[int] = []
+        if insn.mnemonic == "ret":
+            continue
+        if insn.mnemonic == "jmp" or (insn.mnemonic.startswith("j") and insn.mnemonic != "jmp"):
+            target = _direct_target(insn)
+            if target in inside:
+                targets.append(target)
+            if insn.mnemonic != "jmp" and next_address in inside:
+                targets.append(next_address)
+        elif next_address in inside:
+            targets.append(next_address)
+        for target in targets:
+            stack.append((by_address[target], next_registers))
+    return False
 
 
 def _mixed_conversion_bound(arithmetic: Mapping[str, object], kind: str) -> bool:
@@ -1169,28 +1628,26 @@ def _mixed_conversion_bound(arithmetic: Mapping[str, object], kind: str) -> bool
     handler = handlers.get(kind)
     if not isinstance(handler, Mapping) or _handler_status(handler, kind) != ESTABLISHED_CONDITIONALLY:
         return False
-    rows = handler.get("conversion_continuations")
-    if not isinstance(rows, list) or not rows:
-        rows = handler.get("continuations")
-    if not isinstance(rows, list) or not rows:
+    if not _slot_matches(arithmetic, handler, kind):
         return False
-    for row in rows:
-        if not isinstance(row, Mapping):
+    handler_instructions = _handler_instructions(handler)
+    if not handler_instructions:
+        return False
+    call_targets = {
+        target
+        for insn in handler_instructions
+        if insn.mnemonic == "call" and (target := _direct_target(insn)) is not None
+    }
+    for address, instructions in _decoded_continuations(handler):
+        if address not in call_targets or _continuation_shape(instructions) != "return":
             continue
-        address = _hex_int(row.get("address"))
-        blob = row.get("loaded_bytes_hex")
-        if address is None or not isinstance(blob, str):
+        if _foreign_operation(instructions):
             continue
-        try:
-            instructions = _decode_complete(bytes.fromhex(blob), address)
-        except ValueError:
+        converter = next((insn for insn in instructions if insn.mnemonic in {"cvtsi2sd", "vcvtsi2sd"}), None)
+        if converter is None:
             continue
-        if (
-            instructions
-            and instructions[-1].mnemonic == "ret"
-            and any(insn.mnemonic in {"cvtsi2sd", "vcvtsi2sd"} for insn in instructions)
-            and not any(insn.mnemonic in _SCALAR or _is_fma(insn.mnemonic) for insn in instructions)
-        ):
+        dest = _canonical_register(_leading_register(_split_operand(converter.op_str)[0]))
+        if dest is not None and _conversion_flows(handler_instructions, address, dest):
             return True
     return False
 
@@ -1250,7 +1707,7 @@ def _arithmetic_argument(observations: Mapping[str, object]) -> dict[str, object
         if kind not in float_kinds:
             continue
         if not isinstance(handler, Mapping) or handler_status != ESTABLISHED_CONDITIONALLY:
-            gaps.append(f"generic {kind} handler does not show one scalar operation and a float store on the completed path")
+            gaps.append(f"generic {kind} handler does not establish every relevant exit and the computed-result store")
             status = NOT_ESTABLISHED
     categories_used = {category for _row, categories in routed for category in categories}
     if "integer_add" in categories_used and _integer_add_status(arithmetic) != ESTABLISHED_CONDITIONALLY:
@@ -1281,10 +1738,13 @@ def _arithmetic_argument(observations: Mapping[str, object]) -> dict[str, object
                 if site_status == MISMATCHED:
                     return _argument(name, MISMATCHED, [f"specialized {kind} site is fused or is a different operation"], evidence, [])
                 if site_status != ESTABLISHED_CONDITIONALLY:
-                    gaps.append(f"specialized {kind} site is not a separate binary64 operation")
+                    gaps.append(f"specialized {kind} site does not reach a return or a loaded next-opcode dispatch on every relevant path")
                     status = NOT_ESTABLISHED
                 else:
                     evidence.append(f"specialized {kind} at {site.get('scalar_address', site.get('address'))}: {_decoded_store(site)}")
+    if arithmetic.get("pid") != observations.get("pid") or arithmetic.get("thread_id") != observations.get("thread_id"):
+        gaps.append("arithmetic observations are not associated with this process and thread")
+        status = NOT_ESTABLISHED
     if not _controls_ok(observations):
         gaps.append("required numerical controls were not observed on this process and thread")
         status = NOT_ESTABLISHED
@@ -1333,8 +1793,102 @@ def _builtin_float_load(instructions: list[capstone.CsInsn]) -> bool:
     return False
 
 
-def _fromdouble_stores_result(instructions: list[capstone.CsInsn]) -> bool:
-    return _result_bits_stored(instructions)
+def _wrapper_fromdouble_landings(
+    wrapper: list[capstone.CsInsn],
+    start: int | None,
+    end: int | None,
+) -> list[int]:
+    if not wrapper:
+        return []
+    by_address = {insn.address: index for index, insn in enumerate(wrapper)}
+    inside = set(by_address)
+    found: list[int] = []
+    seen: set[int] = set()
+    stack = [0]
+    while stack:
+        index = stack.pop()
+        if index in seen:
+            continue
+        seen.add(index)
+        insn = wrapper[index]
+        target = _direct_target(insn)
+        next_address = insn.address + insn.size
+        if insn.mnemonic in {"call", "jmp"} and _target_in_range(target, start, end) and target is not None:
+            found.append(target)
+        if insn.mnemonic == "ret":
+            continue
+        if insn.mnemonic == "jmp" or (insn.mnemonic.startswith("j") and insn.mnemonic != "jmp"):
+            if target in inside:
+                stack.append(by_address[target])
+            if insn.mnemonic != "jmp" and next_address in inside:
+                stack.append(by_address[next_address])
+            continue
+        if next_address in inside:
+            stack.append(by_address[next_address])
+    return found
+
+
+def _retained_wrapper_constants(instructions: list[capstone.CsInsn]) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    seen: set[int] = set()
+    for insn in instructions:
+        address = _rip_constant_address(insn)
+        if address is None or address in seen:
+            continue
+        seen.add(address)
+        blob = _readable_process_bytes(address, 8)
+        mapped = None if blob is None else _runtime_to_vaddr(address)
+        file_bytes = None if mapped is None or blob is None else _elf_bytes(mapped[0], mapped[1], 8)
+        rows.append(
+            {
+                "address": hex(address),
+                "loaded_bytes_hex": None if blob is None else blob.hex(),
+                "loaded_bytes_match_file": blob is not None and file_bytes == blob,
+            }
+        )
+    return rows
+
+
+def _rip_constant_address(insn: capstone.CsInsn) -> int | None:
+    text = insn.op_str
+    marker = "rip + "
+    sign = 1
+    if "rip - " in text:
+        marker = "rip - "
+        sign = -1
+    elif "rip + " not in text:
+        return None
+    token = text[text.find(marker) + len(marker):].split("]", 1)[0].split()[0]
+    if not token.startswith("0x"):
+        return None
+    return insn.address + insn.size + sign * int(token, 16)
+
+
+def _wrapper_constants_retained(wrapper: list[capstone.CsInsn] | None, guard: Mapping[str, object]) -> bool:
+    if wrapper is None:
+        return False
+    sites = [address for insn in wrapper if (address := _rip_constant_address(insn)) is not None]
+    recorded = guard.get("wrapper_constants")
+    if not sites:
+        return recorded in (None, [])
+    if not isinstance(recorded, list):
+        return False
+    by_address: dict[int | None, Mapping[str, object]] = {}
+    for row in recorded:
+        if isinstance(row, Mapping):
+            by_address[_hex_int(row.get("address"))] = row
+    for site in sites:
+        row = by_address.get(site)
+        blob = None if row is None else row.get("loaded_bytes_hex")
+        if row is None or row.get("loaded_bytes_match_file") is not True or not isinstance(blob, str):
+            return False
+        try:
+            raw = bytes.fromhex(blob)
+        except ValueError:
+            return False
+        if len(raw) != 8:
+            return False
+    return True
 
 
 def _conversion_argument(observations: Mapping[str, object]) -> dict[str, object]:
@@ -1363,10 +1917,17 @@ def _conversion_argument(observations: Mapping[str, object]) -> dict[str, object
             evidence.append("builtin-float path loads the stored binary64 and returns it")
         else:
             gaps.append("the builtin-float load lemma is not in the retained PyFloat_AsDouble bytes")
-        if _fromdouble_stores_result(fromdouble):
-            evidence.append("PyFloat_FromDouble bytes store the binary64 result")
+        from_start = _hex_int(conversion.get("fromdouble_address"))
+        from_end = _hex_int(conversion.get("fromdouble_end"))
+        landings = _wrapper_fromdouble_landings(wrapper, from_start, from_end)
+        if not landings:
+            gaps.append("the wrapper's finite-result path does not reach PyFloat_FromDouble")
+        elif not any(_store_reaches_return(fromdouble, landing, frozenset({"xmm0"})) for landing in landings):
+            gaps.append("PyFloat_FromDouble is reached, but an unresolved exit remains on the result-bit store path")
         else:
-            gaps.append("PyFloat_FromDouble bytes do not store the result at ob_fval")
+            evidence.append("the finite-result path reaches PyFloat_FromDouble and stores the result bits")
+    if conversion.get("pid") != observations.get("pid") or conversion.get("thread_id") != observations.get("thread_id"):
+        gaps.append("conversion observations are not associated with this process and thread")
     if not _controls_ok(observations):
         gaps.append("required numerical controls were not observed on this process and thread")
     status = ESTABLISHED_CONDITIONALLY if not gaps else NOT_ESTABLISHED
@@ -1464,32 +2025,33 @@ def _guard_argument(observations: Mapping[str, object]) -> dict[str, object]:
             evidence.append("wrapper subsd follows the nextafter call")
         else:
             gaps.append("the wrapper subtraction is not on the path after the nextafter call")
-    stub_text = guard.get("plt_stub_bytes_hex")
-    plt_address = _hex_int(guard.get("plt_address"))
-    selected = _hex_int(guard.get("selected_address"))
-    stub_bytes = b""
-    if isinstance(stub_text, str):
-        try:
-            stub_bytes = bytes.fromhex(stub_text)
-        except ValueError:
-            stub_bytes = b""
-    if (
-        plt_address is None
-        or selected is None
-        or not stub_bytes
-        or not nextafter_got_resolved(plt_address, selected, stub_bytes)
-    ):
-        gaps.append("the nextafter GOT is unresolved, so the selected implementation bytes are not bound")
+        if _wrapper_constants_retained(wrapper, guard):
+            evidence.append("wrapper constants referenced by the loaded instructions are retained")
+        else:
+            gaps.append("a wrapper constant referenced by the loaded instructions was not retained")
+    chain_gaps, chain_evidence = _nextafter_chain(guard)
+    gaps.extend(chain_gaps)
+    evidence.extend(chain_evidence)
     if guard.get("independent_symbol_establishes_selected_path") is not False:
         gaps.append("an independent symbol lookup was treated as the selected path")
     if guard.get("unchanged_guard_ulps") != 2 or guard.get("allowance_recomputed") is not False:
         gaps.append("the two-ULP guard allowance was recomputed or replaced")
+    controls = observations.get("controls")
+    if (
+        guard.get("pid") != observations.get("pid")
+        or guard.get("thread_id") != observations.get("thread_id")
+        or not isinstance(controls, Mapping)
+        or controls.get("pid") != guard.get("pid")
+        or controls.get("thread_id") != guard.get("thread_id")
+    ):
+        gaps.append("the nextafter observation is not associated with this process, thread, and controls")
     if not _controls_ok(observations):
         gaps.append("required numerical controls were not observed on this process and thread")
     status = ESTABLISHED_CONDITIONALLY if not gaps else NOT_ESTABLISHED
     conditions = [
         "the value is a positive normal strictly below its binade endpoint",
-        "the certificate's required binade, not a sampled ulp, is the one under that endpoint",
+        "the relevant positive-normal binade has ULP 2^-56",
+        "the unchanged two-ULP allowance is 2^-55 and is not recomputed",
         "FTZ stays off so the subsequent subsd is not flushed",
     ] if status == ESTABLISHED_CONDITIONALLY else []
     argument = _argument(
@@ -1501,7 +2063,50 @@ def _guard_argument(observations: Mapping[str, object]) -> dict[str, object]:
         conditions,
     )
     argument["unchanged_guard_ulps"] = 2
+    argument["ulp"] = "2^-56"
+    argument["two_ulp_allowance"] = "2^-55"
+    argument["allowance_recomputed"] = False
     return argument
+
+
+def _nextafter_chain(guard: Mapping[str, object]) -> tuple[list[str], list[str]]:
+    """Recompute wrapper PLT stub, decoded GOT slot, observed qword, and selected body."""
+    gaps: list[str] = []
+    evidence: list[str] = []
+    plt_address = _hex_int(guard.get("plt_address"))
+    stub_text = guard.get("plt_stub_bytes_hex")
+    try:
+        stub_bytes = bytes.fromhex(stub_text) if isinstance(stub_text, str) else b""
+    except ValueError:
+        stub_bytes = b""
+    decoded_slot = None if plt_address is None or not stub_bytes else plt_got_address(stub_bytes, plt_address)
+    recorded_slot = _hex_int(guard.get("got_slot"))
+    if decoded_slot is None or recorded_slot is None or decoded_slot != recorded_slot:
+        gaps.append("the decoded PLT GOT slot does not match the retained slot")
+    else:
+        evidence.append(f"PLT stub decodes GOT slot {guard.get('got_slot')}")
+    qword = None
+    qword_text = guard.get("got_qword_hex")
+    if not isinstance(qword_text, str):
+        gaps.append("the GOT qword was not retained")
+    else:
+        try:
+            raw = bytes.fromhex(qword_text)
+        except ValueError:
+            raw = b""
+        if len(raw) != 8:
+            gaps.append("the GOT observation is not an eight-byte qword")
+        else:
+            qword = struct.unpack("<Q", raw)[0]
+            evidence.append("the GOT slot retains the observed eight-byte qword")
+    selected = _hex_int(guard.get("selected_address"))
+    if qword is None or selected is None or qword != selected:
+        gaps.append("the selected body is not the observed GOT qword")
+    elif plt_address is None or not stub_bytes or not nextafter_got_resolved(plt_address, qword, stub_bytes):
+        gaps.append("the nextafter GOT is unresolved, so the selected implementation bytes are not bound")
+    else:
+        evidence.append("the selected body is the qword observed in the decoded GOT slot")
+    return gaps, evidence
 
 
 def _argument(
