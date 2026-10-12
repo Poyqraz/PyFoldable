@@ -43,6 +43,9 @@ from pyfoldable.application.c2v09_runtime_semantic_correspondence import (
     _direct_target,
     _git_identity,
     _image_of,
+    _leading_register,
+    _register_width,
+    _split_operand,
     _symbol_runtime,
 )
 
@@ -108,9 +111,14 @@ def _carrier(instructions: list[capstone.CsInsn]) -> tuple[str, int] | None:
 
 
 def _writes_register(insn: capstone.CsInsn, register: str) -> bool:
-    text = insn.op_str.replace(",", " ")
-    dest = text.split()[0] if text else ""
-    return dest == register and insn.mnemonic not in {"push", "cmp", "test"}
+    """Any width of the canonical register is a write. Comparisons and pushes are not."""
+    if insn.mnemonic in {"cmp", "test", "push"} or insn.mnemonic.startswith("j"):
+        return False
+    dest, _src = _split_operand(insn.op_str)
+    if "[" in dest:
+        return False
+    width = _register_width(_leading_register(dest))
+    return width is not None and width[0] == register
 
 
 def _closed_prefix(
@@ -353,9 +361,44 @@ def _edge_role(
     return "branch"
 
 
-def _zeroes_eax(insn: capstone.CsInsn) -> bool:
-    compact = insn.op_str.replace(" ", "")
-    return insn.mnemonic == "xor" and compact in {"eax,eax", "rax,rax"}
+_RETURN_ZERO = "ZERO"
+_RETURN_NONZERO = "NONZERO"
+_RETURN_UNKNOWN = "UNKNOWN"
+
+
+def _immediate_value(token: str) -> int | None:
+    try:
+        return int(token, 0)
+    except ValueError:
+        return None
+
+
+def _return_value_after(insn: capstone.CsInsn, current: str) -> str:
+    """Supported full-width writes update RAX. Partial writes and calls do not keep a claimed zero."""
+    if insn.mnemonic in {"cmp", "test", "push", "nop", "endbr64"} or insn.mnemonic.startswith("j"):
+        return current
+    if insn.mnemonic == "call":
+        return _RETURN_UNKNOWN
+    dest, src = _split_operand(insn.op_str)
+    if "[" in dest:
+        return current
+    width = _register_width(_leading_register(dest))
+    if width is None or width[0] != "rax":
+        return current
+    if width[1] < 32:
+        return _RETURN_UNKNOWN
+    if insn.mnemonic == "xor" and src is not None:
+        source = _register_width(_leading_register(src))
+        if source is not None and source[0] == "rax" and source[1] == width[1]:
+            return _RETURN_ZERO
+        return _RETURN_UNKNOWN
+    if insn.mnemonic == "mov" and src is not None:
+        value = _immediate_value(src)
+        if value == 0:
+            return _RETURN_ZERO
+        if value is not None:
+            return _RETURN_NONZERO
+    return _RETURN_UNKNOWN
 
 
 def _locate_continuation(
@@ -385,12 +428,13 @@ def _continuation_walk(
     rejoins: list[str] = []
     unresolved: list[str] = []
     calls: list[str] = []
-    seen: set[tuple[int, int, bool]] = set()
-    stack = [(entry, 0, False)]
+    returns: set[str] = set()
+    seen: set[tuple[int, int, str]] = set()
+    stack: list[tuple[int, int, str]] = [(entry, 0, _RETURN_UNKNOWN)]
     while stack:
-        base, index, zeroed = stack.pop()
+        base, index, value = stack.pop()
         instructions = continuations.get(base)
-        key = (base, index, zeroed)
+        key = (base, index, value)
         if key in seen:
             continue
         seen.add(key)
@@ -398,14 +442,15 @@ def _continuation_walk(
             unresolved.append(hex(base))
             continue
         insn = instructions[index]
-        next_zeroed = zeroed or _zeroes_eax(insn)
         if insn.mnemonic == "ret":
-            if next_zeroed:
+            returns.add(value)
+            if value == _RETURN_ZERO:
                 null_return = True
             continue
+        next_value = _return_value_after(insn, value)
         if insn.mnemonic == "call":
             calls.append(hex(insn.address))
-            stack.append((base, index + 1, next_zeroed))
+            stack.append((base, index + 1, next_value))
             continue
         if insn.mnemonic.startswith("j"):
             target = _direct_target(insn)
@@ -415,15 +460,16 @@ def _continuation_walk(
             elif _in_span(target, body_start, body_end):
                 rejoins.append(hex(target))
             elif located is not None:
-                stack.append((located[0], located[1], next_zeroed))
+                stack.append((located[0], located[1], next_value))
             else:
                 unresolved.append(hex(target))
             if insn.mnemonic != "jmp":
-                stack.append((base, index + 1, next_zeroed))
+                stack.append((base, index + 1, next_value))
             continue
-        stack.append((base, index + 1, next_zeroed))
+        stack.append((base, index + 1, next_value))
     return {
         "null_return_reachable": null_return,
+        "returns": sorted(returns),
         "rejoins": sorted(set(rejoins)),
         "unresolved": sorted(set(unresolved)),
         "calls_before_return": sorted(set(calls)),

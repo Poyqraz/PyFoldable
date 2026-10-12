@@ -7,7 +7,9 @@ import json
 from pathlib import Path
 
 from pyfoldable.application.c2v09_fromdouble_storage import (
+    _continuation_walk,
     _inventory_from_observation,
+    _reference_preservation,
     capture_fromdouble_storage,
 )
 from pyfoldable.application.c2v09_ordered_declaration import canonical_bytes, sha256_bytes
@@ -108,6 +110,39 @@ def test_fromdouble_storage_record_is_not_the_measurement_commit() -> None:
     assert document["canonical_sha256"] == "3268f060342fce6160eff72ae4e1812aa980c0913030ba0d6f413731181f6dd1"
     assert sha256_bytes(canonical_bytes(payload)) == document["canonical_sha256"]
     assert _inventory_from_observation(payload)["branch_table"] == payload["inventory"]["branch_table"]
+
+
+def _decoded(blob: str, address: int = 0x2000):
+    instructions = _decode_complete(bytes.fromhex(blob), address)
+    assert instructions is not None
+    return instructions
+
+
+def test_carrier_aliases_are_writes() -> None:
+    for blob in ("4531f6c3", "664531f6c3", "4530f6c3", "4d31f6c3"):
+        assert _reference_preservation(_decoded(blob), "r14") == "carrier_written"
+    for blob in ("4d85f6c3", "4539f6c3", "4584f6c3", "48c70701000000c3"):
+        assert _reference_preservation(_decoded(blob), "r14") == "preserved"
+    called = _reference_preservation(_decoded("e800000000c3"), "r14")
+    assert called == "preserved_on_no_call_return_call_side_unresolved"
+
+
+def test_null_return_requires_a_zero_at_the_ret() -> None:
+    def walked(blob: str) -> dict[str, object]:
+        instructions = _decoded(blob)
+        return _continuation_walk({instructions[0].address: instructions}, instructions[0].address, 0, 0)
+
+    assert walked("31c0c3")["null_return_reachable"] is True
+    overwritten = walked("31c0b801000000c3")
+    assert overwritten["null_return_reachable"] is False
+    assert walked("31c0e800000000c3")["null_return_reachable"] is False
+    assert walked("31c066b80000c3")["null_return_reachable"] is False
+    branched = walked("31c07406b801000000c3c3")
+    assert branched["null_return_reachable"] is True
+    assert set(branched["returns"]) == {"ZERO", "NONZERO"}
+    sibling = walked("31c07402c3")
+    assert sibling["null_return_reachable"] is True
+    assert sibling["unresolved"]
 
 
 def test_missing_constructor_replay_stays_unestablished() -> None:
