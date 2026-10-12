@@ -125,10 +125,20 @@ def test_saved_stack_slot_alias_does_not_restore_entry() -> None:
     for blob in (
         "41564889e54889e84887c848c7010100000041be02000000415ec3",
         "41564889e54889e84801c148c7010100000041be02000000415ec3",
+        "4156545848c70001000000415ec3",
+        "4156fff45848c70001000000415ec3",
+        "4156544889e0488b0848c7010100000058415ec3",
     ):
         moved = prove_entry_restore(_decoded(blob), 0x2000)
         assert moved["established"] is False
         assert all(row["r14"] != "entry" for row in moved["returns"])
+        assert any(pop["register"] == "r14" and pop["restores_entry"] is False for pop in moved["pops"])
+    pushed_rbx = prove_entry_restore(_decoded("53545848c700010000005bc3"), 0x2000)
+    assert pushed_rbx["established"] is False
+    assert all(row["rbx"] != "entry" for row in pushed_rbx["returns"])
+    both = prove_entry_restore(_decoded("415653545848c700010000005b415ec3"), 0x2000)
+    assert both["established"] is False
+    assert all(row["rbx"] != "entry" for row in both["returns"])
 
 
 def test_archived_reference_call_replay_keeps_the_recorded_events() -> None:

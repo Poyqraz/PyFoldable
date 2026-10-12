@@ -494,7 +494,8 @@ def prove_entry_restore(
             else:
                 saved = operand[0]
                 pushes.append({"address": hex(insn.address), "register": saved, "value": values.get(saved, _OTHER)})
-                pointer = dict(aliases).get(saved)
+                # push rsp stores the address of the current top, before rsp moves.
+                pointer = _rsp_level(slots) if saved == "rsp" else dict(aliases).get(saved)
                 slots = slots + ((saved, values.get(saved, _OTHER), pointer, _rsp_level(slots) + 1),)
         elif insn.mnemonic == "leave":
             broken = True
