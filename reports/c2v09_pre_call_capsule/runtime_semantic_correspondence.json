@@ -278,8 +278,8 @@
         "unchanged_guard_ulps": 2
       }
     ],
-    "measurement_implementation_head": "5867860bbf62c81ca8e4cf207685532677563bd1",
-    "measurement_implementation_tree": "d4e259d5e040d868b2e20aceaa6de527fd63ce49",
+    "measurement_implementation_head": "a6ac80d4047f4bbee56421bcff3d060ca1bee8d6",
+    "measurement_implementation_tree": "e889f8c1b2b1ad22d0dc28e968510e0c817f038f",
     "nextafter_function_calls": 0,
     "observations": {
       "approval_receipt_establishes_semantics": false,
@@ -499,7 +499,7 @@
               "scalar_mnemonics": [
                 "addsd"
               ],
-              "store": "in-place ob_fval or PyFloat_FromDouble"
+              "store": "ob_fval"
             }
           ],
           "div": [],
@@ -524,7 +524,7 @@
               "scalar_mnemonics": [
                 "mulsd"
               ],
-              "store": "in-place ob_fval or PyFloat_FromDouble"
+              "store": "ob_fval"
             }
           ],
           "sub": [
@@ -560,7 +560,7 @@
         "classification": "OBSERVED",
         "cpuid_leaf1": [
           "0xc06f2",
-          "0x1040800",
+          "0x40800",
           "0xfffa3227",
           "0x1fabfbff"
         ],
@@ -579,7 +579,7 @@
         "mxcsr_rounding": "nearest ties-to-even",
         "osxsave": true,
         "required_bits_ok": true,
-        "thread_id": "37601",
+        "thread_id": "38364",
         "x87_control": "0x37f",
         "xcr0": [
           "0x602e7",
@@ -605,7 +605,7 @@
       "cosine_function_calls": 0,
       "nextafter_function_calls": 0,
       "output_sampled": false,
-      "pid": 37601,
+      "pid": 38364,
       "sample_outputs_establish_semantics": false,
       "single_process_thread": true,
       "terminal_guard": {
@@ -625,7 +625,7 @@
         "wrapper_matches_file": true,
         "wrapper_subtraction": "subsd"
       },
-      "thread_id": "37601",
+      "thread_id": "38364",
       "ulp_function_calls": 0,
       "version_label": "3.12.3",
       "version_label_establishes_semantics": false
@@ -643,6 +643,6 @@
     ],
     "version_label_establishes_semantics": false
   },
-  "canonical_sha256": "d4a45df551d71d2c23a6b727717241a85020d3f28ef8f22a43ea41a2a2e62faf",
+  "canonical_sha256": "38ff1dee457b06f6969b2e201981e86d7723f5970113fbaaecf10edb75fabc9d",
   "digest_scope": "SHA-256 of the section 7.3 canonical bytes of canonical_payload only. canonical_sha256 and digest_scope are outside that payload."
 }
