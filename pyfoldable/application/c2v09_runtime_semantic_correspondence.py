@@ -368,14 +368,17 @@ def _capture_specialized_handlers(
         start = checked_before[0].address if checked_before else insn.address
         stop = (checked_after[-1].address + checked_after[-1].size) if checked_after else insn.address + insn.size
         window = _readable_process_bytes(start, stop - start)
+        window_vaddr = vaddr + (start - runtime)
+        file_window = None if window is None else _elf_bytes(image, window_vaddr, len(window))
         grouped[kind].append(
             {
                 "kind": kind,
-                "address": hex(insn.address),
-                "elf_vaddr": hex(vaddr + (insn.address - runtime)),
+                "address": hex(start),
+                "scalar_address": hex(insn.address),
+                "elf_vaddr": hex(window_vaddr),
                 "image": image,
                 "loaded_bytes_hex": None if window is None else window.hex(),
-                "loaded_bytes_match_file": True,
+                "loaded_bytes_match_file": window is not None and file_window == window,
                 "scalar_mnemonics": [insn.mnemonic],
                 "paths_execute_one_scalar_op": True,
                 "fma_mnemonics": [],
@@ -620,6 +623,22 @@ def _instructions_from_handler(handler: Mapping[str, object]) -> list[capstone.C
     return instructions or None
 
 
+def _decoded_store(handler: Mapping[str, object]) -> str:
+    instructions = _instructions_from_handler(handler)
+    if not instructions:
+        store = handler.get("store")
+        return str(store) if isinstance(store, str) else "not traced"
+    from_double_text = handler.get("from_double_address")
+    end_text = handler.get("from_double_end")
+    try:
+        from_double = int(from_double_text, 16) if isinstance(from_double_text, str) else None
+        from_double_end = int(end_text, 16) if isinstance(end_text, str) else None
+    except ValueError:
+        from_double = None
+        from_double_end = None
+    return _store_kind(instructions, from_double, from_double_end)
+
+
 def _handler_status(handler: Mapping[str, object], kind: str) -> str:
     has_bytes = isinstance(handler.get("loaded_bytes_hex"), str) and bool(handler.get("loaded_bytes_hex"))
     instructions = _instructions_from_handler(handler)
@@ -706,7 +725,7 @@ def _arithmetic_argument(observations: Mapping[str, object]) -> dict[str, object
             gaps.append(f"generic {kind} handler does not show one scalar operation and a float store")
             status = NOT_ESTABLISHED
         else:
-            evidence.append(f"generic {kind}: {', '.join(str(item) for item in handler.get('scalar_mnemonics') or [])} -> {handler.get('store')}")
+            evidence.append(f"generic {kind}: {', '.join(str(item) for item in handler.get('scalar_mnemonics') or [])} -> {_decoded_store(handler)}")
     if arithmetic.get("specialized_scan") != "complete" or arithmetic.get("unclassified_scalar_sites") not in (0, None):
         gaps.append("specialized evaluator sites were not fully classified")
         status = NOT_ESTABLISHED
@@ -729,7 +748,7 @@ def _arithmetic_argument(observations: Mapping[str, object]) -> dict[str, object
                     gaps.append(f"specialized {kind} site is not a separate binary64 operation")
                     status = NOT_ESTABLISHED
                 else:
-                    evidence.append(f"specialized {kind} at {site.get('address')}: {site.get('store')}")
+                    evidence.append(f"specialized {kind} at {site.get('scalar_address', site.get('address'))}: {_decoded_store(site)}")
     if not _controls_ok(observations):
         gaps.append("required numerical controls were not observed on this process and thread")
         status = NOT_ESTABLISHED

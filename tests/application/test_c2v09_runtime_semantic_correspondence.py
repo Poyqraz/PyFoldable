@@ -6,6 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 
+from pyfoldable.application.c2v09_cosine_path_certificate import _elf_bytes
 from pyfoldable.application.c2v09_ordered_declaration import canonical_bytes, sha256_bytes
 from pyfoldable.application.c2v09_runtime_semantic_correspondence import (
     ESTABLISHED_CONDITIONALLY,
@@ -200,6 +201,21 @@ def test_endbr_plt_slot_is_not_a_resolved_nextafter() -> None:
     assert nextafter_got_resolved(target, 0x8000, stub) is True
 
 
+def test_evidence_uses_the_store_present_in_the_bytes() -> None:
+    observations = _observations()
+    blob = bytes.fromhex("f20f104010f20f5cc1f20f114010c3")
+    handler = _handler("sub", "subsd", store="in-place ob_fval or PyFloat_FromDouble")
+    handler["address"] = "0x1000"
+    handler["loaded_bytes_hex"] = blob.hex()
+    observations["arithmetic"]["generic_handlers"]["sub"] = handler
+    found = _by_name(classify_correspondence(observations))
+    evidence = found["interpreter binary64 arithmetic semantics"]["evidence"]
+    sub_lines = [str(item) for item in evidence if str(item).startswith("generic sub")]
+    assert sub_lines
+    assert "ob_fval" in sub_lines[0]
+    assert "PyFloat_FromDouble" not in sub_lines[0]
+
+
 def test_fused_handler_is_mismatched() -> None:
     observations = _observations()
     observations["arithmetic"]["generic_handlers"]["add"] = _handler("add", "addsd", fma=["vfmadd213sd"])
@@ -242,6 +258,14 @@ def test_live_package_does_not_admit_the_three_hypotheses() -> None:
     assert isinstance(generic, dict)
     for handler in generic.values():
         assert replay_handler_scalars(handler) == handler["scalar_mnemonics"]
+    specialized = package["observations"]["arithmetic"]["specialized_handlers"]
+    assert isinstance(specialized, dict)
+    for sites in specialized.values():
+        assert isinstance(sites, list)
+        for site in sites:
+            blob = bytes.fromhex(str(site["loaded_bytes_hex"]))
+            file_bytes = _elf_bytes(str(site["image"]), int(str(site["elf_vaddr"]), 16), len(blob))
+            assert file_bytes == blob
     observations = package["observations"]
     arguments = package["arguments"]
     assert observations is not arguments
