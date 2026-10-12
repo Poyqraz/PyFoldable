@@ -16,6 +16,8 @@ from pyfoldable.application.c2v09_runtime_semantic_correspondence import (
     _handler_status,
     _exit_excluded,
     _handler_instructions,
+    _pointer_states,
+    _compared_type_slot,
     _store_reaches_return,
     _decode_complete,
     classify_correspondence,
@@ -340,6 +342,57 @@ def test_full_width_operand_copy_reaches_the_type_slot() -> None:
     handler = _typed_mul("4889f848817808c096a300750ff20f104010f20f59c1f20f114010c3")
     assert _handler_status(handler, "mul") == ESTABLISHED_CONDITIONALLY
     assert _arithmetic_status(handler) == ESTABLISHED_CONDITIONALLY
+
+
+def _changing_pointer_cycle(blob: str, *, partial_would_exclude: bool) -> None:
+    handler = _typed_mul(blob)
+    instructions = _handler_instructions(handler)
+    assert instructions is not None
+    compared = next(index for index, insn in enumerate(instructions) if insn.mnemonic == "jne")
+    arrivals, complete = _pointer_states(instructions)
+    assert complete is False
+    if partial_would_exclude:
+        predecessor = instructions[compared - 1]
+        recorded = arrivals[compared]
+        assert recorded
+        assert all(
+            source == compared - 1 and _compared_type_slot(predecessor.op_str, pointers)
+            for pointers, source in recorded
+        )
+    assert _exit_excluded(handler, instructions, compared) is False
+    assert _handler_status(handler, "mul") == NOT_ESTABLISHED
+    assert _arithmetic_status(handler) == NOT_ESTABLISHED
+
+
+def test_changing_pointer_cycle_does_not_exclude_the_exit() -> None:
+    _changing_pointer_cycle(
+        "4889f84883c01048817808c096a300752074f0f20f104010f20f59c1f20f114010c3",
+        partial_would_exclude=False,
+    )
+    _changing_pointer_cycle(
+        "4889f84883e81048817808c096a300752074f0f20f104010f20f59c1f20f114010c3",
+        partial_would_exclude=False,
+    )
+    _changing_pointer_cycle(
+        "4889f848817808c096a3007520f20f104010f20f59c1f20f11401074064883c010ebe0c3",
+        partial_would_exclude=True,
+    )
+    _changing_pointer_cycle(
+        "4889f848817808c096a3007520f20f104010f20f59c1f20f11401074064883e810ebe0c3",
+        partial_would_exclude=True,
+    )
+
+
+def test_stable_pointer_backedge_terminates_without_an_endpoint() -> None:
+    handler = _typed_mul("4889f848817808c096a3007520ebf4f20f104010f20f59c1f20f114010c3")
+    instructions = _handler_instructions(handler)
+    assert instructions is not None
+    compared = next(index for index, insn in enumerate(instructions) if insn.mnemonic == "jne")
+    _arrivals, complete = _pointer_states(instructions)
+    assert complete is True
+    assert _exit_excluded(handler, instructions, compared) is True
+    assert _handler_status(handler, "mul") == NOT_ESTABLISHED
+    assert _arithmetic_status(handler) == NOT_ESTABLISHED
 
 
 def test_float_type_exclusion_needs_the_decoded_type_slot() -> None:

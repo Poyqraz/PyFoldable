@@ -1474,18 +1474,27 @@ def _pointer_update(
 
 def _pointer_states(
     instructions: list[capstone.CsInsn],
-) -> dict[int, set[tuple[frozenset[tuple[str, int]], int]]]:
-    """Arrival state and the instruction that produced it. ABI rdi and rsi are the operands."""
+) -> tuple[dict[int, set[tuple[frozenset[tuple[str, int]], int]]], bool]:
+    """Arrival states, and whether each visited instruction had one pointer state.
+
+    The same state on a backedge is finished. A different pointer state at an
+    instruction already visited invalidates the partial arrival map.
+    """
     initial = frozenset({("rdi", 0), ("rsi", 0)})
     arriving: dict[int, set[tuple[frozenset[tuple[str, int]], int]]] = {0: {(initial, -1)}}
     seen: set[tuple[int, tuple[tuple[str, int], ...]]] = set()
+    visited: set[int] = set()
     stack: list[tuple[int, frozenset[tuple[str, int]]]] = [(0, initial)]
     while stack:
         index, pointers = stack.pop()
-        key = (index, tuple(sorted(pointers)))
-        if key in seen or index >= len(instructions):
+        signature = tuple(sorted(pointers))
+        key = (index, signature)
+        if index >= len(instructions) or key in seen:
             continue
+        if index in visited:
+            return arriving, False
         seen.add(key)
+        visited.add(index)
         insn = instructions[index]
         updated = _pointer_update(pointers, insn)
         next_address = insn.address + insn.size
@@ -1507,7 +1516,7 @@ def _pointer_states(
                 continue
             arriving.setdefault(successor, set()).add((updated, index))
             stack.append((successor, updated))
-    return arriving
+    return arriving, True
 
 
 def _compared_type_slot(compared: str, pointers: frozenset[tuple[str, int]]) -> bool:
@@ -1524,7 +1533,7 @@ def _compared_type_slot(compared: str, pointers: frozenset[tuple[str, int]]) -> 
 
 
 def _exit_excluded(handler: Mapping[str, object], instructions: list[capstone.CsInsn], index: int) -> bool:
-    """Exclude a not-equal branch only when every arrival compares an admitted operand's type slot."""
+    """Exclude a not-equal branch only when a finished walk shows every arrival compared the type slot."""
     insn = instructions[index]
     if insn.mnemonic not in {"jne", "jnz"} or index == 0 or _direct_target(insn) is None:
         return False
@@ -1536,12 +1545,15 @@ def _exit_excluded(handler: Mapping[str, object], instructions: list[capstone.Cs
         or hex(type_address) not in _operand_tokens(predecessor.op_str)
     ):
         return False
-    arrivals = _pointer_states(instructions).get(index, set())
-    if not arrivals:
+    arrivals, complete = _pointer_states(instructions)
+    if not complete:
+        return False
+    found = arrivals.get(index, set())
+    if not found:
         return False
     return all(
         source == index - 1 and _compared_type_slot(predecessor.op_str, pointers)
-        for pointers, source in arrivals
+        for pointers, source in found
     )
 
 
