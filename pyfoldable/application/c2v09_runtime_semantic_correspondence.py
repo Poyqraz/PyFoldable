@@ -185,17 +185,32 @@ def _cut_at_next_function(instructions: list[capstone.CsInsn]) -> list[capstone.
 
 
 _COPY_MNEMONICS = frozenset({"movsd", "movapd", "movaps", "movq", "movdqa"})
-_WRITE_MNEMONICS = _COPY_MNEMONICS | frozenset({
-    "mov", "add", "sub", "xor", "and", "or", "imul", "lea", "pxor", "xorpd", "andpd", "andps",
-    "orpd", "pop", "inc", "dec", "shl", "shr", "sar", "neg", "not",
-})
 _VOLATILE = frozenset({"rax", "rcx", "rdx", "rsi", "rdi", "r8", "r9", "r10", "r11"})
-_REGISTER_ALIASES = {
-    "eax": "rax", "ecx": "rcx", "edx": "rdx", "ebx": "rbx",
-    "esi": "rsi", "edi": "rdi", "ebp": "rbp", "esp": "rsp",
-    "r8d": "r8", "r9d": "r9", "r10d": "r10", "r11d": "r11",
-    "r12d": "r12", "r13d": "r13", "r14d": "r14", "r15d": "r15",
-}
+_GPR64 = (
+    "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi",
+    "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15",
+)
+_GPR32 = (
+    "eax", "ecx", "edx", "ebx", "esp", "ebp", "esi", "edi",
+    "r8d", "r9d", "r10d", "r11d", "r12d", "r13d", "r14d", "r15d",
+)
+_GPR16 = (
+    "ax", "cx", "dx", "bx", "sp", "bp", "si", "di",
+    "r8w", "r9w", "r10w", "r11w", "r12w", "r13w", "r14w", "r15w",
+)
+_GPR8 = (
+    "al", "cl", "dl", "bl", "spl", "bpl", "sil", "dil",
+    "r8b", "r9b", "r10b", "r11b", "r12b", "r13b", "r14b", "r15b",
+)
+_REGISTER_WIDTH: dict[str, tuple[str, int]] = {}
+for _index, _name in enumerate(_GPR64):
+    _REGISTER_WIDTH[_name] = (_name, 64)
+    _REGISTER_WIDTH[_GPR32[_index]] = (_name, 32)
+    _REGISTER_WIDTH[_GPR16[_index]] = (_name, 16)
+    _REGISTER_WIDTH[_GPR8[_index]] = (_name, 8)
+for _name, _canonical in (("ah", "rax"), ("ch", "rcx"), ("dh", "rdx"), ("bh", "rbx")):
+    _REGISTER_WIDTH[_name] = (_canonical, 8)
+_REGISTER_ALIASES = {name: canonical for name, (canonical, _width) in _REGISTER_WIDTH.items()}
 
 
 def _split_operand(op_str: str) -> tuple[str, str | None]:
@@ -219,6 +234,15 @@ def _canonical_register(name: str | None) -> str | None:
     return _REGISTER_ALIASES.get(name, name)
 
 
+def _register_width(name: str | None) -> tuple[str, int] | None:
+    """Canonical register and the width of this access. Aliasing does not widen a partial write."""
+    if name is None:
+        return None
+    if name.startswith("xmm") and name[3:].isdigit():
+        return name, 64
+    return _REGISTER_WIDTH.get(name)
+
+
 def _operand_tokens(op_str: str) -> set[str]:
     return {token.strip() for token in op_str.replace(",", " ").split() if token.strip()}
 
@@ -238,29 +262,40 @@ def _scalar_dest(insn: capstone.CsInsn) -> str | None:
 
 
 def _apply_transfer(registers: frozenset[str], insn: capstone.CsInsn) -> frozenset[str]:
-    """Copy a computed result through a supported move. Other writes drop it."""
+    """Copy a full binary64 result. A 32, 16, or 8-bit transfer does not preserve it."""
     current = set(registers)
     dest_text, src_text = _split_operand(insn.op_str)
-    dest = _canonical_register(_leading_register(dest_text))
-    src = _canonical_register(_leading_register(src_text))
-    copied = False
-    if insn.mnemonic in _COPY_MNEMONICS and dest is not None and src is not None and src in current:
-        current.add(dest)
-        copied = True
-    elif insn.mnemonic == "mov" and dest is not None and src is not None and "[" not in dest_text and src in current:
-        current.add(dest)
-        copied = True
+    dest = _register_width(_leading_register(dest_text))
+    src = _register_width(_leading_register(src_text))
+    full_copy = False
     if (
         dest is not None
-        and dest in current
-        and not copied
+        and src is not None
+        and dest[1] == 64
+        and src[1] == 64
+        and src[0] in current
+        and "[" not in dest_text
+    ):
+        if insn.mnemonic in _COPY_MNEMONICS or insn.mnemonic == "mov":
+            current.add(dest[0])
+            full_copy = True
+    if (
+        dest is not None
+        and not full_copy
         and not insn.mnemonic.startswith("j")
         and insn.mnemonic not in {"cmp", "test", "ucomisd", "comisd", "vucomisd", "vcomisd"}
     ):
-        current.discard(dest)
+        current.discard(dest[0])
     if insn.mnemonic == "call":
         current = {name for name in current if not name.startswith("xmm") and name not in _VOLATILE}
     return frozenset(current)
+
+
+def _next_full_registers(registers: frozenset[str], insn: capstone.CsInsn) -> frozenset[str]:
+    if insn.mnemonic in _SCALAR:
+        dest = _scalar_dest(insn)
+        return frozenset({dest}) if dest is not None else frozenset()
+    return _apply_transfer(registers, insn)
 
 
 def _slot_store(insn: capstone.CsInsn) -> bool:
@@ -275,8 +310,8 @@ def _stores_tracked(insn: capstone.CsInsn, registers: frozenset[str] | set[str])
     dest_text, src_text = _split_operand(insn.op_str)
     if insn.mnemonic == "mov" and not dest_text.startswith("qword"):
         return False
-    register = _canonical_register(_leading_register(src_text))
-    return register is not None and register in registers
+    source = _register_width(_leading_register(src_text))
+    return source is not None and source[1] == 64 and source[0] in registers
 
 
 def _store_reaches_return(
@@ -301,7 +336,7 @@ def _store_reaches_return(
             continue
         seen.add(state)
         insn = instructions[index]
-        next_registers = _apply_transfer(registers, insn)
+        next_registers = _next_full_registers(registers, insn)
         if _slot_store(insn):
             next_stored = _stores_tracked(insn, next_registers)
         else:
@@ -1253,6 +1288,20 @@ def _from_double_bounds(handler: Mapping[str, object]) -> tuple[int | None, int 
     return start, end
 
 
+def _continuation_admitted(handler: Mapping[str, object], row: Mapping[str, object]) -> bool:
+    """Shape is not correspondence. A continuation needs matched bytes, an image range, and one context."""
+    if row.get("loaded_bytes_match_file") is not True:
+        return False
+    image = row.get("image")
+    if not isinstance(image, str) or not image or _hex_int(row.get("elf_vaddr")) is None:
+        return False
+    pid = row.get("pid")
+    thread = row.get("thread_id")
+    if isinstance(pid, bool) or not isinstance(pid, int) or not isinstance(thread, str) or not thread:
+        return False
+    return handler.get("image") == image and handler.get("pid") == pid and handler.get("thread_id") == thread
+
+
 def _decoded_continuations(handler: Mapping[str, object]) -> list[tuple[int, list[capstone.CsInsn]]]:
     rows = handler.get("continuations")
     found: list[tuple[int, list[capstone.CsInsn]]] = []
@@ -1263,7 +1312,7 @@ def _decoded_continuations(handler: Mapping[str, object]) -> list[tuple[int, lis
             continue
         address = _hex_int(row.get("address"))
         blob = row.get("loaded_bytes_hex")
-        if address is None or not isinstance(blob, str):
+        if address is None or not isinstance(blob, str) or not _continuation_admitted(handler, row):
             continue
         try:
             instructions = _decode_complete(bytes.fromhex(blob), address)
@@ -1337,38 +1386,21 @@ def _target_in_range(target: int | None, start: int | None, end: int | None) -> 
 
 
 def _exit_excluded(handler: Mapping[str, object], instructions: list[capstone.CsInsn], index: int) -> bool:
-    """A branch is excluded only by the compare decoded immediately before it."""
+    """Exclude only a decoded type-slot mismatch. Syntax and immediates are not a premise."""
     insn = instructions[index]
-    if insn.mnemonic == "jmp" or not insn.mnemonic.startswith("j") or index == 0:
+    if insn.mnemonic not in {"jne", "jnz"} or index == 0:
         return False
-    target = _direct_target(insn)
-    if target is None:
+    if _direct_target(insn) is None:
         return False
     predecessor = instructions[index - 1]
-    rows = handler.get("excluded_branches")
-    if isinstance(rows, list):
-        for row in rows:
-            if not isinstance(row, Mapping):
-                continue
-            condition = row.get("condition")
-            if not isinstance(condition, Mapping) or _hex_int(row.get("target")) != target:
-                continue
-            operand = condition.get("operand")
-            if (
-                condition.get("mnemonic") == predecessor.mnemonic
-                and condition.get("branch") == insn.mnemonic
-                and isinstance(operand, str)
-                and operand.startswith("0x")
-                and operand in _operand_tokens(predecessor.op_str)
-            ):
-                return True
     type_address = _hex_int(handler.get("float_type_address"))
+    compared = predecessor.op_str
     return bool(
         type_address is not None
         and predecessor.mnemonic == "cmp"
-        and "[" in predecessor.op_str
-        and insn.mnemonic in {"jne", "jnz"}
-        and hex(type_address) in _operand_tokens(predecessor.op_str)
+        and compared.startswith("qword ptr [")
+        and ("+ 8]" in compared or "+ 0x8]" in compared)
+        and hex(type_address) in _operand_tokens(compared)
     )
 
 

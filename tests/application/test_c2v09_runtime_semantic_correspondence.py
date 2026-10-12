@@ -13,6 +13,9 @@ from pyfoldable.application.c2v09_runtime_semantic_correspondence import (
     MISMATCHED,
     NOT_ESTABLISHED,
     _handler_path_status,
+    _handler_status,
+    _store_reaches_return,
+    _decode_complete,
     classify_correspondence,
     _decoded_store,
     nextafter_got_resolved,
@@ -197,6 +200,79 @@ def _bare(kind: str, blob: str, address: str = "0x1000") -> dict[str, object]:
     }
 
 
+def _matched_continuation(address: str, blob: str, *, match: bool = True) -> dict[str, object]:
+    return {
+        "address": address,
+        "loaded_bytes_hex": blob,
+        "loaded_bytes_match_file": match,
+        "image": "/usr/bin/python3.12",
+        "elf_vaddr": "0x5000",
+        "pid": 1,
+        "thread_id": "7",
+    }
+
+
+def _with_context(handler: dict[str, object]) -> dict[str, object]:
+    handler["image"] = "/usr/bin/python3.12"
+    handler["pid"] = 1
+    handler["thread_id"] = "7"
+    return handler
+
+
+def test_partial_register_move_does_not_preserve_the_binary64_result() -> None:
+    blob = "f20f104310f20f59c166490f7ec64489f048894310c3"
+    handler = _bare("mul", blob)
+    assert _handler_status(handler, "mul") == NOT_ESTABLISHED
+    instructions = _decode_complete(bytes.fromhex(blob), 0x1000)
+    assert instructions is not None
+    assert _store_reaches_return(instructions, 0x1009, frozenset({"xmm0"})) is False
+    assert _store_reaches_return(instructions, 0x1000, frozenset()) is False
+    for partial in ("664489f0", "4488f0"):
+        narrowed = _bare("mul", "f20f104010f20f59c166490f7ec6" + partial + "48894310c3")
+        assert _handler_status(narrowed, "mul") == NOT_ESTABLISHED
+    preserved = _bare("mul", "f20f104010f20f59c166490f7ec64c89f048894010c3")
+    assert _handler_status(preserved, "mul") == ESTABLISHED_CONDITIONALLY
+
+
+def test_unmatched_dispatch_continuation_does_not_close_the_path() -> None:
+    handler = _with_context(_bare("mul", "f20f104010f20f59c1f20f114010e9ed0f0000"))
+    handler["completion"] = "next_opcode_dispatch"
+    handler["continuations"] = [_matched_continuation("0x2000", "0fb601488b04c560477800ffe0", match=False)]
+    assert _handler_path_status(handler, "mul") == NOT_ESTABLISHED
+    missing = _matched_continuation("0x2000", "0fb601488b04c560477800ffe0")
+    del missing["image"]
+    handler["continuations"] = [missing]
+    assert _handler_path_status(handler, "mul") == NOT_ESTABLISHED
+    handler["continuations"] = [_matched_continuation("0x2000", "0fb601488b04c560477800ffe0")]
+    assert _handler_path_status(handler, "mul") == ESTABLISHED_CONDITIONALLY
+    foreign = _matched_continuation("0x2000", "0fb601488b04c560477800ffe0")
+    foreign["pid"] = 99
+    handler["continuations"] = [foreign]
+    assert _handler_path_status(handler, "mul") == NOT_ESTABLISHED
+
+
+def test_compare_syntax_does_not_exclude_the_branch() -> None:
+    handler = _bare("mul", "f20f104010f20f59c1f20f11401083f8107420c3")
+    handler["excluded_branches"] = [
+        {
+            "target": "0x1033",
+            "assumption": "eax cannot be 0x10",
+            "condition": {"mnemonic": "cmp", "branch": "je", "operand": "0x10"},
+        }
+    ]
+    assert _handler_path_status(handler, "mul") == NOT_ESTABLISHED
+
+
+def test_float_type_exclusion_needs_the_decoded_type_slot() -> None:
+    scalar = "f20f104010f20f59c1f20f114010c3"
+    matched = _bare("mul", "48817808c096a300750f" + scalar)
+    matched["float_type_address"] = "0xa396c0"
+    assert _handler_path_status(matched, "mul") == ESTABLISHED_CONDITIONALLY
+    other_slot = _bare("mul", "48817810c096a300750f" + scalar)
+    other_slot["float_type_address"] = "0xa396c0"
+    assert _handler_path_status(other_slot, "mul") == NOT_ESTABLISHED
+
+
 def test_one_return_cannot_hide_an_unresolved_exit() -> None:
     handler = _bare("mul", "f20f104010f20f59c1f20f1140107402eb20c3")
     handler["excluded_branches"] = [{"target": "0x1032", "assumption": "this branch is not taken"}]
@@ -217,7 +293,7 @@ def test_decoded_condition_can_exclude_only_the_branch_it_matches() -> None:
             "condition": {"mnemonic": "cmp", "branch": "ja", "operand": "0xf"},
         }
     ]
-    assert _handler_path_status(handler, "mul") == ESTABLISHED_CONDITIONALLY
+    assert _handler_path_status(handler, "mul") == NOT_ESTABLISHED
 
 
 def test_dispatch_continuation_cannot_hide_an_unresolved_exit() -> None:
@@ -412,10 +488,10 @@ def test_uncalled_conversion_continuation_does_not_bind_the_mixed_path() -> None
 
 def test_called_conversion_result_flows_into_the_scalar() -> None:
     observations = _observations()
-    handler = _bare("mul", "e80ba75600f20f59c1f20f114010c3")
+    handler = _with_context(_bare("mul", "e80ba75600f20f59c1f20f114010c3"))
     handler["continuations"] = [
-        {"address": "0x9999", "loaded_bytes_hex": "f20f2ac0c3"},
-        {"address": "0x56b710", "loaded_bytes_hex": "f20f2ac0c3"},
+        {"address": "0x9999", "loaded_bytes_hex": "f20f2ac0c3", "loaded_bytes_match_file": False},
+        _matched_continuation("0x56b710", "f20f2ac0c3"),
     ]
     observations["arithmetic"]["pid"] = 1
     observations["arithmetic"]["thread_id"] = "7"
