@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
+
+from pyfoldable.application.c2v09_ordered_declaration import canonical_bytes, sha256_bytes
 
 from pyfoldable.application.c2v09_reference_call_evidence import (
     capture_reference_call,
@@ -47,6 +50,43 @@ def test_a_push_is_not_a_restore() -> None:
     sibling = prove_entry_restore(_decoded("415641be010000007403415ec3"), 0x2000)
     assert sibling["established"] is False
     assert sibling["unresolved_exits"]
+
+
+def test_reference_call_record_is_not_the_measurement_commit() -> None:
+    path = _ROOT / "reports" / "c2v09_pre_call_capsule" / "reference_call_evidence.json"
+    raw = path.read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == "99d4304fab2a174f83cd45203f739811e33ff18abb522de17cefbfb7d2672664"
+    document = json.loads(raw)
+    payload = document["canonical_payload"]
+    assert payload["measurement_implementation_head"] == "f0b9a990e221121ea3786c2e0b0c6c66b278fcdf"
+    assert payload["measurement_implementation_tree"] == "35ec8d503f7b69941680e99d69af8645e98334ce"
+    assert payload["record_commit_is_measurement_commit"] is False
+    assert payload["readiness_hypotheses_admitted"] is False
+    assert payload["accept_closed"] is True
+    assert payload["candidate29_disposition"] == "NOT SELECTED"
+    assert payload["eligibility_evidence"] is False
+    assert payload["physical_qualification"] is False
+    assert payload["authorizes_execution"] is False
+    assert payload["constructor_invoked"] is False
+    assert payload["reference_helper_invoked"] is False
+    assert payload["status"] == NOT_ESTABLISHED
+    assert payload["pid"] == payload["controls"]["pid"]
+    assert payload["thread_id"] == payload["controls"]["thread_id"]
+    dossier = payload["dossier"]
+    assert dossier["preservation_established"] is False
+    assert dossier["no_call_path_preserves_r14_and_rbx"] is True
+    assert dossier["flag_control"]["selects_future_branch"] is False
+    assert dossier["newref"]["loaded_bytes_match_file"] is True
+    assert dossier["callee"]["loaded_bytes_match_file"] is True
+    assert dossier["callee"]["instruction_bytes_are_aligned"] is True
+    assert dossier["callee"]["symbol_name"] is None
+    assert dossier["call"]["target"] == dossier["callee"]["address"]
+    live = dossier["constructor_call_sites"][0]["live_after_call"]
+    assert live == ["r14", "rbx"]
+    assert "outgoing calls from the callee are unresolved child paths" in dossier["gaps"]
+    assert "canonical_sha256" not in payload
+    assert document["canonical_sha256"] == "00364c0abd0feedbf0e3b670f443558b8805abafe91807e2ba618e1a12c08699"
+    assert sha256_bytes(canonical_bytes(payload)) == document["canonical_sha256"]
 
 
 def test_reference_call_capture_does_not_admit_readiness() -> None:
