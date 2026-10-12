@@ -443,6 +443,38 @@ def test_continuation_reentry_does_not_finish_the_pointer_walk() -> None:
     assert _arithmetic_status(call) == NOT_ESTABLISHED
 
 
+def test_continuation_effects_stay_in_the_pointer_walk() -> None:
+    changed = _with_context(
+        _typed_mul("4889f80f80f70f000048817808c096a300750ff20f104010f20f59c1f20f114010c3")
+    )
+    changed["continuations"] = [_matched_continuation("0x2000", "4883c010e900f0ffff")]
+    assert _handler_status(changed, "mul") == NOT_ESTABLISHED
+    assert _arithmetic_status(changed) == NOT_ESTABLISHED
+    saved = _with_context(
+        _typed_mul("4889fbe8f80f000048817b08c096a300750ff20f104310f20f59c1f20f114310c3")
+    )
+    saved["continuations"] = [_matched_continuation("0x2000", "4883c310c3")]
+    assert _handler_status(saved, "mul") == NOT_ESTABLISHED
+    assert _arithmetic_status(saved) == NOT_ESTABLISHED
+    dispatched = _with_context(_bare("mul", "f20f104010f20f59c1f20f114010e9ed0f0000"))
+    dispatched["completion"] = "next_opcode_dispatch"
+    dispatched["continuations"] = [_matched_continuation("0x2000", "0f050fb601488b04c560477800ffe0")]
+    assert _handler_status(dispatched, "mul") == NOT_ESTABLISHED
+    assert _arithmetic_status(dispatched) == NOT_ESTABLISHED
+    tail = _with_context(_typed_mul("4889f848817808c096a300750ff20f104010f20f59c1e9e51f0000"))
+    tail["from_double_address"] = "0x3000"
+    tail["from_double_end"] = "0x3008"
+    tail["from_double_bytes_hex"] = "0f05f20f114010c3"
+    assert _handler_status(tail, "mul") == NOT_ESTABLISHED
+    assert _arithmetic_status(tail) == NOT_ESTABLISHED
+    overlap = _with_context(
+        _typed_mul("4889f848817808c096a300751b0f80060000004883c010ebfaf20f104010f20f59c1f20f114010c3")
+    )
+    overlap["continuations"] = [_matched_continuation("0x1013", "e901000000")]
+    assert _handler_status(overlap, "mul") == NOT_ESTABLISHED
+    assert _arithmetic_status(overlap) == NOT_ESTABLISHED
+
+
 def test_stable_pointer_backedge_terminates_without_an_endpoint() -> None:
     handler = _typed_mul("4889f848817808c096a3007520ebf4f20f104010f20f59c1f20f114010c3")
     instructions = _handler_instructions(handler)

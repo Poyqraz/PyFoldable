@@ -372,6 +372,8 @@ def _store_reaches_return(
         else:
             next_stored = stored
         next_address = insn.address + insn.size
+        if _unmodeled_control(insn):
+            return False
         if insn.mnemonic == "ret":
             if next_stored:
                 completed = True
@@ -1387,22 +1389,41 @@ def _foreign_operation(instructions: list[capstone.CsInsn]) -> bool:
 
 
 def _continuations_return(handler: Mapping[str, object], inside: set[int]) -> dict[int, int]:
-    """External stubs that jump back into the claimed range. Other destinations stay unresolved."""
+    """A one-instruction jump back into the handler. Any earlier instruction stays unresolved."""
     returns: dict[int, int] = {}
     for address, instructions in _decoded_continuations(handler):
-        if _foreign_operation(instructions) or _continuation_shape(instructions) != "jump":
+        if len(instructions) != 1 or instructions[0].mnemonic != "jmp":
             continue
-        target = _direct_target(instructions[-1])
+        target = _direct_target(instructions[0])
         if target in inside:
             returns[address] = target
     return returns
 
 
+def _continuation_writes_pointer(instructions: list[capstone.CsInsn]) -> bool:
+    """A GPR destination in the stub is an operand-pointer update the call edge would skip."""
+    neutral = {"cmp", "test", "ucomisd", "comisd", "vucomisd", "vcomisd", "nop", "endbr64", "ret"}
+    for insn in instructions:
+        if _unmodeled_control(insn):
+            return True
+        if insn.mnemonic in neutral or insn.mnemonic.startswith("j"):
+            continue
+        dest_text, _src = _split_operand(insn.op_str)
+        if "[" in dest_text:
+            continue
+        dest = _register_width(_leading_register(dest_text))
+        if dest is not None and not dest[0].startswith("xmm"):
+            return True
+    return False
+
+
 def _returning_calls(handler: Mapping[str, object]) -> set[int]:
-    """Callees whose captured bytes return without another binary64 operation or an open exit."""
+    """Callees whose captured bytes return without changing an operand pointer."""
     found: set[int] = set()
     for address, instructions in _decoded_continuations(handler):
         if _foreign_operation(instructions) or _continuation_shape(instructions) != "return":
+            continue
+        if _continuation_writes_pointer(instructions):
             continue
         found.add(address)
     return found
@@ -1535,7 +1556,8 @@ def _pointer_states(
             targets.append(next_address)
         by_address = {item.address: position for position, item in enumerate(instructions)}
         for target in targets:
-            successor = by_address.get(landings.get(target, target))
+            landing = target if target in by_address else landings.get(target)
+            successor = None if landing is None else by_address.get(landing)
             if successor is None:
                 continue
             arriving.setdefault(successor, set()).add((updated, index))
@@ -1705,6 +1727,8 @@ def _dispatch_continuation_closed(
             continue
         seen.add(state)
         insn = instructions[index]
+        if _unmodeled_control(insn):
+            return False
         next_registers = _apply_transfer(regs, insn)
         next_slot = _stores_tracked(insn, next_registers) if _slot_store(insn) else slot
         if insn.address in dispatch:
