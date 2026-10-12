@@ -1400,6 +1400,8 @@ def _bracket_base_disp(text: str) -> tuple[str, int] | None:
     """Base and displacement of [reg], [reg + disp], or [reg - disp]. Indexed forms are unsupported."""
     if "[" not in text or "]" not in text:
         return None
+    if ":" in text[:text.find("[")]:
+        return None
     inner = text[text.find("[") + 1:text.rfind("]")].strip()
     if "," in inner or "*" in inner or "rip" in inner:
         return None
