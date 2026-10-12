@@ -110,15 +110,28 @@ def _carrier(instructions: list[capstone.CsInsn]) -> tuple[str, int] | None:
     return None
 
 
-def _writes_register(insn: capstone.CsInsn, register: str) -> bool:
-    """Any width of the canonical register is a write. Comparisons and pushes are not."""
-    if insn.mnemonic in {"cmp", "test", "push"} or insn.mnemonic.startswith("j"):
-        return False
-    dest, _src = _split_operand(insn.op_str)
-    if "[" in dest:
-        return False
-    width = _register_width(_leading_register(dest))
-    return width is not None and width[0] == register
+def _written_canonicals(insn: capstone.CsInsn) -> set[str] | None:
+    """Every register Capstone reports written, including a second operand and implicit writes.
+
+    Memory-address bases stay reads. Missing detail does not invent an empty write set.
+    """
+    try:
+        _reads, written = insn.regs_access()
+    except capstone.CsError:
+        return None
+    canonical: set[str] = set()
+    for reg in written:
+        width = _register_width(insn.reg_name(reg))
+        if width is not None:
+            canonical.add(width[0])
+    return canonical
+
+
+def _full_width_rax(token: str | None) -> tuple[str, int] | None:
+    width = _register_width(_leading_register(token))
+    if width is None or width[0] != "rax" or width[1] < 32:
+        return None
+    return width
 
 
 def _closed_prefix(
@@ -373,32 +386,41 @@ def _immediate_value(token: str) -> int | None:
         return None
 
 
-def _return_value_after(insn: capstone.CsInsn, current: str) -> str:
-    """Supported full-width writes update RAX. Partial writes and calls do not keep a claimed zero."""
-    if insn.mnemonic in {"cmp", "test", "push", "nop", "endbr64"} or insn.mnemonic.startswith("j"):
-        return current
-    if insn.mnemonic == "call":
-        return _RETURN_UNKNOWN
+def _established_rax(insn: capstone.CsInsn) -> str | None:
+    """A full-width xor-to-self or immediate move is the only supported exact RAX result."""
     dest, src = _split_operand(insn.op_str)
     if "[" in dest:
-        return current
-    width = _register_width(_leading_register(dest))
-    if width is None or width[0] != "rax":
-        return current
-    if width[1] < 32:
-        return _RETURN_UNKNOWN
-    if insn.mnemonic == "xor" and src is not None:
-        source = _register_width(_leading_register(src))
-        if source is not None and source[0] == "rax" and source[1] == width[1]:
+        return None
+    dest_width = _full_width_rax(dest)
+    if dest_width is None or src is None:
+        return None
+    if insn.mnemonic == "xor":
+        source = _full_width_rax(src)
+        if source is not None and source[1] == dest_width[1]:
             return _RETURN_ZERO
-        return _RETURN_UNKNOWN
-    if insn.mnemonic == "mov" and src is not None:
+        return None
+    if insn.mnemonic == "mov":
         value = _immediate_value(src)
         if value == 0:
             return _RETURN_ZERO
         if value is not None:
             return _RETURN_NONZERO
-    return _RETURN_UNKNOWN
+    return None
+
+
+def _return_value_after(insn: capstone.CsInsn, current: str) -> str:
+    """Supported full-width writes update RAX. Any other RAX write drops a claimed zero."""
+    if insn.mnemonic == "call":
+        return _RETURN_UNKNOWN
+    if insn.mnemonic.startswith("j"):
+        return current
+    established = _established_rax(insn)
+    if established is not None:
+        return established
+    written = _written_canonicals(insn)
+    if written is None or "rax" in written:
+        return _RETURN_UNKNOWN
+    return current
 
 
 def _locate_continuation(
@@ -482,11 +504,26 @@ def _reference_preservation(
 ) -> str:
     if instructions is None or carrier is None:
         return "not_captured"
-    writes = any(_writes_register(insn, carrier) for insn in instructions)
-    call = any(insn.mnemonic == "call" for insn in instructions)
-    direct_return = any(insn.mnemonic == "ret" for insn in instructions)
+    writes = False
+    incomplete = False
+    call = False
+    direct_return = False
+    for insn in instructions:
+        if insn.mnemonic == "call":
+            call = True
+            continue
+        if insn.mnemonic == "ret":
+            direct_return = True
+        written = _written_canonicals(insn)
+        if written is None:
+            incomplete = True
+            continue
+        if carrier in written:
+            writes = True
     if writes:
         return "carrier_written"
+    if incomplete:
+        return "unresolved"
     if call and direct_return:
         return "preserved_on_no_call_return_call_side_unresolved"
     if direct_return and not call:

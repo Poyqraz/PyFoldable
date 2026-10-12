@@ -6,6 +6,8 @@ import hashlib
 import json
 from pathlib import Path
 
+import capstone
+
 from pyfoldable.application.c2v09_fromdouble_storage import (
     _continuation_walk,
     _inventory_from_observation,
@@ -143,6 +145,30 @@ def test_null_return_requires_a_zero_at_the_ret() -> None:
     sibling = walked("31c07402c3")
     assert sibling["null_return_reachable"] is True
     assert sibling["unresolved"]
+
+
+def test_exchange_writes_every_register() -> None:
+    for blob in ("4487f0c3", "440fc1f0c3", "4c8737c3", "664487f0c3", "4486f0c3", "66440fc1f0c3"):
+        assert _reference_preservation(_decoded(blob), "r14") == "carrier_written"
+    for blob in ("4d85f6c3", "4539f6c3", "4584f6c3"):
+        assert _reference_preservation(_decoded(blob), "r14") == "preserved"
+
+
+def test_exchange_invalidates_a_zero_return() -> None:
+    def walked(blob: str) -> dict[str, object]:
+        instructions = _decoded(blob)
+        return _continuation_walk({instructions[0].address: instructions}, instructions[0].address, 0, 0)
+
+    for blob in ("31c04891c3", "31c0488707c3", "31c00fc1c1c3", "31c0668707c3", "31c00fc0c1c3", "31c048f7e1c3"):
+        assert walked(blob)["null_return_reachable"] is False
+    assert walked("31c0c3")["null_return_reachable"] is True
+
+
+def test_missing_register_effects_do_not_establish_preservation() -> None:
+    decoder = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_64)
+    decoder.detail = False
+    instructions = list(decoder.disasm(bytes.fromhex("4d31f6c3"), 0x2000))
+    assert _reference_preservation(instructions, "r14") == "unresolved"
 
 
 def test_missing_constructor_replay_stays_unestablished() -> None:
