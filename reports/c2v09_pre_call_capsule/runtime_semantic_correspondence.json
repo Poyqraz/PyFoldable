@@ -20,9 +20,9 @@
           "generic div: divsd -> ob_fval",
           "generic mul: mulsd, mulsd -> ob_fval",
           "generic sub: subsd -> PyFloat_FromDouble",
-          "specialized add at 0x5dc539: in-place ob_fval or PyFloat_FromDouble",
+          "specialized add at 0x5dc539: ob_fval",
           "specialized sub at 0x5dbffb: PyFloat_FromDouble",
-          "specialized mul at 0x5d9329: in-place ob_fval or PyFloat_FromDouble",
+          "specialized mul at 0x5d9329: ob_fval",
           "specialized div: not present in the loaded eval function"
         ],
         "gaps": [],
@@ -85,9 +85,9 @@
             "generic div: divsd -> ob_fval",
             "generic mul: mulsd, mulsd -> ob_fval",
             "generic sub: subsd -> PyFloat_FromDouble",
-            "specialized add at 0x5dc539: in-place ob_fval or PyFloat_FromDouble",
+            "specialized add at 0x5dc539: ob_fval",
             "specialized sub at 0x5dbffb: PyFloat_FromDouble",
-            "specialized mul at 0x5d9329: in-place ob_fval or PyFloat_FromDouble",
+            "specialized mul at 0x5d9329: ob_fval",
             "specialized div: not present in the loaded eval function"
           ],
           "gaps": [],
@@ -148,9 +148,9 @@
             "generic div: divsd -> ob_fval",
             "generic mul: mulsd, mulsd -> ob_fval",
             "generic sub: subsd -> PyFloat_FromDouble",
-            "specialized add at 0x5dc539: in-place ob_fval or PyFloat_FromDouble",
+            "specialized add at 0x5dc539: ob_fval",
             "specialized sub at 0x5dbffb: PyFloat_FromDouble",
-            "specialized mul at 0x5d9329: in-place ob_fval or PyFloat_FromDouble",
+            "specialized mul at 0x5d9329: ob_fval",
             "specialized div: not present in the loaded eval function"
           ],
           "gaps": [],
@@ -229,9 +229,9 @@
           "generic div: divsd -> ob_fval",
           "generic mul: mulsd, mulsd -> ob_fval",
           "generic sub: subsd -> PyFloat_FromDouble",
-          "specialized add at 0x5dc539: in-place ob_fval or PyFloat_FromDouble",
+          "specialized add at 0x5dc539: ob_fval",
           "specialized sub at 0x5dbffb: PyFloat_FromDouble",
-          "specialized mul at 0x5d9329: in-place ob_fval or PyFloat_FromDouble",
+          "specialized mul at 0x5d9329: ob_fval",
           "specialized div: not present in the loaded eval function"
         ],
         "gaps": [],
@@ -278,8 +278,8 @@
         "unchanged_guard_ulps": 2
       }
     ],
-    "measurement_implementation_head": "934f6fb288cf2ebf255b9f8305a296f43ec0713b",
-    "measurement_implementation_tree": "a0371fc74933a90b63eaa96140cadb3c80873afe",
+    "measurement_implementation_head": "5867860bbf62c81ca8e4cf207685532677563bd1",
+    "measurement_implementation_tree": "d4e259d5e040d868b2e20aceaa6de527fd63ce49",
     "nextafter_function_calls": 0,
     "observations": {
       "approval_receipt_establishes_semantics": false,
@@ -480,11 +480,11 @@
         "specialized_handlers": {
           "add": [
             {
-              "address": "0x5dc539",
+              "address": "0x5dc50e",
               "coverage": "complete",
               "decoder": "capstone",
               "decoder_version": "5.0.7",
-              "elf_vaddr": "0x5dc539",
+              "elf_vaddr": "0x5dc50e",
               "fma_mnemonics": [],
               "from_double_address": "0x556110",
               "from_double_end": "0x5561a9",
@@ -495,6 +495,7 @@
               "mode": "64-bit",
               "ob_fval_load": true,
               "paths_execute_one_scalar_op": true,
+              "scalar_address": "0x5dc539",
               "scalar_mnemonics": [
                 "addsd"
               ],
@@ -504,11 +505,11 @@
           "div": [],
           "mul": [
             {
-              "address": "0x5d9329",
+              "address": "0x5d92fe",
               "coverage": "complete",
               "decoder": "capstone",
               "decoder_version": "5.0.7",
-              "elf_vaddr": "0x5d9329",
+              "elf_vaddr": "0x5d92fe",
               "fma_mnemonics": [],
               "from_double_address": "0x556110",
               "from_double_end": "0x5561a9",
@@ -519,6 +520,7 @@
               "mode": "64-bit",
               "ob_fval_load": true,
               "paths_execute_one_scalar_op": true,
+              "scalar_address": "0x5d9329",
               "scalar_mnemonics": [
                 "mulsd"
               ],
@@ -527,11 +529,11 @@
           ],
           "sub": [
             {
-              "address": "0x5dbffb",
+              "address": "0x5dbfd0",
               "coverage": "complete",
               "decoder": "capstone",
               "decoder_version": "5.0.7",
-              "elf_vaddr": "0x5dbffb",
+              "elf_vaddr": "0x5dbfd0",
               "fma_mnemonics": [],
               "from_double_address": "0x556110",
               "from_double_end": "0x5561a9",
@@ -542,6 +544,7 @@
               "mode": "64-bit",
               "ob_fval_load": true,
               "paths_execute_one_scalar_op": true,
+              "scalar_address": "0x5dbffb",
               "scalar_mnemonics": [
                 "subsd"
               ],
@@ -557,7 +560,7 @@
         "classification": "OBSERVED",
         "cpuid_leaf1": [
           "0xc06f2",
-          "0x40800",
+          "0x1040800",
           "0xfffa3227",
           "0x1fabfbff"
         ],
@@ -576,7 +579,7 @@
         "mxcsr_rounding": "nearest ties-to-even",
         "osxsave": true,
         "required_bits_ok": true,
-        "thread_id": "36715",
+        "thread_id": "37601",
         "x87_control": "0x37f",
         "xcr0": [
           "0x602e7",
@@ -602,7 +605,7 @@
       "cosine_function_calls": 0,
       "nextafter_function_calls": 0,
       "output_sampled": false,
-      "pid": 36715,
+      "pid": 37601,
       "sample_outputs_establish_semantics": false,
       "single_process_thread": true,
       "terminal_guard": {
@@ -622,7 +625,7 @@
         "wrapper_matches_file": true,
         "wrapper_subtraction": "subsd"
       },
-      "thread_id": "36715",
+      "thread_id": "37601",
       "ulp_function_calls": 0,
       "version_label": "3.12.3",
       "version_label_establishes_semantics": false
@@ -640,6 +643,6 @@
     ],
     "version_label_establishes_semantics": false
   },
-  "canonical_sha256": "ff1650f71398aacef88d2d3e2a4c5731116ae9c918ae63f96dbc360031e2e62d",
+  "canonical_sha256": "d4a45df551d71d2c23a6b727717241a85020d3f28ef8f22a43ea41a2a2e62faf",
   "digest_scope": "SHA-256 of the section 7.3 canonical bytes of canonical_payload only. canonical_sha256 and digest_scope are outside that payload."
 }
