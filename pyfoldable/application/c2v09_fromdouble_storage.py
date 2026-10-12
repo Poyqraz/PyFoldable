@@ -640,10 +640,12 @@ def storage_inventory(
 def _inventory_from_observation(observation: Mapping[str, object]) -> dict[str, object]:
     constructor = observation.get("constructor")
     rows = observation.get("continuations")
-    if not isinstance(constructor, Mapping) or not isinstance(rows, list):
+    raw = None if not isinstance(constructor, Mapping) else constructor.get("loaded_bytes_hex")
+    address_text = None if not isinstance(constructor, Mapping) else constructor.get("address")
+    if not isinstance(rows, list) or not isinstance(raw, str) or not raw or not isinstance(address_text, str):
         return storage_inventory(b"", 0, [])
-    blob = bytes.fromhex(str(constructor.get("loaded_bytes_hex") or ""))
-    address = int(str(constructor.get("address")), 16)
+    blob = bytes.fromhex(raw)
+    address = int(address_text, 16)
     clean_rows = [row for row in rows if isinstance(row, dict)]
     type_address = observation.get("pyfloat_type_address")
     parsed = int(str(type_address), 16) if isinstance(type_address, str) else None

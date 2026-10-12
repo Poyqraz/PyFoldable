@@ -45,10 +45,14 @@ def test_storage_capture_keeps_failure_paths_unsuccessful() -> None:
     assert observed["status"] == NOT_ESTABLISHED
     inventory = observed["inventory"]
     assert inventory["readiness_admitted"] is False
-    replayed = _inventory_from_observation(observed)
-    assert replayed["branch_table"] == inventory["branch_table"]
-    assert replayed["paths"] == inventory["paths"]
-    assert replayed["gaps"] == inventory["gaps"]
+    constructor = observed.get("constructor")
+    if isinstance(constructor, dict) and isinstance(constructor.get("address"), str) and constructor.get("loaded_bytes_hex"):
+        replayed = _inventory_from_observation(observed)
+        assert replayed["branch_table"] == inventory["branch_table"]
+        assert replayed["paths"] == inventory["paths"]
+        assert replayed["gaps"] == inventory["gaps"]
+    else:
+        assert inventory["branch_table"] == []
     for edge in inventory["branch_table"]:
         if edge["role"] == "allocation_null":
             assert edge["result"] == "not_a_successful_result"
@@ -58,7 +62,6 @@ def test_storage_capture_keeps_failure_paths_unsuccessful() -> None:
             assert path["result"] == "not_a_successful_result"
         if path["result"] == "finite_store_under_conditions":
             assert path["result"] != "not_a_successful_result"
-    constructor = observed.get("constructor")
     if (
         isinstance(constructor, dict)
         and constructor.get("loaded_bytes_hex")
@@ -105,6 +108,20 @@ def test_fromdouble_storage_record_is_not_the_measurement_commit() -> None:
     assert document["canonical_sha256"] == "3268f060342fce6160eff72ae4e1812aa980c0913030ba0d6f413731181f6dd1"
     assert sha256_bytes(canonical_bytes(payload)) == document["canonical_sha256"]
     assert _inventory_from_observation(payload)["branch_table"] == payload["inventory"]["branch_table"]
+
+
+def test_missing_constructor_replay_stays_unestablished() -> None:
+    replayed = _inventory_from_observation(
+        {
+            "constructor": {},
+            "continuations": [],
+            "pyfloat_type_address": None,
+            "flag_sites": [],
+        }
+    )
+    assert replayed["status"] == NOT_ESTABLISHED
+    assert replayed["readiness_admitted"] is False
+    assert replayed["branch_table"] == []
 
 
 def test_historical_capsules_stay_byte_for_byte() -> None:
