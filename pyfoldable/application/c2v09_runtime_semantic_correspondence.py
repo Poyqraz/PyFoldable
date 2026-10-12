@@ -269,9 +269,12 @@ def _slot_store(insn: capstone.CsInsn) -> bool:
 
 
 def _stores_tracked(insn: capstone.CsInsn, registers: frozenset[str] | set[str]) -> bool:
-    if not _slot_store(insn):
+    """A result store writes the full low 64 bits. A high-half or 32-bit write does not."""
+    if not _slot_store(insn) or insn.mnemonic not in {"movsd", "movq", "movlpd", "mov"}:
         return False
-    _dest_text, src_text = _split_operand(insn.op_str)
+    dest_text, src_text = _split_operand(insn.op_str)
+    if insn.mnemonic == "mov" and not dest_text.startswith("qword"):
+        return False
     register = _canonical_register(_leading_register(src_text))
     return register is not None and register in registers
 

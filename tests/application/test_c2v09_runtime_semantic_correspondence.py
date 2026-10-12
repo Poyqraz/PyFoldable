@@ -316,6 +316,14 @@ def test_dispatch_continuation_store_must_keep_the_computed_result() -> None:
     assert _handler_path_status(handler, "mul") == NOT_ESTABLISHED
 
 
+def test_partial_slot_writes_are_not_the_binary64_result() -> None:
+    for blob in (
+        "f20f104010f20f59c1660f174010c3",
+        "f20f104010f20f59c1f30f114010c3",
+    ):
+        assert _handler_path_status(_bare("mul", blob), "mul") == NOT_ESTABLISHED
+
+
 def test_later_xmmword_store_drops_the_computed_result() -> None:
     handler = _bare("mul", "f20f104010f20f59c1f20f1140100f294810c3")
     assert _handler_path_status(handler, "mul") == NOT_ESTABLISHED
