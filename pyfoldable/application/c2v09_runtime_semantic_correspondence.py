@@ -279,6 +279,24 @@ def _apply_transfer(registers: frozenset[str], insn: capstone.CsInsn) -> frozens
         if insn.mnemonic in _COPY_MNEMONICS or insn.mnemonic == "mov":
             current.add(dest[0])
             full_copy = True
+    if insn.mnemonic == "xchg" and dest is not None and src is not None and dest[1] == 64 and src[1] == 64:
+        dest_had = dest[0] in current
+        src_had = src[0] in current
+        if src_had:
+            current.add(dest[0])
+        else:
+            current.discard(dest[0])
+        if dest_had:
+            current.add(src[0])
+        else:
+            current.discard(src[0])
+        full_copy = True
+    elif insn.mnemonic in {"xchg", "xadd"}:
+        if dest is not None:
+            current.discard(dest[0])
+        if src is not None:
+            current.discard(src[0])
+        full_copy = True
     if (
         dest is not None
         and not full_copy
@@ -289,13 +307,6 @@ def _apply_transfer(registers: frozenset[str], insn: capstone.CsInsn) -> frozens
     if insn.mnemonic == "call":
         current = {name for name in current if not name.startswith("xmm") and name not in _VOLATILE}
     return frozenset(current)
-
-
-def _next_full_registers(registers: frozenset[str], insn: capstone.CsInsn) -> frozenset[str]:
-    if insn.mnemonic in _SCALAR:
-        dest = _scalar_dest(insn)
-        return frozenset({dest}) if dest is not None else frozenset()
-    return _apply_transfer(registers, insn)
 
 
 def _slot_store(insn: capstone.CsInsn) -> bool:
@@ -336,7 +347,7 @@ def _store_reaches_return(
             continue
         seen.add(state)
         insn = instructions[index]
-        next_registers = _next_full_registers(registers, insn)
+        next_registers = _apply_transfer(registers, insn)
         if _slot_store(insn):
             next_stored = _stores_tracked(insn, next_registers)
         else:

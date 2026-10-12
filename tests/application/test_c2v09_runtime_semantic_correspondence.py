@@ -232,6 +232,12 @@ def test_partial_register_move_does_not_preserve_the_binary64_result() -> None:
         assert _handler_status(narrowed, "mul") == NOT_ESTABLISHED
     preserved = _bare("mul", "f20f104010f20f59c166490f7ec64c89f048894010c3")
     assert _handler_status(preserved, "mul") == ESTABLISHED_CONDITIONALLY
+    for exchange in ("4487f0", "440fc1f0"):
+        swapped = _bare("mul", "f20f104010f20f59c166490f7ec6" + exchange + "4c897310c3")
+        assert _handler_status(swapped, "mul") == NOT_ESTABLISHED
+    unrelated = _decode_complete(bytes.fromhex("f20f58caf20f114810c3"), 0x3000)
+    assert unrelated is not None
+    assert _store_reaches_return(unrelated, 0x3000, frozenset({"xmm0"})) is False
 
 
 def test_unmatched_dispatch_continuation_does_not_close_the_path() -> None:
