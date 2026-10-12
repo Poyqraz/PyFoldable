@@ -81,11 +81,26 @@ def _rows(instructions: list[capstone.CsInsn]) -> list[dict[str, object]]:
     ]
 
 
-def _operand_register(insn: capstone.CsInsn) -> str | None:
+def _operand_register(insn: capstone.CsInsn) -> tuple[str, int] | None:
     width = _register_width(_leading_register(insn.op_str.split(",")[0] if insn.op_str else None))
     if width is None:
         return None
-    return width[0]
+    return width
+
+
+def _unmodeled_stack(insn: capstone.CsInsn) -> bool:
+    """A stack slot write or rsp change this model does not track."""
+    text = insn.op_str
+    if "[" in text and any(name in text for name in ("rsp", "rbp", "esp", "ebp")):
+        return True
+    if insn.mnemonic in {"pushfq", "popfq", "enter"}:
+        return True
+    written = _written_canonicals(insn)
+    if written is None:
+        return False
+    if "rsp" not in written or insn.mnemonic in {"push", "pop", "call", "ret"}:
+        return False
+    return not (insn.mnemonic in {"add", "sub"} and text.startswith("rsp,"))
 
 
 def _rip_address(insn: capstone.CsInsn) -> int | None:
@@ -155,20 +170,25 @@ def prove_entry_restore(
         if written is None:
             broken = True
             written = set()
+        if _unmodeled_stack(insn):
+            broken = True
         if insn.mnemonic == "push":
-            saved = _operand_register(insn)
-            if saved is None or broken or len(slots) >= 32:
+            operand = _operand_register(insn)
+            if operand is None or operand[1] != 64 or broken or len(slots) >= 32:
                 broken = True
             else:
+                saved = operand[0]
                 pushes.append({"address": hex(insn.address), "register": saved, "value": values.get(saved, _OTHER)})
-                slots = slots + ((saved, values.get(saved, _OTHER)),)
+                if not broken:
+                    slots = slots + ((saved, values.get(saved, _OTHER)),)
         elif insn.mnemonic == "leave":
             broken = True
         elif insn.mnemonic == "pop":
-            restored = _operand_register(insn)
-            if restored is None or broken or not slots or slots[-1][0] == "pad":
+            operand = _operand_register(insn)
+            if operand is None or operand[1] != 64 or broken or not slots or slots[-1][0] == "pad":
                 broken = True
             else:
+                restored = operand[0]
                 saved_reg, saved_value = slots[-1]
                 slots = slots[:-1]
                 values[restored] = saved_value if saved_reg == restored else _OTHER
