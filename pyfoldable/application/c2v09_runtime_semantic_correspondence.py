@@ -1424,46 +1424,40 @@ def _pointer_update(
     pointers: frozenset[tuple[str, int]],
     insn: capstone.CsInsn,
 ) -> frozenset[tuple[str, int]]:
-    """Track full-width copies and constant displacements from the ABI operand pointers."""
-    if insn.mnemonic in {"cmp", "test", "ucomisd", "comisd", "vucomisd", "vcomisd"} or insn.mnemonic.startswith("j"):
+    """Full-width copies and constant displacements only. Anything else drops pointer provenance."""
+    if insn.mnemonic in {"cmp", "test", "ucomisd", "comisd", "vucomisd", "vcomisd", "ret", "nop", "endbr64"} or insn.mnemonic.startswith("j"):
         return pointers
     known = dict(pointers)
     if insn.mnemonic == "call":
         return frozenset((reg, offset) for reg, offset in known.items() if reg not in _VOLATILE)
-    if insn.mnemonic in {"mul", "imul", "div", "idiv", "cdqe"}:
-        known.pop("rax", None)
-        if insn.mnemonic != "cdqe":
-            known.pop("rdx", None)
-        return frozenset(known.items())
-    if insn.mnemonic == "cqo":
-        known.pop("rdx", None)
-        return frozenset(known.items())
     dest_text, src_text = _split_operand(insn.op_str)
     dest = _register_width(_leading_register(dest_text))
     src = _register_width(_leading_register(src_text))
-    if insn.mnemonic in {"xchg", "xadd", "cmpxchg"}:
-        if dest is not None and not dest[0].startswith("xmm"):
-            known.pop(dest[0], None)
-        if src is not None and not src[0].startswith("xmm"):
-            known.pop(src[0], None)
-        if insn.mnemonic == "cmpxchg":
-            known.pop("rax", None)
-        return frozenset(known.items())
-    if dest is None or dest[0].startswith("xmm"):
-        return pointers
-    if dest[1] != 64:
-        known.pop(dest[0], None)
-        return frozenset(known.items())
-    if insn.mnemonic == "mov" and "[" not in dest_text and src is not None and src[1] == 64 and src[0] in known:
+    if (
+        insn.mnemonic == "mov"
+        and dest is not None
+        and src is not None
+        and dest[1] == 64
+        and src[1] == 64
+        and "[" not in dest_text
+        and src[0] in known
+    ):
         known[dest[0]] = known[src[0]]
         return frozenset(known.items())
-    if insn.mnemonic == "lea" and src_text is not None:
+    if insn.mnemonic == "lea" and dest is not None and dest[1] == 64 and src_text is not None:
         parsed = _bracket_base_disp(src_text)
         base = None if parsed is None else _register_width(parsed[0])
         if parsed is not None and base is not None and base[1] == 64 and base[0] in known:
             known[dest[0]] = known[base[0]] + parsed[1]
             return frozenset(known.items())
-    if insn.mnemonic in {"add", "sub"} and dest[0] in known and src_text is not None and src_text.startswith(("0x", "-")):
+    if (
+        insn.mnemonic in {"add", "sub"}
+        and dest is not None
+        and dest[1] == 64
+        and dest[0] in known
+        and src_text is not None
+        and src_text.startswith(("0x", "-"))
+    ):
         try:
             immediate = int(src_text, 0)
         except ValueError:
@@ -1473,8 +1467,7 @@ def _pointer_update(
                 immediate = -immediate
             known[dest[0]] = known[dest[0]] + immediate
             return frozenset(known.items())
-    known.pop(dest[0], None)
-    return frozenset(known.items())
+    return frozenset()
 
 
 def _pointer_states(
