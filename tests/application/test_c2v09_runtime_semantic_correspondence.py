@@ -13,6 +13,7 @@ from pyfoldable.application.c2v09_runtime_semantic_correspondence import (
     MISMATCHED,
     NOT_ESTABLISHED,
     classify_correspondence,
+    _decoded_store,
     nextafter_got_resolved,
     prepare_runtime_semantic_correspondence,
     replay_handler_scalars,
@@ -266,6 +267,7 @@ def test_live_package_does_not_admit_the_three_hypotheses() -> None:
             blob = bytes.fromhex(str(site["loaded_bytes_hex"]))
             file_bytes = _elf_bytes(str(site["image"]), int(str(site["elf_vaddr"]), 16), len(blob))
             assert file_bytes == blob
+            assert site["store"] == _decoded_store(site)
     observations = package["observations"]
     arguments = package["arguments"]
     assert observations is not arguments

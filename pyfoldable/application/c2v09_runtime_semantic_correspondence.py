@@ -382,7 +382,7 @@ def _capture_specialized_handlers(
                 "scalar_mnemonics": [insn.mnemonic],
                 "paths_execute_one_scalar_op": True,
                 "fma_mnemonics": [],
-                "store": "in-place ob_fval or PyFloat_FromDouble" if inplace else "PyFloat_FromDouble",
+                "store": _store_kind(checked_before + [insn] + checked_after, from_double, from_double_end),
                 "ob_fval_load": True,
                 "from_double_address": None if from_double is None else hex(from_double),
                 "from_double_end": None if from_double_end is None else hex(from_double_end),
