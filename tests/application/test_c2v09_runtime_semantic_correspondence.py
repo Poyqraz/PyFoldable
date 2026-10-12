@@ -599,3 +599,38 @@ def test_fail_closed_record_is_a_later_observation() -> None:
         "selected nextafter semantics": "ESTABLISHED CONDITIONALLY",
     }
     assert all(row["readiness_admitted"] is False for row in payload["hypotheses"])
+
+
+def test_path_provenance_record_is_a_later_observation() -> None:
+    path = Path(__file__).resolve().parents[2] / "reports" / "c2v09_pre_call_capsule" / "runtime_semantic_path_provenance.json"
+    raw = path.read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == "9eabc9c90488646c7f20d8a4b317ef1e1c1ad61cdb78d449a13e2cc66b99615d"
+    document = json.loads(raw)
+    payload = document["canonical_payload"]
+    assert payload["measurement_implementation_head"] == "a442f3fcf20b57e27f0c563a3c021aeb0aa64e7e"
+    assert payload["measurement_implementation_tree"] == "ea413ff799ad416d2e16eb6ad1a942a604dc53e5"
+    assert payload["record_commit_is_measurement_commit"] is False
+    assert payload["readiness_hypotheses_admitted"] is False
+    assert payload["candidate29_disposition"] == "NOT SELECTED"
+    assert payload["eligibility_evidence"] is False
+    assert payload["physical_qualification"] is False
+    assert payload["accept_closed"] is True
+    assert "canonical_sha256" not in payload
+    assert document["canonical_sha256"] == "ac673c8adce3b5253337b5aef31a349f0c67854804453fdfb696d937176db584"
+    assert sha256_bytes(canonical_bytes(payload)) == document["canonical_sha256"]
+    statuses = {row["name"]: row["status"] for row in payload["hypotheses"]}
+    assert statuses == {
+        "interpreter binary64 arithmetic semantics": "NOT ESTABLISHED",
+        "PyFloat_AsDouble conversion semantics": "NOT ESTABLISHED",
+        "selected nextafter semantics": "ESTABLISHED CONDITIONALLY",
+    }
+    guard = next(row for row in payload["hypotheses"] if row["name"] == "selected nextafter semantics")
+    assert guard["ulp"] == "2^-56"
+    assert guard["two_ulp_allowance"] == "2^-55"
+    assert guard["unchanged_guard_ulps"] == 2
+    assert guard["allowance_recomputed"] is False
+    observations = payload["observations"]
+    assert observations["pid"] == observations["terminal_guard"]["pid"] == observations["controls"]["pid"]
+    assert observations["terminal_guard"]["bind_now"] is True
+    assert observations["ulp_function_calls"] == 0
+    assert observations["nextafter_function_calls"] == 0
