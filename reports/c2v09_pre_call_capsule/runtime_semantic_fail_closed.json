@@ -4,13 +4,7 @@
     "approval_receipt_establishes_semantics": false,
     "argument_to_evidence": [
       {
-        "conditions": [
-          "float/float operations use the float slot; index + 1 stays on the integer slot",
-          "index * width and division by the declared annulus_count convert the integer with cvtsi2sd and then one scalar operation",
-          "each consumed Python operation is a separate binary64 or integer operation and does not fuse across operations",
-          "the declared annulus_count bounds the integer operands; the actual operand objects are checked when they exist and are not required before the source returns",
-          "controls stay RNE, DAZ off and FTZ off in this process and thread"
-        ],
+        "conditions": [],
         "evidence": [
           "FoldableRotorState.angle_from_deployed_rad: sub/float_float",
           "BladeGeometry.radius_m: div/float_float",
@@ -23,17 +17,18 @@
           "generic div: ob_fval",
           "generic mul: ob_fval",
           "generic sub: PyFloat_FromDouble",
-          "specialized add at 0x5dc539: ob_fval",
-          "specialized sub at 0x5dbffb: PyFloat_FromDouble",
-          "specialized mul at 0x5d9329: ob_fval",
           "specialized div: not present in the loaded eval function"
         ],
-        "gaps": [],
+        "gaps": [
+          "specialized add site is not a separate binary64 operation",
+          "specialized sub site is not a separate binary64 operation",
+          "specialized mul site is not a separate binary64 operation"
+        ],
         "hypothesis": "interpreter binary64 arithmetic semantics",
         "post_return_only": [
           "POST-RETURN ONLY: the actual operand objects passed by the returned source are not observed before that return"
         ],
-        "status": "ESTABLISHED CONDITIONALLY"
+        "status": "NOT ESTABLISHED"
       },
       {
         "conditions": [
@@ -75,13 +70,7 @@
       "approval_receipt_establishes_semantics": false,
       "argument_to_evidence": [
         {
-          "conditions": [
-            "float/float operations use the float slot; index + 1 stays on the integer slot",
-            "index * width and division by the declared annulus_count convert the integer with cvtsi2sd and then one scalar operation",
-            "each consumed Python operation is a separate binary64 or integer operation and does not fuse across operations",
-            "the declared annulus_count bounds the integer operands; the actual operand objects are checked when they exist and are not required before the source returns",
-            "controls stay RNE, DAZ off and FTZ off in this process and thread"
-          ],
+          "conditions": [],
           "evidence": [
             "FoldableRotorState.angle_from_deployed_rad: sub/float_float",
             "BladeGeometry.radius_m: div/float_float",
@@ -94,17 +83,18 @@
             "generic div: ob_fval",
             "generic mul: ob_fval",
             "generic sub: PyFloat_FromDouble",
-            "specialized add at 0x5dc539: ob_fval",
-            "specialized sub at 0x5dbffb: PyFloat_FromDouble",
-            "specialized mul at 0x5d9329: ob_fval",
             "specialized div: not present in the loaded eval function"
           ],
-          "gaps": [],
+          "gaps": [
+            "specialized add site is not a separate binary64 operation",
+            "specialized sub site is not a separate binary64 operation",
+            "specialized mul site is not a separate binary64 operation"
+          ],
           "hypothesis": "interpreter binary64 arithmetic semantics",
           "post_return_only": [
             "POST-RETURN ONLY: the actual operand objects passed by the returned source are not observed before that return"
           ],
-          "status": "ESTABLISHED CONDITIONALLY"
+          "status": "NOT ESTABLISHED"
         },
         {
           "conditions": [
@@ -144,13 +134,7 @@
       ],
       "hypotheses": [
         {
-          "conditions": [
-            "float/float operations use the float slot; index + 1 stays on the integer slot",
-            "index * width and division by the declared annulus_count convert the integer with cvtsi2sd and then one scalar operation",
-            "each consumed Python operation is a separate binary64 or integer operation and does not fuse across operations",
-            "the declared annulus_count bounds the integer operands; the actual operand objects are checked when they exist and are not required before the source returns",
-            "controls stay RNE, DAZ off and FTZ off in this process and thread"
-          ],
+          "conditions": [],
           "evidence": [
             "FoldableRotorState.angle_from_deployed_rad: sub/float_float",
             "BladeGeometry.radius_m: div/float_float",
@@ -163,18 +147,19 @@
             "generic div: ob_fval",
             "generic mul: ob_fval",
             "generic sub: PyFloat_FromDouble",
-            "specialized add at 0x5dc539: ob_fval",
-            "specialized sub at 0x5dbffb: PyFloat_FromDouble",
-            "specialized mul at 0x5d9329: ob_fval",
             "specialized div: not present in the loaded eval function"
           ],
-          "gaps": [],
+          "gaps": [
+            "specialized add site is not a separate binary64 operation",
+            "specialized sub site is not a separate binary64 operation",
+            "specialized mul site is not a separate binary64 operation"
+          ],
           "name": "interpreter binary64 arithmetic semantics",
           "post_return_only": [
             "POST-RETURN ONLY: the actual operand objects passed by the returned source are not observed before that return"
           ],
           "readiness_admitted": false,
-          "status": "ESTABLISHED CONDITIONALLY"
+          "status": "NOT ESTABLISHED"
         },
         {
           "conditions": [
@@ -231,13 +216,7 @@
     "eligibility_evidence": false,
     "hypotheses": [
       {
-        "conditions": [
-          "float/float operations use the float slot; index + 1 stays on the integer slot",
-          "index * width and division by the declared annulus_count convert the integer with cvtsi2sd and then one scalar operation",
-          "each consumed Python operation is a separate binary64 or integer operation and does not fuse across operations",
-          "the declared annulus_count bounds the integer operands; the actual operand objects are checked when they exist and are not required before the source returns",
-          "controls stay RNE, DAZ off and FTZ off in this process and thread"
-        ],
+        "conditions": [],
         "evidence": [
           "FoldableRotorState.angle_from_deployed_rad: sub/float_float",
           "BladeGeometry.radius_m: div/float_float",
@@ -250,18 +229,19 @@
           "generic div: ob_fval",
           "generic mul: ob_fval",
           "generic sub: PyFloat_FromDouble",
-          "specialized add at 0x5dc539: ob_fval",
-          "specialized sub at 0x5dbffb: PyFloat_FromDouble",
-          "specialized mul at 0x5d9329: ob_fval",
           "specialized div: not present in the loaded eval function"
         ],
-        "gaps": [],
+        "gaps": [
+          "specialized add site is not a separate binary64 operation",
+          "specialized sub site is not a separate binary64 operation",
+          "specialized mul site is not a separate binary64 operation"
+        ],
         "name": "interpreter binary64 arithmetic semantics",
         "post_return_only": [
           "POST-RETURN ONLY: the actual operand objects passed by the returned source are not observed before that return"
         ],
         "readiness_admitted": false,
-        "status": "ESTABLISHED CONDITIONALLY"
+        "status": "NOT ESTABLISHED"
       },
       {
         "conditions": [
@@ -302,8 +282,8 @@
         "unchanged_guard_ulps": 2
       }
     ],
-    "measurement_implementation_head": "e52b75c9e52818a416f4a8161613a5d48456c974",
-    "measurement_implementation_tree": "2029f355fc31056bd6433d7f4ea90abf012428c0",
+    "measurement_implementation_head": "51abb91c984b77438516818635e046e30cbb1b42",
+    "measurement_implementation_tree": "ca4f15fb576522d8646baa5c2bc9e22ceb21a35c",
     "nextafter_function_calls": 0,
     "observations": {
       "approval_receipt_establishes_semantics": false,
@@ -811,7 +791,7 @@
         "classification": "OBSERVED",
         "cpuid_leaf1": [
           "0xc06f2",
-          "0x3040800",
+          "0x40800",
           "0xfffa3227",
           "0x1fabfbff"
         ],
@@ -830,7 +810,7 @@
         "mxcsr_rounding": "nearest ties-to-even",
         "osxsave": true,
         "required_bits_ok": true,
-        "thread_id": "41016",
+        "thread_id": "42154",
         "x87_control": "0x37f",
         "xcr0": [
           "0x602e7",
@@ -862,7 +842,7 @@
       "cosine_function_calls": 0,
       "nextafter_function_calls": 0,
       "output_sampled": false,
-      "pid": 41016,
+      "pid": 42154,
       "sample_outputs_establish_semantics": false,
       "single_process_thread": true,
       "terminal_guard": {
@@ -877,7 +857,7 @@
         "output_sampled": false,
         "plt_address": "0x420da0",
         "plt_stub_bytes_hex": "ff251289600068d7000000e970f2ffff",
-        "selected_address": "0x7f0180acd3b0",
+        "selected_address": "0x7ff9ef27b3b0",
         "selected_body_bound": true,
         "selected_body_bytes_hex": "f30f1efa66480f7ec166490f7ec94889cf4c89c848c1ef2048c1e82089fa4189c089fe81e2ffffff7f4181e0ffffff7f81faffffef7f0f86a400000081ea0000f07f09ca0f85e20000004181f8ffffef7f0f86e10000004181e80000f07f4509c80f85c5000000660f2ec17a060f84bd00000089fa4189c085ff0f88e000000039c70f8f180100000f85e30000004139c90f83da00000083e90181e20000f07f81fa0000f07f0f84dc00000081faffff0f007f12f20f59c0488b05498b0b0064c7002200000089c848c1e6204809c666480f6ece660f28c1c30f1f80000000004181f8ffffef7f7737660f2ec17a02743f09ca0f857affffff250000008048c1e0204883c80166480f6ec066480f6ec8f20f59c0660f28c1c30f1f80000000004181e80000f07f4509c874bdf20f58c8660f28c1c30f1f00660f2ec17a0274f089fa4189c085ff786739c77e2483ea0189d6e940ffffff660f1f84000000000085c0793c39c77f384439c20f841dffffff83c1010f8520ffffff83c20189d6e916ffffff0f1f4000f20f58c0488b05758a0b0064c70022000000e927ffffff9085c90f85effeffffeba3660f1f44000085c0799939c77eb0eb93660f1f440000",
         "ulp_function_calls": 0,
@@ -888,7 +868,7 @@
         "wrapper_matches_file": true,
         "wrapper_subtraction": "subsd"
       },
-      "thread_id": "41016",
+      "thread_id": "42154",
       "ulp_function_calls": 0,
       "version_label": "3.12.3",
       "version_label_establishes_semantics": false
@@ -906,6 +886,6 @@
     ],
     "version_label_establishes_semantics": false
   },
-  "canonical_sha256": "4cde2b3501da9f0e81e624bf9a0946e759a076bca9da51539c41c94e80c6e639",
+  "canonical_sha256": "695121f0eb2fe5009cb37e36eb2fb73b6d4e16e9a5274ad29e0b8ba8d290e448",
   "digest_scope": "SHA-256 of the section 7.3 canonical bytes of canonical_payload only. canonical_sha256 and digest_scope are outside that payload."
 }

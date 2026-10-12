@@ -392,19 +392,19 @@ def test_correspondence_record_is_not_the_measurement_commit() -> None:
 def test_fail_closed_record_is_a_later_observation() -> None:
     path = Path(__file__).resolve().parents[2] / "reports" / "c2v09_pre_call_capsule" / "runtime_semantic_fail_closed.json"
     raw = path.read_bytes()
-    assert hashlib.sha256(raw).hexdigest() == "419a36dab7a61d3cd65d168ad47b3b2cead6fb798689d3d5b9b4b882c91cd9a3"
+    assert hashlib.sha256(raw).hexdigest() == "c5f36955d9082df11141fc31c4a161b0391f104cd4bf0449620c600ff48b279e"
     document = json.loads(raw)
     payload = document["canonical_payload"]
-    assert payload["measurement_implementation_head"] == "e52b75c9e52818a416f4a8161613a5d48456c974"
-    assert payload["measurement_implementation_tree"] == "2029f355fc31056bd6433d7f4ea90abf012428c0"
+    assert payload["measurement_implementation_head"] == "51abb91c984b77438516818635e046e30cbb1b42"
+    assert payload["measurement_implementation_tree"] == "ca4f15fb576522d8646baa5c2bc9e22ceb21a35c"
     assert payload["record_commit_is_measurement_commit"] is False
     assert payload["readiness_hypotheses_admitted"] is False
     assert "canonical_sha256" not in payload
-    assert document["canonical_sha256"] == "4cde2b3501da9f0e81e624bf9a0946e759a076bca9da51539c41c94e80c6e639"
+    assert document["canonical_sha256"] == "695121f0eb2fe5009cb37e36eb2fb73b6d4e16e9a5274ad29e0b8ba8d290e448"
     assert sha256_bytes(canonical_bytes(payload)) == document["canonical_sha256"]
     statuses = {row["name"]: row["status"] for row in payload["hypotheses"]}
     assert statuses == {
-        "interpreter binary64 arithmetic semantics": "ESTABLISHED CONDITIONALLY",
+        "interpreter binary64 arithmetic semantics": "NOT ESTABLISHED",
         "PyFloat_AsDouble conversion semantics": "ESTABLISHED CONDITIONALLY",
         "selected nextafter semantics": "ESTABLISHED CONDITIONALLY",
     }
