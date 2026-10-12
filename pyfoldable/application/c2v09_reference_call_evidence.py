@@ -157,15 +157,16 @@ def prove_entry_restore(
             written = set()
         if insn.mnemonic == "push":
             saved = _operand_register(insn)
-            if saved is not None:
+            if saved is None or broken or len(slots) >= 32:
+                broken = True
+            else:
                 pushes.append({"address": hex(insn.address), "register": saved, "value": values.get(saved, _OTHER)})
-                if not broken and len(slots) < 32:
-                    slots = slots + ((saved, values.get(saved, _OTHER)),)
-                else:
-                    broken = True
+                slots = slots + ((saved, values.get(saved, _OTHER)),)
+        elif insn.mnemonic == "leave":
+            broken = True
         elif insn.mnemonic == "pop":
             restored = _operand_register(insn)
-            if restored is None or broken or not slots:
+            if restored is None or broken or not slots or slots[-1][0] == "pad":
                 broken = True
             else:
                 saved_reg, saved_value = slots[-1]

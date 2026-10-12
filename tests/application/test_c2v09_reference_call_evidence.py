@@ -50,6 +50,10 @@ def test_a_push_is_not_a_restore() -> None:
     sibling = prove_entry_restore(_decoded("415641be010000007403415ec3"), 0x2000)
     assert sibling["established"] is False
     assert sibling["unresolved_exits"]
+    ignored_push = prove_entry_restore(_decoded("415641be010000006a01415ec3"), 0x2000)
+    assert ignored_push["established"] is False
+    left = prove_entry_restore(_decoded("415641be01000000c9c3"), 0x2000)
+    assert left["established"] is False
 
 
 def test_reference_call_record_is_not_the_measurement_commit() -> None:
