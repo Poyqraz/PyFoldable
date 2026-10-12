@@ -54,7 +54,14 @@ def test_a_push_is_not_a_restore() -> None:
     assert ignored_push["established"] is False
     left = prove_entry_restore(_decoded("415641be01000000c9c3"), 0x2000)
     assert left["established"] is False
-    for blob in ("415641be0100000048890424415ec3", "415641be0100000066415ec3", "41569c415ec3", "41564883e4f0415ec3"):
+    for blob in (
+        "415641be0100000048890424415ec3",
+        "415641be0100000066415ec3",
+        "41569c415ec3",
+        "41564883e4f0415ec3",
+        "4156415641be010000005c415ec3",
+        "415641be010000004889e048c70000000000415ec3",
+    ):
         assert prove_entry_restore(_decoded(blob), 0x2000)["established"] is False
 
 

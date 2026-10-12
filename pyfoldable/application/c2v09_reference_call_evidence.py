@@ -88,19 +88,35 @@ def _operand_register(insn: capstone.CsInsn) -> tuple[str, int] | None:
     return width
 
 
+def _reads_rsp(insn: capstone.CsInsn) -> bool:
+    try:
+        reads, _written = insn.regs_access()
+    except capstone.CsError:
+        return True
+    for reg in reads:
+        width = _register_width(insn.reg_name(reg))
+        if width is not None and width[0] == "rsp":
+            return True
+    return False
+
+
 def _unmodeled_stack(insn: capstone.CsInsn) -> bool:
-    """A stack slot write or rsp change this model does not track."""
+    """A stack slot write, rsp copy, or rsp change this model does not track."""
     text = insn.op_str
     if "[" in text and any(name in text for name in ("rsp", "rbp", "esp", "ebp")):
         return True
-    if insn.mnemonic in {"pushfq", "popfq", "enter"}:
+    if insn.mnemonic in {"pushfq", "popfq", "enter", "leave"}:
         return True
-    written = _written_canonicals(insn)
-    if written is None:
+    if insn.mnemonic == "pop":
+        operand = _operand_register(insn)
+        return operand is not None and operand[0] == "rsp"
+    if insn.mnemonic in {"push", "call", "ret"}:
         return False
-    if "rsp" not in written or insn.mnemonic in {"push", "pop", "call", "ret"}:
+    if insn.mnemonic == "mov" and text == "rbp, rsp":
         return False
-    return not (insn.mnemonic in {"add", "sub"} and text.startswith("rsp,"))
+    if insn.mnemonic in {"add", "sub"} and text.startswith("rsp,"):
+        return False
+    return _reads_rsp(insn)
 
 
 def _rip_address(insn: capstone.CsInsn) -> int | None:
