@@ -154,6 +154,12 @@ def test_saved_stack_slot_alias_does_not_restore_entry() -> None:
     )
     assert looped["established"] is False
     assert any(row["r14"] != "entry" for row in looped["returns"])
+    exchanged = prove_entry_restore(
+        _decoded("415631c031c94889e2480fb1d148c70101000000415ec3"),
+        0x2000,
+    )
+    assert exchanged["established"] is False
+    assert all(row["r14"] != "entry" for row in exchanged["returns"])
 
 
 def test_archived_reference_call_replay_keeps_the_recorded_events() -> None:

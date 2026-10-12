@@ -388,14 +388,16 @@ def _apply_alias_instruction(
             if not hit and pointer is not None:
                 updated = _poison_slots(updated)
     if insn.mnemonic in {"cmpxchg", "cmpxchg8b", "cmpxchg16b"}:
-        # The unequal path writes RAX with the old destination. Capstone may not report that write.
+        # Either path can move a pointer into RAX or into the other operand.
+        # Capstone does not report the unequal-path RAX write.
         involved = False
+        registers: list[str] = []
         for operand in getattr(insn, "operands", ()):
             width = _operand_width(insn, operand)
-            if width is not None and (width[0] in tracked or width[0] == "rsp"):
-                involved = True
-                if width[0] != "rsp":
-                    tracked[width[0]] = _AMBIGUOUS
+            if width is not None:
+                registers.append(width[0])
+                if width[0] in tracked or width[0] == "rsp":
+                    involved = True
             elif getattr(operand, "type", None) == capstone.x86.X86_OP_MEM:
                 level = _address_level(insn, operand, tracked, updated)
                 if isinstance(level, int):
@@ -408,6 +410,9 @@ def _apply_alias_instruction(
             tracked["rax"] = _AMBIGUOUS
             if insn.mnemonic != "cmpxchg":
                 tracked["rdx"] = _AMBIGUOUS
+            for name in registers:
+                if name != "rsp":
+                    tracked[name] = _AMBIGUOUS
         return tracked, updated
     defined = _pointer_definitions(insn, tracked, updated)
     written = _written_canonicals(insn)
