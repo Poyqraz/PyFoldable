@@ -253,6 +253,14 @@ def _direct_target(insn: capstone.CsInsn) -> int | None:
     return int(insn.op_str, 16)
 
 
+def _unmodeled_control(mnemonic: str) -> bool:
+    """A direct branch this walk does not follow. Falling through it is not a finished path."""
+    if mnemonic in {"loop", "loope", "loopne", "loopz", "loopnz"}:
+        return True
+    bare = mnemonic.split()[-1]
+    return (bare == "jmp" or bare.startswith("j")) and mnemonic != bare
+
+
 def _scalar_dest(insn: capstone.CsInsn) -> str | None:
     dest, _src = _split_operand(insn.op_str)
     register = _canonical_register(_leading_register(dest))
@@ -1475,10 +1483,11 @@ def _pointer_update(
 def _pointer_states(
     instructions: list[capstone.CsInsn],
 ) -> tuple[dict[int, set[tuple[frozenset[tuple[str, int]], int]]], bool]:
-    """Arrival states, and whether each visited instruction had one pointer state.
+    """Arrival states, and whether the walk followed every reached edge.
 
     The same state on a backedge is finished. A different pointer state at an
-    instruction already visited invalidates the partial arrival map.
+    instruction already visited, or a direct branch this walk does not follow,
+    invalidates the partial arrival map.
     """
     initial = frozenset({("rdi", 0), ("rsi", 0)})
     arriving: dict[int, set[tuple[frozenset[tuple[str, int]], int]]] = {0: {(initial, -1)}}
@@ -1496,6 +1505,8 @@ def _pointer_states(
         seen.add(key)
         visited.add(index)
         insn = instructions[index]
+        if _unmodeled_control(insn.mnemonic):
+            return arriving, False
         updated = _pointer_update(pointers, insn)
         next_address = insn.address + insn.size
         targets: list[int] = []
@@ -1631,6 +1642,8 @@ def _path_exits(
             return [("fromdouble", target)]
         if target is not None and target in calls and next_address in inside:
             return [("go", next_address)]
+        return [("unresolved", None)]
+    if _unmodeled_control(mnemonic):
         return [("unresolved", None)]
     if next_address in inside:
         return [("go", next_address)]

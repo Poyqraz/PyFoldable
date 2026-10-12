@@ -383,6 +383,35 @@ def test_changing_pointer_cycle_does_not_exclude_the_exit() -> None:
     )
 
 
+def test_live_offset_cycle_does_not_exclude_the_exit() -> None:
+    _changing_pointer_cycle(
+        "4889f848817808c096a300751874064883c010ebeef20f104010f20f59c1f20f114010c3",
+        partial_would_exclude=True,
+    )
+    _changing_pointer_cycle(
+        "4889f848817808c096a300751874064883e810ebeef20f104010f20f59c1f20f114010c3",
+        partial_would_exclude=True,
+    )
+
+
+def test_unmodeled_branch_does_not_finish_the_pointer_walk() -> None:
+    for blob in (
+        "4889f848817808c096a30075184889f14883c010e2edf20f104010f20f59c1f20f114010c3",
+        "4889f848817808c096a30075184889f14883c010e1edf20f104010f20f59c1f20f114010c3",
+        "4889f848817808c096a30075184889f14883c010e0edf20f104010f20f59c1f20f114010c3",
+        "4889f848817808c096a30075164883c010f2ebfef20f104010f20f59c1f20f114010c3",
+        "4889f848817808c096a30075164883c0103eebfef20f104010f20f59c1f20f114010c3",
+    ):
+        _changing_pointer_cycle(blob, partial_would_exclude=True)
+    handler = _typed_mul("4889f848817808c096a300f275f0f20f104010f20f59c1f20f114010c3")
+    instructions = _handler_instructions(handler)
+    assert instructions is not None
+    branch = next(index for index, insn in enumerate(instructions) if insn.mnemonic == "bnd jne")
+    assert _exit_excluded(handler, instructions, branch) is False
+    assert _handler_status(handler, "mul") == NOT_ESTABLISHED
+    assert _arithmetic_status(handler) == NOT_ESTABLISHED
+
+
 def test_stable_pointer_backedge_terminates_without_an_endpoint() -> None:
     handler = _typed_mul("4889f848817808c096a3007520ebf4f20f104010f20f59c1f20f114010c3")
     instructions = _handler_instructions(handler)
