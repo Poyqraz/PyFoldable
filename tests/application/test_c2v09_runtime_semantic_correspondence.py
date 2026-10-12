@@ -220,6 +220,90 @@ def test_decoded_condition_can_exclude_only_the_branch_it_matches() -> None:
     assert _handler_path_status(handler, "mul") == ESTABLISHED_CONDITIONALLY
 
 
+def test_dispatch_continuation_cannot_hide_an_unresolved_exit() -> None:
+    handler = _bare("mul", "f20f104010f20f59c1f20f114010e9ed0f0000")
+    handler["completion"] = "next_opcode_dispatch"
+    handler["continuations"] = [
+        {
+            "address": "0x2000",
+            "loaded_bytes_hex": "0f8500010000410fb645044d8972f04983ea084989df450fb65d054983c5044989c6488b04c560477800ffe0",
+        }
+    ]
+    assert _handler_path_status(handler, "mul") == NOT_ESTABLISHED
+
+
+def test_conversion_must_return_the_converted_bits_in_xmm0() -> None:
+    observations = _observations()
+    handler = _bare("mul", "e894890000f20f59c2f20f114010c3")
+    handler["continuations"] = [{"address": "0x9999", "loaded_bytes_hex": "f20f2ad0c3"}]
+    observations["arithmetic"]["pid"] = 1
+    observations["arithmetic"]["thread_id"] = "7"
+    observations["arithmetic"]["generic_handlers"] = {"mul": handler}
+    observations["arithmetic"]["number_slots"] = {
+        "type_address": "0xa396c0",
+        "type_name_bytes_hex": "666c6f617400",
+        "basicsize": 24,
+        "tp_as_number": "0xabc000",
+        "slots": {"mul": {"index": 2, "target": "0x1000"}},
+    }
+    observations["arithmetic"]["operations"] = [
+        {
+            "qualname": "solve_bem_rotor.annulus_edge",
+            "kinds": ["mul"],
+            "categories": ["mixed_integer_float_multiply"],
+            "bytecode_window_establishes_semantics": False,
+        }
+    ]
+    observations["arithmetic"]["declared_annulus_count"] = 4
+    observations["arithmetic"]["specialized_handlers"] = {"mul": []}
+    observations["arithmetic"]["specialized_scan"] = "complete"
+    observations["arithmetic"]["unclassified_scalar_sites"] = 0
+    found = _by_name(classify_correspondence(observations))
+    assert found["interpreter binary64 arithmetic semantics"]["status"] == NOT_ESTABLISHED
+
+
+def test_unrecognized_overwrite_and_later_store_drop_the_result() -> None:
+    overwritten = _bare("mul", "f20f104010f20f59c10f57c0f20f114010c3")
+    assert _handler_path_status(overwritten, "mul") == NOT_ESTABLISHED
+    replaced = _bare("mul", "f20f104010f20f59c1f20f114010f20f114810c3")
+    assert _handler_path_status(replaced, "mul") == NOT_ESTABLISHED
+
+
+def test_fromdouble_label_without_a_store_body_is_not_a_store() -> None:
+    handler = _bare("mul", "f20f104010f20f59c1e8f20f0000c3")
+    handler["from_double_address"] = "0x2000"
+    handler["from_double_end"] = "0x2001"
+    assert _handler_path_status(handler, "mul") == NOT_ESTABLISHED
+
+
+def test_fromdouble_before_asdouble_is_not_the_finite_result_path() -> None:
+    observations = _observations()
+    observations["conversion"] = {
+        "wrapper_address": "0x1000",
+        "wrapper_bytes_hex": "e8fb1f0000e8f60f0000c3",
+        "asdouble_address": "0x2000",
+        "asdouble_bytes_hex": "f20f104010c3",
+        "fromdouble_address": "0x3000",
+        "fromdouble_bytes_hex": "66490f7ec64c897310c3",
+        "fromdouble_end": "0x300a",
+        "pid": 1,
+        "thread_id": "7",
+    }
+    found = _by_name(classify_correspondence(observations))
+    assert found["PyFloat_AsDouble conversion semantics"]["status"] == NOT_ESTABLISHED
+
+
+def test_a_register_name_does_not_justify_excluding_a_branch() -> None:
+    handler = _bare("mul", "83f80f7710f20f104010f20f59c1f20f114010c3")
+    handler["excluded_branches"] = [
+        {"target": "0x1015", "condition": {"mnemonic": "cmp", "branch": "ja", "operand": "eax"}}
+    ]
+    assert _handler_path_status(handler, "mul") == NOT_ESTABLISHED
+    typed = _bare("mul", "83f80f7510f20f104010f20f59c1f20f114010c3")
+    typed["float_type_address"] = "0xf"
+    assert _handler_path_status(typed, "mul") == NOT_ESTABLISHED
+
+
 def test_specialized_handler_may_stop_at_a_loaded_dispatch_boundary() -> None:
     blob = "f20f104010f20f59c1f20f114010410fb645044d8972f04983ea084989df450fb65d054983c5044989c6488b04c560477800ffe0"
     handler = _bare("mul", blob)

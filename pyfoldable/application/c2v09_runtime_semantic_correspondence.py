@@ -250,11 +250,22 @@ def _apply_transfer(registers: frozenset[str], insn: capstone.CsInsn) -> frozens
     elif insn.mnemonic == "mov" and dest is not None and src is not None and "[" not in dest_text and src in current:
         current.add(dest)
         copied = True
-    if dest is not None and dest in current and not copied and insn.mnemonic in _WRITE_MNEMONICS:
+    if (
+        dest is not None
+        and dest in current
+        and not copied
+        and not insn.mnemonic.startswith("j")
+        and insn.mnemonic not in {"cmp", "test", "ucomisd", "comisd", "vucomisd", "vcomisd"}
+    ):
         current.discard(dest)
     if insn.mnemonic == "call":
         current = {name for name in current if not name.startswith("xmm") and name not in _VOLATILE}
     return frozenset(current)
+
+
+def _slot_store(insn: capstone.CsInsn) -> bool:
+    dest_text, _src = _split_operand(insn.op_str)
+    return "+ 0x10]" in dest_text and insn.mnemonic in {"movsd", "mov", "movq"}
 
 
 def _stores_tracked(insn: capstone.CsInsn, registers: frozenset[str] | set[str]) -> bool:
@@ -288,7 +299,10 @@ def _store_reaches_return(
         seen.add(state)
         insn = instructions[index]
         next_registers = _apply_transfer(registers, insn)
-        next_stored = stored or _stores_tracked(insn, next_registers)
+        if _slot_store(insn):
+            next_stored = _stores_tracked(insn, next_registers)
+        else:
+            next_stored = stored
         next_address = insn.address + insn.size
         if insn.mnemonic == "ret":
             if next_stored:
@@ -1341,6 +1355,7 @@ def _exit_excluded(handler: Mapping[str, object], instructions: list[capstone.Cs
                 condition.get("mnemonic") == predecessor.mnemonic
                 and condition.get("branch") == insn.mnemonic
                 and isinstance(operand, str)
+                and operand.startswith("0x")
                 and operand in _operand_tokens(predecessor.op_str)
             ):
                 return True
@@ -1348,6 +1363,7 @@ def _exit_excluded(handler: Mapping[str, object], instructions: list[capstone.Cs
     return bool(
         type_address is not None
         and predecessor.mnemonic == "cmp"
+        and "[" in predecessor.op_str
         and insn.mnemonic in {"jne", "jnz"}
         and hex(type_address) in _operand_tokens(predecessor.op_str)
     )
@@ -1390,7 +1406,7 @@ def _path_exits(
     returns: Mapping[int, int],
     calls: set[int],
     dispatch: set[int],
-    external_dispatch: set[int],
+    external_dispatch: Mapping[int, list[capstone.CsInsn]],
     from_double: int | None,
     from_double_end: int | None,
 ) -> list[tuple[str, int | None]]:
@@ -1411,7 +1427,7 @@ def _path_exits(
         elif target in returns:
             found.append(("go", returns[target]))
         elif target in external_dispatch:
-            found.append(("endpoint", None))
+            found.append(("dispatch_cont", target))
         elif mnemonic == "jmp" and _target_in_range(target, from_double, from_double_end):
             found.append(("tail", target))
         elif _exit_excluded(handler, instructions, index):
@@ -1423,13 +1439,72 @@ def _path_exits(
         return found
     if mnemonic == "call":
         target = _direct_target(insn)
-        if target is not None and (target in calls or _target_in_range(target, from_double, from_double_end)):
-            if next_address in inside:
-                return [("go", next_address)]
+        if target is not None and _target_in_range(target, from_double, from_double_end):
+            return [("fromdouble", target)]
+        if target is not None and target in calls and next_address in inside:
+            return [("go", next_address)]
         return [("unresolved", None)]
     if next_address in inside:
         return [("go", next_address)]
     return [("unresolved", None)]
+
+
+def _fromdouble_body(handler: Mapping[str, object]) -> list[capstone.CsInsn] | None:
+    blob = handler.get("from_double_bytes_hex")
+    address = _hex_int(handler.get("from_double_address"))
+    if not isinstance(blob, str) or address is None:
+        return None
+    try:
+        return _decode_complete(bytes.fromhex(blob), address)
+    except ValueError:
+        return None
+
+
+def _fromdouble_store_reached(handler: Mapping[str, object], landing: int | None, registers: frozenset[str]) -> bool:
+    body = _fromdouble_body(handler)
+    if body is None or landing is None or "xmm0" not in registers:
+        return False
+    return _store_reaches_return(body, landing, frozenset({"xmm0"}))
+
+
+def _dispatch_continuation_closed(instructions: list[capstone.CsInsn], stored: bool) -> bool:
+    """The indirect dispatch is the endpoint. Any other open exit fails the continuation."""
+    if not stored:
+        return False
+    dispatch = _dispatch_addresses(instructions)
+    if not dispatch:
+        return False
+    by_address = {insn.address: index for index, insn in enumerate(instructions)}
+    inside = set(by_address)
+    reached = False
+    seen: set[int] = set()
+    stack = [0]
+    while stack:
+        index = stack.pop()
+        if index in seen:
+            continue
+        seen.add(index)
+        insn = instructions[index]
+        if insn.address in dispatch:
+            reached = True
+            continue
+        next_address = insn.address + insn.size
+        if insn.mnemonic in _SCALAR or _is_fma(insn.mnemonic) or insn.mnemonic in {"call", "ret"}:
+            return False
+        if insn.mnemonic == "jmp" or (insn.mnemonic.startswith("j") and insn.mnemonic != "jmp"):
+            target = _direct_target(insn)
+            if target not in inside:
+                return False
+            stack.append(by_address[target])
+            if insn.mnemonic != "jmp":
+                if next_address not in inside:
+                    return False
+                stack.append(by_address[next_address])
+            continue
+        if next_address not in inside:
+            return False
+        stack.append(by_address[next_address])
+    return reached
 
 
 def _handler_path_status(handler: Mapping[str, object], kind: str) -> str:
@@ -1448,11 +1523,11 @@ def _handler_path_status(handler: Mapping[str, object], kind: str) -> str:
     returns = _continuations_return(handler, inside)
     calls = _returning_calls(handler)
     dispatch = _dispatch_addresses(instructions) if handler.get("completion") == "next_opcode_dispatch" else set()
-    external_dispatch: set[int] = set()
+    external_dispatch: dict[int, list[capstone.CsInsn]] = {}
     if handler.get("completion") == "next_opcode_dispatch":
         for address, continuation in _decoded_continuations(handler):
             if _dispatch_addresses(continuation):
-                external_dispatch.add(address)
+                external_dispatch[address] = continuation
     seen: set[tuple[int, int, bool, tuple[str, ...]]] = set()
     stack: list[tuple[int, int, bool, frozenset[str]]] = [(0, 0, False, frozenset())]
     completed = False
@@ -1472,15 +1547,10 @@ def _handler_path_status(handler: Mapping[str, object], kind: str) -> str:
             next_scalars = scalars
         if next_scalars > 1:
             return NOT_ESTABLISHED
-        next_stored = stored or (next_scalars == 1 and _stores_tracked(insn, next_registers))
-        transferred = _direct_target(insn)
-        if (
-            next_scalars == 1
-            and insn.mnemonic in {"call", "jmp"}
-            and _target_in_range(transferred, from_double, from_double_end)
-            and "xmm0" in registers
-        ):
-            next_stored = True
+        if _slot_store(insn):
+            next_stored = next_scalars == 1 and _stores_tracked(insn, next_registers)
+        else:
+            next_stored = stored
         for kind_exit, target in _path_exits(
             handler,
             instructions,
@@ -1495,11 +1565,28 @@ def _handler_path_status(handler: Mapping[str, object], kind: str) -> str:
         ):
             if kind_exit == "unresolved":
                 return NOT_ESTABLISHED
-            if kind_exit in {"endpoint", "tail"}:
-                if next_scalars == 1 and next_stored:
+            if kind_exit == "dispatch_cont":
+                continuation = None if target is None else external_dispatch.get(target)
+                if continuation is None or not _dispatch_continuation_closed(continuation, next_scalars == 1 and next_stored):
+                    return NOT_ESTABLISHED
+                completed = True
+                continue
+            if kind_exit in {"endpoint", "tail", "fromdouble"}:
+                if kind_exit == "endpoint":
+                    if next_scalars == 1 and next_stored:
+                        completed = True
+                        continue
+                    return NOT_ESTABLISHED
+                if not _fromdouble_store_reached(handler, target, registers) or next_scalars != 1:
+                    return NOT_ESTABLISHED
+                if kind_exit == "tail":
                     completed = True
                     continue
-                return NOT_ESTABLISHED
+                next_address = insn.address + insn.size
+                if next_address not in by_address:
+                    return NOT_ESTABLISHED
+                stack.append((by_address[next_address], next_scalars, True, next_registers))
+                continue
             if kind_exit == "excluded" or target is None:
                 continue
             stack.append((by_address[target], next_scalars, next_stored, next_registers))
@@ -1577,6 +1664,52 @@ def _source_registers(insn: capstone.CsInsn) -> set[str]:
     return found
 
 
+def _returns_converted_xmm0(instructions: list[capstone.CsInsn]) -> bool:
+    """Every return must still hold the converted bits in xmm0. An unreachable convert does not count."""
+    if not instructions:
+        return False
+    by_address = {insn.address: index for index, insn in enumerate(instructions)}
+    inside = set(by_address)
+    completed = False
+    seen: set[tuple[int, tuple[str, ...]]] = set()
+    stack: list[tuple[int, frozenset[str]]] = [(0, frozenset())]
+    while stack:
+        index, registers = stack.pop()
+        state = (index, tuple(sorted(registers)))
+        if state in seen:
+            continue
+        seen.add(state)
+        insn = instructions[index]
+        if insn.mnemonic in {"cvtsi2sd", "vcvtsi2sd"}:
+            dest = _canonical_register(_leading_register(_split_operand(insn.op_str)[0]))
+            next_registers = frozenset({dest}) if dest is not None else frozenset()
+        else:
+            next_registers = _apply_transfer(registers, insn)
+        next_address = insn.address + insn.size
+        if insn.mnemonic == "ret":
+            if "xmm0" not in next_registers:
+                return False
+            completed = True
+            continue
+        targets: list[int] = []
+        if insn.mnemonic == "jmp" or (insn.mnemonic.startswith("j") and insn.mnemonic != "jmp"):
+            target = _direct_target(insn)
+            if target not in inside:
+                return False
+            targets.append(target)
+            if insn.mnemonic != "jmp":
+                if next_address not in inside:
+                    return False
+                targets.append(next_address)
+        elif insn.mnemonic == "call" or next_address not in inside:
+            return False
+        else:
+            targets.append(next_address)
+        for target in targets:
+            stack.append((by_address[target], next_registers))
+    return completed
+
+
 def _conversion_flows(instructions: list[capstone.CsInsn], call_target: int, source: str) -> bool:
     by_address = {insn.address: index for index, insn in enumerate(instructions)}
     inside = set(by_address)
@@ -1639,15 +1772,9 @@ def _mixed_conversion_bound(arithmetic: Mapping[str, object], kind: str) -> bool
         if insn.mnemonic == "call" and (target := _direct_target(insn)) is not None
     }
     for address, instructions in _decoded_continuations(handler):
-        if address not in call_targets or _continuation_shape(instructions) != "return":
+        if address not in call_targets or _foreign_operation(instructions) or not _returns_converted_xmm0(instructions):
             continue
-        if _foreign_operation(instructions):
-            continue
-        converter = next((insn for insn in instructions if insn.mnemonic in {"cvtsi2sd", "vcvtsi2sd"}), None)
-        if converter is None:
-            continue
-        dest = _canonical_register(_leading_register(_split_operand(converter.op_str)[0]))
-        if dest is not None and _conversion_flows(handler_instructions, address, dest):
+        if _conversion_flows(handler_instructions, address, "xmm0"):
             return True
     return False
 
@@ -1793,18 +1920,24 @@ def _builtin_float_load(instructions: list[capstone.CsInsn]) -> bool:
     return False
 
 
-def _wrapper_fromdouble_landings(
+def _post_asdouble_fromdouble_landings(
     wrapper: list[capstone.CsInsn],
+    as_address: int | None,
     start: int | None,
     end: int | None,
 ) -> list[int]:
-    if not wrapper:
+    """A FromDouble edge counts only after PyFloat_AsDouble has returned."""
+    if not wrapper or as_address is None:
         return []
     by_address = {insn.address: index for index, insn in enumerate(wrapper)}
     inside = set(by_address)
+    stack = [
+        by_address[insn.address + insn.size]
+        for insn in wrapper
+        if insn.mnemonic == "call" and _direct_target(insn) == as_address and insn.address + insn.size in by_address
+    ]
     found: list[int] = []
     seen: set[int] = set()
-    stack = [0]
     while stack:
         index = stack.pop()
         if index in seen:
@@ -1815,6 +1948,8 @@ def _wrapper_fromdouble_landings(
         next_address = insn.address + insn.size
         if insn.mnemonic in {"call", "jmp"} and _target_in_range(target, start, end) and target is not None:
             found.append(target)
+            if insn.mnemonic == "jmp":
+                continue
         if insn.mnemonic == "ret":
             continue
         if insn.mnemonic == "jmp" or (insn.mnemonic.startswith("j") and insn.mnemonic != "jmp"):
@@ -1919,7 +2054,7 @@ def _conversion_argument(observations: Mapping[str, object]) -> dict[str, object
             gaps.append("the builtin-float load lemma is not in the retained PyFloat_AsDouble bytes")
         from_start = _hex_int(conversion.get("fromdouble_address"))
         from_end = _hex_int(conversion.get("fromdouble_end"))
-        landings = _wrapper_fromdouble_landings(wrapper, from_start, from_end)
+        landings = _post_asdouble_fromdouble_landings(wrapper, as_address, from_start, from_end)
         if not landings:
             gaps.append("the wrapper's finite-result path does not reach PyFloat_FromDouble")
         elif not any(_store_reaches_return(fromdouble, landing, frozenset({"xmm0"})) for landing in landings):
