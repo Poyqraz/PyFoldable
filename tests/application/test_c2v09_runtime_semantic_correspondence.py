@@ -425,6 +425,24 @@ def test_unmodeled_branch_does_not_finish_the_pointer_walk() -> None:
     assert _arithmetic_status(handler) == NOT_ESTABLISHED
 
 
+def test_continuation_reentry_does_not_finish_the_pointer_walk() -> None:
+    handler = _with_context(
+        _typed_mul("4889f80f80f70f000048817808c096a3007515f20f104010f20f59c1f20f114010c34883c010ebe1")
+    )
+    handler["continuations"] = [_matched_continuation("0x2000", "e91df0ffff")]
+    instructions = _handler_instructions(handler)
+    assert instructions is not None
+    compared = next(index for index, insn in enumerate(instructions) if insn.mnemonic == "jne")
+    assert _exit_excluded(handler, instructions, compared) is False
+    assert _handler_status(handler, "mul") == NOT_ESTABLISHED
+    assert _arithmetic_status(handler) == NOT_ESTABLISHED
+    bare = _typed_mul("4889f848817808c096a3007514e8ee0f0000f20f104010f20f59c1f20f114010c3")
+    call = _with_context(bare)
+    call["continuations"] = [_matched_continuation("0x2000", "0f05c3")]
+    assert _handler_status(call, "mul") == NOT_ESTABLISHED
+    assert _arithmetic_status(call) == NOT_ESTABLISHED
+
+
 def test_stable_pointer_backedge_terminates_without_an_endpoint() -> None:
     handler = _typed_mul("4889f848817808c096a3007520ebf4f20f104010f20f59c1f20f114010c3")
     instructions = _handler_instructions(handler)

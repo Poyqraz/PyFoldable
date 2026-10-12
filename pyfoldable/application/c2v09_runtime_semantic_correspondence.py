@@ -1363,7 +1363,7 @@ def _continuation_shape(instructions: list[capstone.CsInsn]) -> str:
         next_address = insn.address + insn.size
         if insn.mnemonic == "ret":
             continue
-        if insn.mnemonic == "call":
+        if insn.mnemonic == "call" or _unmodeled_control(insn):
             return "open"
         if insn.mnemonic == "jmp" or (insn.mnemonic.startswith("j") and insn.mnemonic != "jmp"):
             target = _direct_target(insn)
@@ -1493,13 +1493,15 @@ def _pointer_update(
 
 def _pointer_states(
     instructions: list[capstone.CsInsn],
+    returns: Mapping[int, int] | None = None,
 ) -> tuple[dict[int, set[tuple[frozenset[tuple[str, int]], int]]], bool]:
     """Arrival states, and whether the walk followed every reached edge.
 
     The same state on a backedge is finished. A different pointer state at an
-    instruction already visited, or a direct branch this walk does not follow,
-    invalidates the partial arrival map.
+    instruction already visited, a control transfer this walk does not follow,
+    or a continuation jump back into the handler invalidates a partial map.
     """
+    landings = {} if returns is None else returns
     initial = frozenset({("rdi", 0), ("rsi", 0)})
     arriving: dict[int, set[tuple[frozenset[tuple[str, int]], int]]] = {0: {(initial, -1)}}
     seen: set[tuple[int, tuple[tuple[str, int], ...]]] = set()
@@ -1533,7 +1535,7 @@ def _pointer_states(
             targets.append(next_address)
         by_address = {item.address: position for position, item in enumerate(instructions)}
         for target in targets:
-            successor = by_address.get(target)
+            successor = by_address.get(landings.get(target, target))
             if successor is None:
                 continue
             arriving.setdefault(successor, set()).add((updated, index))
@@ -1567,7 +1569,8 @@ def _exit_excluded(handler: Mapping[str, object], instructions: list[capstone.Cs
         or hex(type_address) not in _operand_tokens(predecessor.op_str)
     ):
         return False
-    arrivals, complete = _pointer_states(instructions)
+    inside = {item.address for item in instructions}
+    arrivals, complete = _pointer_states(instructions, _continuations_return(handler, inside))
     if not complete:
         return False
     found = arrivals.get(index, set())
