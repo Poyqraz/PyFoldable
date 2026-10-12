@@ -329,7 +329,7 @@ def _pointer_definitions(
         dest = _operand_width(insn, operands[0])
         source = _operand_width(insn, operands[1]) if operands[1].type == capstone.x86.X86_OP_REG else None
         source_is_pointer = source is not None and (source[0] in aliases or source[0] == "rsp")
-        if dest is None:
+        if dest is None or operands[1].type == capstone.x86.X86_OP_MEM:
             return None
         if dest[0] in aliases and operands[1].type == capstone.x86.X86_OP_IMM and dest[1] == 64 and operands[1].imm % 8 == 0:
             level = aliases[dest[0]]
