@@ -1430,16 +1430,27 @@ def _pointer_update(
     known = dict(pointers)
     if insn.mnemonic == "call":
         return frozenset((reg, offset) for reg, offset in known.items() if reg not in _VOLATILE)
+    if insn.mnemonic in {"mul", "imul", "div", "idiv", "cdqe"}:
+        known.pop("rax", None)
+        if insn.mnemonic != "cdqe":
+            known.pop("rdx", None)
+        return frozenset(known.items())
+    if insn.mnemonic == "cqo":
+        known.pop("rdx", None)
+        return frozenset(known.items())
     dest_text, src_text = _split_operand(insn.op_str)
     dest = _register_width(_leading_register(dest_text))
     src = _register_width(_leading_register(src_text))
-    if dest is None or dest[0].startswith("xmm"):
-        return pointers
-    if insn.mnemonic in {"xchg", "xadd"}:
-        known.pop(dest[0], None)
+    if insn.mnemonic in {"xchg", "xadd", "cmpxchg"}:
+        if dest is not None and not dest[0].startswith("xmm"):
+            known.pop(dest[0], None)
         if src is not None and not src[0].startswith("xmm"):
             known.pop(src[0], None)
+        if insn.mnemonic == "cmpxchg":
+            known.pop("rax", None)
         return frozenset(known.items())
+    if dest is None or dest[0].startswith("xmm"):
+        return pointers
     if dest[1] != 64:
         known.pop(dest[0], None)
         return frozenset(known.items())
@@ -1466,10 +1477,12 @@ def _pointer_update(
     return frozenset(known.items())
 
 
-def _pointer_states(instructions: list[capstone.CsInsn]) -> dict[int, set[frozenset[tuple[str, int]]]]:
-    """Pointer states on arrival. ABI rdi and rsi are the admitted operand pointers."""
+def _pointer_states(
+    instructions: list[capstone.CsInsn],
+) -> dict[int, set[tuple[frozenset[tuple[str, int]], int]]]:
+    """Arrival state and the instruction that produced it. ABI rdi and rsi are the operands."""
     initial = frozenset({("rdi", 0), ("rsi", 0)})
-    arriving: dict[int, set[frozenset[tuple[str, int]]]] = {0: {initial}}
+    arriving: dict[int, set[tuple[frozenset[tuple[str, int]], int]]] = {0: {(initial, -1)}}
     seen: set[tuple[int, tuple[tuple[str, int], ...]]] = set()
     stack: list[tuple[int, frozenset[tuple[str, int]]]] = [(0, initial)]
     while stack:
@@ -1497,7 +1510,7 @@ def _pointer_states(instructions: list[capstone.CsInsn]) -> dict[int, set[frozen
             successor = by_address.get(target)
             if successor is None:
                 continue
-            arriving.setdefault(successor, set()).add(updated)
+            arriving.setdefault(successor, set()).add((updated, index))
             stack.append((successor, updated))
     return arriving
 
@@ -1531,7 +1544,10 @@ def _exit_excluded(handler: Mapping[str, object], instructions: list[capstone.Cs
     arrivals = _pointer_states(instructions).get(index, set())
     if not arrivals:
         return False
-    return all(_compared_type_slot(predecessor.op_str, pointers) for pointers in arrivals)
+    return all(
+        source == index - 1 and _compared_type_slot(predecessor.op_str, pointers)
+        for pointers, source in arrivals
+    )
 
 
 def _dispatch_addresses(instructions: list[capstone.CsInsn]) -> set[int]:

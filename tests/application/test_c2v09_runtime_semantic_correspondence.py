@@ -316,6 +316,10 @@ def test_shifted_pointer_is_not_the_operand_type_slot() -> None:
     _assert_type_exit_rejected("4889f84889d048817808c096a3007520f20f104010f20f59c1f20f114010c3")
     _assert_type_exit_rejected("89f848817808c096a3007520f20f104010f20f59c1f20f114010c3")
     _assert_type_exit_rejected("4889f874044883c01048817808c096a300750ff20f104010f20f59c1f20f114010c3")
+    _assert_type_exit_rejected("4889f8eb0848817808c096a300750ff20f104010f20f59c1f20f114010c3")
+    _assert_type_exit_rejected("4889f8740848817808c096a300750ff20f104010f20f59c1f20f114010c3")
+    for kill in ("488706", "480fc106", "480fb10e", "48f7e3", "48f7f3", "4898"):
+        _assert_type_exit_rejected("4889f8" + kill + "48817808c096a300750ff20f104010f20f59c1f20f114010c3")
 
 
 def test_full_width_operand_copy_reaches_the_type_slot() -> None:
