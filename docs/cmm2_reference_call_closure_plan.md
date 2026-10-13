@@ -7,10 +7,13 @@ change a validator, or admit readiness. `accept()` stays closed. Candidate29
 stays **NOT SELECTED**. `eligibility_evidence`, `physical_qualification`, and
 `authorizes_execution` stay false. Overall preservation stays `NOT ESTABLISHED`.
 
-Plan baseline: head `d1fe839faf952f79db855d4852be629099c608d0`, tree
-`833f7a1361ebc518ba5a88f59e9e8bdd7f01c153`. The partial-width LEA repair at
-that head stays closed. Accepted inventory and correspondence validators stay
-unchanged.
+Accepted inventory baseline: head `d4b4704cfb0ae96af04562c3b117778ac0ae1174`,
+tree `2b22f5a04fb28d9a330127ae8463dff90488b51f`. The 16-call and four-exit
+inventory in that text stays accepted. The partial-width LEA repair at
+`d1fe839faf952f79db855d4852be629099c608d0`, tree
+`833f7a1361ebc518ba5a88f59e9e8bdd7f01c153`, stays closed. Accepted inventory
+and correspondence validators stay unchanged. Frozen numerical allowances stay
+unchanged. The 256-byte figure below is a capture limit for one unread prefix.
 
 ## Evidence used
 
@@ -164,13 +167,15 @@ these conditions. They stay unresolved.
 
 ### Direct target `0x583ec0` (five sites)
 
-Slots that must survive are the two entry qwords above. By these sites the
-body has already executed reachable `r14` and `rbx` register writes; the
-epilogue still reloads the slots. Each fallthrough can reach `0x61181a`.
-Captured evidence is the call displacement and the surrounding bytes. Missing
-evidence is the target image: file match, instruction coverage, its own calls,
-and any store through the incoming `rsp`. One prefix of `0x583ec0` would bind
-all five sites. Its children would remain unresolved.
+Slots that must survive are the two entry qwords above. Reachable
+instructions write the `r14` and `rbx` registers on some paths to these
+sites. Those register writes are not the qwords the epilogue reloads. Each
+fallthrough can reach `0x61181a`.
+Captured evidence is each site's archived instruction bytes and displacement.
+A historical shared target does not establish those five edges in a later
+process. Missing evidence is a separately bound current edge for each site,
+then one unread target prefix, then the four return premises below. Children
+of that prefix stay unresolved.
 
 ### Direct target `0x5fc630` (two sites)
 
@@ -211,23 +216,66 @@ unresolved. This plan does not ask for an execution that materializes them.
 
 ## Conditional preservation argument
 
-This paragraph is a conditional argument. It is not established evidence.
+### Established premises
 
-If a captured path reaches `0x61180a`, and every child call on that path
-returns to its fallthrough, and none of those children store to the caller's
-`[rsp + 0x20]` or `[rsp + 0x38]` at their entry, then the epilogue pops reload
-the entry qwords. The cold edge `0x4bca3c` has no child call; its pop reload
-is the recorded non-broken return. A hot path has the conjunction of every
-child it actually entered. One child that does not return, or one unresolved
-exit, leaves that path unresolved. The argument does not need every child to
-terminate on every input, and it does not need allocator internals. It needs
-the children that do return to leave those two qwords unchanged.
+The observation establishes the 16 calls, the four exits, the entry pushes,
+the reachable absence of a direct store to `[rbp - 0x10]` or `[rbp - 0x28]`,
+and the non-broken cold edge into `0x61180a`. The walker marks every path that
+executes a child call broken before the pops. Preservation stays
+`NOT ESTABLISHED`.
 
-The current walker marks the path broken at the call and does not apply the
-later pops. The recorded `entry` return is the path that never executes a
-call. The conditional argument is the reason a later packet could reconnect a
-returning child to those pops. The packet below does not complete that
-conjunction.
+### Counterexample
+
+Returning to the fallthrough and leaving both spill qwords unmodified does not
+make the epilogue read those qwords.
+
+Bytes `584883ec0850c3` are `pop rax`, `sub rsp, 8`, `push rax`, `ret`. Let the
+caller `rsp` immediately before `call` be `C` (`rbp - 0x40` on the captured
+frame). Child entry `rsp` is `C - 8`, with the return address at `[rsp]`. The
+sequence loads that return address, subtracts 8, pushes the same address, and
+executes `ret`. The `ret` transfers to the fallthrough. The qwords at
+`[C + 0x18]` (`rbx`) and `[C + 0x30]` (`r14`) are not written. After `ret`,
+caller `rsp` is `C - 8`, eight bytes below the required position `C`.
+
+The epilogue's `add rsp, 0x18` then starts from `C - 8` and reaches
+`rbp - 0x30`. `pop rbx` reads that scratch qword. `pop r14` reads
+`[rbp - 0x18]`, the `r13` slot. The entry spill qwords remain in place and are
+not the values those pops load.
+
+### Premises required of each admitted returning path
+
+A later argument may admit a returning child path only when that path
+establishes all four of the following. These premises are missing for every
+child in the observation.
+
+1. **Continuation and caller `rsp`.** The path returns to the captured
+   fallthrough, and caller `rsp` is restored to its value immediately before
+   the `call`. The counterexample meets the fallthrough and misses the `rsp`
+   position.
+2. **Frame registers subsequently consumed.** Where the caller, after that
+   return, addresses the frame through a register, the correspondence of that
+   register is established. `rbp` is in this set: captured instructions after
+   `0x611745` and `0x611787` read `[rbp - 0x38]`. A child that returns with a
+   different `rbp` makes those later accesses address different memory.
+3. **Noninterference with both complete spill qwords.** Neither `[rbp - 0x10]`
+   nor `[rbp - 0x28]` is written, including a partial store that overlaps
+   either qword and a transitive write through an address derived from the
+   incoming frame. An untouched 8-byte range that is later read at the wrong
+   `rsp` still fails premise 1.
+4. **Operands and returned pointers used by later caller stores.** Where a
+   later caller store uses a value returned by the child, or a pointer derived
+   from the restored frame, that use is shown not to write either spill qword.
+   The captured store `mov qword ptr [rcx + 8], rax` at `0x6117f8` is one such
+   later store. Its operands are not yet bound to a noninterference result.
+
+The cold edge `0x4bca3c` has no child call. Its pop reload is the recorded
+non-broken return. A hot path needs the conjunction of the four premises for
+every child it entered. One child that does not return, or one of the four
+unresolved exits, leaves that path unresolved. The conjunction does not
+require every child to terminate on every input, and it does not require
+allocator internals.
+
+The packet below does not discharge these premises.
 
 ## ABI label and self-issued receipt
 
@@ -246,46 +294,56 @@ The correction record already requires an approval binding outside the
 supplied claim. Neither the psABI name nor that receipt clears preservation.
 
 A callee contract that could be used later is a byte-level statement for one
-target hash: its captured prefix returns to the fallthrough, and its decoded
-stores do not write the incoming frame above the return address, with every
-child call inside that prefix left unresolved. That contract has to be
-reviewed against those bytes. It is planned work, not this document.
+admitted returning path in one target hash. It has to establish the four
+premises above for that path: fallthrough with caller `rsp` restored, frame
+registers consumed after the return, noninterference with both complete spill
+qwords under overlap and transitive writes, and the operand or returned-pointer
+premises for later caller stores. Every child call inside the captured prefix
+stays unresolved. The contract has to be reviewed against those bytes. It is
+planned work, not this document.
 
 ## Selected next packet
 
-Packet: **one unread prefix of archived direct target `0x583ec0`**.
+Packet: **one unread prefix, at most 256 bytes, of the direct target reached
+by the five archived `0x583ec0` sites, after each current edge is bound.**
 
-This is the only resolved target shared by more than two of the 16 sites.
-One prefix binds five site identities. It is smaller than capturing all eight
-direct targets, and it does not pretend that the epilogue is locally closed.
+The archived observation groups those five sites on one resolved address.
+That historical association does not establish the edges in a later process.
+The 256-byte maximum is declared here, before any capture. It limits how many
+target bytes that packet may read. It does not amend a frozen numerical
+allowance.
 
 Acceptance criteria for that later packet:
 
 1. A new observation file. The eleven current observation files stay
-   byte-for-byte.
-2. One `LD_BIND_NOW=1` process. The capture reads bytes. It does not call
-   `0x583ec0`, `_Py_NewReference`, or `PyFloat_FromDouble`.
-3. The target address is resolved in that process from the call displacement
-   at one of the five sites. The archived address is a label for this plan,
-   not the evidence that the new process mapped it.
-4. The record includes loaded bytes, file match, instruction-boundary
-   coverage, and the outgoing calls inside the prefix. Those calls stay
-   unresolved. The prefix stops at a fixed bound or at the first incomplete
-   decode.
-5. `preservation_established` stays false. `accept()` stays closed.
+   byte-for-byte. Accepted repairs, frozen allowances, and correction records
+   stay unchanged.
+2. One `LD_BIND_NOW=1` process and one thread. The capture reads bytes. It
+   does not call the target, `_Py_NewReference`, or `PyFloat_FromDouble`.
+3. Each of the five current call sites is bound separately before any
+   five-site correspondence is claimed. For each site the record contains the
+   caller instruction boundaries, the exact call bytes, the displacement, the
+   resolved target range, the image, and the process and thread. A site whose
+   current edge is unchecked stays unresolved.
+4. The target prefix read is at most 256 bytes. The record states captured
+   length, decoded length, file match, and any incomplete trailing instruction
+   that was not decoded. Coverage shorter than 256 bytes stays explicit.
+5. Outgoing calls inside the prefix stay unresolved. The other direct targets,
+   the three indirect sites, and all four exits stay unresolved.
+6. The record does not treat the prefix as discharging the four return
+   premises. `preservation_established` stays false. `accept()` stays closed.
    Candidate29 stays **NOT SELECTED**. The three authority flags stay false.
-6. The flag dword is not used to drop a branch. The four exits and the other
-   call targets stay unresolved.
+7. The flag dword is not used to drop a branch.
 
 Scope limits: no recursive walk into the prefix's children, no new symbolic
 executor, no allocator or failure-sibling work, no change to the accepted
-validators, no ABI clearance, and no claim that the five sites preserve
-`r14` or `rbx`.
+validators, and no ABI clearance.
 
 ## Separated claims
 
 | Kind | Claim |
 | --- | --- |
-| Established | The observation lists these 16 calls and 4 exits. The prologue pushes entry `r14` and `rbx`. The reachable decoded bytes do not name stores to `[rbp - 0x10]` or `[rbp - 0x28]`. The non-broken return is the cold edge into `0x61180a`. Preservation is `NOT ESTABLISHED`. |
-| Conditional | If every child that returns leaves the two entry slots unchanged, the epilogue pops reload them. The conjunction is open. |
-| Planned | A later non-executing prefix of `0x583ec0` can bind the five sites. It does not establish preservation. |
+| Established | The observation lists these 16 calls and 4 exits. The prologue pushes entry `r14` and `rbx`. The reachable decoded bytes do not name stores to `[rbp - 0x10]` or `[rbp - 0x28]`. The non-broken return is the cold edge into `0x61180a`. Bytes `584883ec0850c3` return to a fallthrough with caller `rsp` eight bytes low while leaving both spill qwords unwritten. Preservation is `NOT ESTABLISHED`. |
+| Conditional | A hot path reloads the entry qwords only if every child it entered meets all four return premises: fallthrough with caller `rsp` restored, consumed frame registers including `rbp`, noninterference with both complete spill qwords, and later caller stores. The conjunction is open. Universal termination and allocator correctness are outside it. |
+| Missing | No child path has established those four premises. The qwords at `0xb36f30` and `0xb36f40`, the indirect slot at `0x61184f`, the eight direct target bodies, and the four exits are unread. |
+| Planned | A later non-executing prefix of at most 256 bytes can be read after each of the five current edges is bound on its own. Prefix children, other targets, and all four exits stay unresolved. The prefix does not establish preservation. |
