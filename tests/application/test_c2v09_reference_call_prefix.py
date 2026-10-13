@@ -336,11 +336,24 @@ def _envelope(
     }
 
 
+_EDGE_SITES = (0x61169C, 0x6116D5, 0x61170D, 0x611745, 0x611787)
+
+
+def _spaced_edges():
+    """Place each archived label at its own address so every rel32 lands on one target."""
+    base = _EDGE_SITES[0]
+    blob = bytearray(b"\x90" * (_EDGE_SITES[-1] + 5 - base))
+    for address, label in zip(_EDGE_SITES, EDGE_LABELS, strict=True):
+        start = address - base
+        blob[start : start + 5] = bytes.fromhex(label)
+    return _decoded(bytes(blob), base)
+
+
 def _collect_envelope(
     envelope: dict[str, object],
     outer: dict[str, object],
 ) -> tuple[dict[str, object], list[int]]:
-    instructions = _decoded(b"".join(bytes.fromhex(label) for label in EDGE_LABELS), 0x61169C)
+    instructions = _spaced_edges()
     calls: list[int] = []
 
     def read(address: int, _size: int) -> bytes:
@@ -362,6 +375,15 @@ def _collect_envelope(
         outer_context=outer,
     )
     return observed, calls
+
+
+def test_spaced_edge_labels_share_one_target() -> None:
+    instructions = _spaced_edges()
+    edges = bind_labeled_edges(instructions, EDGE_LABELS, image=_IMAGE, pid=_PID, thread_id=_THREAD)
+    assert [edge["address"] for edge in edges] == [hex(site) for site in _EDGE_SITES]
+    correspondence = five_site_correspondence(edges)
+    assert correspondence["established"] is True
+    assert correspondence["target"] == "0x583ec0"
 
 
 def test_caller_supplied_identity_does_not_read() -> None:
@@ -455,6 +477,155 @@ def test_live_probe_association_cannot_be_relabeled() -> None:
         mutated = True
     assert mutated is False
     assert observer.before["pid"] == recorded
+
+
+def test_bool_identity_and_receipt_counters_do_not_match() -> None:
+    raw = _feature(pid=True)
+    receipt = _receipt()
+    receipt["read_state_calls"] = True
+    receipt["cosine_function_calls"] = False
+    envelope = _envelope(raw, _sample(pid=1), _sample(pid=1), receipt)
+    observed, calls = _collect_envelope(envelope, _sample(pid=1))
+    assert "contradictory_metadata" in observed["observer_defects"]
+    assert "missing_receipt" in observed["observer_defects"]
+    assert observed["prefix"]["captured_length"] == 0
+    assert calls == []
+
+
+def test_live_observer_reads_one_shared_target() -> None:
+    import os
+    import subprocess
+    import sys
+
+    blob = bytearray(b"\x90" * (_EDGE_SITES[-1] + 5 - _EDGE_SITES[0]))
+    for address, label in zip(_EDGE_SITES, EDGE_LABELS, strict=True):
+        start = address - _EDGE_SITES[0]
+        blob[start : start + 5] = bytes.fromhex(label)
+    script = """
+import json, sys
+from pathlib import Path
+from pyfoldable.application.c2v09_reference_call_prefix import bind_genuine_observer, collect_prefix_observation
+from pyfoldable.application.c2v09_runtime_semantic_correspondence import _decode_complete
+root, blob_hex, base = sys.argv[1:]
+instructions = _decode_complete(bytes.fromhex(blob_hex), int(base, 16))
+assert instructions is not None
+observer = bind_genuine_observer(Path(root))
+calls = []
+
+def read(address, size):
+    calls.append((address, size))
+    return b"\\x90" * size
+
+outer = {"pid": observer.before["pid"], "thread_id": observer.before["thread_id"], "bind_now": True}
+observed = collect_prefix_observation(
+    observer.raw_feature,
+    outer,
+    instructions,
+    image="/usr/bin/python3.12",
+    read=read,
+    file_read=read,
+    head="0",
+    tree="0",
+    observer_envelope=observer,
+    outer_context=dict(outer),
+    )
+print(json.dumps({
+    "calls": calls,
+    "genuine": observed["genuine_observer"],
+    "defects": observed["observer_defects"],
+    "captured": observed["prefix"]["captured_length"],
+    "target_invoked": observed["target_invoked"],
+    "controls_pid": "pid" in observed["controls"],
+    "same_feature": observed["controls"] == observed["observer_envelope"]["raw_feature"],
+}))
+"""
+    env = os.environ.copy()
+    env["LD_BIND_NOW"] = "1"
+    completed = subprocess.run(
+        [sys.executable, "-c", script, str(_ROOT), blob.hex(), hex(_EDGE_SITES[0])],
+        env=env,
+        cwd=str(_ROOT),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    report = json.loads(completed.stdout)
+    assert report["defects"] == []
+    assert report["genuine"] is True
+    assert report["calls"] == [[0x583EC0, 256], [0x583EC0, 256]]
+    assert report["captured"] == 256
+    assert report["target_invoked"] is False
+    assert report["controls_pid"] is False
+    assert report["same_feature"] is True
+
+
+def test_forged_controls_do_not_ride_a_live_observer() -> None:
+    import os
+    import subprocess
+    import sys
+
+    blob = bytearray(b"\x90" * (_EDGE_SITES[-1] + 5 - _EDGE_SITES[0]))
+    for address, label in zip(_EDGE_SITES, EDGE_LABELS, strict=True):
+        start = address - _EDGE_SITES[0]
+        blob[start : start + 5] = bytes.fromhex(label)
+    script = """
+import json, sys
+from pathlib import Path
+from pyfoldable.application.c2v09_reference_call_prefix import bind_genuine_observer, collect_prefix_observation
+from pyfoldable.application.c2v09_runtime_semantic_correspondence import _decode_complete
+root, blob_hex, base = sys.argv[1:]
+instructions = _decode_complete(bytes.fromhex(blob_hex), int(base, 16))
+assert instructions is not None
+observer = bind_genuine_observer(Path(root))
+calls = []
+
+def read(address, size):
+    calls.append(address)
+    return b"\\x90" * size
+
+forged = {"classification": "OBSERVED", "required_bits_ok": True, "thread_id": "forged", "pid": 1, "bind_now": False}
+outer = {"pid": observer.before["pid"], "thread_id": observer.before["thread_id"], "bind_now": observer.before["bind_now"]}
+observed = collect_prefix_observation(
+    forged,
+    {"pid": observer.before["pid"], "thread_id": observer.before["thread_id"], "bind_now": observer.before["bind_now"]},
+    instructions,
+    image="/usr/bin/python3.12",
+    read=read,
+    file_read=read,
+    head="0",
+    tree="0",
+    observer_envelope=observer,
+    outer_context=outer,
+)
+print(json.dumps({
+    "calls": calls,
+    "genuine": observed["genuine_observer"],
+    "defects": observed["observer_defects"],
+    "captured": observed["prefix"]["captured_length"],
+    "controls": observed["controls"],
+    "envelope_pid": "pid" in observed["observer_envelope"]["raw_feature"],
+}))
+"""
+    env = os.environ.copy()
+    env["LD_BIND_NOW"] = "1"
+    completed = subprocess.run(
+        [sys.executable, "-c", script, str(_ROOT), blob.hex(), hex(_EDGE_SITES[0])],
+        env=env,
+        cwd=str(_ROOT),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    report = json.loads(completed.stdout)
+    assert report["calls"] == []
+    assert report["captured"] == 0
+    assert report["genuine"] is False
+    assert "contradictory_metadata" in report["defects"]
+    assert "pid" not in report["controls"]
+    assert report["controls"]["thread_id"] != "forged"
+    assert report["envelope_pid"] is False
 
 
 def test_aliased_outer_context_does_not_read() -> None:

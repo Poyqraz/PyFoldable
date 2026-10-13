@@ -450,7 +450,11 @@ def _envelope_parts(
 
 
 def _is_pid(value: object) -> bool:
-    return isinstance(value, int) and not isinstance(value, bool)
+    return type(value) is int
+
+
+def _same_value(left: object, right: object) -> bool:
+    return type(left) is type(right) and left == right
 
 
 def _complete_sample(sample: object) -> bool:
@@ -464,9 +468,13 @@ def _receipt_ok(receipt: object) -> bool:
     if not isinstance(receipt, Mapping):
         return False
     digest = receipt.get("file_image_sha256")
+    calls = receipt.get("read_state_calls")
+    cosine = receipt.get("cosine_function_calls")
     return (
-        receipt.get("read_state_calls") == 1
-        and receipt.get("cosine_function_calls") == 0
+        type(calls) is int
+        and calls == 1
+        and type(cosine) is int
+        and cosine == 0
         and receipt.get("file_image_identity") == "OBSERVED"
         and receipt.get("source_path") == PROBE_SOURCE
         and isinstance(digest, str)
@@ -517,12 +525,12 @@ def association_defects(envelope: object, outer_context: object) -> list[str]:
         measured_thread = before.get("thread_id") if isinstance(before, Mapping) else None
         measured_pid = before.get("pid") if isinstance(before, Mapping) else None
         measured_bind = before.get("bind_now") if isinstance(before, Mapping) else None
-        contradictory = raw.get("thread_id") != measured_thread
-        if "pid" in raw and raw.get("pid") != measured_pid:
+        contradictory = not _same_value(raw.get("thread_id"), measured_thread)
+        if "pid" in raw and not _same_value(raw.get("pid"), measured_pid):
             contradictory = True
-        if "bind_now" in raw and raw.get("bind_now") is not measured_bind:
+        if "bind_now" in raw and not _same_value(raw.get("bind_now"), measured_bind):
             contradictory = True
-        if "recording_thread_id" in raw and raw.get("recording_thread_id") != measured_thread:
+        if "recording_thread_id" in raw and not _same_value(raw.get("recording_thread_id"), measured_thread):
             contradictory = True
         if contradictory:
             defects.append("contradictory_metadata")
@@ -595,6 +603,10 @@ def collect_prefix_observation(
         "probe_receipt": None,
     }
     defects = association_defects(source, outer_context)
+    sealed_raw = _envelope_parts(source)[0]
+    if isinstance(sealed_raw, Mapping) and _json_copy(controls) != _json_copy(sealed_raw):
+        if "contradictory_metadata" not in defects:
+            defects.append("contradictory_metadata")
     live = _is_live_observer(observer_envelope)
     authorizes = live and not defects
     _raw, before, after, _receipt = _envelope_parts(source)
@@ -661,7 +673,7 @@ def collect_prefix_observation(
             "bind_now": bind_now,
             "pid": pid if _is_pid(pid) else None,
             "thread_id": thread_id if isinstance(thread_id, str) else None,
-            "controls": _json_copy(controls),
+            "controls": _json_copy(sealed_raw) if isinstance(sealed_raw, Mapping) else _json_copy(controls),
             "capture_context": _json_copy(outer_context) if isinstance(outer_context, Mapping) else None,
             "observer_envelope": _public_envelope(source),
             "observer_association": {
