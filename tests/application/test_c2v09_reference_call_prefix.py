@@ -795,3 +795,65 @@ def test_prefix_record_is_not_the_measurement_commit() -> None:
     assert "canonical_sha256" not in payload
     assert document["canonical_sha256"] == "5534adb20971568ba2d09399cacfd732896108676d8c11c46163620db471a189"
     assert sha256_bytes(canonical_bytes(payload)) == document["canonical_sha256"]
+
+
+def test_associated_prefix_record_is_static_evidence() -> None:
+    path = _ROOT / "reports" / "c2v09_pre_call_capsule" / "reference_call_prefix_associated.json"
+    raw = path.read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == "f7d9b24afc7b1e1d6f5be52ceef8d08f99687f528b7f3198f4fa7a9a8143a967"
+    document = json.loads(raw)
+    payload = document["canonical_payload"]
+    assert "canonical_sha256" not in payload
+    assert document["canonical_sha256"] == "6f1cc5005013f8f58dac6b865315f4bb6a5675c611e4ecda67a6bb9e67cdc994"
+    assert sha256_bytes(canonical_bytes(payload)) == document["canonical_sha256"]
+    assert payload["measurement_implementation_head"] == "a207139cf7f93480780925d04e3ed4cde83ed521"
+    assert payload["measurement_implementation_tree"] == "841da5425927d6f26022bc222d01f0bea1429305"
+    assert payload["record_commit_is_measurement_commit"] is False
+    assert payload["live_process"] is True
+    assert payload["genuine_observer"] is True
+    assert payload["static_evidence"] is False
+    assert payload["observer_defects"] == []
+    assert payload["five_site_correspondence"] is True
+    assert payload["historical_addresses_used_as_evidence"] is False
+    assert payload["preservation_established"] is False
+    assert payload["premises_discharged"] is False
+    assert payload["target_invoked"] is False
+    assert payload["accept_closed"] is True
+    assert payload["candidate29_disposition"] == "NOT SELECTED"
+    assert payload["eligibility_evidence"] is False
+    assert payload["physical_qualification"] is False
+    assert payload["authorizes_execution"] is False
+    assert "pid" not in payload["controls"]
+    assert "pid" not in payload["observer_envelope"]["raw_feature"]
+    assert payload["controls"] == payload["observer_envelope"]["raw_feature"]
+    assert payload["observer_envelope"]["before"] == payload["observer_envelope"]["after"]
+    assert payload["capture_context"] == payload["observer_envelope"]["before"]
+    assert payload["observer_envelope"]["before"]["pid"] == payload["pid"]
+    assert payload["observer_envelope"]["before"]["thread_id"] == payload["controls"]["thread_id"]
+    receipt = payload["observer_envelope"]["probe_receipt"]
+    assert receipt["read_state_calls"] == 1
+    assert receipt["cosine_function_calls"] == 0
+    assert receipt["file_image_identity"] == "OBSERVED"
+    assert {edge["target"] for edge in payload["edges"]} == {"0x583ec0"}
+    assert [edge["address"] for edge in payload["edges"]] == [
+        "0x61169c",
+        "0x6116d5",
+        "0x61170d",
+        "0x611745",
+        "0x611787",
+    ]
+    assert all(edge["established"] is True for edge in payload["edges"])
+    prefix = payload["prefix"]
+    assert prefix["requested_length"] == 256
+    assert prefix["captured_length"] == 256
+    assert prefix["decoded_length"] == 255
+    assert prefix["incomplete_trailing_hex"] == "48"
+    assert prefix["loaded_bytes_match_file"] is True
+    assert prefix["child_bytes_read"] is False
+    assert len(prefix["unresolved_child_calls"]) == 4
+    assert all(call["resolved"] is False for call in prefix["unresolved_child_calls"])
+    replayed = replay_prefix_record(payload)
+    assert replayed["edge_geometry_established"] is True
+    assert replayed["observer_associated"] is False
+    assert replayed["recorded_association_consistent"] is True
+    assert replayed["preservation_established"] is False
