@@ -62,12 +62,12 @@ The pops reload the slots. Reachable instructions also write the `r14` and
 are not on every path to every call, and they are not the values the epilogue
 returns. The qwords in the two slots are what have to survive.
 
-Captured `[rbp]` accesses reachable from `0x611480` name `[rbp - 0x40]` and
-`[rbp - 0x38]` only. Those are the three-qword scratch area below the `rbx`
-slot. The decoded reachable bytes contain no store to `[rbp - 0x10]` or
-`[rbp - 0x28]`. That scan does not prove the slots survive: the walker treats
-a `[rbp]` operand as unmodeled, and a child can still store through the
-incoming stack pointer.
+Captured `[rbp]` operands reachable from `0x611480` name `[rbp - 0x40]` and
+`[rbp - 0x38]` only. The scratch area also contains `[rbp - 0x30]`, and no
+reachable `[rbp]` operand names that qword. The decoded reachable bytes
+contain no store to `[rbp - 0x10]` or `[rbp - 0x28]`. That scan does not prove
+the slots survive: the walker treats a `[rbp]` operand as unmodeled, and a
+child can still store through the incoming stack pointer.
 
 The recorded returns are both at `0x61181a`. One is `r14=entry`, `rbx=entry`,
 `broken` false. The other is `r14=other`, `rbx=other`, `broken` true. The only
@@ -227,7 +227,7 @@ executes a child call broken before the pops. Preservation stays
 ### Counterexample
 
 Returning to the fallthrough and leaving both spill qwords unmodified does not
-make the epilogue read those qwords.
+make `pop rbx` and `pop r14` read those qwords.
 
 Bytes `584883ec0850c3` are `pop rax`, `sub rsp, 8`, `push rax`, `ret`. Let the
 caller `rsp` immediately before `call` be `C` (`rbp - 0x40` on the captured
@@ -238,9 +238,10 @@ executes `ret`. The `ret` transfers to the fallthrough. The qwords at
 caller `rsp` is `C - 8`, eight bytes below the required position `C`.
 
 The epilogue's `add rsp, 0x18` then starts from `C - 8` and reaches
-`rbp - 0x30`. `pop rbx` reads that scratch qword. `pop r14` reads
-`[rbp - 0x18]`, the `r13` slot. The entry spill qwords remain in place and are
-not the values those pops load.
+`rbp - 0x30`. `pop rbx` reads that scratch qword. `pop r12` reads the `rbx`
+spill at `[rbp - 0x28]`. `pop r14` reads `[rbp - 0x18]`, the `r13` slot.
+`pop r15` reads the `r14` spill at `[rbp - 0x10]`. The entry qwords are loaded
+into `r12` and `r15`. `rbx` and `r14` receive other slots.
 
 ### Premises required of each admitted returning path
 
@@ -344,6 +345,6 @@ validators, and no ABI clearance.
 | Kind | Claim |
 | --- | --- |
 | Established | The observation lists these 16 calls and 4 exits. The prologue pushes entry `r14` and `rbx`. The reachable decoded bytes do not name stores to `[rbp - 0x10]` or `[rbp - 0x28]`. The non-broken return is the cold edge into `0x61180a`. Bytes `584883ec0850c3` return to a fallthrough with caller `rsp` eight bytes low while leaving both spill qwords unwritten. Preservation is `NOT ESTABLISHED`. |
-| Conditional | A hot path reloads the entry qwords only if every child it entered meets all four return premises: fallthrough with caller `rsp` restored, consumed frame registers including `rbp`, noninterference with both complete spill qwords, and later caller stores. The conjunction is open. Universal termination and allocator correctness are outside it. |
+| Conditional | A hot path is admitted only when every child it entered meets all four return premises. Premises 1 and 3 decide which qwords `pop rbx` and `pop r14` load. Premises 2 and 4 keep later `rbp` uses and caller stores from replacing those qwords before the pops. The conjunction is open. Universal termination and allocator correctness are outside it. |
 | Missing | No child path has established those four premises. The qwords at `0xb36f30` and `0xb36f40`, the indirect slot at `0x61184f`, the eight direct target bodies, and the four exits are unread. |
 | Planned | A later non-executing prefix of at most 256 bytes can be read after each of the five current edges is bound on its own. Prefix children, other targets, and all four exits stay unresolved. The prefix does not establish preservation. |
