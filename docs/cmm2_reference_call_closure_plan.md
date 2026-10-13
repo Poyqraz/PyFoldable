@@ -51,12 +51,13 @@ return address, `rsp = rbp - 0x40`. After that push, the `r14` slot is
 `[rsp + 0x38]` and the `rbx` slot is `[rsp + 0x20]` relative to the child
 entry.
 
-The epilogue at `0x61180a` is `add rsp, 0x18`, then `pop rbx`, `pop r12`,
-`pop r13`, `pop r14`, `pop r15`, `pop rbp`, `ret`. The pops reload the slots.
-Live `r14` and `rbx` inside the body are already overwritten on later
-reachable instructions, including `mov rbx, rdi` at `0x6114d1` and
-`mov r14d, esi` at `0x611550`. Those register writes are not the values the
-epilogue returns. The qwords in the two slots are what have to survive.
+The epilogue at `0x61180a` is `add rsp, 0x18`, `mov eax, ebx` at `0x61180e`,
+then `pop rbx`, `pop r12`, `pop r13`, `pop r14`, `pop r15`, `pop rbp`, `ret`.
+The pops reload the slots. Reachable instructions also write the `r14` and
+`rbx` registers, including `mov rbx, rdi` at `0x6114d1` and
+`mov r14d, dword ptr [rip + 0x525941]` at `0x611550`. Those register writes
+are not on every path to every call, and they are not the values the epilogue
+returns. The qwords in the two slots are what have to survive.
 
 Captured `[rbp]` accesses reachable from `0x611480` name `[rbp - 0x40]` and
 `[rbp - 0x38]` only. Those are the three-qword scratch area below the `rbx`
@@ -152,7 +153,7 @@ Stub entries that reach those predecessors:
 | --- | --- |
 | `0x4bc9f8` (`mov rbx, [rbx+8]`; `test`; `jne`) | `jmp 0x4bc9f8` at `0x61156f` and `0x611910` |
 | `0x4bca0a` (`mov rax, [rsi]`; `test`; `js`) | `js 0x4bca0a` at `0x611900`, after `call 0x5fc630` at `0x6118f5` |
-| `0x61187e` | fallthrough of `call 0x5fc630` at `0x611877` |
+| `0x61187e` | `test eax, eax` at `0x61187c`, the fallthrough of `call 0x5fc630` at `0x611877` |
 | `0x4bca56` (`mov rbx, [rbx+8]`; `test`; `jne`) | `je 0x4bca56` at `0x611649` |
 
 The taken or not-taken side that stays inside the map can still reach
@@ -173,11 +174,15 @@ all five sites. Its children would remain unresolved.
 
 ### Direct target `0x5fc630` (two sites)
 
-`0x611877` and `0x6118f5` both fall through to a `test eax, eax` / `js` whose
-taken or not-taken side is an unresolved exit (`0x4bca41` and `0x4bca0a`).
-The in-map side can still reach the epilogue. The same two slots must survive.
-Missing evidence is the target prefix. A capture of this body does not close
-`0x4bca41` or `0x4bca15`.
+`0x611877` falls through to `test eax, eax` at `0x61187c` and `js 0x4bca41` at
+`0x61187e`. The taken target `0x4bca41` is an unresolved exit. `0x6118f5`
+falls through to `mov rsi, qword ptr [rbp - 0x38]` at `0x6118fa`, then
+`test eax, eax` and `js 0x4bca0a` at `0x611900`. Both sides of that `js` are
+in the captured map. The unresolved exit on the taken side is `0x4bca15`, the
+not-taken fallthrough of `js 0x6115e1` at `0x4bca0f`. The in-map sides can
+still reach the epilogue. The same two slots must survive. Missing evidence
+is the target prefix. A capture of this body does not close `0x4bca41` or
+`0x4bca15`.
 
 ### Single-site direct targets
 
@@ -196,13 +201,13 @@ selected packet.
 
 ### Indirect sites
 
-`0x6115c8` and `0x6117df` load `rax` from a rip-relative qword and call
-`[rax + 0x18]`. `0x61184f` calls `[rip + 0x52567b]`. The stored instruction
-does not name a callee. A non-executing capture can read the slot only when
-the address is known without running the call. `rax` at `0x6115c8` and
-`0x6117df` is a value produced by earlier unresolved calls, so the slot
-address is not bound by this observation. These three sites stay unresolved.
-This plan does not ask for an execution that materializes `rax`.
+`0x6115c8` and `0x6117df` call `[rax + 0x18]`. Nothing between the preceding
+load and the call writes `rax`. The loads are `mov rax, qword ptr [rip +
+0x52596f]` at `0x6115ba` (effective address `0xb36f30`) and `mov rax, qword
+ptr [rip + 0x525764]` at `0x6117d5` (effective address `0xb36f40`). `0x61184f`
+calls `[rip + 0x52567b]`. The observation does not contain those qwords, so
+the stored instructions do not name the callees. These three sites stay
+unresolved. This plan does not ask for an execution that materializes them.
 
 ## Conditional preservation argument
 
