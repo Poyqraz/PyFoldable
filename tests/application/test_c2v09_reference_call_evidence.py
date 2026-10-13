@@ -168,6 +168,28 @@ def test_saved_stack_slot_alias_does_not_restore_entry() -> None:
     assert all(row["r14"] != "entry" for row in added["returns"])
 
 
+def test_partial_lea_keeps_stack_address_provenance() -> None:
+    """A partial LEA into a new register still carries the copied stack address."""
+    newref = _newref_calling()
+    witnesses = (
+        "41564889e08d0848c7010100000041be02000000415ec3",
+        "41564889e0668d0848c7010100000041be02000000415ec3",
+        "41564889e18d0948c7010100000041be02000000415ec3",
+        "41564889e1668d0948c7010100000041be02000000415ec3",
+    )
+    for blob in witnesses:
+        instructions = _decoded(blob)
+        proof = prove_entry_restore(instructions, 0x2000)
+        assert proof["established"] is False
+        assert proof["returns"]
+        assert all(row["r14"] != "entry" for row in proof["returns"])
+        assert any(pop["register"] == "r14" and pop["restores_entry"] is False for pop in proof["pops"])
+        analysis = analyze_reference_call(newref, instructions, [])
+        assert analysis["call"] is not None
+        assert analysis["preservation_established"] is False
+        assert analysis["callee_proof"]["established"] is False
+
+
 def test_archived_reference_call_replay_keeps_the_recorded_events() -> None:
     path = _ROOT / "reports" / "c2v09_pre_call_capsule" / "reference_call_evidence.json"
     document = json.loads(path.read_bytes())

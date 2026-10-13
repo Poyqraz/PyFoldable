@@ -306,8 +306,10 @@ def _pointer_definitions(
         return {}
     if insn.mnemonic == "lea" and len(operands) == 2 and operands[0].type == capstone.x86.X86_OP_REG:
         dest = _operand_width(insn, operands[0])
-        if dest is None or dest[1] != 64:
-            return {dest[0]: _AMBIGUOUS} if dest is not None and dest[0] in aliases else {}
+        if dest is None:
+            return None
+        if dest[1] != 64:
+            return {dest[0]: _AMBIGUOUS}
         mem = operands[1]
         if mem.type != capstone.x86.X86_OP_MEM:
             return {dest[0]: _AMBIGUOUS}
