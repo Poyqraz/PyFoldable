@@ -560,6 +560,71 @@ print(json.dumps({
     assert report["same_feature"] is True
 
 
+def test_bool_coercion_of_a_feature_field_does_not_read() -> None:
+    import os
+    import subprocess
+    import sys
+
+    blob = bytearray(b"\x90" * (_EDGE_SITES[-1] + 5 - _EDGE_SITES[0]))
+    for address, label in zip(_EDGE_SITES, EDGE_LABELS, strict=True):
+        start = address - _EDGE_SITES[0]
+        blob[start : start + 5] = bytes.fromhex(label)
+    script = """
+import json, sys
+from pathlib import Path
+from pyfoldable.application.c2v09_reference_call_prefix import bind_genuine_observer, collect_prefix_observation
+from pyfoldable.application.c2v09_runtime_semantic_correspondence import _decode_complete
+root, blob_hex, base = sys.argv[1:]
+instructions = _decode_complete(bytes.fromhex(blob_hex), int(base, 16))
+assert instructions is not None
+observer = bind_genuine_observer(Path(root))
+
+def collect(controls):
+    calls = []
+    def read(address, size):
+        calls.append(address)
+        return b"\\x90" * size
+    outer = {"pid": observer.before["pid"], "thread_id": observer.before["thread_id"], "bind_now": True}
+    observed = collect_prefix_observation(
+        controls,
+        dict(outer),
+        instructions,
+        image="/usr/bin/python3.12",
+        read=read,
+        file_read=read,
+        head="0",
+        tree="0",
+        observer_envelope=observer,
+        outer_context=dict(outer),
+    )
+    return {"calls": calls, "genuine": observed["genuine_observer"], "defects": observed["observer_defects"], "captured": observed["prefix"]["captured_length"]}
+
+coerced = dict(observer.raw_feature)
+assert coerced["avx"] is True
+coerced["avx"] = 1
+bits = dict(observer.raw_feature)
+bits["required_bits_ok"] = 1
+print(json.dumps({"avx": collect(coerced), "bits": collect(bits)}))
+"""
+    env = os.environ.copy()
+    env["LD_BIND_NOW"] = "1"
+    completed = subprocess.run(
+        [sys.executable, "-c", script, str(_ROOT), blob.hex(), hex(_EDGE_SITES[0])],
+        env=env,
+        cwd=str(_ROOT),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    report = json.loads(completed.stdout)
+    for name in ("avx", "bits"):
+        assert report[name]["calls"] == [], name
+        assert report[name]["captured"] == 0, name
+        assert report[name]["genuine"] is False, name
+        assert "contradictory_metadata" in report[name]["defects"], name
+
+
 def test_forged_controls_do_not_ride_a_live_observer() -> None:
     import os
     import subprocess

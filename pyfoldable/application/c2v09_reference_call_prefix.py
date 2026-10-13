@@ -457,6 +457,19 @@ def _same_value(left: object, right: object) -> bool:
     return type(left) is type(right) and left == right
 
 
+def _typed_equal(left: object, right: object) -> bool:
+    """Bool and int stay distinct. True == 1 is not evidence equality."""
+    if type(left) is not type(right):
+        return False
+    if isinstance(left, dict) and isinstance(right, dict):
+        if set(left) != set(right):
+            return False
+        return all(_typed_equal(left[key], right[key]) for key in left)
+    if isinstance(left, list) and isinstance(right, list):
+        return len(left) == len(right) and all(_typed_equal(item, other) for item, other in zip(left, right))
+    return left == right
+
+
 def _complete_sample(sample: object) -> bool:
     if not isinstance(sample, Mapping):
         return False
@@ -604,7 +617,7 @@ def collect_prefix_observation(
     }
     defects = association_defects(source, outer_context)
     sealed_raw = _envelope_parts(source)[0]
-    if isinstance(sealed_raw, Mapping) and _json_copy(controls) != _json_copy(sealed_raw):
+    if isinstance(sealed_raw, Mapping) and not _typed_equal(_json_copy(controls), _json_copy(sealed_raw)):
         if "contradictory_metadata" not in defects:
             defects.append("contradictory_metadata")
     live = _is_live_observer(observer_envelope)
