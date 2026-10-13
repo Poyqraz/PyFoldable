@@ -15,6 +15,7 @@ import subprocess
 import sys
 import threading
 from pathlib import Path
+from types import MappingProxyType
 from typing import Mapping
 
 import capstone
@@ -369,13 +370,191 @@ def observer_association_matches(controls: Mapping[str, object], association: Ma
         return False
     if not isinstance(captured_thread, str) or observed_thread != captured_thread:
         return False
-    if not isinstance(observed_pid, int) or not isinstance(captured_pid, int):
+    if not isinstance(observed_pid, int) or isinstance(observed_pid, bool):
+        return False
+    if not isinstance(captured_pid, int) or isinstance(captured_pid, bool):
         return False
     return observed_pid == captured_pid
 
 
+class _BoundObserver:
+    """In-process probe result. Its seal is not a caller-writable dictionary."""
+
+    __slots__ = ()
+
+    @property
+    def raw_feature(self) -> object:
+        return _SEALS[self][0]
+
+    @property
+    def before(self) -> object:
+        return _SEALS[self][1]
+
+    @property
+    def after(self) -> object:
+        return _SEALS[self][2]
+
+    @property
+    def probe_receipt(self) -> object:
+        return _SEALS[self][3]
+
+
+_LIVE_OBSERVERS: set[_BoundObserver] = set()
+_SEALS: dict[_BoundObserver, tuple[object, object, object, object]] = {}
+
+
+def _sample_association() -> dict[str, object]:
+    return {
+        "pid": os.getpid(),
+        "thread_id": _thread_id(),
+        "bind_now": os.environ.get("LD_BIND_NOW") == "1",
+    }
+
+
+def bind_genuine_observer(root: Path) -> _BoundObserver:
+    """Call the probe once and record process identity around that call."""
+    before = _sample_association()
+    probed = _probe_words(root / PROBE_SOURCE)
+    after = _sample_association()
+    words = None if probed is None else probed[0]
+    receipt = None if probed is None else probed[1]
+    raw = _feature_record(words if isinstance(words, list) else None, _fegetround())
+    observer = _BoundObserver()
+    _SEALS[observer] = (
+        _freeze(raw),
+        _freeze(before),
+        _freeze(after),
+        None if not isinstance(receipt, dict) else _freeze(receipt),
+    )
+    _LIVE_OBSERVERS.add(observer)
+    return observer
+
+
+def _is_live_observer(envelope: object) -> bool:
+    return type(envelope) is _BoundObserver and envelope in _LIVE_OBSERVERS and envelope in _SEALS
+
+
+def _envelope_parts(
+    envelope: object,
+) -> tuple[object, object, object, object]:
+    if type(envelope) is _BoundObserver:
+        return _SEALS.get(envelope, (None, None, None, None))
+    if isinstance(envelope, Mapping):
+        return (
+            envelope.get("raw_feature"),
+            envelope.get("before"),
+            envelope.get("after"),
+            envelope.get("probe_receipt"),
+        )
+    return None, None, None, None
+
+
+def _is_pid(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _complete_sample(sample: object) -> bool:
+    if not isinstance(sample, Mapping):
+        return False
+    thread = sample.get("thread_id")
+    return _is_pid(sample.get("pid")) and isinstance(thread, str) and bool(thread) and isinstance(sample.get("bind_now"), bool)
+
+
+def _receipt_ok(receipt: object) -> bool:
+    if not isinstance(receipt, Mapping):
+        return False
+    digest = receipt.get("file_image_sha256")
+    return (
+        receipt.get("read_state_calls") == 1
+        and receipt.get("cosine_function_calls") == 0
+        and receipt.get("file_image_identity") == "OBSERVED"
+        and receipt.get("source_path") == PROBE_SOURCE
+        and isinstance(digest, str)
+        and len(digest) == 64
+        and all(character in "0123456789abcdef" for character in digest)
+    )
+
+
+def _json_copy(value: object) -> object:
+    if isinstance(value, Mapping):
+        return {str(key): _json_copy(inner) for key, inner in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_copy(inner) for inner in value]
+    if value is None or isinstance(value, (str, int, bool)):
+        return value
+    raise TypeError(f"Unsupported observer value {type(value).__name__}.")
+
+
+def _freeze(value: object) -> object:
+    copied = _json_copy(value)
+    if isinstance(copied, dict):
+        return MappingProxyType({key: _freeze(inner) for key, inner in copied.items()})
+    if isinstance(copied, list):
+        return tuple(_freeze(inner) for inner in copied)
+    return copied
+
+
+def association_defects(envelope: object, outer_context: object) -> list[str]:
+    """Content checks only. A passing dictionary is still not a live observer."""
+    defects: list[str] = []
+    raw, before, after, receipt = _envelope_parts(envelope)
+    if outer_context is not None and (outer_context is raw or outer_context is before or outer_context is after):
+        defects.append("context_not_separate")
+    if not _complete_sample(before) or not _complete_sample(after):
+        defects.append("missing_identity")
+    elif (
+        before.get("pid") != after.get("pid")
+        or before.get("thread_id") != after.get("thread_id")
+        or before.get("bind_now") != after.get("bind_now")
+    ):
+        defects.append("context_changed")
+    elif before.get("bind_now") is not True:
+        defects.append("missing_identity")
+    if not isinstance(raw, Mapping) or not isinstance(raw.get("thread_id"), str) or not raw.get("thread_id"):
+        if "missing_identity" not in defects:
+            defects.append("missing_identity")
+    else:
+        measured_thread = before.get("thread_id") if isinstance(before, Mapping) else None
+        measured_pid = before.get("pid") if isinstance(before, Mapping) else None
+        measured_bind = before.get("bind_now") if isinstance(before, Mapping) else None
+        contradictory = raw.get("thread_id") != measured_thread
+        if "pid" in raw and raw.get("pid") != measured_pid:
+            contradictory = True
+        if "bind_now" in raw and raw.get("bind_now") is not measured_bind:
+            contradictory = True
+        if "recording_thread_id" in raw and raw.get("recording_thread_id") != measured_thread:
+            contradictory = True
+        if contradictory:
+            defects.append("contradictory_metadata")
+        if raw.get("classification") != "OBSERVED" or raw.get("required_bits_ok") is not True:
+            defects.append("feature_not_observed")
+    if not _receipt_ok(receipt):
+        defects.append("missing_receipt")
+    if not isinstance(outer_context, Mapping) or not _complete_sample(outer_context):
+        defects.append("foreign_context")
+    elif isinstance(before, Mapping) and isinstance(after, Mapping) and (
+        outer_context.get("pid") != before.get("pid")
+        or outer_context.get("thread_id") != before.get("thread_id")
+        or outer_context.get("bind_now") is not True
+        or outer_context.get("pid") != after.get("pid")
+        or outer_context.get("thread_id") != after.get("thread_id")
+    ):
+        defects.append("foreign_context")
+    return defects
+
+
+def _public_envelope(envelope: object) -> dict[str, object]:
+    raw, before, after, receipt = _envelope_parts(envelope)
+    return {
+        "raw_feature": _json_copy(raw) if isinstance(raw, Mapping) else None,
+        "before": _json_copy(before) if isinstance(before, Mapping) else None,
+        "after": _json_copy(after) if isinstance(after, Mapping) else None,
+        "probe_receipt": _json_copy(receipt) if isinstance(receipt, Mapping) else None,
+    }
+
+
 def replay_prefix_record(payload: Mapping[str, object]) -> dict[str, object]:
-    """Replay stored edges. Do not invent an observer association from collector fields."""
+    """Replay stored edges. A serialized envelope is not a live observer."""
     raw_edges = payload.get("edges")
     edges = list(raw_edges) if isinstance(raw_edges, list) else []
     geometry = five_site_correspondence(edges)
@@ -384,9 +563,13 @@ def replay_prefix_record(payload: Mapping[str, object]) -> dict[str, object]:
     identity = False
     if isinstance(controls, dict) and isinstance(association, dict):
         identity = observer_association_matches(controls, association)
+    envelope = payload.get("observer_envelope")
+    outer = payload.get("capture_context")
+    consistent = isinstance(envelope, Mapping) and not association_defects(envelope, outer)
     return {
         "edge_geometry_established": geometry["established"] is True,
         "observer_associated": identity,
+        "recorded_association_consistent": consistent,
         "preservation_established": False,
     }
 
@@ -401,20 +584,45 @@ def collect_prefix_observation(
     file_read,
     head: str | None,
     tree: str | None,
+    observer_envelope: object | None = None,
+    outer_context: Mapping[str, object] | None = None,
 ) -> dict[str, object]:
-    """Decide a prefix read from an untouched observer record and a separate association."""
-    matched = observer_association_matches(controls, association)
-    pid = association.get("pid")
-    thread_id = association.get("thread_id")
+    """Read the target only for a live probe envelope. Dictionaries stay static."""
+    source: object = observer_envelope if observer_envelope is not None else {
+        "raw_feature": controls,
+        "before": association,
+        "after": association,
+        "probe_receipt": None,
+    }
+    defects = association_defects(source, outer_context)
+    live = _is_live_observer(observer_envelope)
+    authorizes = live and not defects
+    _raw, before, after, _receipt = _envelope_parts(source)
+    consistent = (
+        isinstance(before, Mapping)
+        and isinstance(after, Mapping)
+        and _complete_sample(before)
+        and before.get("pid") == after.get("pid")
+        and before.get("thread_id") == after.get("thread_id")
+        and before.get("bind_now") == after.get("bind_now")
+    )
+    if consistent:
+        pid = before.get("pid")
+        thread_id = before.get("thread_id")
+        bind_now = before.get("bind_now") is True
+    else:
+        pid = None
+        thread_id = None
+        bind_now = False
     observed = observe_prefix(
         instructions,
         EDGE_LABELS,
         image=image,
-        pid=pid if isinstance(pid, int) else -1,
+        pid=pid if _is_pid(pid) else -1,
         thread_id=thread_id if isinstance(thread_id, str) else "",
         read=read,
         file_read=file_read,
-        context_ok=matched,
+        context_ok=authorizes,
     )
     gaps = [
         "the four return premises are not discharged",
@@ -423,8 +631,11 @@ def collect_prefix_observation(
         "the three indirect sites stay unresolved",
         "the four exits stay unresolved",
     ]
-    if not matched:
-        gaps.insert(0, "the observer identity does not match this capture")
+    if not authorizes:
+        detail = "the observer identity does not match this capture"
+        if defects:
+            detail = detail + ": " + ", ".join(defects)
+        gaps.insert(0, detail)
     elif observed["five_site_correspondence"] is not True:
         gaps.insert(0, "the five call edges were not established in this process")
     elif observed["prefix"]["raw_bytes_hex"] is None:
@@ -447,15 +658,20 @@ def collect_prefix_observation(
             "constructor_invoked": False,
             "reference_helper_invoked": False,
             "target_invoked": False,
-            "bind_now": association.get("bind_now") is True,
-            "pid": pid if isinstance(pid, int) else None,
+            "bind_now": bind_now,
+            "pid": pid if _is_pid(pid) else None,
             "thread_id": thread_id if isinstance(thread_id, str) else None,
-            "controls": controls,
+            "controls": _json_copy(controls),
+            "capture_context": _json_copy(outer_context) if isinstance(outer_context, Mapping) else None,
+            "observer_envelope": _public_envelope(source),
             "observer_association": {
-                "pid": association.get("pid"),
-                "thread_id": association.get("thread_id"),
-                "bind_now": association.get("bind_now"),
+                "pid": pid if _is_pid(pid) else None,
+                "thread_id": thread_id if isinstance(thread_id, str) else None,
+                "bind_now": bind_now,
             },
+            "observer_defects": list(defects),
+            "genuine_observer": authorizes,
+            "static_evidence": not live,
             "status": NOT_ESTABLISHED,
             "preservation_established": False,
             "premises_discharged": False,
@@ -465,40 +681,43 @@ def collect_prefix_observation(
     return observed
 
 
+def _parent_instructions(image: str) -> list[capstone.CsInsn]:
+    """Decode the current parent window. This does not read the target prefix."""
+    newref_symbol = _symbol_runtime(image, "_Py_NewReference")
+    if newref_symbol is None:
+        return []
+    runtime, _vaddr, size = newref_symbol
+    blob, match, _elf_vaddr = _load(image, runtime, size)
+    newref = None if blob is None else _decode_complete(blob, runtime)
+    call = None if newref is None or not match else _zero_dependent_call(newref)
+    parent = None if call is None else call.get("target")
+    if not isinstance(parent, int):
+        return []
+    window, _window_match, _parent_vaddr = _load(image, parent, _WINDOW)
+    if window is None:
+        return []
+    piece = window
+    while piece and _decode_complete(piece, parent) is None:
+        piece = piece[:-1]
+    decoded = None if not piece else _decode_complete(piece, parent)
+    if decoded is None:
+        return []
+    _exact, parent_match, _parent_vaddr = _load(image, parent, len(piece))
+    if not parent_match:
+        return []
+    return decoded
+
+
 def capture_target_prefix_here(root: Path) -> dict[str, object]:
     """Read one process. Do not call the target, constructor, or reference helper."""
-    pid = os.getpid()
-    thread_id = _thread_id()
-    probed = _probe_words(root / PROBE_SOURCE)
-    controls = _feature_record(None if probed is None else probed[0], _fegetround())
-    association = {
-        "pid": pid,
-        "thread_id": thread_id,
-        "bind_now": os.environ.get("LD_BIND_NOW") == "1",
-    }
+    outer = _sample_association()
+    envelope = bind_genuine_observer(root)
+    raw = envelope.raw_feature
     wrapper = _c_function_address(math.cos)
     image = None if wrapper is None else _image_of(wrapper)
     head, tree = _git_identity(root)
-    instructions: list[capstone.CsInsn] = []
-    if image is not None and observer_association_matches(controls, association):
-        newref_symbol = _symbol_runtime(image, "_Py_NewReference")
-        if newref_symbol is not None:
-            runtime, _vaddr, size = newref_symbol
-            blob, match, _elf_vaddr = _load(image, runtime, size)
-            newref = None if blob is None else _decode_complete(blob, runtime)
-            call = None if newref is None or not match else _zero_dependent_call(newref)
-            parent = None if call is None else call.get("target")
-            if isinstance(parent, int):
-                window, _window_match, _parent_vaddr = _load(image, parent, _WINDOW)
-                if window is not None:
-                    piece = window
-                    while piece and _decode_complete(piece, parent) is None:
-                        piece = piece[:-1]
-                    decoded = None if not piece else _decode_complete(piece, parent)
-                    if decoded is not None:
-                        _exact, parent_match, _parent_vaddr = _load(image, parent, len(piece))
-                        if parent_match:
-                            instructions = decoded
+    authorizes = _is_live_observer(envelope) and not association_defects(envelope, outer)
+    instructions = _parent_instructions(image) if authorizes and image is not None else []
 
     def read(address: int, size: int) -> bytes | None:
         if size > PREFIX_BYTE_LIMIT:
@@ -512,17 +731,24 @@ def capture_target_prefix_here(root: Path) -> dict[str, object]:
         return _elf_bytes(mapped[0], mapped[1], size)
 
     observed = collect_prefix_observation(
-        controls,
-        association,
+        raw,
+        envelope.before,
         instructions,
         image=image or "",
         read=read,
         file_read=file_read,
         head=head,
         tree=tree,
+        observer_envelope=envelope,
+        outer_context=outer,
     )
     observed["live_process"] = True
-    observed["single_process_thread"] = controls.get("thread_id") == thread_id and probed is not None
+    observed["single_process_thread"] = (
+        raw.get("thread_id") == outer.get("thread_id")
+        and envelope.before.get("thread_id") == envelope.after.get("thread_id")
+        and envelope.before.get("pid") == envelope.after.get("pid")
+        and envelope.probe_receipt is not None
+    )
     return observed
 
 

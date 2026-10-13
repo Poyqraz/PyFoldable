@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 from pathlib import Path
@@ -221,8 +222,20 @@ def test_capture_reports_missing_evidence_without_admission() -> None:
     assert observed["target_invoked"] is False
     assert observed["historical_addresses_used_as_evidence"] is False
     assert "pid" not in observed["controls"]
+    retained = observed["observer_envelope"]["raw_feature"]
+    assert retained == observed["controls"]
+    assert "pid" not in retained
     assert observed["observer_association"]["pid"] == observed["pid"]
     assert observed["observer_association"]["thread_id"] == observed["thread_id"]
+    if observed["genuine_observer"] is True:
+        assert observed["static_evidence"] is False
+        assert observed["observer_defects"] == []
+        assert observed["observer_envelope"]["before"] == observed["observer_envelope"]["after"]
+        assert observed["capture_context"] == observed["observer_envelope"]["before"]
+        assert observed["observer_envelope"]["probe_receipt"]["read_state_calls"] == 1
+        assert observed["observer_envelope"]["probe_receipt"]["cosine_function_calls"] == 0
+    else:
+        assert observed["prefix"]["captured_length"] == 0
     if observed["controls"].get("thread_id") != observed["thread_id"]:
         assert observed["five_site_correspondence"] is False
     if observed["five_site_correspondence"] is not True:
@@ -282,6 +295,177 @@ def test_file_mismatch_does_not_claim_a_match() -> None:
     assert observed["five_site_correspondence"] is True
     assert observed["prefix"]["loaded_bytes_match_file"] is False
     assert observed["prefix"]["captured_length"] == PREFIX_BYTE_LIMIT
+
+
+def _feature(thread: str = _THREAD, **extra: object) -> dict[str, object]:
+    record: dict[str, object] = {
+        "classification": "OBSERVED",
+        "required_bits_ok": True,
+        "thread_id": thread,
+    }
+    record.update(extra)
+    return record
+
+
+def _sample(pid: int = _PID, thread: str = _THREAD, bind_now: bool = True) -> dict[str, object]:
+    return {"pid": pid, "thread_id": thread, "bind_now": bind_now}
+
+
+def _receipt() -> dict[str, object]:
+    return {
+        "role": "actual loaded probe image used for read_state",
+        "source_path": "pyfoldable/application/c2v09_cosine_path_probe.c",
+        "read_state_calls": 1,
+        "cosine_function_calls": 0,
+        "file_image_identity": "OBSERVED",
+        "file_image_sha256": "ab" * 32,
+    }
+
+
+def _envelope(
+    raw: dict[str, object],
+    before: dict[str, object],
+    after: dict[str, object],
+    receipt: dict[str, object] | None,
+) -> dict[str, object]:
+    return {
+        "raw_feature": raw,
+        "before": before,
+        "after": after,
+        "probe_receipt": receipt,
+    }
+
+
+def _collect_envelope(
+    envelope: dict[str, object],
+    outer: dict[str, object],
+) -> tuple[dict[str, object], list[int]]:
+    instructions = _decoded(b"".join(bytes.fromhex(label) for label in EDGE_LABELS), 0x61169C)
+    calls: list[int] = []
+
+    def read(address: int, _size: int) -> bytes:
+        calls.append(address)
+        return b"\x90"
+
+    raw = envelope["raw_feature"]
+    assert isinstance(raw, dict)
+    observed = collect_prefix_observation(
+        raw,
+        dict(envelope["before"]) if isinstance(envelope["before"], dict) else {},
+        instructions,
+        image=_IMAGE,
+        read=read,
+        file_read=read,
+        head="0",
+        tree="0",
+        observer_envelope=envelope,
+        outer_context=outer,
+    )
+    return observed, calls
+
+
+def test_caller_supplied_identity_does_not_read() -> None:
+    raw = _feature(pid=_PID, bind_now=True)
+    before = _sample()
+    envelope = _envelope(raw, before, _sample(), _receipt())
+    outer = _sample()
+    snapshot = copy.deepcopy(envelope)
+    observed, calls = _collect_envelope(envelope, outer)
+    assert observed["genuine_observer"] is False
+    assert observed["static_evidence"] is True
+    assert observed["five_site_correspondence"] is False
+    assert observed["prefix"]["captured_length"] == 0
+    assert calls == []
+    assert envelope == snapshot
+    assert "pid" not in observed["controls"] or observed["controls"]["pid"] == _PID
+    assert observed["controls"] == raw
+
+
+def test_missing_identity_does_not_read() -> None:
+    raw = _feature()
+    before = {"thread_id": _THREAD, "bind_now": True}
+    envelope = _envelope(raw, before, _sample(), _receipt())
+    snapshot = copy.deepcopy(raw)
+    observed, calls = _collect_envelope(envelope, _sample())
+    assert "missing_identity" in observed["observer_defects"]
+    assert observed["genuine_observer"] is False
+    assert observed["prefix"]["captured_length"] == 0
+    assert calls == []
+    assert raw == snapshot
+    assert "pid" not in raw
+
+
+def test_context_change_does_not_read() -> None:
+    raw = _feature()
+    envelope = _envelope(raw, _sample(pid=1), _sample(pid=2), _receipt())
+    snapshot = copy.deepcopy(envelope)
+    observed, calls = _collect_envelope(envelope, _sample(pid=1))
+    assert "context_changed" in observed["observer_defects"]
+    assert observed["genuine_observer"] is False
+    assert observed["prefix"]["captured_length"] == 0
+    assert calls == []
+    assert envelope == snapshot
+
+
+def test_contradictory_raw_metadata_does_not_read() -> None:
+    raw = _feature(thread="other", pid=99)
+    envelope = _envelope(raw, _sample(), _sample(), _receipt())
+    observed, calls = _collect_envelope(envelope, _sample())
+    assert "contradictory_metadata" in observed["observer_defects"]
+    assert observed["genuine_observer"] is False
+    assert observed["prefix"]["captured_length"] == 0
+    assert calls == []
+    assert raw["thread_id"] == "other"
+    assert raw["pid"] == 99
+    assert "pid" not in observed["controls"] or observed["controls"]["pid"] == 99
+
+
+def test_foreign_outer_context_does_not_read() -> None:
+    raw = _feature()
+    envelope = _envelope(raw, _sample(), _sample(), _receipt())
+    outer = _sample(pid=99, thread="other")
+    outer_snapshot = copy.deepcopy(outer)
+    observed, calls = _collect_envelope(envelope, outer)
+    assert "foreign_context" in observed["observer_defects"]
+    assert observed["genuine_observer"] is False
+    assert observed["prefix"]["captured_length"] == 0
+    assert calls == []
+    assert outer == outer_snapshot
+    assert "pid" not in raw
+
+
+def test_live_probe_association_cannot_be_relabeled() -> None:
+    from pyfoldable.application.c2v09_reference_call_prefix import bind_genuine_observer
+
+    observer = bind_genuine_observer(_ROOT)
+    recorded = observer.before["pid"]
+    replacement = {"pid": 1, "thread_id": "1", "bind_now": True}
+    try:
+        observer.before = replacement
+    except AttributeError:
+        replaced = False
+    else:
+        replaced = True
+    assert replaced is False
+    try:
+        observer.before["pid"] = 1
+    except TypeError:
+        mutated = False
+    else:
+        mutated = True
+    assert mutated is False
+    assert observer.before["pid"] == recorded
+
+
+def test_aliased_outer_context_does_not_read() -> None:
+    raw = _feature()
+    before = _sample()
+    envelope = _envelope(raw, before, _sample(), _receipt())
+    observed, calls = _collect_envelope(envelope, before)
+    assert "context_not_separate" in observed["observer_defects"]
+    assert observed["prefix"]["captured_length"] == 0
+    assert calls == []
+    assert before == _sample()
 
 
 def test_collector_rejects_missing_and_foreign_identity() -> None:
