@@ -15,6 +15,7 @@ import subprocess
 import sys
 import threading
 from pathlib import Path
+from typing import Mapping
 
 import capstone
 
@@ -145,12 +146,79 @@ def bind_labeled_edges(
     return edges
 
 
-def five_site_correspondence(edges: list[dict[str, object]]) -> dict[str, object]:
-    """Five established edges with one target. Any other result stays unresolved."""
-    if len(edges) != 5 or not all(edge.get("established") is True for edge in edges):
+def _declaration(
+    expected_sites: tuple[str, ...] | None,
+    fixture: bool,
+) -> tuple[str, ...] | None:
+    """The packet declaration is fixed. A fixture must name five distinct sites."""
+    if not fixture:
+        if expected_sites not in (None, EDGE_LABELS):
+            return None
+        return EDGE_LABELS
+    if expected_sites is None or len(expected_sites) != 5 or len(set(expected_sites)) != 5:
+        return None
+    return tuple(expected_sites)
+
+
+def _edge_evidence(edge: Mapping[str, object], label: str) -> bool:
+    """Recompute the call from its bytes. Summary flags are not evidence."""
+    if edge.get("instruction_boundary") is not True:
+        return False
+    if edge.get("label") != label or edge.get("exact_bytes") != label:
+        return False
+    try:
+        raw = bytes.fromhex(label)
+        start = int(str(edge.get("address")), 16)
+        stop = int(str(edge.get("end")), 16)
+    except (TypeError, ValueError):
+        return False
+    if len(raw) != 5 or raw[0] != 0xE8 or stop - start != 5:
+        return False
+    relative = int.from_bytes(raw[1:], "little", signed=True)
+    if edge.get("displacement") != relative:
+        return False
+    if edge.get("target") != hex(start + 5 + relative):
+        return False
+    if not isinstance(edge.get("pid"), int):
+        return False
+    if not isinstance(edge.get("thread_id"), str) or not edge.get("thread_id"):
+        return False
+    if not isinstance(edge.get("image"), str) or not edge.get("image"):
+        return False
+    return True
+
+
+def five_site_correspondence(
+    edges: list[dict[str, object]],
+    expected_sites: tuple[str, ...] | None = None,
+    *,
+    fixture: bool = False,
+) -> dict[str, object]:
+    """Exact coverage of the declared sites. Repeated or summary-only rows stay unresolved."""
+    declared = _declaration(expected_sites, fixture)
+    if declared is None or len(edges) != 5:
         return {"established": False, "target": None, "reason": "unresolved_edge"}
-    targets = {edge.get("target") for edge in edges}
-    if len(targets) != 1 or None in targets:
+    by_label: dict[str, dict[str, object]] = {}
+    addresses: list[str] = []
+    for edge in edges:
+        label = edge.get("label")
+        if not isinstance(label, str) or label in by_label or label not in declared:
+            return {"established": False, "target": None, "reason": "unresolved_edge"}
+        if not _edge_evidence(edge, label):
+            return {"established": False, "target": None, "reason": "unresolved_edge"}
+        by_label[label] = edge
+        address = edge.get("address")
+        if not isinstance(address, str) or address in addresses:
+            return {"established": False, "target": None, "reason": "unresolved_edge"}
+        addresses.append(address)
+    if set(by_label) != set(declared):
+        return {"established": False, "target": None, "reason": "unresolved_edge"}
+    if len({edge["pid"] for edge in edges}) != 1 or len({edge["thread_id"] for edge in edges}) != 1:
+        return {"established": False, "target": None, "reason": "mixed_context"}
+    if len({edge["image"] for edge in edges}) != 1:
+        return {"established": False, "target": None, "reason": "mixed_context"}
+    targets = {edge["target"] for edge in edges}
+    if len(targets) != 1:
         return {"established": False, "target": None, "reason": "differing_targets"}
     return {"established": True, "target": next(iter(targets)), "reason": "established"}
 
@@ -220,10 +288,32 @@ def _foreign(edges: list[dict[str, object]]) -> list[dict[str, object]]:
     return rewritten
 
 
+def gate_five_sites(
+    edges: list[dict[str, object]],
+    read,
+    file_read,
+    *,
+    expected_sites: tuple[str, ...] | None = None,
+    fixture: bool = False,
+) -> dict[str, object]:
+    """Read the shared target only after the declared sites revalidate."""
+    correspondence = five_site_correspondence(edges, expected_sites, fixture=fixture)
+    prefix = _empty_prefix(PREFIX_BYTE_LIMIT)
+    if correspondence["established"] is True and isinstance(correspondence["target"], str):
+        prefix = read_target_prefix(read, file_read, int(correspondence["target"], 16))
+    return {
+        "five_site_correspondence": correspondence["established"] is True,
+        "correspondence_reason": correspondence["reason"],
+        "prefix": prefix,
+        "live_process": False,
+    }
+
+
 def observe_prefix(
     instructions: list[capstone.CsInsn],
-    labels: tuple[str, ...] | list[str],
+    labels: tuple[str, ...] | list[str] | None = None,
     *,
+    fixture_sites: tuple[str, ...] | None = None,
     image: str,
     pid: int,
     thread_id: str,
@@ -231,23 +321,33 @@ def observe_prefix(
     file_read,
     context_ok: bool,
 ) -> dict[str, object]:
-    """Classify edges and, only when they agree, read one prefix. Not a live record."""
-    edges = bind_labeled_edges(instructions, labels, image=image, pid=pid, thread_id=thread_id)
-    if not context_ok:
-        edges = _foreign(edges)
-    correspondence = five_site_correspondence(edges)
-    prefix = _empty_prefix(PREFIX_BYTE_LIMIT)
-    if correspondence["established"] is True and isinstance(correspondence["target"], str):
-        prefix = read_target_prefix(read, file_read, int(correspondence["target"], 16))
+    """Classify the declared sites. A repeated label argument does not replace them."""
+    fixture = fixture_sites is not None
+    declared = _declaration(fixture_sites, fixture)
+    if labels and not fixture and tuple(labels) != EDGE_LABELS:
+        declared = None
+    if declared is None:
+        edges = []
+        gated = {
+            "five_site_correspondence": False,
+            "correspondence_reason": "unresolved_edge",
+            "prefix": _empty_prefix(PREFIX_BYTE_LIMIT),
+            "live_process": False,
+        }
+    else:
+        edges = bind_labeled_edges(instructions, declared, image=image, pid=pid, thread_id=thread_id)
+        if not context_ok:
+            edges = _foreign(edges)
+        gated = gate_five_sites(edges, read, file_read, expected_sites=declared, fixture=fixture)
     return {
         "live_process": False,
         "preservation_established": False,
         "premises_discharged": False,
         "readiness_admitted": False,
-        "five_site_correspondence": correspondence["established"] is True,
-        "correspondence_reason": correspondence["reason"],
+        "five_site_correspondence": gated["five_site_correspondence"],
+        "correspondence_reason": gated["correspondence_reason"],
         "edges": edges,
-        "prefix": prefix,
+        "prefix": gated["prefix"],
         "other_targets_unresolved": True,
         "indirect_sites_unresolved": True,
         "exits_unresolved": True,
@@ -255,13 +355,114 @@ def observe_prefix(
     }
 
 
-def _context_ok(controls: dict[str, object], thread_id: str) -> bool:
-    return (
-        controls.get("classification") == "OBSERVED"
-        and controls.get("required_bits_ok") is True
-        and controls.get("thread_id") == thread_id
-        and controls.get("bind_now") is True
+def observer_association_matches(controls: Mapping[str, object], association: Mapping[str, object]) -> bool:
+    """Both process and thread must already be present. Missing fields are not filled in."""
+    if controls.get("classification") != "OBSERVED" or controls.get("required_bits_ok") is not True:
+        return False
+    if association.get("bind_now") is not True:
+        return False
+    observed_thread = controls.get("thread_id")
+    observed_pid = controls.get("pid")
+    captured_thread = association.get("thread_id")
+    captured_pid = association.get("pid")
+    if not isinstance(observed_thread, str) or not observed_thread:
+        return False
+    if not isinstance(captured_thread, str) or observed_thread != captured_thread:
+        return False
+    if not isinstance(observed_pid, int) or not isinstance(captured_pid, int):
+        return False
+    return observed_pid == captured_pid
+
+
+def replay_prefix_record(payload: Mapping[str, object]) -> dict[str, object]:
+    """Replay stored edges. Do not invent an observer association from collector fields."""
+    raw_edges = payload.get("edges")
+    edges = list(raw_edges) if isinstance(raw_edges, list) else []
+    geometry = five_site_correspondence(edges)
+    controls = payload.get("controls")
+    association = payload.get("observer_association")
+    identity = False
+    if isinstance(controls, dict) and isinstance(association, dict):
+        identity = observer_association_matches(controls, association)
+    return {
+        "edge_geometry_established": geometry["established"] is True,
+        "observer_associated": identity,
+        "preservation_established": False,
+    }
+
+
+def collect_prefix_observation(
+    controls: dict[str, object],
+    association: Mapping[str, object],
+    instructions: list[capstone.CsInsn],
+    *,
+    image: str,
+    read,
+    file_read,
+    head: str | None,
+    tree: str | None,
+) -> dict[str, object]:
+    """Decide a prefix read from an untouched observer record and a separate association."""
+    matched = observer_association_matches(controls, association)
+    pid = association.get("pid")
+    thread_id = association.get("thread_id")
+    observed = observe_prefix(
+        instructions,
+        EDGE_LABELS,
+        image=image,
+        pid=pid if isinstance(pid, int) else -1,
+        thread_id=thread_id if isinstance(thread_id, str) else "",
+        read=read,
+        file_read=file_read,
+        context_ok=matched,
     )
+    gaps = [
+        "the four return premises are not discharged",
+        "prefix child calls stay unresolved",
+        "other direct targets stay unresolved",
+        "the three indirect sites stay unresolved",
+        "the four exits stay unresolved",
+    ]
+    if not matched:
+        gaps.insert(0, "the observer identity does not match this capture")
+    elif observed["five_site_correspondence"] is not True:
+        gaps.insert(0, "the five call edges were not established in this process")
+    elif observed["prefix"]["raw_bytes_hex"] is None:
+        gaps.insert(0, "the target prefix was not readable")
+    observed.update(
+        {
+            "measurement_implementation_head": head,
+            "measurement_implementation_tree": tree,
+            "record_commit_is_measurement_commit": False,
+            "readiness_hypotheses_admitted": False,
+            "accept_closed": True,
+            "candidate29_disposition": CANDIDATE29_DISPOSITION,
+            "eligibility_evidence": False,
+            "physical_qualification": False,
+            "authorizes_execution": False,
+            "output_sampled": False,
+            "cosine_function_calls": 0,
+            "ulp_function_calls": 0,
+            "nextafter_function_calls": 0,
+            "constructor_invoked": False,
+            "reference_helper_invoked": False,
+            "target_invoked": False,
+            "bind_now": association.get("bind_now") is True,
+            "pid": pid if isinstance(pid, int) else None,
+            "thread_id": thread_id if isinstance(thread_id, str) else None,
+            "controls": controls,
+            "observer_association": {
+                "pid": association.get("pid"),
+                "thread_id": association.get("thread_id"),
+                "bind_now": association.get("bind_now"),
+            },
+            "status": NOT_ESTABLISHED,
+            "preservation_established": False,
+            "premises_discharged": False,
+            "gaps": gaps,
+        }
+    )
+    return observed
 
 
 def capture_target_prefix_here(root: Path) -> dict[str, object]:
@@ -270,14 +471,16 @@ def capture_target_prefix_here(root: Path) -> dict[str, object]:
     thread_id = _thread_id()
     probed = _probe_words(root / PROBE_SOURCE)
     controls = _feature_record(None if probed is None else probed[0], _fegetround())
-    controls["pid"] = pid
-    controls["thread_id"] = thread_id
-    controls["bind_now"] = os.environ.get("LD_BIND_NOW") == "1"
+    association = {
+        "pid": pid,
+        "thread_id": thread_id,
+        "bind_now": os.environ.get("LD_BIND_NOW") == "1",
+    }
     wrapper = _c_function_address(math.cos)
     image = None if wrapper is None else _image_of(wrapper)
     head, tree = _git_identity(root)
     instructions: list[capstone.CsInsn] = []
-    if image is not None and _context_ok(controls, thread_id):
+    if image is not None and observer_association_matches(controls, association):
         newref_symbol = _symbol_runtime(image, "_Py_NewReference")
         if newref_symbol is not None:
             runtime, _vaddr, size = newref_symbol
@@ -308,56 +511,18 @@ def capture_target_prefix_here(root: Path) -> dict[str, object]:
             return None
         return _elf_bytes(mapped[0], mapped[1], size)
 
-    observed = observe_prefix(
+    observed = collect_prefix_observation(
+        controls,
+        association,
         instructions,
-        EDGE_LABELS,
         image=image or "",
-        pid=pid,
-        thread_id=thread_id,
         read=read,
         file_read=file_read,
-        context_ok=_context_ok(controls, thread_id) and image is not None,
+        head=head,
+        tree=tree,
     )
     observed["live_process"] = True
-    gaps = [
-        "the four return premises are not discharged",
-        "prefix child calls stay unresolved",
-        "other direct targets stay unresolved",
-        "the three indirect sites stay unresolved",
-        "the four exits stay unresolved",
-    ]
-    if observed["five_site_correspondence"] is not True:
-        gaps.insert(0, "the five call edges were not established in this process")
-    elif observed["prefix"]["raw_bytes_hex"] is None:
-        gaps.insert(0, "the target prefix was not readable")
-    observed.update(
-        {
-            "measurement_implementation_head": head,
-            "measurement_implementation_tree": tree,
-            "record_commit_is_measurement_commit": False,
-            "readiness_hypotheses_admitted": False,
-            "accept_closed": True,
-            "candidate29_disposition": CANDIDATE29_DISPOSITION,
-            "eligibility_evidence": False,
-            "physical_qualification": False,
-            "authorizes_execution": False,
-            "output_sampled": False,
-            "cosine_function_calls": 0,
-            "ulp_function_calls": 0,
-            "nextafter_function_calls": 0,
-            "constructor_invoked": False,
-            "reference_helper_invoked": False,
-            "target_invoked": False,
-            "bind_now": controls.get("bind_now") is True,
-            "pid": pid,
-            "thread_id": thread_id,
-            "single_process_thread": controls.get("thread_id") == thread_id and probed is not None,
-            "controls": controls,
-            "status": NOT_ESTABLISHED,
-            "preservation_established": False,
-            "gaps": gaps,
-        }
-    )
+    observed["single_process_thread"] = controls.get("thread_id") == thread_id and probed is not None
     return observed
 
 

@@ -9,12 +9,16 @@ from pathlib import Path
 from pyfoldable.application.c2v09_ordered_declaration import canonical_bytes, sha256_bytes
 
 from pyfoldable.application.c2v09_reference_call_prefix import (
+    EDGE_LABELS,
     PREFIX_BYTE_LIMIT,
     bind_labeled_edges,
     classify_direct_call,
+    collect_prefix_observation,
     five_site_correspondence,
+    gate_five_sites,
     observe_prefix,
     read_target_prefix,
+    replay_prefix_record,
 )
 from pyfoldable.application.c2v09_runtime_semantic_correspondence import (
     NOT_ESTABLISHED,
@@ -34,6 +38,7 @@ _OBSERVATIONS = {
     "runtime_semantic_full_store.json": "7221d7f568618a39a843d08de529d2b3e1f0a5360618c623405e9755be968d6a",
     "fromdouble_storage.json": "ff96dc2154daf188b2f690c2840f87bf3164ed2d32a5b9bd0cd5bf5917d36f12",
     "reference_call_evidence.json": "99d4304fab2a174f83cd45203f739811e33ff18abb522de17cefbfb7d2672664",
+    "reference_call_prefix.json": "a4447513d006de822f9aef079a1b7397c93817c35d1089aaa8ecfd9719528ec3",
 }
 _IMAGE = "/usr/bin/python3.12"
 _PID = 10
@@ -65,7 +70,7 @@ def _observe(instructions, labels, read=None, file_read=None, context_ok: bool =
 
     return observe_prefix(
         instructions,
-        labels,
+        fixture_sites=labels,
         image=_IMAGE,
         pid=_PID,
         thread_id=_THREAD,
@@ -121,7 +126,7 @@ def test_differing_targets_do_not_correspond() -> None:
     observed = _observe(mixed, labels)
     assert observed["five_site_correspondence"] is False
     assert {edge["target"] for edge in observed["edges"] if edge["established"]} == {"0x4000", "0x5000"}
-    assert five_site_correspondence(observed["edges"])["reason"] == "differing_targets"
+    assert five_site_correspondence(observed["edges"], expected_sites=labels, fixture=True)["reason"] == "differing_targets"
 
 
 def test_unreadable_prefix_has_no_fabricated_bytes() -> None:
@@ -215,6 +220,11 @@ def test_capture_reports_missing_evidence_without_admission() -> None:
     assert observed["reference_helper_invoked"] is False
     assert observed["target_invoked"] is False
     assert observed["historical_addresses_used_as_evidence"] is False
+    assert "pid" not in observed["controls"]
+    assert observed["observer_association"]["pid"] == observed["pid"]
+    assert observed["observer_association"]["thread_id"] == observed["thread_id"]
+    if observed["controls"].get("thread_id") != observed["thread_id"]:
+        assert observed["five_site_correspondence"] is False
     if observed["five_site_correspondence"] is not True:
         assert observed["prefix"]["raw_bytes_hex"] is None
         assert observed["prefix"]["captured_length"] == 0
@@ -225,6 +235,115 @@ def test_capture_reports_missing_evidence_without_admission() -> None:
     root = _ROOT / "reports" / "c2v09_pre_call_capsule"
     for name, digest in _OBSERVATIONS.items():
         assert hashlib.sha256((root / name).read_bytes()).hexdigest() == digest
+
+
+def test_duplicate_rows_and_repeated_labels_do_not_read() -> None:
+    instructions, labels = _five()
+    edges = bind_labeled_edges(instructions, labels, image=_IMAGE, pid=_PID, thread_id=_THREAD)
+    assert five_site_correspondence([dict(edges[0]) for _ in range(5)], expected_sites=labels, fixture=True)["established"] is False
+    observed = _observe([instructions[0]], (labels[0],) * 5)
+    assert observed["five_site_correspondence"] is False
+    assert observed["prefix"]["captured_length"] == 0
+
+
+def test_missing_extra_mixed_and_false_boundary_do_not_read() -> None:
+    instructions, labels = _five()
+    edges = bind_labeled_edges(instructions, labels, image=_IMAGE, pid=_PID, thread_id=_THREAD)
+
+    def read(_address: int, _size: int) -> bytes:
+        raise AssertionError("invalid coverage read the target")
+
+    from pyfoldable.application.c2v09_reference_call_prefix import gate_five_sites
+
+    assert five_site_correspondence(edges[:4], expected_sites=labels, fixture=True)["established"] is False
+    extra = edges + [dict(edges[0])]
+    assert gate_five_sites(extra, read, None, expected_sites=labels, fixture=True)["five_site_correspondence"] is False
+    mixed = [dict(edge) for edge in edges]
+    mixed[2]["pid"] = 99
+    mixed[3]["thread_id"] = "other"
+    mixed[4]["image"] = "/tmp/other"
+    assert gate_five_sites(mixed, read, None, expected_sites=labels, fixture=True)["five_site_correspondence"] is False
+    unmarked = [dict(edge) for edge in edges]
+    unmarked[0]["instruction_boundary"] = False
+    assert gate_five_sites(unmarked, read, None, expected_sites=labels, fixture=True)["five_site_correspondence"] is False
+    forged = [dict(edge) for edge in edges]
+    forged[0]["displacement"] = 0
+    forged[0]["established"] = True
+    assert gate_five_sites(forged, read, None, expected_sites=labels, fixture=True)["five_site_correspondence"] is False
+
+
+def test_file_mismatch_does_not_claim_a_match() -> None:
+    instructions, labels = _five()
+
+    def read(_address: int, size: int) -> bytes:
+        return b"\x90" * size
+
+    observed = _observe(instructions, labels, read=read, file_read=lambda _address, size: b"\x00" * size)
+    assert observed["five_site_correspondence"] is True
+    assert observed["prefix"]["loaded_bytes_match_file"] is False
+    assert observed["prefix"]["captured_length"] == PREFIX_BYTE_LIMIT
+
+
+def test_collector_rejects_missing_and_foreign_identity() -> None:
+    instructions = _decoded(b"".join(bytes.fromhex(label) for label in EDGE_LABELS), 0x61169c)
+    calls: list[int] = []
+
+    def read(address: int, _size: int) -> bytes:
+        calls.append(address)
+        return b"\x90"
+
+    controls = {
+        "classification": "OBSERVED",
+        "required_bits_ok": True,
+        "thread_id": _THREAD,
+        "bind_now": True,
+    }
+    original = dict(controls)
+    association = {"pid": _PID, "thread_id": _THREAD, "bind_now": True}
+    missing = collect_prefix_observation(
+        controls,
+        association,
+        instructions,
+        image=_IMAGE,
+        read=read,
+        file_read=read,
+        head="0",
+        tree="0",
+    )
+    assert missing["five_site_correspondence"] is False
+    assert missing["prefix"]["captured_length"] == 0
+    assert missing["live_process"] is False
+    assert controls == original
+    assert "pid" not in controls
+    foreign = dict(controls)
+    foreign["pid"] = 99
+    foreign["thread_id"] = "other"
+    rejected = collect_prefix_observation(
+        foreign,
+        association,
+        instructions,
+        image=_IMAGE,
+        read=read,
+        file_read=read,
+        head="0",
+        tree="0",
+    )
+    assert rejected["five_site_correspondence"] is False
+    assert rejected["prefix"]["captured_length"] == 0
+    assert foreign["pid"] == 99
+    assert foreign["thread_id"] == "other"
+    assert calls == []
+
+
+def test_legacy_prefix_replay_lacks_observer_association() -> None:
+    path = _ROOT / "reports" / "c2v09_pre_call_capsule" / "reference_call_prefix.json"
+    raw = path.read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == _OBSERVATIONS["reference_call_prefix.json"]
+    payload = json.loads(raw)["canonical_payload"]
+    replayed = replay_prefix_record(payload)
+    assert replayed["edge_geometry_established"] is True
+    assert replayed["observer_associated"] is False
+    assert replayed["preservation_established"] is False
 
 
 def test_prefix_record_is_not_the_measurement_commit() -> None:
