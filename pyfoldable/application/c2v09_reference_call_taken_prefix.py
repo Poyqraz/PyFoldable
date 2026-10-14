@@ -38,6 +38,7 @@ from pyfoldable.application.c2v09_reference_call_prefix import (
     _json_copy,
     _parent_instructions,
     _public_envelope,
+    _receipt_ok,
     _sample_association,
     _same_value,
     _split_prefix,
@@ -324,6 +325,8 @@ def _caller_binding(payload: Mapping[str, object], entry_address: str, pid: int,
     if "pid" in raw and (type(raw.get("pid")) is not int or raw.get("pid") != pid):
         return "association_disagreement"
     if not isinstance(controls, Mapping) or not _typed_equal(_json_copy(controls), _json_copy(raw)):
+        return "association_disagreement"
+    if not _receipt_ok(envelope.get("probe_receipt")) or payload.get("cosine_function_calls") != 0:
         return "association_disagreement"
     return None
 

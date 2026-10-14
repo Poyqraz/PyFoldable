@@ -579,6 +579,14 @@ def test_missing_je_support_rejects_after_the_digest_is_recomputed() -> None:
     assert replay_taken_prefix(payload)["entry_supported"] is False
 
 
+def test_probe_receipt_cosine_call_rejects_the_published_record() -> None:
+    payload = _published_taken_prefix()
+    payload["observer_envelope"]["probe_receipt"]["cosine_function_calls"] = 1
+    assert payload["cosine_function_calls"] == 0
+    assert replay_taken_prefix(payload)["entry_supported"] is False
+    assert replay_taken_prefix(payload)["live_observer"] is False
+
+
 def test_non_mapping_controls_reject_the_published_record() -> None:
     payload = _published_taken_prefix()
     payload["controls"] = []
