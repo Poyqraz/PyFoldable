@@ -248,7 +248,85 @@ def _entry_prefix_record(
 
 
 def _unsupported(reason: str) -> dict[str, object]:
-    return {"entry_supported": False, "reason": reason, "instruction_bytes": [], "preservation_established": False}
+    return {
+        "entry_supported": False,
+        "live_observer": False,
+        "reason": reason,
+        "instruction_bytes": [],
+        "preservation_established": False,
+    }
+
+
+def _same_identity(row: object, pid: int, thread_id: str, image: str) -> bool:
+    return (
+        isinstance(row, Mapping)
+        and type(row.get("pid")) is int
+        and row.get("pid") == pid
+        and type(row.get("thread_id")) is str
+        and row.get("thread_id") == thread_id
+        and type(row.get("image")) is str
+        and row.get("image") == image
+    )
+
+
+def _caller_binding(payload: Mapping[str, object], entry_address: str, pid: int, thread_id: str, image: str) -> str | None:
+    """Revalidate the five edges. A serialized association is not a live observer."""
+    raw_edges = payload.get("edges")
+    if not isinstance(raw_edges, list) or not all(isinstance(item, dict) for item in raw_edges):
+        return "unbound_callers"
+    geometry = five_site_correspondence([dict(item) for item in raw_edges])
+    if geometry["established"] is not True or geometry.get("target") != entry_address:
+        return "unbound_callers"
+    if any(not _same_identity(edge, pid, thread_id, image) for edge in raw_edges):
+        return "foreign_context"
+    if payload.get("pid") is not None and (type(payload.get("pid")) is not int or payload.get("pid") != pid):
+        return "foreign_context"
+    if payload.get("thread_id") is not None and (
+        type(payload.get("thread_id")) is not str or payload.get("thread_id") != thread_id
+    ):
+        return "foreign_context"
+    controls = payload.get("controls")
+    if isinstance(controls, Mapping) and "thread_id" in controls:
+        if type(controls.get("thread_id")) is not str or controls.get("thread_id") != thread_id:
+            return "association_disagreement"
+        if "pid" in controls and (type(controls.get("pid")) is not int or controls.get("pid") != pid):
+            return "association_disagreement"
+    envelope = payload.get("observer_envelope")
+    if envelope is None:
+        return None
+    if not isinstance(envelope, Mapping):
+        return "association_disagreement"
+    before = envelope.get("before")
+    after = envelope.get("after")
+    raw = envelope.get("raw_feature")
+    if not isinstance(before, Mapping) or not isinstance(after, Mapping) or not isinstance(raw, Mapping):
+        return "association_disagreement"
+    if before.get("bind_now") is not True or after.get("bind_now") is not True:
+        return "association_disagreement"
+    if type(before.get("pid")) is not int or before.get("pid") != pid or before.get("pid") != after.get("pid"):
+        return "association_disagreement"
+    if (
+        type(before.get("thread_id")) is not str
+        or type(after.get("thread_id")) is not str
+        or before.get("thread_id") != thread_id
+        or after.get("thread_id") != thread_id
+    ):
+        return "association_disagreement"
+    if type(raw.get("thread_id")) is not str or raw.get("thread_id") != thread_id:
+        return "association_disagreement"
+    if "pid" in raw and (type(raw.get("pid")) is not int or raw.get("pid") != pid):
+        return "association_disagreement"
+    return None
+
+
+def _je_support(claimed: Mapping[str, object], loaded_slice: bytes, file_slice: bytes) -> bool:
+    return (
+        claimed.get("loaded_bytes_hex") == loaded_slice.hex()
+        and claimed.get("file_bytes_hex") == file_slice.hex()
+        and claimed.get("file_match") is True
+        and claimed.get("exact_bytes") == loaded_slice.hex()
+        and loaded_slice == file_slice
+    )
 
 
 def replay_taken_prefix(payload: Mapping[str, object]) -> dict[str, object]:
@@ -295,10 +373,23 @@ def replay_taken_prefix(payload: Mapping[str, object]) -> dict[str, object]:
     evidence = je_site_evidence(insn.address, bytes(insn.bytes), insn.mnemonic, insn.size, bytes(insn.bytes))
     if any(claimed.get(key) != evidence[key] for key in ("address", "end", "exact_bytes", "displacement", "target")):
         return _unsupported("path_disagreement")
-    if any(claimed.get(key) != entry.get(key) for key in ("image", "pid", "thread_id")):
-        return _unsupported("path_disagreement")
+    identity = entry.get("pid"), entry.get("thread_id"), entry.get("image")
+    if not _same_identity(claimed, identity[0], identity[1], identity[2]) or not _same_identity(
+        entry, identity[0], identity[1], identity[2]
+    ):
+        return _unsupported("foreign_context")
+    pid, thread_id, image = identity
+    offset = insn.address - entry_address
+    loaded_slice = loaded[offset : offset + insn.size]
+    file_slice = file_bytes[offset : offset + insn.size]
+    if not _je_support(claimed, loaded_slice, file_slice):
+        return _unsupported("je_support_disagreement")
+    binding = _caller_binding(payload, address, pid, thread_id, image)
+    if binding is not None:
+        return _unsupported(binding)
     return {
         "entry_supported": True,
+        "live_observer": False,
         "reason": "reconstructed",
         "instruction_bytes": instruction_bytes,
         "preservation_established": False,

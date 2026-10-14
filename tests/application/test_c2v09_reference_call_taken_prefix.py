@@ -529,3 +529,60 @@ def test_supported_taken_prefix_retains_entry_bytes() -> None:
     assert payload["physical_qualification"] is False
     assert payload["authorizes_execution"] is False
     assert payload["target_invoked"] is False
+
+
+def _published_taken_prefix() -> dict[str, object]:
+    path = _ROOT / "reports" / "c2v09_pre_call_capsule" / "reference_call_taken_prefix_supported.json"
+    payload = json.loads(path.read_text())["canonical_payload"]
+    assert isinstance(payload, dict)
+    return payload
+
+
+def test_published_replay_binds_the_packet_without_a_live_observer() -> None:
+    replayed = replay_taken_prefix(_published_taken_prefix())
+    assert replayed["entry_supported"] is True
+    assert replayed["live_observer"] is False
+    assert replayed["preservation_established"] is False
+
+
+def test_empty_callers_reject_the_published_record() -> None:
+    payload = _published_taken_prefix()
+    payload["edges"] = []
+    assert replay_taken_prefix(payload)["entry_supported"] is False
+
+
+def test_foreign_caller_context_rejects_the_published_record() -> None:
+    payload = _published_taken_prefix()
+    payload["edges"][2]["image"] = "/tmp/other"
+    assert replay_taken_prefix(payload)["entry_supported"] is False
+
+
+def test_shifted_entry_with_unchanged_callers_rejects() -> None:
+    payload = _published_taken_prefix()
+    delta = 0x1000
+    entry = payload["entry_prefix"]
+    entry["address"] = hex(int(str(entry["address"]), 16) + delta)
+    entry["end"] = hex(int(str(entry["end"]), 16) + delta)
+    payload["fallthrough"] = [hex(int(str(item), 16) + delta) for item in payload["fallthrough"]]
+    je = payload["je"]
+    je["address"] = hex(int(str(je["address"]), 16) + delta)
+    je["end"] = hex(int(str(je["end"]), 16) + delta)
+    je["target"] = hex(int(str(je["target"]), 16) + delta)
+    assert replay_taken_prefix(payload)["entry_supported"] is False
+
+
+def test_missing_je_support_rejects_after_the_digest_is_recomputed() -> None:
+    payload = _published_taken_prefix()
+    del payload["je"]["loaded_bytes_hex"]
+    recomputed = sha256_bytes(canonical_bytes(payload))
+    assert recomputed != "61f538c08e546b57a553ac8ff939e7d284a264cbccb2984d745a0293cf746eb2"
+    assert replay_taken_prefix(payload)["entry_supported"] is False
+
+
+def test_contradictory_je_file_slice_rejects_after_the_digest_is_recomputed() -> None:
+    payload = _published_taken_prefix()
+    payload["je"]["file_bytes_hex"] = "000000000000"
+    payload["je"]["file_match"] = True
+    recomputed = sha256_bytes(canonical_bytes(payload))
+    assert recomputed != "61f538c08e546b57a553ac8ff939e7d284a264cbccb2984d745a0293cf746eb2"
+    assert replay_taken_prefix(payload)["entry_supported"] is False
