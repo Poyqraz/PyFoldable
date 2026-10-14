@@ -1,0 +1,497 @@
+{
+  "canonical_sha256": "9c58bcbba5862f5c2c9c04e4e31a98218e95ad342aef727118bc3007ea253920",
+  "digest_scope": "SHA-256 of the section 7.3 canonical bytes of canonical_payload only. canonical_sha256 and digest_scope are outside that payload.",
+  "canonical_payload": {
+    "evidence_class": "genuine",
+    "static_evidence": false,
+    "genuine_observer": true,
+    "live_process": true,
+    "five_site_correspondence": true,
+    "correspondence_reason": "established",
+    "edges": [
+      {
+        "label": "e81f28f7ff",
+        "established": true,
+        "reason": "established",
+        "address": "0x61169c",
+        "end": "0x6116a1",
+        "exact_bytes": "e81f28f7ff",
+        "displacement": -579553,
+        "target": "0x583ec0",
+        "image": "/usr/bin/python3.12",
+        "pid": 87481,
+        "thread_id": "87481",
+        "instruction_boundary": true
+      },
+      {
+        "label": "e8e627f7ff",
+        "established": true,
+        "reason": "established",
+        "address": "0x6116d5",
+        "end": "0x6116da",
+        "exact_bytes": "e8e627f7ff",
+        "displacement": -579610,
+        "target": "0x583ec0",
+        "image": "/usr/bin/python3.12",
+        "pid": 87481,
+        "thread_id": "87481",
+        "instruction_boundary": true
+      },
+      {
+        "label": "e8ae27f7ff",
+        "established": true,
+        "reason": "established",
+        "address": "0x61170d",
+        "end": "0x611712",
+        "exact_bytes": "e8ae27f7ff",
+        "displacement": -579666,
+        "target": "0x583ec0",
+        "image": "/usr/bin/python3.12",
+        "pid": 87481,
+        "thread_id": "87481",
+        "instruction_boundary": true
+      },
+      {
+        "label": "e87627f7ff",
+        "established": true,
+        "reason": "established",
+        "address": "0x611745",
+        "end": "0x61174a",
+        "exact_bytes": "e87627f7ff",
+        "displacement": -579722,
+        "target": "0x583ec0",
+        "image": "/usr/bin/python3.12",
+        "pid": 87481,
+        "thread_id": "87481",
+        "instruction_boundary": true
+      },
+      {
+        "label": "e83427f7ff",
+        "established": true,
+        "reason": "established",
+        "address": "0x611787",
+        "end": "0x61178c",
+        "exact_bytes": "e83427f7ff",
+        "displacement": -579788,
+        "target": "0x583ec0",
+        "image": "/usr/bin/python3.12",
+        "pid": 87481,
+        "thread_id": "87481",
+        "instruction_boundary": true
+      }
+    ],
+    "entry_file_match": true,
+    "entry_captured_length": 256,
+    "fallthrough": [
+      "0x583ec0",
+      "0x583ec4",
+      "0x583ec5",
+      "0x583ec8",
+      "0x583eca",
+      "0x583ecb",
+      "0x583ecf",
+      "0x583ed2",
+      "0x583ed7",
+      "0x583eda"
+    ],
+    "je": {
+      "established": true,
+      "address": "0x583eda",
+      "end": "0x583ee0",
+      "exact_bytes": "0f846b9dedff",
+      "displacement": -1204885,
+      "target": "0x45dc4b",
+      "file_bytes_hex": "0f846b9dedff",
+      "loaded_bytes_hex": "0f846b9dedff",
+      "file_match": true,
+      "image": "/usr/bin/python3.12",
+      "pid": 87481,
+      "thread_id": "87481"
+    },
+    "taken_target_correspondence": true,
+    "prefix": {
+      "refused": false,
+      "requested_length": 256,
+      "captured_length": 256,
+      "decoded_length": 253,
+      "raw_bytes_hex": "4c89e7e87db713004885c0751f4c89e7e8e0b5130085c0782e498b4424784885c074094889df5b415c5dffe0488b4308488b3d7e955d00be02647000488b501831c0e81e3a19005b4883c8ff415c5dc383c8ffe9a86212004883c4184c89e75b415c415d5dffe04883e8014889070f85ef631200e8fc601200e9e56312004c89ffe8ef601200e9e0641200488b5018488b3d1f955d00be20f1710031c0e8c33919004183ceffe9b86312004889dfe842b5130085c00f8813651200418b0783c0010f84f9621200e9d06412004889dfe8a1601200e97063120048837b4800488b75c874684889f7e869b614004889c64885c074324c89f24c89e7ff5348488b7d",
+      "incomplete_trailing_hex": "488b7d",
+      "loaded_bytes_match_file": true,
+      "unresolved_child_calls": [
+        {
+          "address": "0x45dc4e",
+          "bytes": "e87db71300",
+          "target": "0x5993d0",
+          "resolved": false
+        },
+        {
+          "address": "0x45dc5b",
+          "bytes": "e8e0b51300",
+          "target": "0x599240",
+          "resolved": false
+        },
+        {
+          "address": "0x45dc8d",
+          "bytes": "e81e3a1900",
+          "target": "0x5f16b0",
+          "resolved": false
+        },
+        {
+          "address": "0x45dcbf",
+          "bytes": "e8fc601200",
+          "target": "0x583dc0",
+          "resolved": false
+        },
+        {
+          "address": "0x45dccc",
+          "bytes": "e8ef601200",
+          "target": "0x583dc0",
+          "resolved": false
+        },
+        {
+          "address": "0x45dce8",
+          "bytes": "e8c3391900",
+          "target": "0x5f16b0",
+          "resolved": false
+        },
+        {
+          "address": "0x45dcf9",
+          "bytes": "e842b51300",
+          "target": "0x599240",
+          "resolved": false
+        },
+        {
+          "address": "0x45dd1a",
+          "bytes": "e8a1601200",
+          "target": "0x583dc0",
+          "resolved": false
+        },
+        {
+          "address": "0x45dd32",
+          "bytes": "e869b61400",
+          "target": "0x5a93a0",
+          "resolved": false
+        },
+        {
+          "address": "0x45dd45",
+          "bytes": "ff5348",
+          "target": null,
+          "resolved": false
+        }
+      ],
+      "child_bytes_read": false
+    },
+    "read_accounting": {
+      "entry_process": [
+        {
+          "address": "0x583ec0",
+          "size": 256
+        }
+      ],
+      "entry_file": [
+        {
+          "address": "0x583ec0",
+          "size": 256
+        }
+      ],
+      "taken_process": [
+        {
+          "address": "0x45dc4b",
+          "size": 256
+        }
+      ],
+      "taken_file": [
+        {
+          "address": "0x45dc4b",
+          "size": 256
+        }
+      ]
+    },
+    "claimed_summary": null,
+    "controls": {
+      "classification": "OBSERVED",
+      "xcr0_classification": "OBSERVED",
+      "required_bits_ok": true,
+      "mxcsr": "0x1fa0",
+      "mxcsr_rounding": "nearest ties-to-even",
+      "mxcsr_daz": false,
+      "mxcsr_ftz": false,
+      "x87_control": "0x37f",
+      "fegetround": "0",
+      "cpuid_leaf1": [
+        "0xc06f2",
+        "0x40800",
+        "0xfffa3227",
+        "0x1fabfbff"
+      ],
+      "cpuid_leaf7_sub0": [
+        "0x2",
+        "0xf1bf27eb",
+        "0x1b415f5e",
+        "0xbfc14410"
+      ],
+      "xcr0": [
+        "0x602e7",
+        "0x0"
+      ],
+      "avx": true,
+      "fma": true,
+      "osxsave": true,
+      "xcr0_xmm_ymm": true,
+      "exact_historical_xcr0_match": false,
+      "thread_id": "87481"
+    },
+    "observer_envelope": {
+      "raw_feature": {
+        "classification": "OBSERVED",
+        "xcr0_classification": "OBSERVED",
+        "required_bits_ok": true,
+        "mxcsr": "0x1fa0",
+        "mxcsr_rounding": "nearest ties-to-even",
+        "mxcsr_daz": false,
+        "mxcsr_ftz": false,
+        "x87_control": "0x37f",
+        "fegetround": "0",
+        "cpuid_leaf1": [
+          "0xc06f2",
+          "0x40800",
+          "0xfffa3227",
+          "0x1fabfbff"
+        ],
+        "cpuid_leaf7_sub0": [
+          "0x2",
+          "0xf1bf27eb",
+          "0x1b415f5e",
+          "0xbfc14410"
+        ],
+        "xcr0": [
+          "0x602e7",
+          "0x0"
+        ],
+        "avx": true,
+        "fma": true,
+        "osxsave": true,
+        "xcr0_xmm_ymm": true,
+        "exact_historical_xcr0_match": false,
+        "thread_id": "87481"
+      },
+      "before": {
+        "pid": 87481,
+        "thread_id": "87481",
+        "bind_now": true
+      },
+      "after": {
+        "pid": 87481,
+        "thread_id": "87481",
+        "bind_now": true
+      },
+      "probe_receipt": {
+        "role": "actual loaded probe image used for read_state",
+        "compiler": "gcc",
+        "flags": [
+          "-O2",
+          "-shared",
+          "-fPIC"
+        ],
+        "source_path": "pyfoldable/application/c2v09_cosine_path_probe.c",
+        "source_sha256": "e75b6d88b78250ae9e4cce87839291c0540f018550dc14465409f7e12426d33d",
+        "file_image_sha256": "495d482d5b16fc8dd27fc4aafc64889953ac0b0fa9966a47617a4cfbf2b9032a",
+        "file_image_identity": "OBSERVED",
+        "loaded_path": "/tmp/c2v09-cosine-probe-m023ebjs/probe.so",
+        "read_state_address": "0x7f69ee44a150",
+        "handle_associated": true,
+        "second_compilation_is_evidence": false,
+        "source_hash_is_the_image": false,
+        "cosine_function_calls": 0,
+        "read_state_calls": 1,
+        "inspected_address": "0x7f69ee44a150",
+        "inspected_end_address": "0x7f69ee44a190",
+        "inspected_file_offset": 4432,
+        "inspected_length": 64,
+        "inspected_correspondence": "MATCH",
+        "difference": null,
+        "correspondence_coverage": "entrypoint prefix",
+        "loaded_code_correspondence": "NOT ESTABLISHED",
+        "consumed_instruction_ranges": [
+          {
+            "name": "read_state",
+            "address": "0x7f69ee44a150",
+            "file_offset": 4432,
+            "length": 196,
+            "end_address": "0x7f69ee44a214",
+            "file_bytes_hex": "f30f1efa4154660fefc0554889fd534883ec1064488b042528000000488944240831c00f1147200fae1fd97c24060fb74424064531e44489e1894704b8010000000fa2660f6ec9660f6ed2660f6ec089cf660f6edb660f62cab8070000004489e1660f62c3660f6cc10f1145080fa2660f6ec9660f6ee2660f6ec089ce660f6eeb660f62cc660f62c5660f6cc10f114518e88afeffff85c0740c4489e10f01d089452889552c488b44240864482b04252800000075094883c4105b5d415cc3e84cfeffff",
+            "loaded_bytes_hex": "f30f1efa4154660fefc0554889fd534883ec1064488b042528000000488944240831c00f1147200fae1fd97c24060fb74424064531e44489e1894704b8010000000fa2660f6ec9660f6ed2660f6ec089cf660f6edb660f62cab8070000004489e1660f62c3660f6cc10f1145080fa2660f6ec9660f6ee2660f6ec089ce660f6eeb660f62cc660f62c5660f6cc10f114518e88afeffff85c0740c4489e10f01d089452889552c488b44240864482b04252800000075094883c4105b5d415cc3e84cfeffff",
+            "call_decode": {
+              "classification": "OBSERVED",
+              "decoder": "capstone",
+              "decoder_version": "5.0.7",
+              "mode": "64-bit",
+              "coverage": "complete",
+              "edges": [
+                {
+                  "kind": "direct",
+                  "opcode": "e8",
+                  "offset": 145,
+                  "target": "0x7f69ee44a070",
+                  "source": "loaded bytes",
+                  "plt_destination": null,
+                  "resolved_callee": null,
+                  "symbol_bytes_establish_edge": false
+                },
+                {
+                  "kind": "direct",
+                  "opcode": "e8",
+                  "offset": 191,
+                  "target": "0x7f69ee44a060",
+                  "source": "loaded bytes",
+                  "plt_destination": null,
+                  "resolved_callee": null,
+                  "symbol_bytes_establish_edge": false
+                }
+              ]
+            },
+            "call_edges": [
+              {
+                "kind": "direct",
+                "opcode": "e8",
+                "offset": 145,
+                "target": "0x7f69ee44a070",
+                "source": "loaded bytes",
+                "plt_destination": "0x7f69ee44a070",
+                "resolved_callee": "0x7f69ee44a140",
+                "symbol_bytes_establish_edge": false
+              },
+              {
+                "kind": "direct",
+                "opcode": "e8",
+                "offset": 191,
+                "target": "0x7f69ee44a060",
+                "source": "loaded bytes",
+                "plt_destination": "0x7f69ee44a060",
+                "resolved_callee": "0x7f6a07b37ec0",
+                "symbol_bytes_establish_edge": false
+              }
+            ],
+            "call_edges_decoded_from_loaded_bytes": true,
+            "symbol_bytes_establish_edge": false,
+            "helper_call_established": true,
+            "address_to_elf": {
+              "runtime_address": "0x7f69ee44a150",
+              "mapped_file": "/tmp/c2v09-cosine-probe-m023ebjs/probe.so",
+              "elf_vaddr": "0x1150",
+              "file_offset": 4432
+            },
+            "correspondence": "MATCH",
+            "difference": null,
+            "coverage": "symbol range",
+            "whole_elf": false,
+            "disk_disassembly_is_proof": false,
+            "observed_plt_stubs": [
+              {
+                "address": "0x7f69ee44a060",
+                "bytes_hex": "f30f1efaff25962f0000660f1f440000"
+              },
+              {
+                "address": "0x7f69ee44a070",
+                "bytes_hex": "f30f1efaff258e2f0000660f1f440000"
+              }
+            ],
+            "observed_got_qwords": [
+              {
+                "slot": "0x7f69ee44d000",
+                "qword": "0x7f6a07b37ec0"
+              },
+              {
+                "slot": "0x7f69ee44d008",
+                "qword": "0x7f69ee44a140"
+              }
+            ],
+            "helper_connection": {
+              "classification": "OBSERVED",
+              "call_offset": 145,
+              "plt_destination": "0x7f69ee44a070",
+              "plt_stub_bytes_hex": "f30f1efaff258e2f0000660f1f440000",
+              "got_slot": "0x7f69ee44d008",
+              "observed_qword": "0x7f69ee44a140",
+              "helper_address": "0x7f69ee44a140",
+              "helper_range_matches": true,
+              "resolved_callee": "0x7f69ee44a140",
+              "address_annotation_establishes_connection": false
+            }
+          },
+          {
+            "name": "xcr0_read_permitted",
+            "address": "0x7f69ee44a140",
+            "file_offset": 4416,
+            "length": 13,
+            "end_address": "0x7f69ee44a14d",
+            "file_bytes_hex": "f30f1efa89f8c1e81b83e001c3",
+            "loaded_bytes_hex": "f30f1efa89f8c1e81b83e001c3",
+            "call_decode": {
+              "classification": "OBSERVED",
+              "decoder": "capstone",
+              "decoder_version": "5.0.7",
+              "mode": "64-bit",
+              "coverage": "complete",
+              "edges": []
+            },
+            "call_edges": [],
+            "call_edges_decoded_from_loaded_bytes": true,
+            "symbol_bytes_establish_edge": false,
+            "helper_call_established": false,
+            "address_to_elf": {
+              "runtime_address": "0x7f69ee44a140",
+              "mapped_file": "/tmp/c2v09-cosine-probe-m023ebjs/probe.so",
+              "elf_vaddr": "0x1140",
+              "file_offset": 4416
+            },
+            "correspondence": "MATCH",
+            "difference": null,
+            "coverage": "symbol range",
+            "whole_elf": false,
+            "disk_disassembly_is_proof": false
+          }
+        ],
+        "whole_elf_required": false
+      }
+    },
+    "bind_now": true,
+    "pid": 87481,
+    "thread_id": "87481",
+    "gaps": [
+      "the taken je does not discharge the four return premises",
+      "the indirect tail stays unresolved",
+      "the four linear-window calls stay unresolved",
+      "other direct targets stay unresolved",
+      "the three parent indirect sites stay unresolved",
+      "the four original exits stay unresolved"
+    ],
+    "measurement_implementation_head": "894f796eccf2ca22cad46d50823af23554f37bb6",
+    "measurement_implementation_tree": "6e152336ec7fdfdc697c3a0509bf2350a080277e",
+    "record_commit_is_measurement_commit": false,
+    "readiness_hypotheses_admitted": false,
+    "readiness_admitted": false,
+    "accept_closed": true,
+    "candidate29_disposition": "NOT SELECTED",
+    "eligibility_evidence": false,
+    "physical_qualification": false,
+    "authorizes_execution": false,
+    "output_sampled": false,
+    "cosine_function_calls": 0,
+    "ulp_function_calls": 0,
+    "nextafter_function_calls": 0,
+    "constructor_invoked": false,
+    "reference_helper_invoked": false,
+    "target_invoked": false,
+    "historical_addresses_used_as_evidence": false,
+    "indirect_tail_unresolved": true,
+    "linear_window_calls_unresolved": true,
+    "other_targets_unresolved": true,
+    "indirect_sites_unresolved": true,
+    "exits_unresolved": true,
+    "status": "NOT ESTABLISHED",
+    "preservation_established": false,
+    "premises_discharged": false,
+    "single_process_thread": true
+  }
+}

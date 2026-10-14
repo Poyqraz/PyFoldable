@@ -6,6 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 
+from pyfoldable.application.c2v09_ordered_declaration import canonical_bytes, sha256_bytes
 from pyfoldable.application.c2v09_reference_call_prefix import (
     EDGE_LABELS,
     PREFIX_BYTE_LIMIT,
@@ -356,3 +357,58 @@ def test_capture_reports_missing_evidence_without_admission() -> None:
     root = _ROOT / "reports" / "c2v09_pre_call_capsule"
     for name, digest in _OBSERVATIONS.items():
         assert hashlib.sha256((root / name).read_bytes()).hexdigest() == digest
+
+
+def test_taken_prefix_record_is_not_the_measurement_commit() -> None:
+    path = _ROOT / "reports" / "c2v09_pre_call_capsule" / "reference_call_taken_prefix.json"
+    raw = path.read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == "aac74f9aab1dd788a036067c165dded65bc31622c7f27a594ab4a5e807d44913"
+    document = json.loads(raw)
+    payload = document["canonical_payload"]
+    assert "canonical_sha256" not in payload
+    assert document["canonical_sha256"] == "9c58bcbba5862f5c2c9c04e4e31a98218e95ad342aef727118bc3007ea253920"
+    assert sha256_bytes(canonical_bytes(payload)) == document["canonical_sha256"]
+    assert payload["measurement_implementation_head"] == "894f796eccf2ca22cad46d50823af23554f37bb6"
+    assert payload["measurement_implementation_tree"] == "6e152336ec7fdfdc697c3a0509bf2350a080277e"
+    assert payload["record_commit_is_measurement_commit"] is False
+    assert payload["evidence_class"] == "genuine"
+    assert payload["genuine_observer"] is True
+    assert payload["static_evidence"] is False
+    assert payload["live_process"] is True
+    assert payload["five_site_correspondence"] is True
+    assert [edge["exact_bytes"] for edge in payload["edges"]] == list(EDGE_LABELS)
+    assert {edge["target"] for edge in payload["edges"]} == {"0x583ec0"}
+    assert payload["fallthrough"][0] == "0x583ec0"
+    assert payload["fallthrough"][-1] == "0x583eda"
+    je = payload["je"]
+    assert je["established"] is True
+    assert je["exact_bytes"] == "0f846b9dedff"
+    assert je["end"] == "0x583ee0"
+    assert je["displacement"] == -1204885
+    assert je["target"] == "0x45dc4b"
+    assert je["file_match"] is True
+    assert "pid" not in payload["controls"]
+    assert payload["pid"] == je["pid"]
+    assert payload["thread_id"] == je["thread_id"]
+    assert payload["read_accounting"]["taken_process"] == [{"address": "0x45dc4b", "size": 256}]
+    assert payload["read_accounting"]["taken_file"] == [{"address": "0x45dc4b", "size": 256}]
+    assert payload["read_accounting"]["entry_process"] == [{"address": "0x583ec0", "size": 256}]
+    prefix = payload["prefix"]
+    assert prefix["requested_length"] == 256
+    assert prefix["captured_length"] == 256
+    assert prefix["decoded_length"] == 253
+    assert prefix["incomplete_trailing_hex"] == "488b7d"
+    assert prefix["loaded_bytes_match_file"] is True
+    assert prefix["child_bytes_read"] is False
+    assert len(prefix["unresolved_child_calls"]) == 10
+    assert all(call["resolved"] is False for call in prefix["unresolved_child_calls"])
+    assert payload["taken_target_correspondence"] is True
+    assert payload["preservation_established"] is False
+    assert payload["premises_discharged"] is False
+    assert payload["target_invoked"] is False
+    assert payload["historical_addresses_used_as_evidence"] is False
+    assert payload["accept_closed"] is True
+    assert payload["candidate29_disposition"] == "NOT SELECTED"
+    assert payload["eligibility_evidence"] is False
+    assert payload["physical_qualification"] is False
+    assert payload["authorizes_execution"] is False
