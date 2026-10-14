@@ -355,6 +355,41 @@ def test_writer_emits_profile_json_csv_and_report(tmp_path: Path) -> None:
     assert "screening" in (tmp_path / "report.md").read_text(encoding="utf-8").casefold()
 
 
+def test_recorded_screening_is_a_polar_blockage_without_bem_totals() -> None:
+    evidence = ROOT / "reports" / "two_profile_bem_screening"
+    declaration = json.loads((evidence / "declaration.json").read_text(encoding="utf-8"))
+    fresh = build_shared_declaration(ROOT)
+    report = (evidence / "report.md").read_text(encoding="utf-8")
+    rows = (evidence / "comparison.csv").read_text(encoding="utf-8").splitlines()
+
+    assert declaration == fresh
+    assert declaration["shared_declaration_sha256"] == (
+        "41cc665295d1d5d667fb70ca8238d7c0304ce7779aca3430e97dbf1d6820ebcd"
+    )
+    assert "winner" not in (evidence / "comparison.csv").read_text(encoding="utf-8").casefold()
+    assert rows[0].startswith("section,")
+    assert all(line.startswith("ledger,") for line in rows[1:])
+    assert "physical_qualification: false" in report
+    assert "False" not in report
+    assert "Qualified winner: none" in report
+    assert "Combined totals: none" in report
+    assert "BEM calls: 0" in report
+    for name, coordinate, marker in (
+        ("NACA0012.json", NACA0012_SHA256, "not_converged"),
+        ("NACA2412.json", NACA2412_SHA256, "XFOIL exceeded the 90 s request timeout"),
+    ):
+        document = json.loads((evidence / name).read_text(encoding="utf-8"))
+        assert document["physical_qualification"] is False
+        assert document["comparison_published"] is False
+        assert document["status"] == "polar_generation_failed"
+        assert document["bem_calls"] == 0
+        assert document["coordinate_sha256"] == coordinate
+        assert document["shared_declaration_sha256"] == declaration["shared_declaration_sha256"]
+        assert "thrust_n" not in document
+        assert marker in document["failure"]
+        assert marker in report
+
+
 def test_missing_provider_blocks_both_profiles_before_bem() -> None:
     declaration = build_shared_declaration(ROOT)
     result = block_declared_screening(

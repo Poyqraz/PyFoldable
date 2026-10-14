@@ -987,7 +987,14 @@ def render_report(published: Mapping[str, Any], *, runtime: Mapping[str, Any]) -
         )
     lines.extend(["## Runtime", ""])
     for key in sorted(runtime):
-        lines.append(f"- {key}: {runtime[key]}")
+        value = runtime[key]
+        if value is True:
+            rendered = "true"
+        elif value is False:
+            rendered = "false"
+        else:
+            rendered = str(value)
+        lines.append(f"- {key}: {rendered}")
     lines.append("")
     return "\n".join(lines)
 
