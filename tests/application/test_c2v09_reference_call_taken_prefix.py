@@ -237,6 +237,36 @@ def test_je_bytes_outside_the_entry_walk_do_not_read() -> None:
     assert observed["je"]["established"] is False
 
 
+def test_prefixed_return_or_jump_does_not_reach_the_je() -> None:
+    for blob in (
+        bytes.fromhex("f3c3") + JE_BYTES,
+        bytes.fromhex("cb") + JE_BYTES,
+        bytes.fromhex("f2ffe0") + JE_BYTES,
+    ):
+        assert JE_BYTES in blob
+        observed, taken, _files = _collect(entry_blob=blob)
+        assert taken == [], blob.hex()
+        assert observed["je"]["established"] is False
+
+
+def test_non_integer_pid_does_not_read() -> None:
+    observed, taken, _files = _collect(pid=10.0)  # type: ignore[arg-type]
+    assert taken == []
+    assert observed["evidence_class"] == "refused"
+    base = _EDGE_SITES[0]
+    raw = bytearray(b"\x90" * (_EDGE_SITES[-1] + 5 - base))
+    for address, label in zip(_EDGE_SITES, EDGE_LABELS, strict=True):
+        start = address - base
+        raw[start : start + 5] = bytes.fromhex(label)
+    instructions = _decode_complete(bytes(raw), base)
+    assert instructions is not None
+    integer_edges = bind_labeled_edges(instructions, EDGE_LABELS, image=_IMAGE, pid=1, thread_id="1")
+    boolean, boolean_taken, _files = _collect(edges=integer_edges, pid=True, thread_id="1")  # type: ignore[arg-type]
+    assert boolean_taken == []
+    assert boolean["evidence_class"] == "refused"
+    assert boolean["genuine_observer"] is False
+
+
 def test_broken_path_before_the_je_does_not_read() -> None:
     blob = b"\xc3" + _ENTRY_BLOB
     assert JE_BYTES in blob

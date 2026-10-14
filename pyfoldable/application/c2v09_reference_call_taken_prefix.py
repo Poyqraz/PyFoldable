@@ -39,6 +39,7 @@ from pyfoldable.application.c2v09_reference_call_prefix import (
     _parent_instructions,
     _public_envelope,
     _sample_association,
+    _same_value,
     _split_prefix,
     _typed_equal,
     association_defects,
@@ -107,6 +108,25 @@ def _exact_je(insn: capstone.CsInsn) -> bool:
     return insn.mnemonic == "je" and bytes(insn.bytes) == JE_BYTES and insn.size == 6
 
 
+_STOP_GROUPS = {
+    capstone.CS_GRP_JUMP,
+    capstone.CS_GRP_CALL,
+    capstone.CS_GRP_RET,
+    capstone.CS_GRP_INT,
+    capstone.CS_GRP_IRET,
+    capstone.CS_GRP_BRANCH_RELATIVE,
+}
+
+
+def _breaks_fallthrough(insn: capstone.CsInsn) -> bool:
+    """A transfer ends the straight walk, including prefixed ret and jmp forms."""
+    groups = set(insn.groups)
+    if groups & _STOP_GROUPS:
+        return True
+    name = insn.mnemonic
+    return any(token in name for token in ("jmp", "call", "ret", "loop", "int"))
+
+
 def _fallthrough_je(
     instructions: list[capstone.CsInsn],
     entry: int,
@@ -126,17 +146,17 @@ def _fallthrough_je(
         path.append(insn)
         if _exact_je(insn):
             return insn, path
-        if insn.mnemonic in {"jmp", "call", "ret"} or insn.mnemonic.startswith("j"):
+        if _breaks_fallthrough(insn):
             return None, path
         address = insn.address + insn.size
     return None, path
 
 
 def _context_matches(edges: list[dict[str, object]], image: str, pid: int, thread_id: str) -> bool:
-    if not edges or not image or not thread_id:
+    if not edges or type(pid) is not int or not isinstance(thread_id, str) or not thread_id or not isinstance(image, str) or not image:
         return False
     return all(
-        edge.get("pid") == pid and edge.get("thread_id") == thread_id and edge.get("image") == image
+        _same_value(edge.get("pid"), pid) and _same_value(edge.get("thread_id"), thread_id) and _same_value(edge.get("image"), image)
         for edge in edges
     )
 
@@ -151,7 +171,7 @@ def _genuine(envelope: object, outer: object, controls: object, pid: int, thread
         return False
     if not _typed_equal(_json_copy(controls), _json_copy(raw)):
         return False
-    return before.get("pid") == pid and before.get("thread_id") == thread_id
+    return _same_value(before.get("pid"), pid) and _same_value(before.get("thread_id"), thread_id)
 
 
 def _closed(head: str | None, tree: str | None) -> dict[str, object]:
