@@ -757,13 +757,16 @@ at most 25 points. It minimizes shaft power among observed feasible grid
 points under a declared thrust floor. It does not choose a profile identity
 and it does not claim a global optimum.
 
-### Merged CMM-2 RK45/v1, unmerged Radau/v2, blocked PR-C
+### Merged CMM-2 RK45/v1, frozen Radau contract, blocked PR-C
 
 Main's CMM-2 production path is the merged RK45/v1 screening dynamics (PR #76,
 ADR-007) and the merged source-bound screening service (PR #78, ADR-008).
-The main tree has no Radau solver. The Radau/v2 contract remains a frozen
-design for a future implementation:
-[Radau remediation contract](cmm2_radau_remediation_contract.md).
+The Radau/v2 design contract is on main and frozen:
+[Radau remediation contract](cmm2_radau_remediation_contract.md). The main
+`pyfoldable` tree has no Radau solver. Draft
+[PR #84](https://github.com/Poyqraz/PyFoldable/pull/84), head
+`7adb1c2785d67eead2b67656197b55e2c184abab`, is the unmerged blocked integrator
+draft and is the branch that contains `pyfoldable/dynamics/cmm2_radau_dense.py`.
 
 PR-C / C2V-09 numerical verification is not established. Draft PR #81 remains
 a blocked, unmerged evidence attempt. ADR-009 is not accepted. Contracts:
@@ -800,9 +803,9 @@ These three labels stay separate.
 
 | Plane | Meaning on this date | Boundary |
 | --- | --- | --- |
-| Numerical screening | A merged service ran on declared inputs and returned a numerical result or an explicit failure | The result is verified against the PR-C contract or against a measurement |
-| Numerical verification | Independent CMM-2 PR-C / C2V-09 evidence with the frozen gates | A screening return, a CI run, or a draft observation |
-| Physical qualification | Project rotor, mechanism, or structure evidence under the physical gates | `physical_qualification=true`. That flag stays false |
+| Numerical screening | A merged service ran on declared inputs and returned a numerical result or an explicit failure | The plane ends at that return |
+| Numerical verification | Independent CMM-2 PR-C / C2V-09 evidence under the frozen gates | This plane is unestablished. Screening returns, CI runs, and draft observations remain screening records |
+| Physical qualification | Project rotor, mechanism, or structure evidence under the physical gates | `physical_qualification` stays false |
 
 ### Next user-facing milestone
 

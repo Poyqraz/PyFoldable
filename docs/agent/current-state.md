@@ -566,10 +566,12 @@ whose coordinate hash matches those coordinates. The active-design BEM path
 accepts one fully open blade and one polar family. The chord/twist UI keeps
 diameter, RPM, and profile fixed.
 
-CMM-2 on main is RK45/v1. The main tree contains no Radau implementation.
-Radau/v2 remains an unmerged contract. PR-C / C2V-09 verification remains
-unestablished. Draft PR #81 remains blocked. ADR-009 remains unaccepted.
-`physical_qualification` remains false.
+CMM-2 on main is RK45/v1. The Radau/v2 design contract is already on main and
+frozen. The main `pyfoldable` tree contains no Radau solver. Draft PR #84,
+head `7adb1c2785d67eead2b67656197b55e2c184abab`, is the unmerged blocked
+integrator draft. PR-C / C2V-09 verification remains unestablished. Draft PR
+#81 remains blocked. ADR-009 remains unaccepted. `physical_qualification`
+remains false.
 
 Draft PR #91 head `77ae2323b736ef7ad129dad91690280280123e87` is unmerged and
 based on `cursor/cmm2-radau-v2-36c6`. Its reviewed slices include the
