@@ -511,6 +511,25 @@ def _coordinate_hashes(family: PolarFamily) -> set[str]:
     return hashes
 
 
+def _failure_text(exc: BaseException) -> str:
+    parts: list[str] = []
+    current: BaseException | None = exc
+    while current is not None and len(parts) < 6:
+        text = str(current).strip()
+        if text and text not in parts:
+            parts.append(text)
+        current = current.__cause__
+    if isinstance(exc, PolarFamilyGenerationError) and exc.failed_result is not None:
+        unusable = [
+            f"{math.degrees(point.alpha_rad):.6g} deg ({point.status})"
+            for point in exc.failed_result.points
+            if not point.usable
+        ]
+        if unusable:
+            parts.append("Unusable polar points: " + ", ".join(unusable))
+    return " | ".join(parts)
+
+
 def _failure_record(
     airfoil_id: str,
     *,
@@ -623,7 +642,7 @@ def _execute_profile(
         return _failure_record(
             airfoil_id,
             status="polar_generation_failed",
-            failure=str(exc),
+            failure=_failure_text(exc),
             declaration=declaration,
             bindings=bindings,
         )
@@ -913,6 +932,7 @@ def render_report(published: Mapping[str, Any], *, runtime: Mapping[str, Any]) -
         "# Two-profile BEM screening",
         "",
         "This is a screening record. It is not a physical qualification and it is not a design selection.",
+        "The declared query envelope and capture budget were not expanded.",
         "",
         "physical_qualification: false",
         "Qualified winner: none",
@@ -927,7 +947,7 @@ def render_report(published: Mapping[str, Any], *, runtime: Mapping[str, Any]) -
         "",
     ]
     if not published["comparison_rows"]:
-        lines.append("No profile produced a repeatable, fully covered solve.")
+        lines.extend(["No profile produced a repeatable, fully covered solve.", ""])
     for row in published["comparison_rows"]:
         lines.extend(
             [

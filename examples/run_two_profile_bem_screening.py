@@ -137,6 +137,7 @@ def main() -> int:
         executable_sha256=_file_sha256(Path(provider.executable)),
         source_sha256=source_sha,
         gfortran=os.environ.get("TWO_PROFILE_GFORTRAN", "unrecorded"),
+        osmap=os.environ.get("OSMAP", "unset"),
     )
     result = execute_declared_screening(
         declaration, provider=provider, repository_root=root

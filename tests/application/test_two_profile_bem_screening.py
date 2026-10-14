@@ -221,6 +221,7 @@ def test_provider_failure_remains_in_the_ledger_and_does_not_call_bem(monkeypatc
     assert published["winner"] is None
     assert [row["airfoil_id"] for row in published["failure_ledger"]] == list(PROFILE_IDS)
     assert {row["status"] for row in published["failure_ledger"]} == {"polar_generation_failed"}
+    assert all("forced provider failure" in row["failure"] for row in published["failure_ledger"])
     assert all("thrust_n" not in row for row in published["failure_ledger"])
     assert published["bem_calls"] == 0
     assert len(provider.calls) == len(PROFILE_IDS)
