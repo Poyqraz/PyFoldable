@@ -303,7 +303,12 @@ def _caller_binding(payload: Mapping[str, object], entry_address: str, pid: int,
         return "association_disagreement"
     if before.get("bind_now") is not True or after.get("bind_now") is not True:
         return "association_disagreement"
-    if type(before.get("pid")) is not int or before.get("pid") != pid or before.get("pid") != after.get("pid"):
+    if (
+        type(before.get("pid")) is not int
+        or type(after.get("pid")) is not int
+        or before.get("pid") != pid
+        or after.get("pid") != pid
+    ):
         return "association_disagreement"
     if (
         type(before.get("thread_id")) is not str

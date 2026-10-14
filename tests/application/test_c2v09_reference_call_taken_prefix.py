@@ -579,6 +579,15 @@ def test_missing_je_support_rejects_after_the_digest_is_recomputed() -> None:
     assert replay_taken_prefix(payload)["entry_supported"] is False
 
 
+def test_float_after_pid_rejects_the_published_record() -> None:
+    payload = _published_taken_prefix()
+    payload["observer_envelope"]["after"]["pid"] = 89941.0
+    recomputed = sha256_bytes(canonical_bytes(payload))
+    assert recomputed != "61f538c08e546b57a553ac8ff939e7d284a264cbccb2984d745a0293cf746eb2"
+    assert replay_taken_prefix(payload)["entry_supported"] is False
+    assert replay_taken_prefix(payload)["live_observer"] is False
+
+
 def test_contradictory_je_file_slice_rejects_after_the_digest_is_recomputed() -> None:
     payload = _published_taken_prefix()
     payload["je"]["file_bytes_hex"] = "000000000000"
