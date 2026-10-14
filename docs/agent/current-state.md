@@ -542,3 +542,16 @@ model choices/pending evidence. No surface/solver execution, freeze or strength
 acceptance; external CAD/STEP remains optional. 13-inch and 250 mm scenarios stay
 separate. PR #81/#84/#91 and C2V-09 unchanged; `physical_qualification=false`,
 ADR-009 unaccepted, unknown clearance/physical gates preserved.
+
+## 2026-10-14 two-profile BEM screening — blocked
+
+The milestone defined by Draft PR #96 at `19df53d080e1f74edea8f12aa84de79b3fc6ba17`
+was run from main `022b466303c59b8c0adb02f935f9c2f065b0e2b5`. NACA0012 and
+NACA2412 share one canonical planform and the 7100 rpm hover condition.
+XFOIL 6.99 adapter v2 did not produce a complete polar family on the declared
+positive-only kinematic envelope: NACA0012 left -40 deg through -24 deg
+`not_converged` at Mach 0 and Reynolds 26030.6, and NACA2412 timed out at the
+declared 90 s on that same cell. No BEM call was made. No thrust, torque, or
+coefficient is published, and there is no qualified winner.
+`physical_qualification` remains false. Details:
+[2026-10-14 two-profile BEM screening blockage](../validation_and_development_roadmap.md#2026-10-14-two-profile-bem-screening-blockage).

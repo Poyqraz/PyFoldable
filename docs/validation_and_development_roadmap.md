@@ -706,3 +706,54 @@ no source/surface/BEM/FEA/trajectory execution or freeze is authorized by this
 documentation proposal. External CAD/STEP is optional. 13-inch source conventions
 remain separate from the 250 mm project baseline. Broader strength evidence and
 physical gates remain unchanged; no ADR-009 acceptance or qualification promotion.
+
+## 2026-10-14 two-profile BEM screening blockage
+
+Draft PR #96, head `19df53d080e1f74edea8f12aa84de79b3fc6ba17`, defines this
+two-profile BEM screening and does not run it. This branch records the execution
+of that definition
+from verified main `022b466303c59b8c0adb02f935f9c2f065b0e2b5`. The run used
+catalog NACA0012 and NACA2412, one shared canonical 250 mm planform, the
+fully open zero-offset pose, and the canonical hover condition at 7100 rpm
+with zero flight speed. The code revision recorded by the run is
+`a20637aa275843eef3454539b62c07cd35f8ff6b`.
+
+Shared geometry SHA-256:
+`9f28067fdd4a59b25da36d5d2e916e5804927232cd629c572e17880990644902`.
+Shared operating-condition SHA-256:
+`875469fb9e0b3383ec262bc31617be0707611c5e45e2e33a5588bad80a4392d1`.
+Shared declaration SHA-256:
+`41cc665295d1d5d667fb70ca8238d7c0304ce7779aca3430e97dbf1d6820ebcd`.
+NACA0012 coordinates `ab62d56cc86a591da4f83c1980ea5b07743c4e47bdb0eb63a8e166e190a96d42`,
+draft `d993635db17360f767cff4f26226b3f238de9cd3fb7657c8180247366f2b4d4f`.
+NACA2412 coordinates `3f84aba0f9234ed6e9fe4eedebe88ae8701a19ae181d70e21a02b0704916999a`,
+draft `c3200882dbe6c1f0771bb89772ea8becb4ee143dc6929c4f9346fe55da4371ae`.
+
+The provider was the existing XFOIL subprocess adapter v2, backend XFOIL 6.99,
+built from MIT `xfoil6.99.tgz` SHA-256
+`5c0250643f52ce0e75d7338ae2504ce7907f2d49a30f921826717b8ac12ebe40`
+with gfortran 13.3.0 and `-O2 -fdefault-real-8 -fallow-argument-mismatch`.
+The Ubuntu `6.99.dfsg` package was not used. The declared query image is the
+positive-only endpoint map at 40 station-span annuli: angle of attack about
+-39.73 deg to 30.66 deg, Reynolds number 26030.6 to 88107.3, and Mach number
+0.0405 to 0.265. The capture grid is a 2 deg alpha series, the two Reynolds
+endpoints, and Mach 0 with the Mach maximum: four cells per profile, one
+provider attempt, 90 s timeout, and `bounds="error"`.
+
+The screening is blocked before BEM:
+
+- NACA0012, cell 1/4 at Mach 0 and Reynolds 26030.6, was rejected. The usable
+  fraction was 0.756757, below the required 1. Nine angles, -40 deg through
+  -24 deg, are `not_converged`. No later cell was started.
+- NACA2412, on the same first cell, exceeded the declared 90 s XFOIL timeout.
+  No later cell was started.
+- BEM calls are 0. Thrust, torque, shaft power, and coefficients are not
+  published. Both profiles stay in the failure ledger. There is no combined
+  total and no qualified winner.
+- `physical_qualification` remains false. The declared envelope was not
+  expanded. No synthetic or proxy polar was substituted.
+
+Evidence is under `reports/two_profile_bem_screening/`. A narrower polar grid
+would be a new declaration, not a continuation of this run. This result does
+not execute a transient, a motor optimization, a mixed-profile surface, or any
+PR #91 dependency.
