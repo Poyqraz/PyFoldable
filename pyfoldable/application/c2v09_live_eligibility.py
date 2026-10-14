@@ -18,7 +18,9 @@ from pathlib import Path
 from typing import Callable, Mapping
 
 from pyfoldable.application.c2v09_binding_collector import (
+    UNHISTORICAL_MODULES,
     collect_binding_record,
+    pinned_certificate_sources,
     resolve_loaded_cos_vaddr,
 )
 from pyfoldable.application.c2v09_ordered_declaration import (
@@ -289,6 +291,100 @@ def _classify_actual(name: str, supplied, pinned_value, matches: list[str], mism
     matches.append(name)
 
 
+def _inventory_unestablished(unestablished: list[str]) -> None:
+    if "python dependency inventory" not in unestablished:
+        unestablished.append("python dependency inventory")
+
+
+def _row_ready(row: object) -> bool:
+    if not isinstance(row, dict) or not isinstance(row.get("path"), str) or not row["path"]:
+        return False
+    return row.get("file_identity") in {"MATCH", "MISMATCH", "NOT ESTABLISHED", "NO HISTORICAL RECORD"}
+
+
+def _is_sha256(value: object) -> bool:
+    return isinstance(value, str) and len(value) == 64 and all(character in "0123456789abcdef" for character in value)
+
+
+def _enforce_source_inventory(
+    payload: object,
+    pinned_sources: tuple[tuple[str, str], ...] | None,
+    matches: list[str],
+    mismatches: list[str],
+    unestablished: list[str],
+) -> None:
+    """Classify file identity from pinned hashes and observed operands. Ignore supplied labels."""
+    if not isinstance(payload, dict) or pinned_sources is None:
+        _inventory_unestablished(unestablished)
+        return
+    inventory = payload.get("python_dependency_inventory")
+    if not isinstance(inventory, dict):
+        _inventory_unestablished(unestablished)
+        return
+    sources = inventory.get("certificate_sources")
+    modules = inventory.get("modules_without_historical_record")
+    if not isinstance(sources, list) or not isinstance(modules, list):
+        _inventory_unestablished(unestablished)
+        return
+    pinned = dict(pinned_sources)
+    rows_by_path: dict[str, dict] = {}
+    if len(sources) != len(pinned_sources):
+        _inventory_unestablished(unestablished)
+        return
+    for row in sources:
+        if not isinstance(row, dict) or not isinstance(row.get("path"), str) or not row["path"]:
+            _inventory_unestablished(unestablished)
+            return
+        path = row["path"]
+        if path in rows_by_path or path not in pinned:
+            _inventory_unestablished(unestablished)
+            return
+        rows_by_path[path] = row
+    if set(rows_by_path) != set(pinned):
+        _inventory_unestablished(unestablished)
+        return
+    for path, pinned_hash in pinned_sources:
+        row = rows_by_path[path]
+        historical = row.get("historical_sha256")
+        current = row.get("current_file_sha256")
+        if not _is_sha256(historical) or historical != pinned_hash or not _is_sha256(current):
+            unestablished.append(f"historical source file identity {path}")
+        elif current == pinned_hash:
+            matches.append(f"historical source file identity {path}")
+        else:
+            mismatches.append(f"historical source file {path}")
+        unestablished.append(f"loaded-code identity {path}")
+        unestablished.append(f"operation-graph applicability {path}")
+    recorded: dict[str, dict] = {}
+    for row in modules:
+        if not _row_ready(row) or not isinstance(row.get("role"), str):
+            _inventory_unestablished(unestablished)
+            return
+        path = row["path"]
+        if path in recorded or path in rows_by_path:
+            _inventory_unestablished(unestablished)
+            return
+        recorded[path] = row
+    for role, path, kind in UNHISTORICAL_MODULES:
+        row = recorded.get(path)
+        if row is None or row.get("role") != role or row.get("historical_sha256") is not None:
+            unestablished.append(f"no historical applicability clearance {path}")
+            if row is not None and row.get("historical_sha256") is not None:
+                mismatches.append(f"invented historical clearance {path}")
+            continue
+        if row.get("file_identity") == "MATCH":
+            mismatches.append(f"invented historical clearance {path}")
+        unestablished.append(f"no historical applicability clearance {path}")
+        unestablished.append(f"loaded-code identity {path}")
+        unestablished.append(f"operation-graph applicability {path}")
+        if kind == "c_source":
+            unestablished.append(f"compiled loaded native identity {path}")
+            if row.get("compiled_loaded_native_identity") == "MATCH":
+                mismatches.append(f"invented native clearance {path}")
+    if set(recorded) != {path for _role, path, _kind in UNHISTORICAL_MODULES}:
+        _inventory_unestablished(unestablished)
+
+
 def _assess(
     root: Path,
     *,
@@ -429,6 +525,12 @@ def _assess(
         mismatches.append("extended declaration digest")
     else:
         matches.append("extended declaration digest")
+
+    try:
+        pinned_sources = pinned_certificate_sources(root)
+    except (OSError, RuntimeError, ValueError, KeyError, TypeError):
+        pinned_sources = None
+    _enforce_source_inventory(payload, pinned_sources, matches, mismatches, unestablished)
 
     status = CONTRACT_BLOCKED if mismatches or unestablished else "ELIGIBLE"
     partial = {

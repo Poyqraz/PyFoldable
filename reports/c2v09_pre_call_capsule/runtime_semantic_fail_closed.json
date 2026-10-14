@@ -1,0 +1,891 @@
+{
+  "canonical_payload": {
+    "accept_closed": true,
+    "approval_receipt_establishes_semantics": false,
+    "argument_to_evidence": [
+      {
+        "conditions": [],
+        "evidence": [
+          "FoldableRotorState.angle_from_deployed_rad: sub/float_float",
+          "BladeGeometry.radius_m: div/float_float",
+          "project_foldable_blade.kernel_radius: mul/float_float",
+          "solve_bem_annulus.kernel_radius: mul/float_float",
+          "solve_bem_rotor.annulus_edge: mul/mixed_integer_float_multiply, add/float_float, add/integer_add, mul/mixed_integer_float_multiply, add/float_float",
+          "solve_bem_rotor.midpoint: add/float_float, mul/float_float",
+          "solve_bem_rotor.width: sub/float_float, div/mixed_float_integer_divide",
+          "generic add: ob_fval",
+          "generic div: ob_fval",
+          "generic mul: ob_fval",
+          "generic sub: PyFloat_FromDouble",
+          "specialized div: not present in the loaded eval function"
+        ],
+        "gaps": [
+          "specialized add site is not a separate binary64 operation",
+          "specialized sub site is not a separate binary64 operation",
+          "specialized mul site is not a separate binary64 operation"
+        ],
+        "hypothesis": "interpreter binary64 arithmetic semantics",
+        "post_return_only": [
+          "POST-RETURN ONLY: the actual operand objects passed by the returned source are not observed before that return"
+        ],
+        "status": "NOT ESTABLISHED"
+      },
+      {
+        "conditions": [
+          "the operand that reaches PyFloat_AsDouble is a builtin float",
+          "a non-float operand takes a different path and is not this argument"
+        ],
+        "evidence": [
+          "wrapper calls PyFloat_AsDouble at 0x556750",
+          "builtin-float path loads the stored binary64 and returns it",
+          "PyFloat_FromDouble bytes store the binary64 result"
+        ],
+        "gaps": [],
+        "hypothesis": "PyFloat_AsDouble conversion semantics",
+        "post_return_only": [
+          "POST-RETURN ONLY: the actual cosine operand object is known only after the source returns"
+        ],
+        "status": "ESTABLISHED CONDITIONALLY"
+      },
+      {
+        "conditions": [
+          "the value is a positive normal strictly below its binade endpoint",
+          "the certificate's required binade, not a sampled ulp, is the one under that endpoint",
+          "FTZ stays off so the subsequent subsd is not flushed"
+        ],
+        "evidence": [
+          "wrapper, PLT stub, and selected body bytes decode completely",
+          "positive-finite compare 0x7fefffff reaches the carrying increment",
+          "wrapper subsd follows the nextafter call"
+        ],
+        "gaps": [],
+        "hypothesis": "selected nextafter semantics",
+        "post_return_only": [
+          "POST-RETURN ONLY: the actual guarded source value is known only after the source returns"
+        ],
+        "status": "ESTABLISHED CONDITIONALLY"
+      }
+    ],
+    "arguments": {
+      "approval_receipt_establishes_semantics": false,
+      "argument_to_evidence": [
+        {
+          "conditions": [],
+          "evidence": [
+            "FoldableRotorState.angle_from_deployed_rad: sub/float_float",
+            "BladeGeometry.radius_m: div/float_float",
+            "project_foldable_blade.kernel_radius: mul/float_float",
+            "solve_bem_annulus.kernel_radius: mul/float_float",
+            "solve_bem_rotor.annulus_edge: mul/mixed_integer_float_multiply, add/float_float, add/integer_add, mul/mixed_integer_float_multiply, add/float_float",
+            "solve_bem_rotor.midpoint: add/float_float, mul/float_float",
+            "solve_bem_rotor.width: sub/float_float, div/mixed_float_integer_divide",
+            "generic add: ob_fval",
+            "generic div: ob_fval",
+            "generic mul: ob_fval",
+            "generic sub: PyFloat_FromDouble",
+            "specialized div: not present in the loaded eval function"
+          ],
+          "gaps": [
+            "specialized add site is not a separate binary64 operation",
+            "specialized sub site is not a separate binary64 operation",
+            "specialized mul site is not a separate binary64 operation"
+          ],
+          "hypothesis": "interpreter binary64 arithmetic semantics",
+          "post_return_only": [
+            "POST-RETURN ONLY: the actual operand objects passed by the returned source are not observed before that return"
+          ],
+          "status": "NOT ESTABLISHED"
+        },
+        {
+          "conditions": [
+            "the operand that reaches PyFloat_AsDouble is a builtin float",
+            "a non-float operand takes a different path and is not this argument"
+          ],
+          "evidence": [
+            "wrapper calls PyFloat_AsDouble at 0x556750",
+            "builtin-float path loads the stored binary64 and returns it",
+            "PyFloat_FromDouble bytes store the binary64 result"
+          ],
+          "gaps": [],
+          "hypothesis": "PyFloat_AsDouble conversion semantics",
+          "post_return_only": [
+            "POST-RETURN ONLY: the actual cosine operand object is known only after the source returns"
+          ],
+          "status": "ESTABLISHED CONDITIONALLY"
+        },
+        {
+          "conditions": [
+            "the value is a positive normal strictly below its binade endpoint",
+            "the certificate's required binade, not a sampled ulp, is the one under that endpoint",
+            "FTZ stays off so the subsequent subsd is not flushed"
+          ],
+          "evidence": [
+            "wrapper, PLT stub, and selected body bytes decode completely",
+            "positive-finite compare 0x7fefffff reaches the carrying increment",
+            "wrapper subsd follows the nextafter call"
+          ],
+          "gaps": [],
+          "hypothesis": "selected nextafter semantics",
+          "post_return_only": [
+            "POST-RETURN ONLY: the actual guarded source value is known only after the source returns"
+          ],
+          "status": "ESTABLISHED CONDITIONALLY"
+        }
+      ],
+      "hypotheses": [
+        {
+          "conditions": [],
+          "evidence": [
+            "FoldableRotorState.angle_from_deployed_rad: sub/float_float",
+            "BladeGeometry.radius_m: div/float_float",
+            "project_foldable_blade.kernel_radius: mul/float_float",
+            "solve_bem_annulus.kernel_radius: mul/float_float",
+            "solve_bem_rotor.annulus_edge: mul/mixed_integer_float_multiply, add/float_float, add/integer_add, mul/mixed_integer_float_multiply, add/float_float",
+            "solve_bem_rotor.midpoint: add/float_float, mul/float_float",
+            "solve_bem_rotor.width: sub/float_float, div/mixed_float_integer_divide",
+            "generic add: ob_fval",
+            "generic div: ob_fval",
+            "generic mul: ob_fval",
+            "generic sub: PyFloat_FromDouble",
+            "specialized div: not present in the loaded eval function"
+          ],
+          "gaps": [
+            "specialized add site is not a separate binary64 operation",
+            "specialized sub site is not a separate binary64 operation",
+            "specialized mul site is not a separate binary64 operation"
+          ],
+          "name": "interpreter binary64 arithmetic semantics",
+          "post_return_only": [
+            "POST-RETURN ONLY: the actual operand objects passed by the returned source are not observed before that return"
+          ],
+          "readiness_admitted": false,
+          "status": "NOT ESTABLISHED"
+        },
+        {
+          "conditions": [
+            "the operand that reaches PyFloat_AsDouble is a builtin float",
+            "a non-float operand takes a different path and is not this argument"
+          ],
+          "evidence": [
+            "wrapper calls PyFloat_AsDouble at 0x556750",
+            "builtin-float path loads the stored binary64 and returns it",
+            "PyFloat_FromDouble bytes store the binary64 result"
+          ],
+          "gaps": [],
+          "name": "PyFloat_AsDouble conversion semantics",
+          "post_return_only": [
+            "POST-RETURN ONLY: the actual cosine operand object is known only after the source returns"
+          ],
+          "readiness_admitted": false,
+          "status": "ESTABLISHED CONDITIONALLY"
+        },
+        {
+          "conditions": [
+            "the value is a positive normal strictly below its binade endpoint",
+            "the certificate's required binade, not a sampled ulp, is the one under that endpoint",
+            "FTZ stays off so the subsequent subsd is not flushed"
+          ],
+          "evidence": [
+            "wrapper, PLT stub, and selected body bytes decode completely",
+            "positive-finite compare 0x7fefffff reaches the carrying increment",
+            "wrapper subsd follows the nextafter call"
+          ],
+          "gaps": [],
+          "name": "selected nextafter semantics",
+          "post_return_only": [
+            "POST-RETURN ONLY: the actual guarded source value is known only after the source returns"
+          ],
+          "readiness_admitted": false,
+          "status": "ESTABLISHED CONDITIONALLY",
+          "unchanged_guard_ulps": 2
+        }
+      ],
+      "readiness_hypotheses_admitted": false,
+      "sample_outputs_establish_semantics": false,
+      "version_label_establishes_semantics": false
+    },
+    "authority": {
+      "frozen_head": "fd55fa97676c84c896511765e94561a706252239",
+      "runtime_binding_sha256": "5a2a8ab62faf7729769ea9dd620ffd07635605ae170ef523c91d3ec560c16a67",
+      "runtime_certificate": "docs/cmm2_c2v09_partition_runtime_certificate.md",
+      "section": "7.2"
+    },
+    "authorizes_execution": false,
+    "candidate29_disposition": "NOT SELECTED",
+    "cosine_function_calls": 0,
+    "eligibility_evidence": false,
+    "hypotheses": [
+      {
+        "conditions": [],
+        "evidence": [
+          "FoldableRotorState.angle_from_deployed_rad: sub/float_float",
+          "BladeGeometry.radius_m: div/float_float",
+          "project_foldable_blade.kernel_radius: mul/float_float",
+          "solve_bem_annulus.kernel_radius: mul/float_float",
+          "solve_bem_rotor.annulus_edge: mul/mixed_integer_float_multiply, add/float_float, add/integer_add, mul/mixed_integer_float_multiply, add/float_float",
+          "solve_bem_rotor.midpoint: add/float_float, mul/float_float",
+          "solve_bem_rotor.width: sub/float_float, div/mixed_float_integer_divide",
+          "generic add: ob_fval",
+          "generic div: ob_fval",
+          "generic mul: ob_fval",
+          "generic sub: PyFloat_FromDouble",
+          "specialized div: not present in the loaded eval function"
+        ],
+        "gaps": [
+          "specialized add site is not a separate binary64 operation",
+          "specialized sub site is not a separate binary64 operation",
+          "specialized mul site is not a separate binary64 operation"
+        ],
+        "name": "interpreter binary64 arithmetic semantics",
+        "post_return_only": [
+          "POST-RETURN ONLY: the actual operand objects passed by the returned source are not observed before that return"
+        ],
+        "readiness_admitted": false,
+        "status": "NOT ESTABLISHED"
+      },
+      {
+        "conditions": [
+          "the operand that reaches PyFloat_AsDouble is a builtin float",
+          "a non-float operand takes a different path and is not this argument"
+        ],
+        "evidence": [
+          "wrapper calls PyFloat_AsDouble at 0x556750",
+          "builtin-float path loads the stored binary64 and returns it",
+          "PyFloat_FromDouble bytes store the binary64 result"
+        ],
+        "gaps": [],
+        "name": "PyFloat_AsDouble conversion semantics",
+        "post_return_only": [
+          "POST-RETURN ONLY: the actual cosine operand object is known only after the source returns"
+        ],
+        "readiness_admitted": false,
+        "status": "ESTABLISHED CONDITIONALLY"
+      },
+      {
+        "conditions": [
+          "the value is a positive normal strictly below its binade endpoint",
+          "the certificate's required binade, not a sampled ulp, is the one under that endpoint",
+          "FTZ stays off so the subsequent subsd is not flushed"
+        ],
+        "evidence": [
+          "wrapper, PLT stub, and selected body bytes decode completely",
+          "positive-finite compare 0x7fefffff reaches the carrying increment",
+          "wrapper subsd follows the nextafter call"
+        ],
+        "gaps": [],
+        "name": "selected nextafter semantics",
+        "post_return_only": [
+          "POST-RETURN ONLY: the actual guarded source value is known only after the source returns"
+        ],
+        "readiness_admitted": false,
+        "status": "ESTABLISHED CONDITIONALLY",
+        "unchanged_guard_ulps": 2
+      }
+    ],
+    "measurement_implementation_head": "72455a01b8e60053a1336b4477be0ebd24c79665",
+    "measurement_implementation_tree": "e6d31feac44c1c0af9afc559fb179c9936cb5fc9",
+    "nextafter_function_calls": 0,
+    "observations": {
+      "approval_receipt_establishes_semantics": false,
+      "arithmetic": {
+        "declared_annulus_count": 4,
+        "generic_handlers": {
+          "add": {
+            "address": "0x556d20",
+            "continuations": [
+              {
+                "address": "0x599a20",
+                "loaded_bytes_hex": "f30f1efa488b87580100004885c00f8453a9ecff488b501031c94885d27e3b483b7018743b4883fa01742f483b7020743f4883fa027423483b702874434883fa037417b903000000483974c81874414883c1014839ca75f031c989c8c3"
+              },
+              {
+                "address": "0x56b710",
+                "loaded_bytes_hex": "f30f1efa554889e54883ec204885ff0f848a000000488b4708f680ab00000001745e488b47104883f80f772483e003660fefc04889c2b8010000004829d08b5718c9480fafc2f2480f2ac0c3"
+              },
+              {
+                "address": "0x583d10",
+                "loaded_bytes_hex": "f30f1efa8b057a315b0085c0750848c70701000000c3"
+              },
+              {
+                "address": "0x44eee1",
+                "loaded_bytes_hex": "e8ea6625004889c3e90a7f1000"
+              },
+              {
+                "address": "0x44eec7",
+                "loaded_bytes_hex": "8b05f3a75e0083c0010f84167f10008905e4a75e00e90b7f1000"
+              },
+              {
+                "address": "0x556b00",
+                "loaded_bytes_hex": "554889e54154534889fb488b3f488b4708f680ab0000000174354989f4e8ee4b0100660f2e0586ea1e00f2410f1104247a02740731c05b415c5dc3"
+              },
+              {
+                "address": "0x5f1620",
+                "loaded_bytes_hex": "f30f1efa48c7c0f8ffffff64488b00488b40604885c07501c3"
+              },
+              {
+                "address": "0x44eebc",
+                "loaded_bytes_hex": "8905ce165f00e9e67f1000"
+              }
+            ],
+            "coverage": "complete",
+            "decoder": "capstone",
+            "decoder_version": "5.0.7",
+            "elf_vaddr": "0x556d20",
+            "fma_mnemonics": [],
+            "from_double_address": "0x556110",
+            "from_double_end": "0x5561a9",
+            "image": "/usr/bin/python3.12",
+            "kind": "add",
+            "loaded_bytes_hex": "f30f1efa554889e54156534889fb4883ec20488b7f08488975d84881ffc096a3000f84e9000000bec096a300e8cf2c040085c00f85d7000000488b4308f680ab000000010f84340100004889dfe89e490100660f2e0536e81e007a060f84fd000000488b5dd8488b7b084881ffc096a3000f85a3000000f20f104b10f20f114de8f20f58c866490f7ece48c7c0f8ffffff64488b00488b4010488b98981404004885db743f488b530883a890140400014889909814040048c74308c096a300f60583294e00020f85cb0000004889dfe81ccf02004c8973104883c4204889d85b415e5dc3bf18000000e8f2fe02004889c34885c00f84c780efff48c74008c096a300f60540294e000274c1e99780effff20f104310e948ffffffbec096a300f20f1145d0e8d72b0400f20f1045d085c00f8541ffffff488d75e8488d7dd8e89dfcffff488b5dd8f20f1045d085c07888f20f5845e866490f7ec6e92bfffffff20f1145d0e897a70900f20f1045d04885c00f84ebfeffff31dbe95affffff8b05ec964e0083c0010f850f80efffbb9005a400e941ffffffe90b80efff0f1f4000",
+            "loaded_bytes_match_file": true,
+            "mode": "64-bit",
+            "ob_fval_load": true,
+            "paths_execute_one_scalar_op": true,
+            "scalar_mnemonics": [
+              "addsd",
+              "addsd"
+            ],
+            "store": "ob_fval"
+          },
+          "div": {
+            "address": "0x556b70",
+            "continuations": [
+              {
+                "address": "0x44ee7f",
+                "loaded_bytes_hex": "488b3d1a2a5e00be38557000e8a0381a0031dbe9917d1000"
+              },
+              {
+                "address": "0x583d10",
+                "loaded_bytes_hex": "f30f1efa8b057a315b0085c0750848c70701000000c3"
+              },
+              {
+                "address": "0x44ee4e",
+                "loaded_bytes_hex": "e87d6725004889c3e9cd7d1000"
+              },
+              {
+                "address": "0x44ee97",
+                "loaded_bytes_hex": "8b0523a85e0083c0010f84767d1000890514a85e00e96b7d1000"
+              },
+              {
+                "address": "0x599a20",
+                "loaded_bytes_hex": "f30f1efa488b87580100004885c00f8453a9ecff488b501031c94885d27e3b483b7018743b4883fa01742f483b7020743f4883fa027423483b702874434883fa037417b903000000483974c81874414883c1014839ca75f031c989c8c3"
+              },
+              {
+                "address": "0x44ee75",
+                "loaded_bytes_hex": "f20f104310e93d7d1000"
+              },
+              {
+                "address": "0x56b710",
+                "loaded_bytes_hex": "f30f1efa554889e54883ec204885ff0f848a000000488b4708f680ab00000001745e488b47104883f80f772483e003660fefc04889c2b8010000004829d08b5718c9480fafc2f2480f2ac0c3"
+              },
+              {
+                "address": "0x5f1620",
+                "loaded_bytes_hex": "f30f1efa48c7c0f8ffffff64488b00488b40604885c07501c3"
+              },
+              {
+                "address": "0x44ee64",
+                "loaded_bytes_hex": "f2410f10442410f20f1145e8e9317d1000"
+              },
+              {
+                "address": "0x556b00",
+                "loaded_bytes_hex": "554889e54154534889fb488b3f488b4708f680ab0000000174354989f4e8ee4b0100660f2e0586ea1e00f2410f1104247a02740731c05b415c5dc3"
+              },
+              {
+                "address": "0x44ee5b",
+                "loaded_bytes_hex": "488b5dd8e9c47d1000"
+              },
+              {
+                "address": "0x44ee90",
+                "loaded_bytes_hex": "31dbe9917d1000"
+              },
+              {
+                "address": "0x44eeb1",
+                "loaded_bytes_hex": "8905d9165f00e9487e1000"
+              }
+            ],
+            "coverage": "complete",
+            "decoder": "capstone",
+            "decoder_version": "5.0.7",
+            "elf_vaddr": "0x556b70",
+            "fma_mnemonics": [],
+            "from_double_address": "0x556110",
+            "from_double_end": "0x5561a9",
+            "image": "/usr/bin/python3.12",
+            "kind": "div",
+            "loaded_bytes_hex": "f30f1efa554889e541544989fc534889f34883ec2048897dd8488b7f084881ffc096a3000f852a010000f2410f10442410f20f1145e8488b7b084881ffc096a3000f85b1000000f20f104310660fefc9660f2ec17a060f84b382effff20f104de8f20f5ec866490f7ecc48c7c0f8ffffff64488b00488b4010488b98981404004885db7443488b530883a890140400014889909814040048c74308c096a300f605532b4e00020f85f20000004889dfe8ecd002004c8963104883c4204889d85b415c5dc30f1f4000bf18000000e8be0003004889c34885c00f840082efff48c74008c096a300f6050c2b4e000274bde93382efff0f1f4000bec096a300e8ae2d040085c00f85fb81efff488b4308f680ab00000001746e4889dfe8814a0100660f2e0519e91e000f8a1fffffff0f8519ffffffe878a909004885c07543f20f1045e8660f570516581e0066490f7ec4e916ffffffbec096a300e8522d040085c00f858e81efff488d75e8488d7dd8e81dfeffff85c00f89bbfeffffe96b81efffe99b81efff8b0595984e0083c0010f85ad81efffbb9005a400e91affffffe98481efff66662e0f1f8400000000006690",
+            "loaded_bytes_match_file": true,
+            "mode": "64-bit",
+            "ob_fval_load": true,
+            "paths_execute_one_scalar_op": true,
+            "scalar_mnemonics": [
+              "divsd"
+            ],
+            "store": "ob_fval"
+          },
+          "mul": {
+            "address": "0x556910",
+            "continuations": [
+              {
+                "address": "0x599a20",
+                "loaded_bytes_hex": "f30f1efa488b87580100004885c00f8453a9ecff488b501031c94885d27e3b483b7018743b4883fa01742f483b7020743f4883fa027423483b702874434883fa037417b903000000483974c81874414883c1014839ca75f031c989c8c3"
+              },
+              {
+                "address": "0x56b710",
+                "loaded_bytes_hex": "f30f1efa554889e54883ec204885ff0f848a000000488b4708f680ab00000001745e488b47104883f80f772483e003660fefc04889c2b8010000004829d08b5718c9480fafc2f2480f2ac0c3"
+              },
+              {
+                "address": "0x583d10",
+                "loaded_bytes_hex": "f30f1efa8b057a315b0085c0750848c70701000000c3"
+              },
+              {
+                "address": "0x44ee2d",
+                "loaded_bytes_hex": "585a5b415c5de998672500"
+              },
+              {
+                "address": "0x44ee13",
+                "loaded_bytes_hex": "8b05a7a85e0083c0010f84b77b1000890598a85e00e9ac7b1000"
+              },
+              {
+                "address": "0x5f1620",
+                "loaded_bytes_hex": "f30f1efa48c7c0f8ffffff64488b00488b40604885c07501c3"
+              },
+              {
+                "address": "0x44ee38",
+                "loaded_bytes_hex": "890552175f00e99c7c1000"
+              },
+              {
+                "address": "0x44ee08",
+                "loaded_bytes_hex": "890582175f00e9cc7c1000"
+              },
+              {
+                "address": "0x556b4f",
+                "loaded_bytes_hex": "8b053b9a4e0083c0010f85e582efff48c7039005a400ebe3"
+              }
+            ],
+            "coverage": "complete",
+            "decoder": "capstone",
+            "decoder_version": "5.0.7",
+            "elf_vaddr": "0x556910",
+            "fma_mnemonics": [],
+            "from_double_address": "0x556110",
+            "from_double_end": "0x5561a9",
+            "image": "/usr/bin/python3.12",
+            "kind": "mul",
+            "loaded_bytes_hex": "f30f1efa554889e541544989f4534889fb4883ec10488b7f084881ffc096a3000f84c2000000bec096a300e8e030040085c00f85b0000000488b4308f680ab000000010f84770100004889dfe8af4d0100660f2e0547ec1e00660f28c87a060f841b010000498b7c24084881ffc096a3000f8588000000f2410f594c241048c7c0f8ffffff66490f7ecc64488b00488b4010488b98981404004885db0f84ae000000488b530883a890140400014889909814040048c74308c096a300f605962d4e00020f85200100004889dfe82fd302004c8963104883c4104889d85b415c5dc30f1f8000000000498b7c2408f20f104b104881ffc096a3000f8478ffffffbec096a300f20f114de8e802300400f20f104de885c00f855cffffff498b442408f680ab000000010f84ac0000004c89e7e8cb4c0100660f2e0563eb1e00f20f104de87a027459f20f59c8e92fffffff90bf18000000e8960203004889c34885c00f84b783efff48c74008c096a300f605e42c4e00020f844effffffe98383effff20f1145e8e886ab0900f20f104de84885c00f84cdfeffff31dbe936fffffff20f114de8e867ab0900f20f104de84885c075e5660f570d055a1e00e9befeffff8b05ba9a4e0083c0010f855983efffbb9005a400e9fcfeffff8b05a19a4e0083c00174ebe90f83efffe91583efff6690554889e54154534889fb488b3f488b4708f680ab0000000174354989f4e8ee4b0100660f2e0586ea1e00f2410f1104247a02740731c05b415c5dc3e8e0aa09004885c074ef31c048890383c8ffebe7",
+            "loaded_bytes_match_file": true,
+            "mode": "64-bit",
+            "ob_fval_load": true,
+            "paths_execute_one_scalar_op": true,
+            "scalar_mnemonics": [
+              "mulsd",
+              "mulsd"
+            ],
+            "store": "ob_fval"
+          },
+          "sub": {
+            "address": "0x66cfa0",
+            "continuations": [
+              {
+                "address": "0x599a20",
+                "loaded_bytes_hex": "f30f1efa488b87580100004885c00f8453a9ecff488b501031c94885d27e3b483b7018743b4883fa01742f483b7020743f4883fa027423483b702874434883fa037417b903000000483974c81874414883c1014839ca75f031c989c8c3"
+              },
+              {
+                "address": "0x556b00",
+                "loaded_bytes_hex": "554889e54154534889fb488b3f488b4708f680ab0000000174354989f4e8ee4b0100660f2e0586ea1e00f2410f1104247a02740731c05b415c5dc3"
+              },
+              {
+                "address": "0x44f327",
+                "loaded_bytes_hex": "488b45d8e9dedc2100"
+              }
+            ],
+            "coverage": "complete",
+            "decoder": "capstone",
+            "decoder_version": "5.0.7",
+            "elf_vaddr": "0x66cfa0",
+            "fma_mnemonics": [],
+            "from_double_address": "0x556110",
+            "from_double_end": "0x5561a9",
+            "image": "/usr/bin/python3.12",
+            "kind": "sub",
+            "loaded_bytes_hex": "f30f1efa554889e5534889fb4883ec2848897dd8488b7f08488975d04881ffc096a300755cf20f104310f20f1145e0488b5dd0488b7b084881ffc096a3007435bec096a300e836caf2ff85c07527488d75e8488d7dd0e8059beeff85c07846f20f1045e0f20f5c45e8e80291eeff4883c4285b5dc3f20f104310f20f1145e8ebdebec096a300e8f5c9f2ff85c07596488d75e0488d7dd8e8c49aeeff85c0798fe9e222deff488b45d0ebc30f1f440000",
+            "loaded_bytes_match_file": true,
+            "mode": "64-bit",
+            "ob_fval_load": true,
+            "paths_execute_one_scalar_op": true,
+            "scalar_mnemonics": [
+              "subsd"
+            ],
+            "store": "PyFloat_FromDouble"
+          }
+        },
+        "integer_add": {
+          "address": "0x566670",
+          "excluded_branches": [
+            {
+              "assumption": "integer operands of index + 1 are in 1..4 because the immutable candidate declaration sets annulus_count and index iterates below it",
+              "target": "slow-path"
+            }
+          ],
+          "loaded_bytes_hex": "f30f1efa554889e541554154534883ec08488b5708f682ab000000010f848dd7eeff488b56084889f0f682ab000000010f840a010000488b4e10488b57104989c84889d64809ca83e6034183e0034883fa0f0f87c8000000ba010000008b40188b4f184889d34c29c24829f3480fafd0480fafd94801d3488d43054989dd483d05010000772283c3054863db48c1e3054c8da3e86fb3004883c4084c89e05b415c415d5dc30f1f00488d83ffffff3f483dfeffff7f0f8715010000bf20000000e8cb0502004989c44885c00f84730100004189dd41f7dd440f48eb85db0f888d00000049c74424100800000049c744240820bfa300f6055d584d00020f854f0100004c89e7e896d5010045896c24184883c4084c89e05b415c415d5dc30f1f004883fe02742a4889c64983f802742d4883c4085b415c415d5de932130000669041bc9005a400e94cffffff0f1f4400004983f80274424889fe4889c74883c4085b415c415d5de9d52b00000f1f44000049c74424100a000000",
+          "loaded_bytes_match_file": true
+        },
+        "operations": [
+          {
+            "bytecode_window_establishes_semantics": false,
+            "categories": [
+              "float_float"
+            ],
+            "kinds": [
+              "sub"
+            ],
+            "opcodes": [
+              "LOAD_ATTR opening_angle_rad",
+              "LOAD_FAST self",
+              "LOAD_ATTR deployed_angle_rad",
+              "BINARY_OP -"
+            ],
+            "output_sampled": false,
+            "qualname": "FoldableRotorState.angle_from_deployed_rad"
+          },
+          {
+            "bytecode_window_establishes_semantics": false,
+            "categories": [
+              "float_float"
+            ],
+            "kinds": [
+              "div"
+            ],
+            "opcodes": [
+              "LOAD_ATTR diameter_m",
+              "LOAD_CONST 2.0",
+              "BINARY_OP /"
+            ],
+            "output_sampled": false,
+            "qualname": "BladeGeometry.radius_m"
+          },
+          {
+            "bytecode_window_establishes_semantics": false,
+            "categories": [
+              "float_float"
+            ],
+            "kinds": [
+              "mul"
+            ],
+            "opcodes": [
+              "LOAD_ATTR r_over_R",
+              "LOAD_DEREF blade",
+              "LOAD_ATTR radius_m",
+              "BINARY_OP *",
+              "STORE_FAST nominal_radius"
+            ],
+            "output_sampled": false,
+            "qualname": "project_foldable_blade.kernel_radius"
+          },
+          {
+            "bytecode_window_establishes_semantics": false,
+            "categories": [
+              "float_float"
+            ],
+            "kinds": [
+              "mul"
+            ],
+            "opcodes": [
+              "LOAD_DEREF station",
+              "LOAD_ATTR r_over_R",
+              "LOAD_DEREF blade",
+              "LOAD_ATTR radius_m",
+              "BINARY_OP *",
+              "STORE_DEREF radius"
+            ],
+            "output_sampled": false,
+            "qualname": "solve_bem_annulus.kernel_radius"
+          },
+          {
+            "bytecode_window_establishes_semantics": false,
+            "categories": [
+              "mixed_integer_float_multiply",
+              "float_float",
+              "integer_add",
+              "mixed_integer_float_multiply",
+              "float_float"
+            ],
+            "kinds": [
+              "mul",
+              "add",
+              "add",
+              "mul",
+              "add"
+            ],
+            "opcodes": [
+              "LOAD_FAST inner_radius",
+              "LOAD_FAST index",
+              "LOAD_FAST width",
+              "BINARY_OP *",
+              "BINARY_OP +",
+              "STORE_FAST inner",
+              "LOAD_FAST inner_radius",
+              "LOAD_FAST index",
+              "LOAD_CONST 1",
+              "BINARY_OP +",
+              "LOAD_FAST width",
+              "BINARY_OP *",
+              "BINARY_OP +",
+              "STORE_FAST outer"
+            ],
+            "output_sampled": false,
+            "qualname": "solve_bem_rotor.annulus_edge"
+          },
+          {
+            "bytecode_window_establishes_semantics": false,
+            "categories": [
+              "float_float",
+              "float_float"
+            ],
+            "kinds": [
+              "add",
+              "mul"
+            ],
+            "opcodes": [
+              "LOAD_CONST 0.5",
+              "LOAD_FAST inner",
+              "LOAD_FAST outer",
+              "BINARY_OP +",
+              "BINARY_OP *",
+              "STORE_FAST midpoint"
+            ],
+            "output_sampled": false,
+            "qualname": "solve_bem_rotor.midpoint"
+          },
+          {
+            "bytecode_window_establishes_semantics": false,
+            "categories": [
+              "float_float",
+              "mixed_float_integer_divide"
+            ],
+            "kinds": [
+              "sub",
+              "div"
+            ],
+            "opcodes": [
+              "LOAD_FAST outer_radius",
+              "LOAD_FAST inner_radius",
+              "BINARY_OP -",
+              "LOAD_FAST controls",
+              "LOAD_ATTR annulus_count",
+              "BINARY_OP /",
+              "STORE_FAST width"
+            ],
+            "output_sampled": false,
+            "qualname": "solve_bem_rotor.width"
+          }
+        ],
+        "specialized_handlers": {
+          "add": [
+            {
+              "address": "0x5dc50e",
+              "continuations": [
+                {
+                  "address": "0x5e21a6",
+                  "loaded_bytes_hex": "4c8995e0feffff4c898dd0feffffe8573ff7ff4c8b95e0feffff4885c04989c60f84af4eebff498b074c8b8dd0feffff85c078074883e801498907498b0185c00f889befffff4883e801498901e98fefffff"
+                },
+                {
+                  "address": "0x5dc564",
+                  "loaded_bytes_hex": "4d89cee91b4c0000"
+                }
+              ],
+              "coverage": "complete",
+              "decoder": "capstone",
+              "decoder_version": "5.0.7",
+              "elf_vaddr": "0x5dc50e",
+              "fma_mnemonics": [],
+              "from_double_address": "0x556110",
+              "from_double_end": "0x5561a9",
+              "image": "/usr/bin/python3.12",
+              "kind": "add",
+              "loaded_bytes_hex": "4d89f749817e08c096a3000f85f82e000049817908c096a3000f85ea2e0000498b16f2410f104610498b01f2410f5841104883fa010f84274c00004883f8010f85535c0000f2410f11411085d278074883ea01",
+              "loaded_bytes_match_file": true,
+              "mode": "64-bit",
+              "ob_fval_load": true,
+              "paths_execute_one_scalar_op": true,
+              "scalar_address": "0x5dc539",
+              "scalar_mnemonics": [
+                "addsd"
+              ],
+              "store": "ob_fval"
+            }
+          ],
+          "div": [],
+          "mul": [
+            {
+              "address": "0x5d92fe",
+              "continuations": [
+                {
+                  "address": "0x5e012b",
+                  "loaded_bytes_hex": "4883f8010f84631d00004c8995e0feffff4c898dd0feffffe8c85ff7ff4c8b95e0feffff4885c04989c60f84b373ebff498b074c8b8dd0feffff85c078074883e801498907498b0185c00f88d591ffff4883e801498901e9c991ffff"
+                },
+                {
+                  "address": "0x5e22c2",
+                  "loaded_bytes_hex": "4c89cf4c8995f8feffffe83f3ff7ff4c8b95f8feffffe97370ffff"
+                }
+              ],
+              "coverage": "complete",
+              "decoder": "capstone",
+              "decoder_version": "5.0.7",
+              "elf_vaddr": "0x5d92fe",
+              "fma_mnemonics": [],
+              "from_double_address": "0x556110",
+              "from_double_end": "0x5561a9",
+              "image": "/usr/bin/python3.12",
+              "kind": "mul",
+              "loaded_bytes_hex": "4d89f749817e08c096a3000f850861000049817908c096a3000f85fa600000498b16f2410f104610498b01f2410f5941104883fa010f85f26d0000f2410f11461085c0780d4883e8014989010f84728f0000",
+              "loaded_bytes_match_file": true,
+              "mode": "64-bit",
+              "ob_fval_load": true,
+              "paths_execute_one_scalar_op": true,
+              "scalar_address": "0x5d9329",
+              "scalar_mnemonics": [
+                "mulsd"
+              ],
+              "store": "ob_fval"
+            }
+          ],
+          "sub": [
+            {
+              "address": "0x5dbfd0",
+              "continuations": [
+                {
+                  "address": "0x5e25c4",
+                  "loaded_bytes_hex": "f2410f11461085c00f888c9affff4883e8014989010f857f9affff4c89cf4c8995f8feffffe8223cf7ff4c8b95f8feffffe9649affff"
+                },
+                {
+                  "address": "0x5e0e33",
+                  "loaded_bytes_hex": "f2410f11411085d278074883ea014989164d89cee912b2ffff"
+                }
+              ],
+              "coverage": "complete",
+              "decoder": "capstone",
+              "decoder_version": "5.0.7",
+              "elf_vaddr": "0x5dbfd0",
+              "fma_mnemonics": [],
+              "from_double_address": "0x556110",
+              "from_double_end": "0x5561a9",
+              "image": "/usr/bin/python3.12",
+              "kind": "sub",
+              "loaded_bytes_hex": "4d89f749817e08c096a3000f853634000049817908c096a3000f8528340000498b16f2410f104610498b01f2410f5c41104883fa010f84b96500004883f8010f841e4e00004c8995e0feffff4c898dd0feffffe8e8a0f7ff4c8b95e0feffff",
+              "loaded_bytes_match_file": true,
+              "mode": "64-bit",
+              "ob_fval_load": true,
+              "paths_execute_one_scalar_op": true,
+              "scalar_address": "0x5dbffb",
+              "scalar_mnemonics": [
+                "subsd"
+              ],
+              "store": "PyFloat_FromDouble"
+            }
+          ]
+        },
+        "specialized_scan": "complete",
+        "unclassified_scalar_sites": 0
+      },
+      "controls": {
+        "avx": true,
+        "classification": "OBSERVED",
+        "cpuid_leaf1": [
+          "0xc06f2",
+          "0x40800",
+          "0xfffa3227",
+          "0x1fabfbff"
+        ],
+        "cpuid_leaf7_sub0": [
+          "0x2",
+          "0xf1bf27eb",
+          "0x1b415f5e",
+          "0xbfc14410"
+        ],
+        "exact_historical_xcr0_match": false,
+        "fegetround": "0",
+        "fma": true,
+        "mxcsr": "0x1fa0",
+        "mxcsr_daz": false,
+        "mxcsr_ftz": false,
+        "mxcsr_rounding": "nearest ties-to-even",
+        "osxsave": true,
+        "required_bits_ok": true,
+        "thread_id": "42952",
+        "x87_control": "0x37f",
+        "xcr0": [
+          "0x602e7",
+          "0x0"
+        ],
+        "xcr0_classification": "OBSERVED",
+        "xcr0_xmm_ymm": true
+      },
+      "conversion": {
+        "asdouble_address": "0x556750",
+        "asdouble_bytes_hex": "f30f1efa554889e54154534883ec104885ff0f84f70000004889fb488b7f084881ffc096a3007518f20f1043104883c4105b415c5dc3662e0f1f840000000000bec096a300e88632040085c075da488b4b08488b41604885c0745e488b90900000004885d274764889dfffd24989c44885c0745c488b78084881ffc096a3000f8591000000498b0424f2410f1044241085c078994883e80149890424758f4c89e7f20f1145e8e8c5d50200f20f1045e84883c4105b415c5dc3488b5118488b3dec094e00beb8c6710031c0e890ae0900f20f100588ed1e00e950ffffff4883b8080100000074d24889dfe81166feff4889c34885c074d94889c7e8c14e0100488b0385c00f8823ffffffe97885efffe82db6f4ffebbabec096a300e8b031040085c0498b4424087453488b53084c8b4018be0100000031c0488b3dd1a34d00488b4a18ba40907100e8734b130085c00f8430ffffff498b042485c00f886fffffff4883e801498904240f8561ffffff4c89e7e8f9d40200e954ffffff488b4818488b4308be10907100488b3d20094e00488b501831c0e8c5ad0900498b042485c00f8829ffffff4883e801498904240f851bffffffe9f184efff",
+        "builtin_float_path": "movsd [obj+0x10]; ret",
+        "decoder": "capstone",
+        "decoder_version": "5.0.7",
+        "elf_vaddr": "0x556750",
+        "fast_path_has_no_convert": true,
+        "finite_result_store": "PyFloat_FromDouble",
+        "fromdouble_address": "0x556110",
+        "fromdouble_bytes_hex": "f30f1efa5548c7c0f8ffffff4889e5415666490f7ec65364488b00488b4010488b98981404004885db743d488b530883a890140400014889909814040048c74308c096a300f6050d364e000275464889dfe8aadb02004c8973104889d85b415e5dc3660f1f440000bf18000000e87e0b03004889c34885c00f84658aefff48c74008c096a300f605cc354e000274bfe9588aefffe9538aefff",
+        "loaded_bytes_hex": "f30f1efa554889e54154534883ec104885ff0f84f70000004889fb488b7f084881ffc096a3007518f20f1043104883c4105b415c5dc3662e0f1f840000000000bec096a300e88632040085c075da488b4b08488b41604885c0745e488b90900000004885d274764889dfffd24989c44885c0745c488b78084881ffc096a3000f8591000000498b0424f2410f1044241085c078994883e80149890424758f4c89e7f20f1145e8e8c5d50200f20f1045e84883c4105b415c5dc3488b5118488b3dec094e00beb8c6710031c0e890ae0900f20f100588ed1e00e950ffffff4883b8080100000074d24889dfe81166feff4889c34885c074d94889c7e8c14e0100488b0385c00f8823ffffffe97885efffe82db6f4ffebbabec096a300e8b031040085c0498b4424087453488b53084c8b4018be0100000031c0488b3dd1a34d00488b4a18ba40907100e8734b130085c00f8430ffffff498b042485c00f886fffffff4883e801498904240f8561ffffff4c89e7e8f9d40200e954ffffff488b4818488b4308be10907100488b3d20094e00488b501831c0e8c5ad0900498b042485c00f8829ffffff4883e801498904240f851bffffffe9f184efff",
+        "loaded_bytes_match_file": true,
+        "mode": "64-bit",
+        "non_float_paths_are_not_the_builtin_argument": true,
+        "symbol_address": "0x556750",
+        "wrapper_address": "0x62e430",
+        "wrapper_bytes_hex": "f30f1efa554889f74889e54883ec10e80c83f2ff660f2e0504e71000f20f1145f87a027446e85630dffff20f1045f8c70000000000e87623dfff660f2ec07b0bf20f1065f8660f2ee47b54f30f7e0d6de01000660f28d0660f54d1660f2e15fde610007723c9e9757cf2ffe88031fcff4885c0753be80630dfff31d2f20f10054cee10008910ebddf20f106df8f20f1035cbe61000660f54e9660f2ef572c6488b3d6a444000be5cf67000e85042fcffc931c0c366662e0f1f84000000000090",
+        "wrapper_calls_defined_symbol": true
+      },
+      "cosine_function_calls": 0,
+      "nextafter_function_calls": 0,
+      "output_sampled": false,
+      "pid": 42952,
+      "sample_outputs_establish_semantics": false,
+      "single_process_thread": true,
+      "terminal_guard": {
+        "allowance_recomputed": false,
+        "bind_now": true,
+        "evidence": "loaded wrapper plt got",
+        "got_resolved": true,
+        "got_slot": "0xa296b8",
+        "independent_symbol_establishes_selected_path": false,
+        "integer_increment_in_selected_body": true,
+        "nextafter_function_calls": 0,
+        "output_sampled": false,
+        "plt_address": "0x420da0",
+        "plt_stub_bytes_hex": "ff251289600068d7000000e970f2ffff",
+        "selected_address": "0x7fa9bd9413b0",
+        "selected_body_bound": true,
+        "selected_body_bytes_hex": "f30f1efa66480f7ec166490f7ec94889cf4c89c848c1ef2048c1e82089fa4189c089fe81e2ffffff7f4181e0ffffff7f81faffffef7f0f86a400000081ea0000f07f09ca0f85e20000004181f8ffffef7f0f86e10000004181e80000f07f4509c80f85c5000000660f2ec17a060f84bd00000089fa4189c085ff0f88e000000039c70f8f180100000f85e30000004139c90f83da00000083e90181e20000f07f81fa0000f07f0f84dc00000081faffff0f007f12f20f59c0488b05498b0b0064c7002200000089c848c1e6204809c666480f6ece660f28c1c30f1f80000000004181f8ffffef7f7737660f2ec17a02743f09ca0f857affffff250000008048c1e0204883c80166480f6ec066480f6ec8f20f59c0660f28c1c30f1f80000000004181e80000f07f4509c874bdf20f58c8660f28c1c30f1f00660f2ec17a0274f089fa4189c085ff786739c77e2483ea0189d6e940ffffff660f1f84000000000085c0793c39c77f384439c20f841dffffff83c1010f8520ffffff83c20189d6e916ffffff0f1f4000f20f58c0488b05758a0b0064c70022000000e927ffffff9085c90f85effeffffeba3660f1f44000085c0799939c77eb0eb93660f1f440000",
+        "ulp_function_calls": 0,
+        "unchanged_guard_ulps": 2,
+        "wrapper_address": "0x4d8cfa",
+        "wrapper_bytes_hex": "f30f1efa554889f74889e54883ec1048817e08c096a3007507f20f104610eb2ae831da0700660f2e05293e26007a1b7519f20f1145f8e8eb881100f20f1045f84885c0740fe9a3000000660f2ec00f8a89000000f30f7e1d9a3726000f28d00f54d3660f2e152c3e26007777f20f100d123b26000f28c2f20f1155f8e82580f4fff30f7e1d6d372600f20f1055f80f54d8660f2e1dfd3d2600761ef20f100deb3d26000f28c2e8fb7ff4fff20f1055f8f20f5cd00f28c2eb04f20f5cc2660f2e05913d26007a167514f20f1145f8e853881100f20f1045f84885c07510c9e933d30700f20f10059b3a2600ebf0c931c0c3",
+        "wrapper_calls_nextafter_plt": true,
+        "wrapper_matches_file": true,
+        "wrapper_subtraction": "subsd"
+      },
+      "thread_id": "42952",
+      "ulp_function_calls": 0,
+      "version_label": "3.12.3",
+      "version_label_establishes_semantics": false
+    },
+    "output_sampled": false,
+    "physical_qualification": false,
+    "readiness_hypotheses_admitted": false,
+    "record_commit_is_measurement_commit": false,
+    "sample_outputs_establish_semantics": false,
+    "ulp_function_calls": 0,
+    "unresolved_pending_independent_review": [
+      "interpreter binary64 arithmetic semantics",
+      "PyFloat_AsDouble conversion semantics",
+      "selected nextafter semantics"
+    ],
+    "version_label_establishes_semantics": false
+  },
+  "canonical_sha256": "93dddef2aed82930bc1a5801c3aa8a6856663e5470fe27046cf8f148d0172bac",
+  "digest_scope": "SHA-256 of the section 7.3 canonical bytes of canonical_payload only. canonical_sha256 and digest_scope are outside that payload."
+}

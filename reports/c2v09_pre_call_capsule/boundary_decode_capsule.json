@@ -1,0 +1,696 @@
+{
+  "canonical_payload": {
+    "authorizes_execution": false,
+    "binding_revalidation": "REVALIDATED",
+    "candidate29_disposition": "NOT SELECTED",
+    "deferred_integration": [
+      "solve_cmm2_transient",
+      "first_radau_contact",
+      "later dense intervals"
+    ],
+    "deferred_radau_is_prerequisite_for_isolated_source_attempt": false,
+    "dossier_status": "CONTRACT BLOCKED",
+    "eligibility_evidence": false,
+    "every_angle_bem_convergence_required": false,
+    "future_v2_seal_required": false,
+    "geometric_applicability_argument": {
+      "bem_numerical_success_reuses_geometric_proof": false,
+      "code_identity_is_lemma_transfer": false,
+      "cosine_result_identity": "POST-RETURN ONLY",
+      "every_angle_bem_convergence_required": false,
+      "historical_argument_reuse": "NOT ESTABLISHED",
+      "links": [
+        {
+          "assumptions_established_for_this_path": false,
+          "code_classification": "MATCH",
+          "code_identity_is_lemma_transfer": false,
+          "family": "geometric lemma",
+          "historical_argument_reuse": "NOT ESTABLISHED",
+          "lemma": "deployed-angle subtraction is checked, not bypassed",
+          "qualname": "FoldableRotorState.angle_from_deployed_rad"
+        },
+        {
+          "assumptions_established_for_this_path": false,
+          "code_classification": "MATCH",
+          "code_identity_is_lemma_transfer": false,
+          "family": "geometric lemma",
+          "historical_argument_reuse": "NOT ESTABLISHED",
+          "lemma": "blade radius consumed by the kernel-radius product",
+          "qualname": "BladeGeometry.radius_m"
+        },
+        {
+          "assumptions_established_for_this_path": false,
+          "code_classification": "MATCH",
+          "code_identity_is_lemma_transfer": false,
+          "family": "geometric lemma",
+          "historical_argument_reuse": "NOT ESTABLISHED",
+          "lemma": "source cosine input",
+          "qualname": "project_foldable_blade"
+        },
+        {
+          "assumptions_established_for_this_path": false,
+          "code_classification": "MATCH",
+          "code_identity_is_lemma_transfer": false,
+          "family": "geometric lemma",
+          "historical_argument_reuse": "NOT ESTABLISHED",
+          "lemma": "projection nominal radius, distinct from the annulus kernel radius",
+          "qualname": "project_foldable_blade.kernel_radius"
+        },
+        {
+          "assumptions_established_for_this_path": false,
+          "code_classification": "MATCH",
+          "code_identity_is_lemma_transfer": false,
+          "family": "geometric lemma",
+          "historical_argument_reuse": "NOT ESTABLISHED",
+          "lemma": "mapper cosine uses the same represented angle at a separate call site",
+          "qualname": "_projection_factor"
+        },
+        {
+          "assumptions_established_for_this_path": false,
+          "code_classification": "MATCH",
+          "code_identity_is_lemma_transfer": false,
+          "family": "geometric lemma",
+          "historical_argument_reuse": "NOT ESTABLISHED",
+          "lemma": "hinge-station construction",
+          "qualname": "_station_at_hinge"
+        },
+        {
+          "assumptions_established_for_this_path": false,
+          "code_classification": "MATCH",
+          "code_identity_is_lemma_transfer": false,
+          "family": "geometric lemma",
+          "historical_argument_reuse": "NOT ESTABLISHED",
+          "lemma": "annulus edges consumed inside solve_bem_rotor",
+          "qualname": "solve_bem_rotor.annulus_edge"
+        },
+        {
+          "assumptions_established_for_this_path": false,
+          "code_classification": "MATCH",
+          "code_identity_is_lemma_transfer": false,
+          "family": "geometric lemma",
+          "historical_argument_reuse": "NOT ESTABLISHED",
+          "lemma": "annulus midpoint consumed inside solve_bem_rotor",
+          "qualname": "solve_bem_rotor.midpoint"
+        },
+        {
+          "assumptions_established_for_this_path": false,
+          "code_classification": "MATCH",
+          "code_identity_is_lemma_transfer": false,
+          "family": "geometric lemma",
+          "historical_argument_reuse": "NOT ESTABLISHED",
+          "lemma": "normalized polar query branches",
+          "qualname": "PolarFamily.query"
+        },
+        {
+          "assumptions_established_for_this_path": false,
+          "code_classification": "MATCH",
+          "code_identity_is_lemma_transfer": false,
+          "family": "geometric lemma",
+          "historical_argument_reuse": "NOT ESTABLISHED",
+          "lemma": "spanwise normalized query",
+          "qualname": "SpanwisePolarSchedule.section"
+        },
+        {
+          "assumptions_established_for_this_path": false,
+          "code_classification": "MATCH",
+          "code_identity_is_lemma_transfer": false,
+          "family": "geometric lemma",
+          "historical_argument_reuse": "NOT ESTABLISHED",
+          "lemma": "mapper radius is not a substitute for the kernel radius",
+          "qualname": "projected_radius_m"
+        },
+        {
+          "assumptions_established_for_this_path": false,
+          "code_classification": "MATCH",
+          "code_identity_is_lemma_transfer": false,
+          "family": "geometric lemma",
+          "historical_argument_reuse": "NOT ESTABLISHED",
+          "lemma": "mapper ownership of the projected intervals",
+          "qualname": "map_projected_material_loads"
+        },
+        {
+          "assumptions_established_for_this_path": false,
+          "code_classification": "MATCH",
+          "code_identity_is_lemma_transfer": false,
+          "family": "geometric lemma",
+          "historical_argument_reuse": "NOT ESTABLISHED",
+          "lemma": "annulus kernel radius station.r_over_R * blade.radius_m",
+          "qualname": "solve_bem_annulus.kernel_radius"
+        }
+      ]
+    },
+    "historical_file_deltas": [
+      {
+        "code_identity_clears_file_hash": false,
+        "consumed_initial_operation": "consumed by the initial evaluator constructor and call; qualname code identity does not relabel this file hash",
+        "current_sha256": "909a53cde402f00100ad77c6ab85657dd85406efdfe4396b2352d62ff13125b3",
+        "file_identity": "MISMATCH",
+        "hash_relabelled": false,
+        "historical_sha256": "1efbcb0ab9769063ce7e059a779abf3570aedf35c070a679cb0c2c8e9dc9f74a",
+        "initial_operation_reuse": "consumed by the initial evaluator constructor and call; qualname code identity does not relabel this file hash",
+        "mismatch_preserved": true,
+        "path": "pyfoldable/application/cmm2_coupled_transient_service.py",
+        "waived": false
+      },
+      {
+        "code_identity_clears_file_hash": false,
+        "consumed_initial_operation": "deferred integration solver; the hash mismatch remains and is not initial geometric clearance",
+        "current_sha256": "8d0e58fc4ba8c3bf4887d0557165340c2f24dedd32444b4c517ff296f449cffc",
+        "file_identity": "MISMATCH",
+        "hash_relabelled": false,
+        "historical_sha256": "f120cd1ec0c329721f962abe95f16ec30fd56a1fda70f855b2991a0678736de1",
+        "initial_operation_reuse": "deferred integration solver; the hash mismatch remains and is not initial geometric clearance",
+        "mismatch_preserved": true,
+        "path": "pyfoldable/dynamics/cmm2_coupled_transient.py",
+        "waived": false
+      }
+    ],
+    "implementation_commit": "be76a8e5c551609a5addb4db9c3578e222741fe1",
+    "implementation_tree": "3f94775363330741e45658708e165f91f7375cd4",
+    "interpreter_arithmetic": {
+      "controls_classification": "OBSERVED",
+      "operations": [
+        {
+          "co_code_hex": "6a000000000000000000000000000000000000007c006a020000000000000000000000000000000000007a0a0000",
+          "end_offset": 50,
+          "opcodes": [
+            "LOAD_ATTR opening_angle_rad",
+            "LOAD_FAST self",
+            "LOAD_ATTR deployed_angle_rad",
+            "BINARY_OP -"
+          ],
+          "output_sampled": false,
+          "parent_co_code_length": 52,
+          "qualname": "FoldableRotorState.angle_from_deployed_rad",
+          "start_offset": 4
+        },
+        {
+          "co_code_hex": "6a0000000000000000000000000000000000000064017a0b0000",
+          "end_offset": 30,
+          "opcodes": [
+            "LOAD_ATTR diameter_m",
+            "LOAD_CONST 2.0",
+            "BINARY_OP /"
+          ],
+          "output_sampled": false,
+          "parent_co_code_length": 32,
+          "qualname": "BladeGeometry.radius_m",
+          "start_offset": 4
+        },
+        {
+          "co_code_hex": "6a2a00000000000000000000000000000000000089006a0c0000000000000000000000000000000000007a0500007d0b",
+          "end_offset": 1042,
+          "opcodes": [
+            "LOAD_ATTR r_over_R",
+            "LOAD_DEREF blade",
+            "LOAD_ATTR radius_m",
+            "BINARY_OP *",
+            "STORE_FAST nominal_radius"
+          ],
+          "output_sampled": false,
+          "parent_co_code_length": 1562,
+          "qualname": "project_foldable_blade.kernel_radius",
+          "start_offset": 994
+        },
+        {
+          "co_code_hex": "89016a1000000000000000000000000000000000000089006a120000000000000000000000000000000000007a0500008a22",
+          "end_offset": 442,
+          "opcodes": [
+            "LOAD_DEREF station",
+            "LOAD_ATTR r_over_R",
+            "LOAD_DEREF blade",
+            "LOAD_ATTR radius_m",
+            "BINARY_OP *",
+            "STORE_DEREF radius"
+          ],
+          "output_sampled": false,
+          "parent_co_code_length": 4212,
+          "qualname": "solve_bem_annulus.kernel_radius",
+          "start_offset": 392
+        },
+        {
+          "co_code_hex": "7c0d7c127c107a0500007a0000007d137c0d7c1264067a0000007c107a0500007a0000007d14",
+          "end_offset": 762,
+          "opcodes": [
+            "LOAD_FAST inner_radius",
+            "LOAD_FAST index",
+            "LOAD_FAST width",
+            "BINARY_OP *",
+            "BINARY_OP +",
+            "STORE_FAST inner",
+            "LOAD_FAST inner_radius",
+            "LOAD_FAST index",
+            "LOAD_CONST 1",
+            "BINARY_OP +",
+            "LOAD_FAST width",
+            "BINARY_OP *",
+            "BINARY_OP +",
+            "STORE_FAST outer"
+          ],
+          "output_sampled": false,
+          "parent_co_code_length": 2340,
+          "qualname": "solve_bem_rotor.annulus_edge",
+          "start_offset": 724
+        },
+        {
+          "co_code_hex": "640c7c137c147a0000007a0500007d15",
+          "end_offset": 778,
+          "opcodes": [
+            "LOAD_CONST 0.5",
+            "LOAD_FAST inner",
+            "LOAD_FAST outer",
+            "BINARY_OP +",
+            "BINARY_OP *",
+            "STORE_FAST midpoint"
+          ],
+          "output_sampled": false,
+          "parent_co_code_length": 2340,
+          "qualname": "solve_bem_rotor.midpoint",
+          "start_offset": 762
+        }
+      ],
+      "output_sampled": false,
+      "same_recording_as_probe": true
+    },
+    "label": "UNRESOLVED PRE-CALL HYPOTHESES",
+    "measurement_image": {
+      "compiler": "gcc",
+      "consumed_instruction_ranges": [
+        {
+          "address": "0x7ffa9f115150",
+          "address_to_elf": {
+            "elf_vaddr": "0x1150",
+            "file_offset": 4432,
+            "mapped_file": "/tmp/c2v09-cosine-probe-qyhzlbtm/probe.so",
+            "runtime_address": "0x7ffa9f115150"
+          },
+          "call_decode": {
+            "classification": "OBSERVED",
+            "coverage": "complete",
+            "decoder": "x86-64 linear sweep",
+            "edges": [
+              {
+                "kind": "direct",
+                "offset": 145,
+                "opcode": "e8",
+                "plt_destination": null,
+                "resolved_callee": null,
+                "source": "loaded bytes",
+                "symbol_bytes_establish_edge": false,
+                "target": "0x7ffa9f115070"
+              },
+              {
+                "kind": "direct",
+                "offset": 191,
+                "opcode": "e8",
+                "plt_destination": null,
+                "resolved_callee": null,
+                "source": "loaded bytes",
+                "symbol_bytes_establish_edge": false,
+                "target": "0x7ffa9f115060"
+              }
+            ],
+            "mode": "64-bit"
+          },
+          "call_edges": [
+            {
+              "kind": "direct",
+              "offset": 145,
+              "opcode": "e8",
+              "plt_destination": "0x7ffa9f115070",
+              "resolved_callee": "0x7ffa9f115140",
+              "source": "loaded bytes",
+              "symbol_bytes_establish_edge": false,
+              "target": "0x7ffa9f115070"
+            },
+            {
+              "kind": "direct",
+              "offset": 191,
+              "opcode": "e8",
+              "plt_destination": "0x7ffa9f115060",
+              "resolved_callee": "0x7ffaac537ec0",
+              "source": "loaded bytes",
+              "symbol_bytes_establish_edge": false,
+              "target": "0x7ffa9f115060"
+            }
+          ],
+          "call_edges_decoded_from_loaded_bytes": true,
+          "correspondence": "MATCH",
+          "coverage": "symbol range",
+          "difference": null,
+          "disk_disassembly_is_proof": false,
+          "end_address": "0x7ffa9f115214",
+          "file_bytes_hex": "f30f1efa4154660fefc0554889fd534883ec1064488b042528000000488944240831c00f1147200fae1fd97c24060fb74424064531e44489e1894704b8010000000fa2660f6ec9660f6ed2660f6ec089cf660f6edb660f62cab8070000004489e1660f62c3660f6cc10f1145080fa2660f6ec9660f6ee2660f6ec089ce660f6eeb660f62cc660f62c5660f6cc10f114518e88afeffff85c0740c4489e10f01d089452889552c488b44240864482b04252800000075094883c4105b5d415cc3e84cfeffff",
+          "file_offset": 4432,
+          "helper_call_established": true,
+          "length": 196,
+          "loaded_bytes_hex": "f30f1efa4154660fefc0554889fd534883ec1064488b042528000000488944240831c00f1147200fae1fd97c24060fb74424064531e44489e1894704b8010000000fa2660f6ec9660f6ed2660f6ec089cf660f6edb660f62cab8070000004489e1660f62c3660f6cc10f1145080fa2660f6ec9660f6ee2660f6ec089ce660f6eeb660f62cc660f62c5660f6cc10f114518e88afeffff85c0740c4489e10f01d089452889552c488b44240864482b04252800000075094883c4105b5d415cc3e84cfeffff",
+          "name": "read_state",
+          "symbol_bytes_establish_edge": false,
+          "whole_elf": false
+        },
+        {
+          "address": "0x7ffa9f115140",
+          "address_to_elf": {
+            "elf_vaddr": "0x1140",
+            "file_offset": 4416,
+            "mapped_file": "/tmp/c2v09-cosine-probe-qyhzlbtm/probe.so",
+            "runtime_address": "0x7ffa9f115140"
+          },
+          "call_decode": {
+            "classification": "OBSERVED",
+            "coverage": "complete",
+            "decoder": "x86-64 linear sweep",
+            "edges": [],
+            "mode": "64-bit"
+          },
+          "call_edges": [],
+          "call_edges_decoded_from_loaded_bytes": true,
+          "correspondence": "MATCH",
+          "coverage": "symbol range",
+          "difference": null,
+          "disk_disassembly_is_proof": false,
+          "end_address": "0x7ffa9f11514d",
+          "file_bytes_hex": "f30f1efa89f8c1e81b83e001c3",
+          "file_offset": 4416,
+          "helper_call_established": false,
+          "length": 13,
+          "loaded_bytes_hex": "f30f1efa89f8c1e81b83e001c3",
+          "name": "xcr0_read_permitted",
+          "symbol_bytes_establish_edge": false,
+          "whole_elf": false
+        }
+      ],
+      "correspondence_coverage": "entrypoint prefix",
+      "cosine_function_calls": 0,
+      "difference": null,
+      "file_image_identity": "OBSERVED",
+      "file_image_sha256": "495d482d5b16fc8dd27fc4aafc64889953ac0b0fa9966a47617a4cfbf2b9032a",
+      "flags": [
+        "-O2",
+        "-shared",
+        "-fPIC"
+      ],
+      "handle_associated": true,
+      "inspected_address": "0x7ffa9f115150",
+      "inspected_correspondence": "MATCH",
+      "inspected_end_address": "0x7ffa9f115190",
+      "inspected_file_offset": 4432,
+      "inspected_length": 64,
+      "loaded_code_correspondence": "NOT ESTABLISHED",
+      "loaded_path": "/tmp/c2v09-cosine-probe-qyhzlbtm/probe.so",
+      "read_state_address": "0x7ffa9f115150",
+      "read_state_calls": 1,
+      "role": "actual loaded probe image used for read_state",
+      "second_compilation_is_evidence": false,
+      "source_hash_is_the_image": false,
+      "source_path": "pyfoldable/application/c2v09_cosine_path_probe.c",
+      "source_sha256": "e75b6d88b78250ae9e4cce87839291c0540f018550dc14465409f7e12426d33d",
+      "whole_elf_required": false
+    },
+    "omega_rad_s_hex": "0x1.4f1a6c638d03fp+5",
+    "physical_qualification": false,
+    "post_return_demanded_before_existence": false,
+    "post_return_only": [
+      "valid returned source object",
+      "same retained object consumed by the mapper",
+      "mapped intervals consumed by the partition evaluator"
+    ],
+    "runtime_correspondence": {
+      "cosine": {
+        "body_bytes_hex": "f30f1efa554889e5534883ec3864488b042528000000488945e831c0c5f8ae5dd88b55d889d080e49f8945e0c4e1f97ec048c1f82025ffffff7f81e2006000000f85b2030000c5fb100dfad201003dffff3f3e0f8edf00000031db3dff5feb3f0f8ff2000000c5f157c9c5fb101d4e3f0100c5fb1025e6e10100488d0d6f800300c5fbc2d105c5f95405223f0100c4e3614bd920c5fb1015bce10100c5fb58cac5f35cd2c4e1f97ec8c1e0028d70024863f8c5fb5cc24863f6c5fb100cf18d700183c0034863f64898c5fb58c3c5fb59d0c4e2e9a9256ee40100c5fb59dac4e2e1b9c4c5fb101d85e10100c4e2e9a91d5ce40100c4e2e9a91d6bd20100c5eb59d3c5fb101cf1c4e2f9ad1cc1c4e2e19dd1c4e2e99d04f9c5f358c884db7419c5f8ae5dd48b45d480e49f09d08945d4c5f8ae55d40f1f4000488b45e864482b0425280000000f859e060000488b5df8c5f310c1c9c3",
+        "body_elf_vaddr": "0x7bad0",
+        "body_sha256": "f7a54037fbab80cbbf5a2c6954284f47330d936b103a0beac05913b6b1949a02",
+        "constants": [
+          {
+            "classification": "MATCH",
+            "match": true,
+            "observed_bytes_hex": "ffffffffffffff7f",
+            "vaddr": "0x8fa80"
+          },
+          {
+            "classification": "MATCH",
+            "match": true,
+            "observed_bytes_hex": "0000000000000080",
+            "vaddr": "0x8fa90"
+          },
+          {
+            "classification": "MATCH",
+            "match": true,
+            "observed_bytes_hex": "000000000000f03f",
+            "vaddr": "0x98e18"
+          },
+          {
+            "classification": "MATCH",
+            "match": true,
+            "observed_bytes_hex": "000000000000e03f",
+            "vaddr": "0x98e38"
+          },
+          {
+            "classification": "MATCH",
+            "match": true,
+            "observed_bytes_hex": "000000000000c842",
+            "vaddr": "0x99d28"
+          },
+          {
+            "classification": "MATCH",
+            "match": true,
+            "observed_bytes_hex": "2f8729e81011813f",
+            "vaddr": "0x99d30"
+          },
+          {
+            "classification": "MATCH",
+            "match": true,
+            "observed_bytes_hex": "39e2d9ed6bc1563f",
+            "vaddr": "0x99d40"
+          },
+          {
+            "classification": "MATCH",
+            "match": true,
+            "observed_bytes_hex": "155555555555c5bf",
+            "vaddr": "0x9a018"
+          },
+          {
+            "classification": "MATCH",
+            "match": true,
+            "observed_bytes_hex": "355555555555a5bf",
+            "vaddr": "0x9a020"
+          },
+          {
+            "classification": "MATCH",
+            "match": true,
+            "observed_bytes_hex": "12c3ced052d2c93f",
+            "vaddr": "0xb3f00"
+          },
+          {
+            "classification": "MATCH",
+            "match": true,
+            "observed_bytes_hex": "7d13b1803dc4593c",
+            "vaddr": "0xb3f08"
+          },
+          {
+            "classification": "MATCH",
+            "match": true,
+            "observed_bytes_hex": "9767ff8c9457ef3f",
+            "vaddr": "0xb3f10"
+          },
+          {
+            "classification": "MATCH",
+            "match": true,
+            "observed_bytes_hex": "d5b1033e0d3a6e3c",
+            "vaddr": "0xb3f18"
+          }
+        ],
+        "controls_classification": "OBSERVED",
+        "conversion": {
+          "classification": "OBSERVED",
+          "disk_disassembly_is_proof": false,
+          "file_instruction_bytes_hex": "e80c83f2ff",
+          "kind": "direct",
+          "loaded_bytes_match_file": true,
+          "loaded_instruction_bytes_hex": "e80c83f2ff",
+          "offset": 15,
+          "opcode": "e8",
+          "plt_destination": null,
+          "resolved_callee": null,
+          "source": "loaded bytes",
+          "symbol": "PyFloat_AsDouble",
+          "symbol_bytes_establish_edge": false,
+          "target": "0x556750"
+        },
+        "cosine_call_edges": [
+          {
+            "disk_disassembly_is_proof": false,
+            "file_instruction_bytes_hex": "e87623dfff",
+            "kind": "direct",
+            "loaded_bytes_match_file": true,
+            "loaded_instruction_bytes_hex": "e87623dfff",
+            "offset": 53,
+            "opcode": "e8",
+            "plt_destination": null,
+            "resolved_callee": null,
+            "source": "loaded bytes",
+            "symbol": "cos",
+            "symbol_bytes_establish_edge": false,
+            "target": "0x4207e0"
+          }
+        ],
+        "cosine_function_calls": 0,
+        "disk_disassembly_is_proof": false,
+        "evidence": "python wrapper plt got",
+        "fegetround": "0",
+        "file_wrapper_bytes_hex": "f30f1efa554889f74889e54883ec10e80c83f2ff660f2e0504e71000f20f1145f87a027446e85630dffff20f1045f8c70000000000e87623dfff660f2ec07b0bf20f1065f8660f2ee47b54f30f7e0d6de01000660f28d0660f54d1660f2e15fde610007723c9e9757cf2ffe88031fcff4885c0753be80630dfff31d2f20f10054cee10008910ebddf20f106df8f20f1035cbe61000660f54e9660f2ef572c6488b3d6a444000be5cf67000e85042fcffc931c0c366662e0f1f84000000000090",
+        "got_slot": "0xa293d8",
+        "libm_body_argument": "APPLIES",
+        "loaded_wrapper_bytes_hex": "f30f1efa554889f74889e54883ec10e80c83f2ff660f2e0504e71000f20f1145f87a027446e85630dffff20f1045f8c70000000000e87623dfff660f2ec07b0bf20f1065f8660f2ee47b54f30f7e0d6de01000660f28d0660f54d1660f2e15fde610007723c9e9757cf2ffe88031fcff4885c0753be80630dfff31d2f20f10054cee10008910ebddf20f106df8f20f1035cbe61000660f54e9660f2ef572c6488b3d6a444000be5cf67000e85042fcffc931c0c366662e0f1f84000000000090",
+        "loaded_wrapper_matches_file": true,
+        "mxcsr": "0x1fa0",
+        "plt_jmp_bytes_hex": "ff25f28b6000",
+        "plt_stub": "0x4207e0",
+        "plt_stub_bytes_hex": "ff25f28b6000687b000000e930f8ffff",
+        "required_bits_ok": true,
+        "selected_address": "0x7ffaac73fad0",
+        "selected_classification": "OBSERVED",
+        "x87_control": "0x37f",
+        "xcr0": [
+          "0x602e7",
+          "0x0"
+        ]
+      },
+      "disk_disassembly_is_proof": false,
+      "recording_pid": 25952,
+      "recording_thread_id": "25952",
+      "whole_elf_required": false
+    },
+    "runtime_dispositions": [
+      {
+        "classification": "MISMATCH",
+        "consumed_by": "cosine and probe feature observation",
+        "disposition": "CONSUMED PATH IDENTIFIER DIFFERS",
+        "historical_equality_assumed": false,
+        "name": "historical XCR0",
+        "settles_applicability": false
+      },
+      {
+        "classification": "MISMATCH",
+        "consumed_by": "math.cos wrapper address",
+        "disposition": "CONSUMED PATH IDENTIFIER DIFFERS",
+        "historical_equality_assumed": false,
+        "name": "historical wrapper",
+        "settles_applicability": false
+      },
+      {
+        "classification": "MISMATCH",
+        "consumed_by": "interpreter image",
+        "disposition": "CONSUMED PATH IDENTIFIER DIFFERS",
+        "historical_equality_assumed": false,
+        "name": "CPython executable",
+        "settles_applicability": false
+      },
+      {
+        "classification": "MISMATCH",
+        "consumed_by": "dynamic loader",
+        "disposition": "CONSUMED PATH IDENTIFIER DIFFERS",
+        "historical_equality_assumed": false,
+        "name": "loader",
+        "settles_applicability": false
+      },
+      {
+        "classification": "MISMATCH",
+        "consumed_by": "libm file",
+        "disposition": "CONSUMED PATH IDENTIFIER DIFFERS",
+        "historical_equality_assumed": false,
+        "name": "libm",
+        "settles_applicability": false
+      }
+    ],
+    "status": "CONTRACT BLOCKED",
+    "theta_dot_rad_s_hex": "0x1.47ae147ae147bp-7",
+    "theta_rad_hex": "-0x1.999999999999ap-3",
+    "time_declaration": {
+      "conflict": false,
+      "declared_hex": "0x0.0p+0",
+      "governing_rationale": "The isolated initial transaction uses the integrator origin: absolute time is the first immutable actuation knot plus a zero relative time. The authorized declaration is +0.0 s only when that knot has the same binary64 bits. The knot list is not sole authority.",
+      "knot_is_sole_authority": false,
+      "manifest_first_knot_hex": "0x0.0p+0",
+      "used": true
+    },
+    "time_s": "0x0.0p+0",
+    "ulp_terminal_guard": {
+      "address_to_elf": {
+        "elf_vaddr": "0x4d8cfa",
+        "file_offset": 888058,
+        "mapped_file": "/usr/bin/python3.12",
+        "runtime_address": "0x4d8cfa"
+      },
+      "call_edges": [
+        {
+          "disk_disassembly_is_proof": false,
+          "file_instruction_bytes_hex": "e82580f4ff",
+          "kind": "direct",
+          "loaded_bytes_match_file": true,
+          "loaded_instruction_bytes_hex": "e82580f4ff",
+          "offset": 124,
+          "opcode": "e8",
+          "plt_destination": null,
+          "resolved_callee": null,
+          "source": "loaded bytes",
+          "symbol": "nextafter",
+          "symbol_bytes_establish_edge": false,
+          "target": "0x420da0"
+        },
+        {
+          "disk_disassembly_is_proof": false,
+          "file_instruction_bytes_hex": "e8fb7ff4ff",
+          "kind": "direct",
+          "loaded_bytes_match_file": true,
+          "loaded_instruction_bytes_hex": "e8fb7ff4ff",
+          "offset": 166,
+          "opcode": "e8",
+          "plt_destination": null,
+          "resolved_callee": null,
+          "source": "loaded bytes",
+          "symbol": "nextafter",
+          "symbol_bytes_establish_edge": false,
+          "target": "0x420da0"
+        }
+      ],
+      "calls_nextafter_plt": true,
+      "disk_disassembly_is_proof": false,
+      "evidence": "loaded wrapper plt got",
+      "file_wrapper_bytes_hex": "f30f1efa554889f74889e54883ec1048817e08c096a3007507f20f104610eb2ae831da0700660f2e05293e26007a1b7519f20f1145f8e8eb881100f20f1045f84885c0740fe9a3000000660f2ec00f8a89000000f30f7e1d9a3726000f28d00f54d3660f2e152c3e26007777f20f100d123b26000f28c2f20f1155f8e82580f4fff30f7e1d6d372600f20f1055f80f54d8660f2e1dfd3d2600761ef20f100deb3d26000f28c2e8fb7ff4fff20f1055f8f20f5cd00f28c2eb04f20f5cc2660f2e05913d26007a167514f20f1145f8e853881100f20f1045f84885c07510c9e933d30700f20f10059b3a2600ebf0c931c0c3f30f1efa4889f7ba01000000be100c4200e92f961f00f30f1efa4889f748817e08c096a3007512f20f104610f20f5905e9442600e9ecd20700554889e54883ec10e81fd90700660f2e05173d26007a167514f20f1145f8e8d9871100f20f1045f84885c0750ef20f5905af442600c9e9b1d20700c931c0c34889d6b902000000ba02000000bff8f67000e8860f1200",
+      "got_slot": "0xa296b8",
+      "historical_equality_assumed": false,
+      "loaded_stub_bytes_hex": "ff251289600068d7000000e970f2ffff",
+      "loaded_wrapper_bytes_hex": "f30f1efa554889f74889e54883ec1048817e08c096a3007507f20f104610eb2ae831da0700660f2e05293e26007a1b7519f20f1145f8e8eb881100f20f1045f84885c0740fe9a3000000660f2ec00f8a89000000f30f7e1d9a3726000f28d00f54d3660f2e152c3e26007777f20f100d123b26000f28c2f20f1155f8e82580f4fff30f7e1d6d372600f20f1055f80f54d8660f2e1dfd3d2600761ef20f100deb3d26000f28c2e8fb7ff4fff20f1055f8f20f5cd00f28c2eb04f20f5cc2660f2e05913d26007a167514f20f1145f8e853881100f20f1045f84885c07510c9e933d30700f20f10059b3a2600ebf0c931c0c3f30f1efa4889f7ba01000000be100c4200e92f961f00f30f1efa4889f748817e08c096a3007512f20f104610f20f5905e9442600e9ecd20700554889e54883ec10e81fd90700660f2e05173d26007a167514f20f1145f8e8d9871100f20f1045f84885c0750ef20f5905af442600c9e9b1d20700c931c0c34889d6b902000000ba02000000bff8f67000e8860f1200",
+      "loaded_wrapper_matches_file": true,
+      "nextafter_function_calls": 0,
+      "output_sampled": false,
+      "selected_address": "0x7ffaac6f33b0",
+      "selected_nextafter": "OBSERVED",
+      "settles_applicability": false,
+      "ulp_function_calls": 0,
+      "wrapper_address": "0x4d8cfa",
+      "wrapper_address_establishes_path": false
+    },
+    "unresolved_pre_call": [
+      {
+        "missing": "a bytecode window does not establish arithmetic or storage semantics",
+        "name": "interpreter binary64 arithmetic semantics",
+        "timing": "pre-call"
+      },
+      {
+        "missing": "a call address does not establish conversion semantics",
+        "name": "PyFloat_AsDouble conversion semantics",
+        "timing": "pre-call"
+      },
+      {
+        "missing": "a selected address does not establish nextafter semantics",
+        "name": "selected nextafter semantics",
+        "timing": "pre-call"
+      }
+    ]
+  },
+  "canonical_sha256": "4dda74eb4f37b9e9149190bde99433e33f66637a48595f516f2b51a892b90c7b",
+  "digest_scope": "SHA-256 of the section 7.3 canonical bytes of canonical_payload only. canonical_sha256 and digest_scope are outside that payload."
+}

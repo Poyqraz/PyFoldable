@@ -1,0 +1,187 @@
+{
+  "canonical_sha256": "5534adb20971568ba2d09399cacfd732896108676d8c11c46163620db471a189",
+  "digest_scope": "SHA-256 of the section 7.3 canonical bytes of canonical_payload only. canonical_sha256 and digest_scope are outside that payload.",
+  "canonical_payload": {
+    "live_process": true,
+    "preservation_established": false,
+    "premises_discharged": false,
+    "readiness_admitted": false,
+    "five_site_correspondence": true,
+    "correspondence_reason": "established",
+    "edges": [
+      {
+        "label": "e81f28f7ff",
+        "established": true,
+        "reason": "established",
+        "address": "0x61169c",
+        "end": "0x6116a1",
+        "exact_bytes": "e81f28f7ff",
+        "displacement": -579553,
+        "target": "0x583ec0",
+        "image": "/usr/bin/python3.12",
+        "pid": 78028,
+        "thread_id": "78028",
+        "instruction_boundary": true
+      },
+      {
+        "label": "e8e627f7ff",
+        "established": true,
+        "reason": "established",
+        "address": "0x6116d5",
+        "end": "0x6116da",
+        "exact_bytes": "e8e627f7ff",
+        "displacement": -579610,
+        "target": "0x583ec0",
+        "image": "/usr/bin/python3.12",
+        "pid": 78028,
+        "thread_id": "78028",
+        "instruction_boundary": true
+      },
+      {
+        "label": "e8ae27f7ff",
+        "established": true,
+        "reason": "established",
+        "address": "0x61170d",
+        "end": "0x611712",
+        "exact_bytes": "e8ae27f7ff",
+        "displacement": -579666,
+        "target": "0x583ec0",
+        "image": "/usr/bin/python3.12",
+        "pid": 78028,
+        "thread_id": "78028",
+        "instruction_boundary": true
+      },
+      {
+        "label": "e87627f7ff",
+        "established": true,
+        "reason": "established",
+        "address": "0x611745",
+        "end": "0x61174a",
+        "exact_bytes": "e87627f7ff",
+        "displacement": -579722,
+        "target": "0x583ec0",
+        "image": "/usr/bin/python3.12",
+        "pid": 78028,
+        "thread_id": "78028",
+        "instruction_boundary": true
+      },
+      {
+        "label": "e83427f7ff",
+        "established": true,
+        "reason": "established",
+        "address": "0x611787",
+        "end": "0x61178c",
+        "exact_bytes": "e83427f7ff",
+        "displacement": -579788,
+        "target": "0x583ec0",
+        "image": "/usr/bin/python3.12",
+        "pid": 78028,
+        "thread_id": "78028",
+        "instruction_boundary": true
+      }
+    ],
+    "prefix": {
+      "refused": false,
+      "requested_length": 256,
+      "captured_length": 256,
+      "decoded_length": 255,
+      "raw_bytes_hex": "f30f1efa554889e54154534c8b67084889fb498b4424784885c00f846b9dedff5b415c5dffe0662e0f1f840000000000f30f1efa554889e541554989d541544989fc4889f7534883ec18498b442408488b40484885c00f85879dedffe85f2b02004889c34885c00f846e9dedff4c89ea4889c64c89e7e835000000488b1385d278094883ea01488913740b4883c4185b415c415d5dc34889df8945dce85ffeffff8b45dcebe5662e0f1f840000000000f30f1efa554889e54157415641554154534883ec18488b4608488b5f08488975c8f680ab000000100f84389dedff8b064989fc4989d683c0010f8531020000488d7dc8e868290200488b839800000048",
+      "incomplete_trailing_hex": "48",
+      "loaded_bytes_match_file": true,
+      "unresolved_child_calls": [
+        {
+          "address": "0x583f1c",
+          "bytes": "e85f2b0200",
+          "target": "0x5a6a80",
+          "resolved": false
+        },
+        {
+          "address": "0x583f36",
+          "bytes": "e835000000",
+          "target": "0x583f70",
+          "resolved": false
+        },
+        {
+          "address": "0x583f5c",
+          "bytes": "e85ffeffff",
+          "target": "0x583dc0",
+          "resolved": false
+        },
+        {
+          "address": "0x583fb3",
+          "bytes": "e868290200",
+          "target": "0x5a6920",
+          "resolved": false
+        }
+      ],
+      "child_bytes_read": false
+    },
+    "other_targets_unresolved": true,
+    "indirect_sites_unresolved": true,
+    "exits_unresolved": true,
+    "historical_addresses_used_as_evidence": false,
+    "measurement_implementation_head": "0c9976f2a292ad760800bd051950548194867ad5",
+    "measurement_implementation_tree": "ee35ff7d7289a7df43bcfa5d13e31377a79b6cce",
+    "record_commit_is_measurement_commit": false,
+    "readiness_hypotheses_admitted": false,
+    "accept_closed": true,
+    "candidate29_disposition": "NOT SELECTED",
+    "eligibility_evidence": false,
+    "physical_qualification": false,
+    "authorizes_execution": false,
+    "output_sampled": false,
+    "cosine_function_calls": 0,
+    "ulp_function_calls": 0,
+    "nextafter_function_calls": 0,
+    "constructor_invoked": false,
+    "reference_helper_invoked": false,
+    "target_invoked": false,
+    "bind_now": true,
+    "pid": 78028,
+    "thread_id": "78028",
+    "single_process_thread": true,
+    "controls": {
+      "classification": "OBSERVED",
+      "xcr0_classification": "OBSERVED",
+      "required_bits_ok": true,
+      "mxcsr": "0x1fa0",
+      "mxcsr_rounding": "nearest ties-to-even",
+      "mxcsr_daz": false,
+      "mxcsr_ftz": false,
+      "x87_control": "0x37f",
+      "fegetround": "0",
+      "cpuid_leaf1": [
+        "0xc06f2",
+        "0x2040800",
+        "0xfffa3227",
+        "0x1fabfbff"
+      ],
+      "cpuid_leaf7_sub0": [
+        "0x2",
+        "0xf1bf27eb",
+        "0x1b415f5e",
+        "0xbfc14410"
+      ],
+      "xcr0": [
+        "0x602e7",
+        "0x0"
+      ],
+      "avx": true,
+      "fma": true,
+      "osxsave": true,
+      "xcr0_xmm_ymm": true,
+      "exact_historical_xcr0_match": false,
+      "thread_id": "78028",
+      "pid": 78028,
+      "bind_now": true
+    },
+    "status": "NOT ESTABLISHED",
+    "gaps": [
+      "the four return premises are not discharged",
+      "prefix child calls stay unresolved",
+      "other direct targets stay unresolved",
+      "the three indirect sites stay unresolved",
+      "the four exits stay unresolved"
+    ]
+  }
+}

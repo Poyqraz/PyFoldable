@@ -1,0 +1,695 @@
+{
+  "canonical_sha256": "00364c0abd0feedbf0e3b670f443558b8805abafe91807e2ba618e1a12c08699",
+  "digest_scope": "SHA-256 of the section 7.3 canonical bytes of canonical_payload only. canonical_sha256 and digest_scope are outside that payload.",
+  "canonical_payload": {
+    "measurement_implementation_head": "f0b9a990e221121ea3786c2e0b0c6c66b278fcdf",
+    "measurement_implementation_tree": "35ec8d503f7b69941680e99d69af8645e98334ce",
+    "record_commit_is_measurement_commit": false,
+    "readiness_hypotheses_admitted": false,
+    "accept_closed": true,
+    "candidate29_disposition": "NOT SELECTED",
+    "eligibility_evidence": false,
+    "physical_qualification": false,
+    "authorizes_execution": false,
+    "output_sampled": false,
+    "cosine_function_calls": 0,
+    "ulp_function_calls": 0,
+    "nextafter_function_calls": 0,
+    "constructor_invoked": false,
+    "reference_helper_invoked": false,
+    "bind_now": true,
+    "pid": 64409,
+    "thread_id": "64409",
+    "single_process_thread": true,
+    "controls": {
+      "classification": "OBSERVED",
+      "xcr0_classification": "OBSERVED",
+      "required_bits_ok": true,
+      "mxcsr": "0x1fa0",
+      "mxcsr_rounding": "nearest ties-to-even",
+      "mxcsr_daz": false,
+      "mxcsr_ftz": false,
+      "x87_control": "0x37f",
+      "fegetround": "0",
+      "cpuid_leaf1": [
+        "0xc06f2",
+        "0x2040800",
+        "0xfffa3227",
+        "0x1fabfbff"
+      ],
+      "cpuid_leaf7_sub0": [
+        "0x2",
+        "0xf1bf27eb",
+        "0x1b415f5e",
+        "0xbfc14410"
+      ],
+      "xcr0": [
+        "0x602e7",
+        "0x0"
+      ],
+      "avx": true,
+      "fma": true,
+      "osxsave": true,
+      "xcr0_xmm_ymm": true,
+      "exact_historical_xcr0_match": false,
+      "thread_id": "64409",
+      "pid": 64409,
+      "bind_now": true
+    },
+    "archived_reference_not_evidence": {
+      "call": "0x583d32",
+      "target": "0x611480",
+      "used_as_evidence": false
+    },
+    "dossier": {
+      "status": "NOT ESTABLISHED",
+      "readiness_admitted": false,
+      "preservation_established": false,
+      "no_call_path_preserves_r14_and_rbx": true,
+      "newref_writes_tracked_registers": [],
+      "call": {
+        "call_address": "0x583d32",
+        "call_bytes": "e849d70800",
+        "branch_address": "0x583d1c",
+        "branch_mnemonic": "jne",
+        "branch_target": "0x583d26",
+        "flag_instruction": "0x583d14",
+        "flag_address": "0xb36e94",
+        "target": "0x611480"
+      },
+      "constructor_call_sites": [
+        {
+          "address": "0x556161",
+          "bytes": "e8aadb0200",
+          "target": "0x583d10",
+          "live_after_call": [
+            "r14",
+            "rbx"
+          ]
+        }
+      ],
+      "newref": {
+        "address": "0x583d10",
+        "elf_vaddr": "0x583d10",
+        "image": "/usr/bin/python3.12",
+        "symbol_name": "_Py_NewReference",
+        "symbol_size": 52,
+        "loaded_bytes_hex": "f30f1efa8b057a315b0085c0750848c70701000000c3554889e54883ec1048897df8e849d70800488b7df848c70701000000c9c3",
+        "loaded_bytes_match_file": true,
+        "coverage": "complete",
+        "disassembly": [
+          {
+            "address": "0x583d10",
+            "bytes": "f30f1efa",
+            "mnemonic": "endbr64",
+            "operands": ""
+          },
+          {
+            "address": "0x583d14",
+            "bytes": "8b057a315b00",
+            "mnemonic": "mov",
+            "operands": "eax, dword ptr [rip + 0x5b317a]"
+          },
+          {
+            "address": "0x583d1a",
+            "bytes": "85c0",
+            "mnemonic": "test",
+            "operands": "eax, eax"
+          },
+          {
+            "address": "0x583d1c",
+            "bytes": "7508",
+            "mnemonic": "jne",
+            "operands": "0x583d26"
+          },
+          {
+            "address": "0x583d1e",
+            "bytes": "48c70701000000",
+            "mnemonic": "mov",
+            "operands": "qword ptr [rdi], 1"
+          },
+          {
+            "address": "0x583d25",
+            "bytes": "c3",
+            "mnemonic": "ret",
+            "operands": ""
+          },
+          {
+            "address": "0x583d26",
+            "bytes": "55",
+            "mnemonic": "push",
+            "operands": "rbp"
+          },
+          {
+            "address": "0x583d27",
+            "bytes": "4889e5",
+            "mnemonic": "mov",
+            "operands": "rbp, rsp"
+          },
+          {
+            "address": "0x583d2a",
+            "bytes": "4883ec10",
+            "mnemonic": "sub",
+            "operands": "rsp, 0x10"
+          },
+          {
+            "address": "0x583d2e",
+            "bytes": "48897df8",
+            "mnemonic": "mov",
+            "operands": "qword ptr [rbp - 8], rdi"
+          },
+          {
+            "address": "0x583d32",
+            "bytes": "e849d70800",
+            "mnemonic": "call",
+            "operands": "0x611480"
+          },
+          {
+            "address": "0x583d37",
+            "bytes": "488b7df8",
+            "mnemonic": "mov",
+            "operands": "rdi, qword ptr [rbp - 8]"
+          },
+          {
+            "address": "0x583d3b",
+            "bytes": "48c70701000000",
+            "mnemonic": "mov",
+            "operands": "qword ptr [rdi], 1"
+          },
+          {
+            "address": "0x583d42",
+            "bytes": "c9",
+            "mnemonic": "leave",
+            "operands": ""
+          },
+          {
+            "address": "0x583d43",
+            "bytes": "c3",
+            "mnemonic": "ret",
+            "operands": ""
+          }
+        ]
+      },
+      "callee": {
+        "address": "0x611480",
+        "elf_vaddr": "0x611480",
+        "image": "/usr/bin/python3.12",
+        "symbol_name": null,
+        "loaded_bytes_hex": "f30f1efa554889e54157415641554154534883ec188b05f959520085c00f8496b5eaff488b4708be01000000488b90a80000004889d048c1e80d83e00283e2180f95c20fb6d2488d045048c1e0034829c74889fb488b3d3d5a5200e8b0ebffff488b3d615a52004889dee801b0feff488945c04885c00f84950300004c8b2d355a520041c7450800000000e8806dffff4885c00f8416b5eaff488b4038488b184885db0f8470030000807b4601741c488b03486390b0000000488d8450c0000000483943380f8258030000410fb77508448b3541595200440fb7fe4539f77c18410fb7450a6683f8ff0f858e000000e984b4eaff0f1f40000fb7f64889df488d04764d8d64850049c744240c58c2b300e80b67feff31d285c00f48c24189442414488b03488b70704885f67434488b4608f680ab000000107427488b056f595200488975c84889c7ff5018488b75c84885c00f8407030000488b4010498944240c410fb745088d7001410fb7450a66418975086683f8ff0f8413030000488b5b0883c001664189450a4885db747d807b46010f8433ffffff488b03486390b0000000488d8450c0000000483943380f82ec0100004539f70f8c13ffffff0f1f00410fb7450a6683f8ff0f8407b4eaff488b5b0883c001664189450a4885db742b807b46010f84e1feffff488b03486390b0000000488d8450c00000004839433873be488b5b084885db75d56685f60f8443020000498b7d0c440fb7f6e81f28f7ff418b5d144831c34881f3785634004869db43420f004183fe010f8400010000498b7d18418d862ba1000048984c8da40043420f00e8e627f7ff4889c2418b45204831d84831d0490fafc44889c34183fe020f84c8000000498b7d24418d862aa1000048984d8d3c44458d66fce8ae27f7ff4889c2418b452c4831d84831d0490fafc74889c34183fe030f8490000000418d8629a10000498b7d304898498d1447488955c8e87627f7ff488b55c84889c6418b45384831d84831f0418d76fb480fafc24889c34183fe047454418d8628a100004d8d7d3c48984c8d3442498b3f8975c84983c70ce83427f7ff8b75c84889c2418b47fc4831d04831d8490fafc64889c3418d84242ba100004189f448984d8d34468d46ff85f6740589c6ebbe90410fb7450a4c89ee4831d84805fb7c010049894500488b05645752004889c7ff50184885c0744b488b40104885c00f849d000000488b4dc04889410831db488b3d13575200e8a6ecffff4883c41889d85b415c415d415e415f5dc30f1f440000488b5b084885db0f85e1fdffffe959feffff410fb75d08488b3d8a56520083eb014863db486bdb0c4883c3184889deff157b5652004989c44885c074344889da4c89ee4889c7e8a505e1ff488b3dce56520031d24c89e6e8b4adfeff85c00f88bdb1eaff488b45c04c896008e96bffffff83cbffe965ffffff410fb77508e9e8fdffff488b5b084885db74ed807b46010f8495fcffff488b13486382b00000004801c0488d8402c0000000483943380f8376fcffffebcc41bc586fb300eba58b0683c00174028906488b3d4156520031d2488975c8e836adfeff488b75c885c00f8804b1eaff498974240ce9d1fcffffe9e3b0eaff66662e0f1f840000000000f30f1efa4885f67471554889f84889e5534889f34883ec08488b3fff5020488b3dd3555200be01000000e841e7ffff488b3df25552004885ff742e4889dee89daffeff4889c64885c0741e488b05ae555200482b06488905a4555200488b3d45555200ff155f555200488b3d88555200488b5df8c9e916ebffffc30f1f440000554889e5534889f35185ff0f85b7b0eaff488b3d905552004885ff74314889dee83baffeff4889c64885c07421488b054c555200482b0648890542555200488b3de35452005a5b5dff25fa545200585b5dc366662e0f1f8400000000000f1f00f30f1efae9b724f7ff0f1f8000000000f30f1efa488b07c30f1f840000000000f30f1efa554889e54885ff0f844db0eaff4885f60f8444b0eaffe88191faff85c00f94c00fb6c05dc30f1f8000000000f30f1efa0fb75708663b56080f8529b0eaff0fb7460a6639470a0f851bb0eaffb8010000006685d20f84c20000008b4e140fb7c2394f140f85feafeaff488b4e0c48394f0c0f85f0afeaff83f8010f849c0000008b4e20394f200f85dbafeaff488b4e1848394f180f85cdafeaff83f80274718b562c39572c0f85bcafeaff488b4e2448394f240f85aeafeaff83f80374528b56383957380f859dafeaff488b5630483957300f858fafeaff83f8047433ba3c000000b904000000448b44160844394417080f8570afeaff4c8b0c164c390c170f8562afeaff83c1014883c20c39c17cd7b801000000c3660f1f440000c366662e0f1f8400000000000f1f4000f30f1efa554889e5415741564989d641554989fdbf706fb30041544989f4534883ec08e868e9ffff4885c00f85cc000000be60a3a200bf706fb3004989c7e89de9ffff498b7d004c89f24c89e641ff55184889c34885c00f848f000000488b3d64535200be010000004d85e47455e8cde4ffff4c39e3753f31ff4c89f24889dee8bbf3ffff85c00f88ecaeeaff488b3d34535200e8c7e8ffff31f6bf706fb300e83be9ffff4883c4084889d85b415c415d415e415f5dc34c89e631ffe88ffdffffebb5e878e4ffff31ff4c89f24889dee86bf3ffff85c00f8880aeeaff488b3de45252004989dfe874e8ffff31f6bf706fb3004c89fbe8e5e8ffffeba8498b7d004c89f24c89e641ff55184889c34d85e474924885c0748d488b3da9525200be01000000e817e4ffff31ff4c89e6e81dfdffff488b3d8e525200e821e8ffffe961ffffff66662e0f1f84000000000090f30f1efa554889e5415641554989f541544989fcbf706fb300534889d3e81ee8ffff4885c00f850daeeaffbe60a3a200bf706fb300e856e8ffff498b3c244889da4c89ee41ff5424104989c64885c00f8414aeeaff488b3d1c525200be01000000e88ae3ffff4c89ea31ff4c89f6480fafd3e879f2ffff85c00f88d2adeaff488b3df2515200e885e7ffff31f6bf706fb300e8f9e7ffff5b4c89f0415c415d415e5dc366662e0f1f8400000000006690f30f1efa4889fe488b3d6a515200ff2584515200662e0f1f8400000000006690f30f1efa554889e54157415641554989f54154534889fb4883ec28488955b0e81cf7e0ffc700000000004989c4e8ae64ffff89c76681e7fff06681cf00026639f80f84efb9eaff0fb7ff4c8d7dc84189c6e8aa64ffff4c89fe4889dfe89f070000410fb7fef20f1145b8e89164ffff483b5dc8f20f1045b87468418b142483fa0c0f84eeb9eaff488b45c84d85ed741d4839c3747c83fa227455498945004883c4285b415c415d415e415f5dc34839c30f8482000000803800757d83fa2275de660f28c8660f540db4a61200660f2f0d64ad120072c848837db00074c1e972b9eaff4c89fe4889dfe883850a00eb8b660f28c8660f540d85a61200660f2f0d35ad1200729548837db000748e",
+        "loaded_bytes_match_file": true,
+        "decoded_bytes": 2556,
+        "window_bytes": 2560,
+        "instruction_bytes_are_aligned": true,
+        "coverage": "complete_prefix"
+      },
+      "flag_control": {
+        "address": "0xb36e94",
+        "elf_vaddr": "0xb36e94",
+        "image": "/usr/bin/python3.12",
+        "loaded_bytes_hex": "00000000",
+        "loaded_bytes_match_file": true,
+        "selects_future_branch": false
+      },
+      "outlined_stubs": [
+        {
+          "address": "0x4bca39",
+          "elf_vaddr": "0x4bca39",
+          "image": "/usr/bin/python3.12",
+          "loaded_bytes_hex": "83cbffe9c94d1500",
+          "loaded_bytes_match_file": true,
+          "returns_to_window": true,
+          "disassembly": [
+            {
+              "address": "0x4bca39",
+              "bytes": "83cbff",
+              "mnemonic": "or",
+              "operands": "ebx, 0xffffffff"
+            },
+            {
+              "address": "0x4bca3c",
+              "bytes": "e9c94d1500",
+              "mnemonic": "jmp",
+              "operands": "0x61180a"
+            }
+          ]
+        },
+        {
+          "address": "0x4bca2f",
+          "elf_vaddr": "0x4bca2f",
+          "image": "/usr/bin/python3.12",
+          "loaded_bytes_hex": "410fb77508e9524c1500",
+          "loaded_bytes_match_file": true,
+          "returns_to_window": true,
+          "disassembly": [
+            {
+              "address": "0x4bca2f",
+              "bytes": "410fb77508",
+              "mnemonic": "movzx",
+              "operands": "esi, word ptr [r13 + 8]"
+            },
+            {
+              "address": "0x4bca34",
+              "bytes": "e9524c1500",
+              "mnemonic": "jmp",
+              "operands": "0x61168b"
+            }
+          ]
+        },
+        {
+          "address": "0x4bc9f8",
+          "elf_vaddr": "0x4bc9f8",
+          "image": "/usr/bin/python3.12",
+          "loaded_bytes_hex": "488b5b084885db0f85094c1500",
+          "loaded_bytes_match_file": true,
+          "returns_to_window": true,
+          "disassembly": [
+            {
+              "address": "0x4bc9f8",
+              "bytes": "488b5b08",
+              "mnemonic": "mov",
+              "operands": "rbx, qword ptr [rbx + 8]"
+            },
+            {
+              "address": "0x4bc9fc",
+              "bytes": "4885db",
+              "mnemonic": "test",
+              "operands": "rbx, rbx"
+            },
+            {
+              "address": "0x4bc9ff",
+              "bytes": "0f85094c1500",
+              "mnemonic": "jne",
+              "operands": "0x61160e"
+            }
+          ]
+        },
+        {
+          "address": "0x4bca56",
+          "elf_vaddr": "0x4bca56",
+          "image": "/usr/bin/python3.12",
+          "loaded_bytes_hex": "488b5b084885db0f85fd4b1500",
+          "loaded_bytes_match_file": true,
+          "returns_to_window": true,
+          "disassembly": [
+            {
+              "address": "0x4bca56",
+              "bytes": "488b5b08",
+              "mnemonic": "mov",
+              "operands": "rbx, qword ptr [rbx + 8]"
+            },
+            {
+              "address": "0x4bca5a",
+              "bytes": "4885db",
+              "mnemonic": "test",
+              "operands": "rbx, rbx"
+            },
+            {
+              "address": "0x4bca5d",
+              "bytes": "0f85fd4b1500",
+              "mnemonic": "jne",
+              "operands": "0x611660"
+            }
+          ]
+        },
+        {
+          "address": "0x4bca0a",
+          "elf_vaddr": "0x4bca0a",
+          "image": "/usr/bin/python3.12",
+          "loaded_bytes_hex": "488b0685c00f88cc4b1500",
+          "loaded_bytes_match_file": true,
+          "returns_to_window": true,
+          "disassembly": [
+            {
+              "address": "0x4bca0a",
+              "bytes": "488b06",
+              "mnemonic": "mov",
+              "operands": "rax, qword ptr [rsi]"
+            },
+            {
+              "address": "0x4bca0d",
+              "bytes": "85c0",
+              "mnemonic": "test",
+              "operands": "eax, eax"
+            },
+            {
+              "address": "0x4bca0f",
+              "bytes": "0f88cc4b1500",
+              "mnemonic": "js",
+              "operands": "0x6115e1"
+            }
+          ]
+        },
+        {
+          "address": "0x4bca7e",
+          "elf_vaddr": "0x4bca7e",
+          "image": "/usr/bin/python3.12",
+          "loaded_bytes_hex": "31c04839f70f94c0e9bc4f1500",
+          "loaded_bytes_match_file": true,
+          "returns_to_window": true,
+          "disassembly": [
+            {
+              "address": "0x4bca7e",
+              "bytes": "31c0",
+              "mnemonic": "xor",
+              "operands": "eax, eax"
+            },
+            {
+              "address": "0x4bca80",
+              "bytes": "4839f7",
+              "mnemonic": "cmp",
+              "operands": "rdi, rsi"
+            },
+            {
+              "address": "0x4bca83",
+              "bytes": "0f94c0",
+              "mnemonic": "sete",
+              "operands": "al"
+            },
+            {
+              "address": "0x4bca86",
+              "bytes": "e9bc4f1500",
+              "mnemonic": "jmp",
+              "operands": "0x611a47"
+            }
+          ]
+        }
+      ],
+      "callee_events": {
+        "pushes": [
+          {
+            "address": "0x611484",
+            "register": "rbp",
+            "value": "other"
+          },
+          {
+            "address": "0x611488",
+            "register": "r15",
+            "value": "other"
+          },
+          {
+            "address": "0x61148a",
+            "register": "r14",
+            "value": "entry"
+          },
+          {
+            "address": "0x61148c",
+            "register": "r13",
+            "value": "other"
+          },
+          {
+            "address": "0x61148e",
+            "register": "r12",
+            "value": "other"
+          },
+          {
+            "address": "0x611490",
+            "register": "rbx",
+            "value": "entry"
+          }
+        ],
+        "pops": [
+          {
+            "address": "0x611810",
+            "register": "rbx",
+            "restores_entry": true
+          },
+          {
+            "address": "0x611811",
+            "register": "r12",
+            "restores_entry": false
+          },
+          {
+            "address": "0x611813",
+            "register": "r13",
+            "restores_entry": false
+          },
+          {
+            "address": "0x611815",
+            "register": "r14",
+            "restores_entry": true
+          },
+          {
+            "address": "0x611817",
+            "register": "r15",
+            "restores_entry": false
+          },
+          {
+            "address": "0x611819",
+            "register": "rbp",
+            "restores_entry": false
+          }
+        ],
+        "overwrites": [
+          {
+            "address": "0x6114d1",
+            "register": "rbx",
+            "mnemonic": "mov"
+          },
+          {
+            "address": "0x61151d",
+            "register": "rbx",
+            "mnemonic": "mov"
+          },
+          {
+            "address": "0x611550",
+            "register": "r14",
+            "mnemonic": "mov"
+          },
+          {
+            "address": "0x4bc9f8",
+            "register": "rbx",
+            "mnemonic": "mov"
+          },
+          {
+            "address": "0x61164f",
+            "register": "rbx",
+            "mnemonic": "mov"
+          },
+          {
+            "address": "0x611682",
+            "register": "rbx",
+            "mnemonic": "mov"
+          },
+          {
+            "address": "0x611698",
+            "register": "r14",
+            "mnemonic": "movzx"
+          },
+          {
+            "address": "0x6116a1",
+            "register": "rbx",
+            "mnemonic": "mov"
+          },
+          {
+            "address": "0x6116a5",
+            "register": "rbx",
+            "mnemonic": "xor"
+          },
+          {
+            "address": "0x6116a8",
+            "register": "rbx",
+            "mnemonic": "xor"
+          },
+          {
+            "address": "0x6116af",
+            "register": "rbx",
+            "mnemonic": "imul"
+          },
+          {
+            "address": "0x6116eb",
+            "register": "rbx",
+            "mnemonic": "mov"
+          },
+          {
+            "address": "0x611723",
+            "register": "rbx",
+            "mnemonic": "mov"
+          },
+          {
+            "address": "0x611763",
+            "register": "rbx",
+            "mnemonic": "mov"
+          },
+          {
+            "address": "0x611779",
+            "register": "r14",
+            "mnemonic": "lea"
+          },
+          {
+            "address": "0x6117a0",
+            "register": "rbx",
+            "mnemonic": "mov"
+          },
+          {
+            "address": "0x6117b0",
+            "register": "r14",
+            "mnemonic": "lea"
+          },
+          {
+            "address": "0x6117fc",
+            "register": "rbx",
+            "mnemonic": "xor"
+          },
+          {
+            "address": "0x611891",
+            "register": "rbx",
+            "mnemonic": "or"
+          },
+          {
+            "address": "0x611832",
+            "register": "rbx",
+            "mnemonic": "movzx"
+          },
+          {
+            "address": "0x61183e",
+            "register": "rbx",
+            "mnemonic": "sub"
+          },
+          {
+            "address": "0x611841",
+            "register": "rbx",
+            "mnemonic": "movsxd"
+          },
+          {
+            "address": "0x611844",
+            "register": "rbx",
+            "mnemonic": "imul"
+          },
+          {
+            "address": "0x611848",
+            "register": "rbx",
+            "mnemonic": "add"
+          },
+          {
+            "address": "0x4bca56",
+            "register": "rbx",
+            "mnemonic": "mov"
+          },
+          {
+            "address": "0x611820",
+            "register": "rbx",
+            "mnemonic": "mov"
+          },
+          {
+            "address": "0x6115fd",
+            "register": "rbx",
+            "mnemonic": "mov"
+          },
+          {
+            "address": "0x6118a3",
+            "register": "rbx",
+            "mnemonic": "mov"
+          },
+          {
+            "address": "0x4bca39",
+            "register": "rbx",
+            "mnemonic": "or"
+          }
+        ],
+        "outgoing_calls": [
+          {
+            "address": "0x6114db",
+            "target": "0x610090"
+          },
+          {
+            "address": "0x6114ea",
+            "target": "0x5fc4f0"
+          },
+          {
+            "address": "0x61150b",
+            "target": "0x608290"
+          },
+          {
+            "address": "0x61169c",
+            "target": "0x583ec0"
+          },
+          {
+            "address": "0x6116d5",
+            "target": "0x583ec0"
+          },
+          {
+            "address": "0x61170d",
+            "target": "0x583ec0"
+          },
+          {
+            "address": "0x611745",
+            "target": "0x583ec0"
+          },
+          {
+            "address": "0x611787",
+            "target": "0x583ec0"
+          },
+          {
+            "address": "0x6117df",
+            "target": null
+          },
+          {
+            "address": "0x611805",
+            "target": "0x6104b0"
+          },
+          {
+            "address": "0x61184f",
+            "target": null
+          },
+          {
+            "address": "0x611866",
+            "target": "0x421e10"
+          },
+          {
+            "address": "0x611877",
+            "target": "0x5fc630"
+          },
+          {
+            "address": "0x611590",
+            "target": "0x5f7ca0"
+          },
+          {
+            "address": "0x6115c8",
+            "target": null
+          },
+          {
+            "address": "0x6118f5",
+            "target": "0x5fc630"
+          }
+        ],
+        "unresolved_exits": [
+          "0x4bca05",
+          "0x4bca15",
+          "0x4bca41",
+          "0x4bca63"
+        ],
+        "returns": [
+          {
+            "address": "0x61181a",
+            "r14": "other",
+            "rbx": "other",
+            "broken": true
+          },
+          {
+            "address": "0x61181a",
+            "r14": "entry",
+            "rbx": "entry",
+            "broken": false
+          }
+        ]
+      },
+      "assumptions": [
+        "no ABI callee-saved rule is used",
+        "a push is not evidence that the entry value is restored",
+        "the recorded flag dword does not select a future branch",
+        "outgoing calls and uncaptured branches stay unresolved"
+      ],
+      "gaps": [
+        "outgoing calls from the callee are unresolved child paths",
+        "the callee still has unresolved exits",
+        "r14 and rbx entry values are not established across the call"
+      ]
+    },
+    "status": "NOT ESTABLISHED",
+    "gaps": [
+      "outgoing calls from the callee are unresolved child paths",
+      "the callee still has unresolved exits",
+      "r14 and rbx entry values are not established across the call"
+    ]
+  }
+}

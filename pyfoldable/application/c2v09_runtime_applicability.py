@@ -33,7 +33,6 @@ CERTIFICATE_FILE_SHA256 = "d0c9196a747ad2e49f94bb264e33bca95eec0a20e1bc900dc1bd5
 PARTIAL_RECORD_PATH = "reports/c2v09_binding_observation/partial_record.json"
 PARTIAL_RECORD_FILE_SHA256 = "11808a792b95cc3dec44e3d906cecba37ba8650336237438df81d60454992d4f"
 PARTIAL_RECORD_CANONICAL_SHA256 = "dff8108fe30854b8647d8e022dcf1c9521ee3a4d824e5d292ae0fd8eaa07d820"
-SELF_MODULE_PATH = "pyfoldable/application/c2v09_runtime_applicability.py"
 OBSERVATION_LIMITATIONS = (
     "the collector digest embeds the process thread id and is not reconstructed by a later run",
     "a resolved libm symbol is not the Python wrapper or the selected call target",
@@ -119,18 +118,6 @@ def prepare_applicability_delta(root: Path, *, caller_claims: Mapping[str, objec
         else:
             unresolved.append(dict(row))
     new_modules = [dict(row) for row in collected["python_dependency_inventory"]["modules_without_historical_record"]]
-    self_hash = sha256_bytes((root / SELF_MODULE_PATH).read_bytes())
-    new_modules.append(
-        {
-            "role": "applicability",
-            "path": SELF_MODULE_PATH,
-            "historical_sha256": None,
-            "current_file_sha256": self_hash,
-            "file_identity": "NO HISTORICAL RECORD",
-            "loaded_code_identity": "NOT ESTABLISHED",
-            "operation_graph_applicability": "NOT ESTABLISHED",
-        }
-    )
 
     executable = dependencies["executable"]["file_sha256"]
     libm = dependencies["libm"]["file_sha256"]

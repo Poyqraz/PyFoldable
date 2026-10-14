@@ -1,0 +1,233 @@
+{
+  "canonical_payload": {
+    "authorizes_execution": false,
+    "binding_revalidation": "REVALIDATED",
+    "candidate29_disposition": "NOT SELECTED",
+    "deferred_integration": [
+      "solve_cmm2_transient",
+      "first_radau_contact",
+      "later dense intervals"
+    ],
+    "deferred_radau_is_prerequisite_for_isolated_source_attempt": false,
+    "dossier_status": "CONTRACT BLOCKED",
+    "eligibility_evidence": false,
+    "every_angle_bem_convergence_required": false,
+    "future_v2_seal_required": false,
+    "geometric_applicability_argument": {
+      "bem_numerical_success_reuses_geometric_proof": false,
+      "code_identity_is_lemma_transfer": false,
+      "cosine_result_identity": "POST-RETURN ONLY",
+      "links": [
+        {
+          "code_classification": "MATCH",
+          "code_identity_is_lemma_transfer": false,
+          "family": "geometric lemma",
+          "lemma": "deployed-angle subtraction is checked, not bypassed",
+          "qualname": "FoldableRotorState.angle_from_deployed_rad"
+        },
+        {
+          "code_classification": "MATCH",
+          "code_identity_is_lemma_transfer": false,
+          "family": "geometric lemma",
+          "lemma": "source cosine input and separate kernel-radius product q*R",
+          "qualname": "project_foldable_blade"
+        },
+        {
+          "code_classification": "MATCH",
+          "code_identity_is_lemma_transfer": false,
+          "family": "geometric lemma",
+          "lemma": "mapper cosine uses the same represented angle at a separate call site",
+          "qualname": "_projection_factor"
+        },
+        {
+          "code_classification": "MATCH",
+          "code_identity_is_lemma_transfer": false,
+          "family": "geometric lemma",
+          "lemma": "hinge-station construction",
+          "qualname": "_station_at_hinge"
+        },
+        {
+          "code_classification": "MATCH",
+          "code_identity_is_lemma_transfer": false,
+          "family": "geometric lemma",
+          "lemma": "normalized polar query branches",
+          "qualname": "PolarFamily.query"
+        },
+        {
+          "code_classification": "MATCH",
+          "code_identity_is_lemma_transfer": false,
+          "family": "geometric lemma",
+          "lemma": "spanwise normalized query",
+          "qualname": "SpanwisePolarSchedule.section"
+        },
+        {
+          "code_classification": "MATCH",
+          "code_identity_is_lemma_transfer": false,
+          "family": "geometric lemma",
+          "lemma": "mapper radius is not a substitute for the kernel radius",
+          "qualname": "projected_radius_m"
+        },
+        {
+          "code_classification": "MATCH",
+          "code_identity_is_lemma_transfer": false,
+          "family": "geometric lemma",
+          "lemma": "mapper ownership of the projected intervals",
+          "qualname": "map_projected_material_loads"
+        }
+      ]
+    },
+    "historical_file_deltas": [
+      {
+        "code_identity_clears_file_hash": false,
+        "consumed_initial_operation": "consumed by the initial evaluator constructor and call; qualname code identity does not relabel this file hash",
+        "current_sha256": "909a53cde402f00100ad77c6ab85657dd85406efdfe4396b2352d62ff13125b3",
+        "file_identity": "MISMATCH",
+        "hash_relabelled": false,
+        "historical_sha256": "1efbcb0ab9769063ce7e059a779abf3570aedf35c070a679cb0c2c8e9dc9f74a",
+        "path": "pyfoldable/application/cmm2_coupled_transient_service.py",
+        "waived": false
+      },
+      {
+        "code_identity_clears_file_hash": false,
+        "consumed_initial_operation": "deferred integration solver; the hash mismatch remains and is not initial geometric clearance",
+        "current_sha256": "8d0e58fc4ba8c3bf4887d0557165340c2f24dedd32444b4c517ff296f449cffc",
+        "file_identity": "MISMATCH",
+        "hash_relabelled": false,
+        "historical_sha256": "f120cd1ec0c329721f962abe95f16ec30fd56a1fda70f855b2991a0678736de1",
+        "path": "pyfoldable/dynamics/cmm2_coupled_transient.py",
+        "waived": false
+      }
+    ],
+    "implementation_commit": "a562074a4aaab35b03b78eb13c541dcb62d4fff6",
+    "implementation_tree": "1c1cf9632f2dafc571f13f2c6ff0eaa7d4f753d7",
+    "label": "PRE-CALL READY FOR REVIEW",
+    "measurement_image": {
+      "compiler": "gcc",
+      "consumed_instruction_ranges": [
+        {
+          "address": "0x7fd7a3c45150",
+          "correspondence": "MATCH",
+          "coverage": "symbol range",
+          "difference": null,
+          "end_address": "0x7fd7a3c45214",
+          "file_offset": 4432,
+          "length": 196,
+          "name": "read_state",
+          "whole_elf": false
+        },
+        {
+          "address": "0x7fd7a3c45140",
+          "correspondence": "MATCH",
+          "coverage": "symbol range",
+          "difference": null,
+          "end_address": "0x7fd7a3c4514d",
+          "file_offset": 4416,
+          "length": 13,
+          "name": "xcr0_read_permitted",
+          "whole_elf": false
+        }
+      ],
+      "correspondence_coverage": "entrypoint prefix",
+      "cosine_function_calls": 0,
+      "difference": null,
+      "file_image_identity": "OBSERVED",
+      "file_image_sha256": "495d482d5b16fc8dd27fc4aafc64889953ac0b0fa9966a47617a4cfbf2b9032a",
+      "flags": [
+        "-O2",
+        "-shared",
+        "-fPIC"
+      ],
+      "handle_associated": true,
+      "inspected_address": "0x7fd7a3c45150",
+      "inspected_correspondence": "MATCH",
+      "inspected_end_address": "0x7fd7a3c45190",
+      "inspected_file_offset": 4432,
+      "inspected_length": 64,
+      "loaded_code_correspondence": "NOT ESTABLISHED",
+      "loaded_path": "/tmp/c2v09-cosine-probe-34n0_77i/probe.so",
+      "read_state_address": "0x7fd7a3c45150",
+      "read_state_calls": 1,
+      "role": "actual loaded probe image used for read_state",
+      "second_compilation_is_evidence": false,
+      "source_hash_is_the_image": false,
+      "source_path": "pyfoldable/application/c2v09_cosine_path_probe.c",
+      "source_sha256": "e75b6d88b78250ae9e4cce87839291c0540f018550dc14465409f7e12426d33d",
+      "whole_elf_required": false
+    },
+    "omega_rad_s_hex": "0x1.4f1a6c638d03fp+5",
+    "physical_qualification": false,
+    "post_return_demanded_before_existence": false,
+    "post_return_only": [
+      "valid returned source object",
+      "same retained object consumed by the mapper",
+      "mapped intervals consumed by the partition evaluator"
+    ],
+    "runtime_dispositions": [
+      {
+        "classification": "MISMATCH",
+        "consumed_by": "cosine and probe feature observation",
+        "disposition": "CONSUMED PATH IDENTIFIER DIFFERS",
+        "historical_equality_assumed": false,
+        "name": "historical XCR0",
+        "settles_applicability": false
+      },
+      {
+        "classification": "MISMATCH",
+        "consumed_by": "math.cos wrapper address",
+        "disposition": "CONSUMED PATH IDENTIFIER DIFFERS",
+        "historical_equality_assumed": false,
+        "name": "historical wrapper",
+        "settles_applicability": false
+      },
+      {
+        "classification": "MISMATCH",
+        "consumed_by": "interpreter image",
+        "disposition": "CONSUMED PATH IDENTIFIER DIFFERS",
+        "historical_equality_assumed": false,
+        "name": "CPython executable",
+        "settles_applicability": false
+      },
+      {
+        "classification": "MISMATCH",
+        "consumed_by": "dynamic loader",
+        "disposition": "CONSUMED PATH IDENTIFIER DIFFERS",
+        "historical_equality_assumed": false,
+        "name": "loader",
+        "settles_applicability": false
+      },
+      {
+        "classification": "MISMATCH",
+        "consumed_by": "libm file",
+        "disposition": "CONSUMED PATH IDENTIFIER DIFFERS",
+        "historical_equality_assumed": false,
+        "name": "libm",
+        "settles_applicability": false
+      }
+    ],
+    "status": "CONTRACT BLOCKED",
+    "theta_dot_rad_s_hex": "0x1.47ae147ae147bp-7",
+    "theta_rad_hex": "-0x1.999999999999ap-3",
+    "time_declaration": {
+      "conflict": false,
+      "declared_hex": "0x0.0p+0",
+      "governing_rationale": "The isolated initial transaction uses the integrator origin: absolute time is the first immutable actuation knot plus a zero relative time. The authorized declaration is +0.0 s only when that knot has the same binary64 bits. The knot list is not sole authority.",
+      "knot_is_sole_authority": false,
+      "manifest_first_knot_hex": "0x0.0p+0",
+      "used": true
+    },
+    "time_s": "0x0.0p+0",
+    "ulp_terminal_guard": {
+      "calls_nextafter_plt": true,
+      "historical_equality_assumed": false,
+      "nextafter_function_calls": 0,
+      "output_sampled": false,
+      "selected_nextafter": "OBSERVED IN WRAPPER DISASSEMBLY",
+      "settles_applicability": false,
+      "ulp_function_calls": 0,
+      "wrapper_address": "0x4d8cfa"
+    },
+    "unresolved_pre_call": []
+  },
+  "canonical_sha256": "78ab77bc4fdd75f6913f785bf86297d4be89903868fd5e0097975b4ce9b3eec1",
+  "digest_scope": "SHA-256 of the section 7.3 canonical bytes of canonical_payload only. canonical_sha256 and digest_scope are outside that payload."
+}

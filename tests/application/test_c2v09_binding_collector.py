@@ -55,6 +55,15 @@ UNHISTORICAL_MODULES = {
     "declaration": "pyfoldable/application/c2v09_ordered_declaration.py",
     "eligibility": "pyfoldable/application/c2v09_live_eligibility.py",
     "collector": "pyfoldable/application/c2v09_binding_collector.py",
+    "applicability": "pyfoldable/application/c2v09_runtime_applicability.py",
+    "cosine_certificate": "pyfoldable/application/c2v09_cosine_path_certificate.py",
+    "probe_source": "pyfoldable/application/c2v09_cosine_path_probe.c",
+}
+HISTORICAL_PARTIAL_MODULES = {
+    "dense": "pyfoldable/dynamics/cmm2_radau_dense.py",
+    "declaration": "pyfoldable/application/c2v09_ordered_declaration.py",
+    "eligibility": "pyfoldable/application/c2v09_live_eligibility.py",
+    "collector": "pyfoldable/application/c2v09_binding_collector.py",
 }
 
 
@@ -176,7 +185,12 @@ def test_new_modules_have_no_invented_historical_match() -> None:
     root = _repository()
     record = _body(collect_binding_record(root))
     certificate_paths = {row["path"] for row in record["python_dependency_inventory"]["certificate_sources"]}
-    rows = {row["role"]: row for row in record["python_dependency_inventory"]["modules_without_historical_record"]}
+    listed = record["python_dependency_inventory"]["modules_without_historical_record"]
+    assert [row["path"] for row in listed] == [UNHISTORICAL_MODULES[role] for role in (
+        "dense", "declaration", "eligibility", "collector", "applicability", "cosine_certificate", "probe_source",
+    )]
+    assert len(listed) == len({row["path"] for row in listed}) == 7
+    rows = {row["role"]: row for row in listed}
     assert set(rows) == set(UNHISTORICAL_MODULES)
     for role, path in UNHISTORICAL_MODULES.items():
         row = rows[role]
@@ -189,6 +203,12 @@ def test_new_modules_have_no_invented_historical_match() -> None:
         assert row["file_identity"] == "NO HISTORICAL RECORD"
         assert row["loaded_code_identity"] == "NOT ESTABLISHED"
         assert row["operation_graph_applicability"] == "NOT ESTABLISHED"
+        if path.endswith(".c"):
+            assert row["identity_kind"] == "c_source"
+            assert row["compiled_loaded_native_identity"] == "NOT ESTABLISHED"
+        else:
+            assert row["identity_kind"] == "python_source"
+            assert row["compiled_loaded_native_identity"] == "NOT A COMPILED IMAGE"
 
 
 def test_digest_covers_only_the_canonical_payload() -> None:
@@ -243,8 +263,8 @@ def test_persisted_partial_record_recomputes_and_is_not_eligibility() -> None:
         assert by_path[path]["loaded_code_identity"] == "NOT ESTABLISHED"
         assert by_path[path]["operation_graph_applicability"] == "NOT ESTABLISHED"
     roles = {row["role"]: row for row in payload["python_dependency_inventory"]["modules_without_historical_record"]}
-    assert set(roles) == set(UNHISTORICAL_MODULES)
-    for role, path in UNHISTORICAL_MODULES.items():
+    assert set(roles) == set(HISTORICAL_PARTIAL_MODULES)
+    for role, path in HISTORICAL_PARTIAL_MODULES.items():
         assert roles[role]["path"] == path
         assert roles[role]["historical_sha256"] is None
         assert roles[role]["file_identity"] == "NO HISTORICAL RECORD"

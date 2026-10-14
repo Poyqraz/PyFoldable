@@ -247,8 +247,18 @@ def test_live_environment_is_blocked_without_rewriting_preserved_records() -> No
     changed = {row["path"] for row in payload["explicit_binding_required"]["changed_certificate_sources"]}
     assert "pyfoldable/application/cmm2_coupled_transient_service.py" in changed
     assert "pyfoldable/dynamics/cmm2_coupled_transient.py" in changed
-    roles = {row["role"]: row for row in payload["explicit_binding_required"]["new_modules"]}
-    assert set(roles) == {"dense", "declaration", "eligibility", "collector", "applicability"}
+    rows = payload["explicit_binding_required"]["new_modules"]
+    assert [row["path"] for row in rows] == [
+        "pyfoldable/dynamics/cmm2_radau_dense.py",
+        "pyfoldable/application/c2v09_ordered_declaration.py",
+        "pyfoldable/application/c2v09_live_eligibility.py",
+        "pyfoldable/application/c2v09_binding_collector.py",
+        "pyfoldable/application/c2v09_runtime_applicability.py",
+        "pyfoldable/application/c2v09_cosine_path_certificate.py",
+        "pyfoldable/application/c2v09_cosine_path_probe.c",
+    ]
+    assert len(rows) == len({row["path"] for row in rows}) == 7
+    roles = {row["role"]: row for row in rows}
     applicability = roles["applicability"]
     assert applicability["path"] == "pyfoldable/application/c2v09_runtime_applicability.py"
     assert applicability["historical_sha256"] is None

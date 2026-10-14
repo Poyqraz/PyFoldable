@@ -1,0 +1,156 @@
+{
+  "canonical_payload": {
+    "applicability_scope": "historical libm body validity predicate for this selected path only; not exact XCR0 identity, not the historical CPython wrapper, and not eligibility",
+    "baseline_ci_is_eligibility": false,
+    "changed_python_operation_graph": "NOT IN THIS CERTIFICATE",
+    "checkout_sha": "f343a9b206b0169e96bf5e66548ee08d257c3806",
+    "cosine_function_calls": 0,
+    "eligibility_evidence": false,
+    "executable": {
+      "file_sha256": "e50d468e8b0adfb05733f5b87b3cff34829c4a8c1aea50c865aa8bdfe4bb150f",
+      "path": "/usr/bin/python3.12"
+    },
+    "historical_body_sha256": "f7a54037fbab80cbbf5a2c6954284f47330d936b103a0beac05913b6b1949a02",
+    "historical_cpython_wrapper_argument": "DOES NOT APPLY",
+    "ld_bind_now": "1",
+    "libm_body_argument": "APPLIES",
+    "loaded_body": {
+      "elf_vaddr": "0x7bad0",
+      "length": 341,
+      "libm_path": "/usr/lib/x86_64-linux-gnu/libm.so.6",
+      "matches_historical_body": true,
+      "sha256": "f7a54037fbab80cbbf5a2c6954284f47330d936b103a0beac05913b6b1949a02"
+    },
+    "loaded_constants": [
+      {
+        "classification": "MATCH",
+        "match": true,
+        "vaddr": "0x8fa80"
+      },
+      {
+        "classification": "MATCH",
+        "match": true,
+        "vaddr": "0x8fa90"
+      },
+      {
+        "classification": "MATCH",
+        "match": true,
+        "vaddr": "0x98e18"
+      },
+      {
+        "classification": "MATCH",
+        "match": true,
+        "vaddr": "0x98e38"
+      },
+      {
+        "classification": "MATCH",
+        "match": true,
+        "vaddr": "0x99d28"
+      },
+      {
+        "classification": "MATCH",
+        "match": true,
+        "vaddr": "0x99d30"
+      },
+      {
+        "classification": "MATCH",
+        "match": true,
+        "vaddr": "0x99d40"
+      },
+      {
+        "classification": "MATCH",
+        "match": true,
+        "vaddr": "0x9a018"
+      },
+      {
+        "classification": "MATCH",
+        "match": true,
+        "vaddr": "0x9a020"
+      },
+      {
+        "classification": "MATCH",
+        "match": true,
+        "vaddr": "0xb3f00"
+      },
+      {
+        "classification": "MATCH",
+        "match": true,
+        "vaddr": "0xb3f08"
+      },
+      {
+        "classification": "MATCH",
+        "match": true,
+        "vaddr": "0xb3f10"
+      },
+      {
+        "classification": "MATCH",
+        "match": true,
+        "vaddr": "0xb3f18"
+      }
+    ],
+    "numerical_controls_and_features": {
+      "avx": true,
+      "classification": "OBSERVED",
+      "cpuid_leaf1": [
+        "0xc06f2",
+        "0x2040800",
+        "0xfffa3227",
+        "0x1fabfbff"
+      ],
+      "cpuid_leaf7_sub0": [
+        "0x2",
+        "0xf1bf27eb",
+        "0x1b415f5e",
+        "0xbfc14410"
+      ],
+      "exact_historical_xcr0_match": false,
+      "fegetround": "0",
+      "fma": true,
+      "mxcsr": "0x1fa0",
+      "mxcsr_daz": false,
+      "mxcsr_ftz": false,
+      "mxcsr_rounding": "nearest ties-to-even",
+      "osxsave": true,
+      "required_bits_ok": true,
+      "thread_id": "214602",
+      "x87_control": "0x37f",
+      "xcr0": [
+        "0x602e7",
+        "0x0"
+      ],
+      "xcr0_xmm_ymm": true
+    },
+    "physical_qualification": false,
+    "probe_source_sha256": "8a8fe2c2b1eb60cea016acec26d50fdcd902ee33ec57b81efa6273cb7fb3aaba",
+    "python_version": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+    "python_wrapper": {
+      "address": "0x62e430",
+      "calls_cos_plt": true,
+      "calls_pyfloat_asdouble": true,
+      "disassembly": "\n/usr/bin/python3.12:     file format elf64-x86-64\n\n\nDisassembly of section .text:\n\n000000000062e430 <_PyObject_GC_Resize@@Base+0x10990>:\n  62e430:\tf3 0f 1e fa          \tendbr64\n  62e434:\t55                   \tpush   rbp\n  62e435:\t48 89 f7             \tmov    rdi,rsi\n  62e438:\t48 89 e5             \tmov    rbp,rsp\n  62e43b:\t48 83 ec 10          \tsub    rsp,0x10\n  62e43f:\te8 0c 83 f2 ff       \tcall   556750 <PyFloat_AsDouble@@Base>\n  62e444:\t66 0f 2e 05 04 e7 10 \tucomisd xmm0,QWORD PTR [rip+0x10e704]        # 73cb50 <_PyParser_TokenNames@@Base+0x25e70>\n  62e44b:\t00 \n  62e44c:\tf2 0f 11 45 f8       \tmovsd  QWORD PTR [rbp-0x8],xmm0\n  62e451:\t7a 02                \tjp     62e455 <_PyObject_GC_Resize@@Base+0x109b5>\n  62e453:\t74 46                \tje     62e49b <_PyObject_GC_Resize@@Base+0x109fb>\n  62e455:\te8 56 30 df ff       \tcall   4214b0 <__errno_location@plt>\n  62e45a:\tf2 0f 10 45 f8       \tmovsd  xmm0,QWORD PTR [rbp-0x8]\n  62e45f:\tc7 00 00 00 00 00    \tmov    DWORD PTR [rax],0x0\n  62e465:\te8 76 23 df ff       \tcall   4207e0 <cos@plt>\n  62e46a:\t66 0f 2e c0          \tucomisd xmm0,xmm0\n  62e46e:\t7b 0b                \tjnp    62e47b <_PyObject_GC_Resize@@Base+0x109db>\n  62e470:\tf2 0f 10 65 f8       \tmovsd  xmm4,QWORD PTR [rbp-0x8]\n  62e475:\t66 0f 2e e4          \tucomisd xmm4,xmm4\n  62e479:\t7b 54                \tjnp    62e4cf <_PyObject_GC_Resize@@Base+0x10a2f>\n  62e47b:\tf3 0f 7e 0d 6d e0 10 \tmovq   xmm1,QWORD PTR [rip+0x10e06d]        # 73c4f0 <_PyParser_TokenNames@@Base+0x25810>\n  62e482:\t00 \n  62e483:\t66 0f 28 d0          \tmovapd xmm2,xmm0\n  62e487:\t66 0f 54 d1          \tandpd  xmm2,xmm1\n  62e48b:\t66 0f 2e 15 fd e6 10 \tucomisd xmm2,QWORD PTR [rip+0x10e6fd]        # 73cb90 <_PyParser_TokenNames@@Base+0x25eb0>\n  62e492:\t00 \n  62e493:\t77 23                \tja     62e4b8 <_PyObject_GC_Resize@@Base+0x10a18>\n  62e495:\tc9                   \tleave\n  62e496:\te9 75 7c f2 ff       \tjmp    556110 <PyFloat_FromDouble@@Base>\n  62e49b:\te8 80 31 fc ff       \tcall   5f1620 <PyErr_Occurred@@Base>\n  62e4a0:\t48 85 c0             \ttest   rax,rax\n  62e4a3:\t75 3b                \tjne    62e4e0 <_PyObject_GC_Resize@@Base+0x10a40>\n  62e4a5:\te8 06 30 df ff       \tcall   4214b0 <__errno_location@plt>\n  62e4aa:\t31 d2                \txor    edx,edx\n  62e4ac:\tf2 0f 10 05 4c ee 10 \tmovsd  xmm0,QWORD PTR [rip+0x10ee4c]        # 73d300 <_PyParser_TokenNames@@Base+0x26620>\n  62e4b3:\t00 \n  62e4b4:\t89 10                \tmov    DWORD PTR [rax],edx\n  62e4b6:\teb dd                \tjmp    62e495 <_PyObject_GC_Resize@@Base+0x109f5>\n  62e4b8:\tf2 0f 10 6d f8       \tmovsd  xmm5,QWORD PTR [rbp-0x8]\n  62e4bd:\tf2 0f 10 35 cb e6 10 \tmovsd  xmm6,QWORD PTR [rip+0x10e6cb]        # 73cb90 <_PyParser_TokenNames@@Base+0x25eb0>\n  62e4c4:\t00 \n  62e4c5:\t66 0f 54 e9          \tandpd  xmm5,xmm1\n  62e4c9:\t66 0f 2e f5          \tucomisd xmm6,xmm5\n  62e4cd:\t72 c6                \tjb     62e495 <_PyObject_GC_Resize@@Base+0x109f5>\n  62e4cf:\t48 8b 3d 6a 44 40 00 \tmov    rdi,QWORD PTR [rip+0x40446a]        # a32940 <PyExc_ValueError@@Base>\n  62e4d6:\tbe 5c f6 70 00       \tmov    esi,0x70f65c\n  62e4db:\te8 50 42 fc ff       \tcall   5f2730 <PyErr_SetString@@Base>\n  62e4e0:\tc9                   \tleave\n  62e4e1:\t31 c0                \txor    eax,eax\n  62e4e3:\tc3                   \tret\n  62e4e4:\t66 66 2e 0f 1f 84 00 \tdata16 cs nop WORD PTR [rax+rax*1+0x0]\n  62e4eb:\t00 00 00 00 \n  62e4ef:\t90                   \tnop\n",
+      "disassembly_source": "objdump of the on-disk ELF; loaded bytes are compared separately",
+      "elf_vaddr": "0x62e430",
+      "loaded_wrapper_matches_elf": true,
+      "loaded_wrapper_sha256": "1e24759003e21281d096c3e0c85631558662541f00c1fc32674f5bd5a77e0f8e",
+      "mapped_file": "/usr/bin/python3.12"
+    },
+    "returned_source_object": "NOT IN THIS CERTIFICATE",
+    "selected_call_target": {
+      "address": "0x7f701387dad0",
+      "addresses_equal": true,
+      "classification": "OBSERVED",
+      "evidence": "python wrapper plt got",
+      "got_slot": "0xa293d8",
+      "independent_cdll_is_evidence": false,
+      "independent_cdll_libm_cos": "0x7f701387dad0",
+      "method": "qword at the cos PLT slot reached from PyCFunction_GetFunction(math.cos)",
+      "plt_jmp_bytes_hex": "ff25f28b6000",
+      "plt_stub": "0x4207e0",
+      "plt_stub_bytes_hex": "ff25f28b6000687b000000e930f8ffff"
+    },
+    "status": "ONE RUNTIME PATH CERTIFICATE",
+    "tree_sha": "8ba778104fcb3fd0498948cc1c91924c75ac0494"
+  },
+  "canonical_sha256": "5b1b001c0fdb237463cde98f09de39b1b14d359bf9a9a820e3dae75a51286a2c",
+  "digest_scope": "SHA-256 of the section 7.3 canonical bytes of canonical_payload only. canonical_sha256 and digest_scope are outside that payload."
+}
