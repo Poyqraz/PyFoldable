@@ -286,8 +286,10 @@ def _caller_binding(payload: Mapping[str, object], entry_address: str, pid: int,
     ):
         return "foreign_context"
     controls = payload.get("controls")
-    if isinstance(controls, Mapping) and "thread_id" in controls:
-        if type(controls.get("thread_id")) is not str or controls.get("thread_id") != thread_id:
+    if isinstance(controls, Mapping):
+        if "thread_id" in controls and (
+            type(controls.get("thread_id")) is not str or controls.get("thread_id") != thread_id
+        ):
             return "association_disagreement"
         if "pid" in controls and (type(controls.get("pid")) is not int or controls.get("pid") != pid):
             return "association_disagreement"

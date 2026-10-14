@@ -579,6 +579,14 @@ def test_missing_je_support_rejects_after_the_digest_is_recomputed() -> None:
     assert replay_taken_prefix(payload)["entry_supported"] is False
 
 
+def test_controls_pid_without_thread_rejects_the_published_record() -> None:
+    payload = _published_taken_prefix()
+    del payload["controls"]["thread_id"]
+    payload["controls"]["pid"] = True
+    assert replay_taken_prefix(payload)["entry_supported"] is False
+    assert replay_taken_prefix(payload)["live_observer"] is False
+
+
 def test_float_after_pid_rejects_the_published_record() -> None:
     payload = _published_taken_prefix()
     payload["observer_envelope"]["after"]["pid"] = 89941.0
