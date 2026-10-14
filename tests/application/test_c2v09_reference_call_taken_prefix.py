@@ -477,3 +477,55 @@ def test_taken_prefix_record_is_not_the_measurement_commit() -> None:
     assert payload["eligibility_evidence"] is False
     assert payload["physical_qualification"] is False
     assert payload["authorizes_execution"] is False
+    assert replay_taken_prefix(payload)["entry_supported"] is False
+
+
+def test_supported_taken_prefix_retains_entry_bytes() -> None:
+    path = _ROOT / "reports" / "c2v09_pre_call_capsule" / "reference_call_taken_prefix_supported.json"
+    raw = path.read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == "aefeca408379c5495304ff29b9fc991644f680f849a4be354e623246dd3b0b82"
+    historical = (_ROOT / "reports" / "c2v09_pre_call_capsule" / "reference_call_taken_prefix.json").read_bytes()
+    assert hashlib.sha256(historical).hexdigest() == "aac74f9aab1dd788a036067c165dded65bc31622c7f27a594ab4a5e807d44913"
+    document = json.loads(raw)
+    payload = document["canonical_payload"]
+    assert "canonical_sha256" not in payload
+    assert document["canonical_sha256"] == "61f538c08e546b57a553ac8ff939e7d284a264cbccb2984d745a0293cf746eb2"
+    assert sha256_bytes(canonical_bytes(payload)) == document["canonical_sha256"]
+    assert payload["measurement_implementation_head"] == "10b8fbb4bdead8374aa1c7398f47e6df1e44b6e3"
+    assert payload["measurement_implementation_tree"] == "3dd2dcaddc117307791f87358ad77200d9299d91"
+    assert payload["record_commit_is_measurement_commit"] is False
+    entry = payload["entry_prefix"]
+    assert entry["address"] == "0x583ec0"
+    assert entry["end"] == "0x583fc0"
+    assert entry["requested_length"] == 256
+    assert entry["captured_length"] == 256
+    assert entry["decoded_length"] == 255
+    assert entry["incomplete_trailing_hex"] == "48"
+    assert entry["loaded_bytes_hex"] == entry["file_bytes_hex"]
+    assert "4889fb" in entry["loaded_bytes_hex"]
+    assert entry["image"] == "/usr/bin/python3.12"
+    assert entry["pid"] == payload["pid"] == payload["je"]["pid"]
+    assert entry["thread_id"] == payload["thread_id"] == payload["je"]["thread_id"]
+    replayed = replay_taken_prefix(payload)
+    assert replayed["entry_supported"] is True
+    assert "4889fb" in "".join(replayed["instruction_bytes"])
+    assert replayed["preservation_established"] is False
+    assert payload["je"]["exact_bytes"] == "0f846b9dedff"
+    assert payload["je"]["target"] == "0x45dc4b"
+    assert payload["read_accounting"]["entry_process"] == [{"address": "0x583ec0", "size": 256}]
+    assert payload["read_accounting"]["taken_process"] == [{"address": "0x45dc4b", "size": 256}]
+    assert payload["read_accounting"]["taken_file"] == [{"address": "0x45dc4b", "size": 256}]
+    prefix = payload["prefix"]
+    assert prefix["captured_length"] == 256
+    assert prefix["decoded_length"] == 253
+    assert prefix["incomplete_trailing_hex"] == "488b7d"
+    assert prefix["loaded_bytes_match_file"] is True
+    assert prefix["child_bytes_read"] is False
+    assert len(prefix["unresolved_child_calls"]) == 10
+    assert payload["preservation_established"] is False
+    assert payload["accept_closed"] is True
+    assert payload["candidate29_disposition"] == "NOT SELECTED"
+    assert payload["eligibility_evidence"] is False
+    assert payload["physical_qualification"] is False
+    assert payload["authorizes_execution"] is False
+    assert payload["target_invoked"] is False
