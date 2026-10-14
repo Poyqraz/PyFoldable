@@ -579,6 +579,16 @@ def test_missing_je_support_rejects_after_the_digest_is_recomputed() -> None:
     assert replay_taken_prefix(payload)["entry_supported"] is False
 
 
+def test_controls_feature_disagreement_rejects_the_published_record() -> None:
+    payload = _published_taken_prefix()
+    payload["controls"]["mxcsr"] = "0x0"
+    assert payload["observer_envelope"]["raw_feature"]["mxcsr"] == "0x1fa0"
+    recomputed = sha256_bytes(canonical_bytes(payload))
+    assert recomputed != "61f538c08e546b57a553ac8ff939e7d284a264cbccb2984d745a0293cf746eb2"
+    assert replay_taken_prefix(payload)["entry_supported"] is False
+    assert replay_taken_prefix(payload)["live_observer"] is False
+
+
 def test_controls_pid_without_thread_rejects_the_published_record() -> None:
     payload = _published_taken_prefix()
     del payload["controls"]["thread_id"]
