@@ -138,6 +138,8 @@ def test_static_fallthrough_reads_the_taken_target_once() -> None:
     assert observed["genuine_observer"] is False
     assert observed["live_process"] is False
     assert observed["five_site_correspondence"] is True
+    assert [edge["exact_bytes"] for edge in observed["edges"]] == list(EDGE_LABELS)
+    assert {edge["target"] for edge in observed["edges"]} == {hex(_ENTRY)}
     assert observed["je"]["exact_bytes"] == JE_BYTES.hex()
     assert observed["je"]["displacement"] == -0x126295
     assert observed["je"]["target"] == hex(_TAKEN)

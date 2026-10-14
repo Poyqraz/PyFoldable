@@ -321,6 +321,7 @@ def collect_taken_branch(
         "live_process": False,
         "five_site_correspondence": five_ok,
         "correspondence_reason": correspondence["reason"],
+        "edges": _json_copy(edges),
         "entry_file_match": entry_file_match,
         "entry_captured_length": entry_captured,
         "fallthrough": fallthrough,
