@@ -323,7 +323,7 @@ def _caller_binding(payload: Mapping[str, object], entry_address: str, pid: int,
         return "association_disagreement"
     if "pid" in raw and (type(raw.get("pid")) is not int or raw.get("pid") != pid):
         return "association_disagreement"
-    if isinstance(controls, Mapping) and not _typed_equal(_json_copy(controls), _json_copy(raw)):
+    if not isinstance(controls, Mapping) or not _typed_equal(_json_copy(controls), _json_copy(raw)):
         return "association_disagreement"
     return None
 
