@@ -706,3 +706,40 @@ no source/surface/BEM/FEA/trajectory execution or freeze is authorized by this
 documentation proposal. External CAD/STEP is optional. 13-inch source conventions
 remain separate from the 250 mm project baseline. Broader strength evidence and
 physical gates remain unchanged; no ADR-009 acceptance or qualification promotion.
+
+## 2026-10-14 jointed-blade performance contract — planning only
+
+The [jointed-blade performance and validation contract](jointed_blade_performance_validation_contract.md)
+is **PROPOSED / NOT IMPLEMENTED**. It defines one distal hinge on one immutable
+parent, with a monolithic reference, a deployed restrained joint, and a movable
+joint. It does not run a solver, provider, trajectory, or qualification.
+
+Current engineering order on this main:
+
+1. Keep the blocked two-profile polar study separate. Draft
+   [PR #97](https://github.com/Poyqraz/PyFoldable/pull/97), head
+   `ce023ba59ea84c0c39060d1a9dbc69f959c8fbe0`, records that XFOIL 6.99 did not
+   complete the declared NACA0012 and NACA2412 envelope. That envelope is not
+   narrowed here, and this planning document does not repeat those provider
+   calls.
+2. The next joint evidence is packet `JVP-01`: a source-bound geometric
+   joint-difference identity for one 250 mm parent and one declared hinge.
+   Gap, step, misalignment, exposed hardware, and tolerances are marked
+   declared, measured, or absent. That inventory does not make Case A and
+   Case B equal. Mass, inertia, materials, stiffness, and restraint stay
+   case-specific or unestablished. Strength, vibration, motion, and
+   calibration evidence are not prerequisites for closing JVP-01.
+3. Matched thrust, torque, and power differences wait until that identity
+   exists. Perfect-open foldable BEM equivalence remains software identity,
+   not joint-loss evidence. Hinge friction stays a hinge-coordinate torque.
+   Section pitching moment is omitted from the projected load map; a future
+   couple needs its own mapping.
+4. Structural load transfer uses the five PR-09 cases and the attachment
+   modes in the strength-aware hinge proposal. Rotating vibration separates
+   modal properties from forced response. Deployment acceptance needs
+   actuation history, completion, overshoot, contact, latch, and release;
+   a motion-domain bound is not that acceptance. Calibration of stiffness,
+   damping, friction, backlash, and stop or latch behavior is inventoried
+   as missing. The 13-inch scenario stays on its own parent.
+5. PR-06C, null CMM-2 clearance, `physical_qualification=false`, and unaccepted
+   ADR-009 stay in force. Historical paragraphs above are unchanged.
