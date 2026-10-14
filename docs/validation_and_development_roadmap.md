@@ -706,3 +706,159 @@ no source/surface/BEM/FEA/trajectory execution or freeze is authorized by this
 documentation proposal. External CAD/STEP is optional. 13-inch source conventions
 remain separate from the 250 mm project baseline. Broader strength evidence and
 physical gates remain unchanged; no ADR-009 acceptance or qualification promotion.
+
+## 2026-10-14 current status
+
+Audited main `022b466303c59b8c0adb02f935f9c2f065b0e2b5`, the merge of PR #95.
+This section is the current status. Earlier dated sections remain historical
+records. Geometry updates already written above stay in place. No scientific
+policy, numerical allowance, or qualification gate changes here. This text
+does not run a solver and does not publish a study result.
+
+### Runnable merged services
+
+These services are on main and can be called as software:
+
+| Service | Role on main | Code |
+| --- | --- | --- |
+| BEM annulus and rotor | Numerical blade-element solution | `pyfoldable/core/bem.py`, `pyfoldable/core/bem_rotor.py` |
+| Motor equilibrium | Algebraic motor/rotor torque balance | `pyfoldable/core/motor_bem_coupling.py` |
+| Mechanism transient | PY-05 prescribed-drive RK45 opening model | `pyfoldable/dynamics/mechanism_transient.py` |
+| Active-design screening | Fully open BEM from a draft plus caller polars | `pyfoldable/application/design_analysis.py` |
+| Chord/twist search | Finite grid on the current draft | `pyfoldable/application/active_design_search.py` |
+| CMM-2 screening dynamics | Merged RK45/v1 paired-load transient | `pyfoldable/dynamics/cmm2_coupled_transient.py` |
+| CMM-2 screening service | Source-bound sealed screening report | `pyfoldable/application/cmm2_coupled_transient_service.py` |
+
+A successful return from one of these calls is numerical screening. It is not
+PR-C verification and it is not physical qualification.
+`physical_qualification` stays false.
+
+### Five profile coordinates and polar data
+
+The catalog in `pyfoldable/data/airfoils/catalog.json` supports five coordinate
+identities: NACA0012, NACA2412, NACA23012, NACA4415, and NACA63-412. Contract:
+[PY-02](py02_profile_coordinate_identity.md).
+
+A BEM screening run requires polar tables whose coordinate hash matches the
+draft coordinates. A missing, malformed, or mismatched polar fails closed.
+The active-design service does not invent a proxy polar or clamp a table into
+place. A matching hash is necessary for that run. It does not qualify the
+rotor. Contract: [PY-03](py03_active_design_polar_ui.md).
+
+### Single-profile BEM UI and chord/twist search
+
+`design_analysis.py` solves the existing BEM kernel for one fully open,
+zero-offset blade and exactly one polar family for that blade's single
+airfoil id. The Streamlit page "Aktif tasarım · Sınırlı chord/twist taraması"
+multiplies the current draft's chord and twist. Diameter, RPM, and profile
+stay fixed. The search is the finite grid in
+[PY-04A](py04_deterministic_design_search.md): chord and twist multipliers,
+at most 25 points. It minimizes shaft power among observed feasible grid
+points under a declared thrust floor. It does not choose a profile identity
+and it does not claim a global optimum.
+
+### Merged CMM-2 RK45/v1, unmerged Radau/v2, blocked PR-C
+
+Main's CMM-2 production path is the merged RK45/v1 screening dynamics (PR #76,
+ADR-007) and the merged source-bound screening service (PR #78, ADR-008).
+The main tree has no Radau solver. The Radau/v2 contract remains a frozen
+design for a future implementation:
+[Radau remediation contract](cmm2_radau_remediation_contract.md).
+
+PR-C / C2V-09 numerical verification is not established. Draft PR #81 remains
+a blocked, unmerged evidence attempt. ADR-009 is not accepted. Contracts:
+[PR-A](cmm2_coupled_transient_contract.md),
+[PR-B](cmm2_source_bound_production_binding.md),
+[PR-C](cmm2_numerical_verification_contract.md).
+
+Draft [PR #91](https://github.com/Poyqraz/PyFoldable/pull/91), "Bind the pending
+CMM-2 initial call without invoking it", is open and unmerged. Its base is
+`cursor/cmm2-radau-v2-36c6`, not main. The head audited for this section is
+`77ae2323b736ef7ad129dad91690280280123e87`.
+
+Reviewed slices on that draft, still unmerged, include the reference-call
+stack and partial-LEA repairs, the closure plan, the 256-byte five-site
+prefix, the five-site admission repairs, the sealed probe envelope, the
+associated prefix, the entry-route note, and the taken-JE prefix. Preservation
+on that draft stays `NOT ESTABLISHED`. `accept()` stays closed. Candidate29
+stays **NOT SELECTED**. Authorization, eligibility, and qualification stay
+false.
+
+The missing-entry-byte limitation is specific to
+`reference_call_taken_prefix.json` on that draft. That file's digest does not
+bind the entry instructions: the same JE summary can be produced after
+replacing entry bytes `4889fb` with `4889f3` when the file bytes change the
+same way. The file stays byte-for-byte. Head `77ae232` adds a separate record,
+`reference_call_taken_prefix_supported.json`, which retains the entry loaded
+bytes and the matching file bytes. Replay of the first file stays
+unsupported. The supported record does not establish preservation and is not
+on main.
+
+### Numerical screening, verification, and physical qualification
+
+These three labels stay separate.
+
+| Plane | Meaning on this date | Boundary |
+| --- | --- | --- |
+| Numerical screening | A merged service ran on declared inputs and returned a numerical result or an explicit failure | The result is verified against the PR-C contract or against a measurement |
+| Numerical verification | Independent CMM-2 PR-C / C2V-09 evidence with the frozen gates | A screening return, a CI run, or a draft observation |
+| Physical qualification | Project rotor, mechanism, or structure evidence under the physical gates | `physical_qualification=true`. That flag stays false |
+
+### Next user-facing milestone
+
+The next user-facing milestone is a reproducible two-profile BEM comparison
+at one declared geometry and one declared operating condition, using matching
+real-provider polar data for each profile. This document defines that
+milestone. It does not run it and it does not contain its thrust, torque, or
+efficiency numbers.
+
+Required inputs:
+
+1. Two of the five catalog profile ids, each with its bundled coordinate
+   identity and coordinate SHA-256.
+2. One polar family for each profile. Every polar table's coordinate hash
+   matches that profile. A polar from the other profile, a missing table, or
+   a proxy table fails closed.
+3. One geometry declaration used for both runs: diameter, blade count,
+   station radii, chord, twist, and hub. The blade is fully open and
+   zero-offset, which is the case the current active-design service accepts.
+4. One operating-condition declaration used for both runs, including RPM,
+   flight speed, and the annulus budget inside the existing limits.
+5. An explicit solve action for each profile. Changing the draft invalidates
+   the previous result.
+
+Required outputs, each tied to the input hashes:
+
+1. Two separate BEM results, or an explicit failure for the profile that
+   cannot be solved.
+2. The shared geometry hash and the shared operating-condition hash.
+3. Each profile id, coordinate SHA-256, and polar-content hash.
+4. The solver's reported thrust, torque, and power or efficiency, together
+   with convergence or the failure text. A failed profile stays visible.
+5. `physical_qualification=false` on both results.
+
+Acceptance criteria:
+
+1. Both runs name the same geometry bytes and the same operating-condition
+   bytes.
+2. Each polar family matches exactly one of the two profiles and that
+   profile's coordinate hash.
+3. A mismatched or missing polar produces no comparison row for that profile.
+4. Both runs call the existing BEM kernel. The milestone adds no aerodynamic
+   model.
+5. Repeating the declared inputs reproduces the same content hashes.
+6. The comparison publishes no ranked or qualified design.
+
+Work that stays outside this milestone:
+
+- Automatic profile optimization. The merged chord/twist grid changes scale
+  factors on one current profile. It does not search the five profile ids.
+- Mixed-profile surface generation. PR #95 merged the bounded generic
+  mixed-profile section service,
+  [implementation note](generic_mixed_profile_geometry_implementation.md).
+  That service builds declared section coordinates. It does not run this BEM
+  comparison and it does not select a qualified design. The earlier
+  "PROPOSED / NOT IMPLEMENTED" sentences above remain the historical record of
+  the proposal before that merge.
+- Qualified design selection. GEOM gates, Candidate29, and
+  `physical_qualification` stay on their existing policies.
