@@ -4,18 +4,19 @@ from __future__ import annotations
 
 import hashlib
 import json
+import runpy
 from pathlib import Path
 
-from examples.prepare_jvp01_geometry_packet import (
-    SOURCE_RELATIVE,
-    build_jvp01_packet,
-    render_jvp01_report,
-)
 from pyfoldable.core.airfoil import airfoil_coordinate_sha256
 from pyfoldable.core.profile_catalog import load_project_airfoil
 
 
 ROOT = Path(__file__).resolve().parents[2]
+# examples is not an installed package. Load the evidence script by path.
+_PACKET_SCRIPT = runpy.run_path(str(ROOT / "examples" / "prepare_jvp01_geometry_packet.py"))
+SOURCE_RELATIVE = _PACKET_SCRIPT["SOURCE_RELATIVE"]
+build_jvp01_packet = _PACKET_SCRIPT["build_jvp01_packet"]
+render_jvp01_report = _PACKET_SCRIPT["render_jvp01_report"]
 PACKET_PATH = ROOT / "reports" / "jvp01_geometry_identity" / "packet.json"
 REPORT_PATH = ROOT / "reports" / "jvp01_geometry_identity" / "report.md"
 NACA2412_SHA256 = "3f84aba0f9234ed6e9fe4eedebe88ae8701a19ae181d70e21a02b0704916999a"
