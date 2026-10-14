@@ -542,3 +542,52 @@ model choices/pending evidence. No surface/solver execution, freeze or strength
 acceptance; external CAD/STEP remains optional. 13-inch and 250 mm scenarios stay
 separate. PR #81/#84/#91 and C2V-09 unchanged; `physical_qualification=false`,
 ADR-009 unaccepted, unknown clearance/physical gates preserved.
+
+## 2026-10-14 roadmap reconciliation — main `022b466`
+
+Audited main `022b466303c59b8c0adb02f935f9c2f065b0e2b5` (merge of PR #95).
+The paragraphs above stay historical, including their statements that
+mixed-profile geometry was unimplemented and that PR #91 was untouched.
+Current status for those topics is this section and the matching section of
+[the validation roadmap](../validation_and_development_roadmap.md#2026-10-14-current-status).
+
+Runnable merged software on this commit: BEM annulus/rotor
+(`pyfoldable/core/bem.py`, `bem_rotor.py`), motor/rotor equilibrium
+(`motor_bem_coupling.py`), PY-05 mechanism transient
+(`pyfoldable/dynamics/mechanism_transient.py`), fully open single-profile BEM
+screening (`pyfoldable/application/design_analysis.py`), finite chord/twist
+search (`active_design_search.py`), and CMM-2 RK45/v1 screening dynamics plus
+its source-bound service (`cmm2_coupled_transient.py`,
+`cmm2_coupled_transient_service.py`). These are numerical screening services.
+
+The airfoil catalog supports five coordinate identities: NACA0012, NACA2412,
+NACA23012, NACA4415, and NACA63-412. A screening solve requires polar tables
+whose coordinate hash matches those coordinates. The active-design BEM path
+accepts one fully open blade and one polar family. The chord/twist UI keeps
+diameter, RPM, and profile fixed.
+
+CMM-2 on main is RK45/v1. The Radau/v2 design contract is already on main and
+frozen. The main `pyfoldable` tree contains no Radau solver. Draft PR #84,
+head `7adb1c2785d67eead2b67656197b55e2c184abab`, is the unmerged blocked
+integrator draft. PR-C / C2V-09 verification remains unestablished. Draft PR
+#81 remains blocked. ADR-009 remains unaccepted. `physical_qualification`
+remains false.
+
+Draft PR #91 head `77ae2323b736ef7ad129dad91690280280123e87` is unmerged and
+based on `cursor/cmm2-radau-v2-36c6`. Its reviewed slices include the
+reference-call repairs, the closure plan, the five-site prefix, the admission
+repairs, the sealed observer, the associated prefix, the entry-route note, and
+the taken-JE prefix. `reference_call_taken_prefix.json` on that draft still
+lacks entry bytes, so its digest does not bind the entry instructions.
+`reference_call_taken_prefix_supported.json` on the same head retains those
+bytes. Preservation on that draft stays unestablished.
+
+PR #95 merged the bounded generic mixed-profile section service. That merge is
+section geometry. It is separate from automatic profile optimization, from a
+two-profile BEM comparison, and from qualified design selection.
+
+The next user-facing milestone is that two-profile BEM comparison: two of the
+five profiles, identical declared geometry and operating conditions, and
+matching real-provider polar data for each profile. Inputs, outputs, and
+acceptance criteria are in the roadmap section linked above. This status note
+does not run that study and does not record its performance numbers.
