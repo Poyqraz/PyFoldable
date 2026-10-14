@@ -45,6 +45,9 @@ Inheritance rules:
 - The parent profile is not replaced by a different profile at the tip.
 - Case A is not edited so that it matches Case B.
 - Case C does not inherit the restraint used in Case B.
+- Shared parent lineage does not establish that Case A and Case B are equal.
+  Mass, inertia, materials, stiffness, restraint, and any difference that
+  JVP-01 does not record stay case-specific or explicitly unestablished.
 
 The canonical file `configs/designs/TIP_HINGED_250_CANONICAL.toml` is a schema
 example for the 250 mm project. Its hinge radius and station rows are not, by
@@ -98,34 +101,122 @@ efficiency is unsupported rather than zero. A difference is published only
 when both cases return a complete result. A failed case stays visible and
 does not donate its loads to a total.
 
+### Structural load transfer
+
+Stiffness is not load-transfer evidence. A joint also needs the local force
+and moment that cross it, the frame of those loads, the reactions that close
+them, the attachment and material failure modes, and capacity or margin
+evidence for those modes.
+
+Each local load case declares:
+
+- the force and moment components at the joint;
+- the frame, chosen from a named shaft, blade, hinge, or build frame;
+- the hub and joint reactions in that same frame, with a force and moment balance;
+- the attachment and material failure modes that the case can exercise;
+- the capacity or margin evidence for each applicable mode, or an explicit
+  statement that the evidence is absent.
+
+Nonapplicable modes need a load-path reason. A total thrust or shaft torque
+does not define the local case.
+
+These cases connect to two existing documents and do not add a sixth required
+analysis. The [strength-aware radial hinge proposal](strength_aware_radial_hinge_assessment_proposal.md)
+already requires attachment modes, including net-section tension,
+bending and torsion, bearing, shear-out, pin shear and bending, local stress
+concentration, interlayer failure, and fatigue, each applicable or explicitly
+set aside. [PR-09](pr09_fea_contract_execution_plan.md) already requires five
+analysis cases:
+
+1. maximum-RPM steady centrifugal and aerodynamic loading;
+2. peak opening-stop transient and contact loading;
+3. declared imbalance loading at maximum RPM;
+4. modal separation across the operating-speed envelope;
+5. fatigue duty-cycle assessment for the blade, hinge, pin, lock, and stop.
+
+The first-party software fixture uses the ids `steady_max_rpm`,
+`opening_stop_peak`, `imbalance_max_rpm`, `modal_operating_margin`, and
+`fatigue_duty_cycle`. That fixture proves the validator. It is not project
+stress, margin, or qualification evidence. PR-09 still requires at least
+three mesh levels, convergence history, force balance, and project-supplied
+limits. This contract supplies none of those limits.
+
+Centrifugal load is not added both as a body force and again as an equivalent
+joint force for the same mass. The strength proposal states that same
+double-counting ban.
+
 ### Joint mechanism
 
 | Observable | Accounting location |
 | --- | --- |
-| Joint stiffness | Hinge moment per angle, on the hinge coordinate |
+| Joint stiffness | Hinge moment per angle, on the hinge coordinate. This is not a structural margin |
 | Backlash | Free angle or displacement before load transfer; absent if not measured |
 | Mass, center, and inertia | The restrained and the moving segment, including hardware |
 | Friction | Hinge-coordinate torque and its power |
 | Damping | Hinge-coordinate torque proportional to hinge rate, if declared |
 | Stop and latch | Contact event, retained state, and release condition |
 
-### Rotation and blades
+### Pending calibration inventory
 
-| Observable | Question |
+Numerical limits and calibration values stay pending. Each row below is an
+inventory slot, not a measurement.
+
+| Item | Source and method | Applicability range | Uncertainty sources | Status |
+| --- | --- | --- | --- | --- |
+| Joint stiffness | pending | pending | pending | missing |
+| Damping | pending | pending | pending | missing |
+| Friction | pending | pending | pending | missing |
+| Backlash | pending | pending | pending | missing |
+| Stop and latch behavior | pending | pending | pending | missing |
+
+A later calibration record replaces `pending` and `missing` only with a
+source, a method, the range where that method applies, and the uncertainty
+sources that remain. A missing item is not zero and is not a default from
+another propeller.
+
+### Rotating vibration
+
+Modal properties and forced-response acceptance are different records.
+
+Modal properties are frequencies, mode shapes, the restraint or boundary,
+and any declared prestress or speed dependence. PR-09's modal-separation case
+belongs to this record. It does not accept or reject an operating deflection.
+
+Forced-response acceptance uses one or more of displacement, acceleration,
+and strain. Each channel names its sensor or derived location and its frame.
+The excitation is named by order, and the RPM envelope is the declared range
+in which that order is judged. The acceptance limit for the response is a
+project input and is pending here.
+
+| Observable | Record |
 | --- | --- |
-| Centrifugal loading | Hinge moment and joint force from rotation, kept separate from aerodynamic load |
-| Rotating modal response | Frequencies and mode shapes in the declared operating envelope, with the declared boundary |
+| Centrifugal loading | Hinge moment and joint force from rotation, kept separate from aerodynamic load and reported in the structural cases |
+| Modal properties | Frequencies and shapes with boundary, prestress, and speed dependence |
+| Forced response | Displacement, acceleration, or strain at declared locations and frames, against excitation order and RPM envelope |
 | Imbalance | Mass or geometric difference among blades, not a residual of a moment balance |
 | Blade-to-blade difference | Per-blade joint geometry or response; identical-blade multiplication is not this measurement |
 
 ### Deployment and folding
 
-| Observable | Question |
+A declared angle or rate interval is only the motion domain. It does not show
+that a deployment or fold was executed, completed, or held.
+
+| Observable | What must be recorded |
 | --- | --- |
-| Motion domain | Declared angle and rate bounds from closed to deployed |
-| Clearance | Separated, violating, or unknown over that path |
-| Terminal contact | Stop or latch contact, distinguished from an unresolved near-contact |
+| Drive and actuation history | The command or measured actuator state over time, with its source |
+| Initial state | Angle, rate, and latch or stop state at the start |
+| Target motion | The intended path and end state |
+| Completion | The evidence that the end state was reached and held |
+| Overshoot | The excess beyond the target, or an explicit absence of that measurement |
+| Contact | The contact event and the body pair, distinguished from an unresolved near-contact |
+| Latch | The retained state after contact |
+| Release | The event that leaves the latched or stopped state |
+| Clearance | `separated`, `violation`, or `unknown` when GEOM-03 or GEOM-04 is the evidence path |
 | Closed envelope | The restrained folded outline against its declared requirement |
+
+A CMM-2 `first_contact_terminal` record is not this completion, latch, or
+release evidence. Leaving the fold-angle domain is a hard screening failure,
+not a successful fold.
 
 ## Service audit on this main
 
@@ -167,10 +258,13 @@ They are prescribed-angle screens. They do not contain a restrained joint
 geometry or a free hinge.
 
 `pyfoldable/core/foldable_aero_load.py` integrates the same projected BEM
-densities into a planar hinge load. The map is rate-independent. Section
-pitching moment is not added as a hinge couple. A missing hinge integral
-fails closed and is not published as zero. The mapped hinge load is not a
-second aerodynamic model.
+force densities into a planar hinge load. The map is rate-independent.
+Section pitching moment is omitted. The model sets the distributed
+aerodynamic couple to none, states that sectional `Cm` is not a `+z` hinge
+term, and records `sectional_aerodynamic_couple` as `excluded_in_v1`. That
+omission is not a couple already present in the force integral.
+A missing hinge integral fails closed and is not published as zero. The
+mapped hinge load is not a second aerodynamic model.
 
 ### CMM-2
 
@@ -262,12 +356,12 @@ inputs.
 
 Each loss has one place in the equations.
 
-| Loss | Where it is allowed | Where it must not be added again |
+| Loss | Where it is allowed | Second accounting that is forbidden |
 | --- | --- | --- |
 | Profile drag | Section polar queried by BEM | A second drag table for the same section |
 | Tip loss | The annulus tip-loss factor | Another tip factor after radial projection |
 | Root loss | The annulus root-loss factor, only when that option is on | A hinge-gap model that silently repeats it |
-| Aerodynamic hinge moment | The integral of the same projected BEM densities | Section pitching moment added again, or a second BEM solve |
+| Aerodynamic hinge moment | The integral of the projected BEM force densities. Section pitching moment is omitted from this map | A future pitching couple needs its own justified mapping. It is not already counted, and it is not added on top of an unchanged force integral without that mapping |
 | Hinge friction | One-hinge torque; recorded power is blade count times that torque times hinge rate | A steady thrust or power multiplier |
 | Hinge damping | Hinge-coordinate torque from hinge rate | A change to the section polar |
 | Stop or latch | Contact load on the hinge coordinate | An aerodynamic penalty |
@@ -282,8 +376,10 @@ Packet id: `JVP-01`.
 
 Title: deployed joint-difference identity for one 250 mm parent.
 
-This packet records identity and absence. It does not solve aerodynamics,
-structure, dynamics, or clearance.
+This packet records geometric identity and absence. It does not solve
+aerodynamics, structure, vibration, motion, or clearance. Strength,
+vibration, deployment execution, and calibration evidence are later records.
+They are not prerequisites for completing JVP-01.
 
 ### Prerequisites
 
@@ -310,11 +406,16 @@ marked `declared`, `measured`, or `absent`:
 - exposed hardware identity and envelope;
 - joint tolerances.
 
-Case B may differ from Case A only through those fields. Unmarked fields fail
-the packet. A field marked `measured` needs the measurement source and
+Inside this geometric inventory, Case B may differ from Case A only through
+those fields. That sentence does not apply to mass, inertia, materials,
+stiffness, restraint, or any difference the inventory does not record. Those
+remain case-specific or explicitly unestablished. Shared parent lineage does
+not establish that Case A equals Case B. Unmarked geometric fields fail the
+packet. A field marked `measured` needs the measurement source and
 uncertainty statement; this contract does not invent either. Case C is named
 and left unsolved: its motion, clearance, contact, and envelope rows are
-`absent` unless a later packet supplies them.
+`absent` unless a later packet supplies them. That later packet is not
+required to close JVP-01.
 
 ### Review
 
@@ -336,11 +437,17 @@ packet.
 
 ## Explicitly later work
 
-These are not part of JVP-01 and are not authorized by this document:
+These obligations are declared above and are not part of JVP-01. Completing
+the geometry packet does not wait for them, and this document does not
+authorize running them:
 
+- local joint load cases, reactions, failure modes, and capacity or margin evidence;
+- modal properties and forced-response acceptance;
+- deployment and folding execution records, including actuation history,
+  completion, overshoot, latch, and release;
+- the calibration inventory once sources and ranges exist;
 - a matched A-versus-B thrust, torque, and power comparison;
 - a Case C trajectory;
-- rotating modal analysis or an imbalance survey;
 - joint FEA or CFD;
 - any change to the PR #97 polar grid;
 - physical qualification or a qualified joint position.
