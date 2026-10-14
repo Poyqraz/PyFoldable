@@ -706,3 +706,31 @@ no source/surface/BEM/FEA/trajectory execution or freeze is authorized by this
 documentation proposal. External CAD/STEP is optional. 13-inch source conventions
 remain separate from the 250 mm project baseline. Broader strength evidence and
 physical gates remain unchanged; no ADR-009 acceptance or qualification promotion.
+
+## 2026-10-14 jointed-blade performance contract — planning only
+
+The [jointed-blade performance and validation contract](jointed_blade_performance_validation_contract.md)
+is **PROPOSED / NOT IMPLEMENTED**. It defines one distal hinge on one immutable
+parent, with a monolithic reference, a deployed restrained joint, and a movable
+joint. It does not run a solver, provider, trajectory, or qualification.
+
+Current engineering order on this main:
+
+1. Keep the blocked two-profile polar study separate. Draft
+   [PR #97](https://github.com/Poyqraz/PyFoldable/pull/97), head
+   `ce023ba59ea84c0c39060d1a9dbc69f959c8fbe0`, records that XFOIL 6.99 did not
+   complete the declared NACA0012 and NACA2412 envelope. That envelope is not
+   narrowed here, and this planning document does not repeat those provider
+   calls.
+2. The next joint evidence is packet `JVP-01`: a source-bound deployed
+   joint-difference identity for one 250 mm parent and one declared hinge.
+   Gap, step, misalignment, exposed hardware, and tolerances are marked
+   declared, measured, or absent. No acceptance numbers are invented.
+3. Matched thrust, torque, and power differences wait until that identity
+   exists. Perfect-open foldable BEM equivalence remains software identity,
+   not joint-loss evidence. Hinge friction stays a hinge-coordinate torque.
+4. Rotating modes, imbalance, blade-to-blade differences, Case C motion, and
+   joint strength remain later obligations. The 13-inch scenario stays on its
+   own parent.
+5. PR-06C, null CMM-2 clearance, `physical_qualification=false`, and unaccepted
+   ADR-009 stay in force. Historical paragraphs above are unchanged.

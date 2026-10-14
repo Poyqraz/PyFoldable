@@ -542,3 +542,14 @@ model choices/pending evidence. No surface/solver execution, freeze or strength
 acceptance; external CAD/STEP remains optional. 13-inch and 250 mm scenarios stay
 separate. PR #81/#84/#91 and C2V-09 unchanged; `physical_qualification=false`,
 ADR-009 unaccepted, unknown clearance/physical gates preserved.
+
+## 2026-10-14 jointed-blade performance contract — planning only
+
+A planning contract for one distal hinge is
+[jointed-blade performance and validation](../jointed_blade_performance_validation_contract.md).
+It is **PROPOSED / NOT IMPLEMENTED** and does not run a solver or provider.
+The next joint packet is `JVP-01`, a 250 mm deployed joint-difference identity
+with explicit absence. Draft PR #97 remains a separate blocked polar baseline
+and is not narrowed here. Perfect-open BEM equality is software identity, not
+joint-loss evidence. Historical sections above stay in place.
+`physical_qualification=false`.
