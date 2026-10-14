@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 from pathlib import Path
@@ -16,6 +17,7 @@ from pyfoldable.application.c2v09_reference_call_taken_prefix import (
     JE_BYTES,
     collect_taken_branch,
     je_site_evidence,
+    replay_taken_prefix,
 )
 from pyfoldable.application.c2v09_runtime_semantic_correspondence import (
     NOT_ESTABLISHED,
@@ -160,6 +162,69 @@ def test_static_fallthrough_reads_the_taken_target_once() -> None:
     assert observed["target_invoked"] is False
     assert observed["accept_closed"] is True
     assert observed["candidate29_disposition"] == "NOT SELECTED"
+
+
+def test_differing_entry_instructions_change_the_retained_digest() -> None:
+    first, first_taken, _files = _collect()
+    swapped = _ENTRY_BLOB.replace(bytes.fromhex("4889fb"), bytes.fromhex("4889f3"), 1)
+    assert swapped != _ENTRY_BLOB
+    second, second_taken, _files = _collect(entry_blob=swapped)
+    assert first_taken == [(_TAKEN, PREFIX_BYTE_LIMIT)]
+    assert second_taken == [(_TAKEN, PREFIX_BYTE_LIMIT)]
+    assert first["entry_prefix"]["loaded_bytes_hex"] == _ENTRY_BLOB.hex()
+    assert second["entry_prefix"]["loaded_bytes_hex"] == swapped.hex()
+    assert first["entry_prefix"]["file_bytes_hex"] == first["entry_prefix"]["loaded_bytes_hex"]
+    assert second["entry_prefix"]["file_bytes_hex"] == swapped.hex()
+    assert first["entry_prefix"]["address"] == hex(_ENTRY)
+    assert first["entry_prefix"]["end"] == hex(_ENTRY + len(_ENTRY_BLOB))
+    assert first["entry_prefix"]["requested_length"] == PREFIX_BYTE_LIMIT
+    assert first["entry_prefix"]["captured_length"] == len(_ENTRY_BLOB)
+    assert first["entry_prefix"]["image"] == _IMAGE
+    assert first["entry_prefix"]["pid"] == _PID
+    assert first["entry_prefix"]["thread_id"] == _THREAD
+    assert sha256_bytes(canonical_bytes(first)) != sha256_bytes(canonical_bytes(second))
+    assert replay_taken_prefix(first)["entry_supported"] is True
+    assert replay_taken_prefix(second)["entry_supported"] is True
+    assert replay_taken_prefix(first)["instruction_bytes"] != replay_taken_prefix(second)["instruction_bytes"]
+
+
+def test_missing_or_truncated_entry_bytes_are_not_supported() -> None:
+    observed, _taken, _files = _collect()
+    missing = copy.deepcopy(observed)
+    missing.pop("entry_prefix")
+    assert replay_taken_prefix(missing)["entry_supported"] is False
+    truncated = copy.deepcopy(observed)
+    truncated["entry_prefix"]["loaded_bytes_hex"] = _ENTRY_BLOB[:4].hex()
+    truncated["entry_prefix"]["file_bytes_hex"] = _ENTRY_BLOB[:4].hex()
+    assert replay_taken_prefix(truncated)["entry_supported"] is False
+    historical = json.loads(
+        (_ROOT / "reports" / "c2v09_pre_call_capsule" / "reference_call_taken_prefix.json").read_text()
+    )["canonical_payload"]
+    assert replay_taken_prefix(historical)["entry_supported"] is False
+    assert replay_taken_prefix(historical)["preservation_established"] is False
+
+
+def test_tampered_or_inconsistent_entry_bytes_are_not_supported() -> None:
+    observed, _taken, _files = _collect()
+    tampered = copy.deepcopy(observed)
+    tampered["entry_prefix"]["loaded_bytes_hex"] = tampered["entry_prefix"]["loaded_bytes_hex"][:-2] + "90"
+    assert replay_taken_prefix(tampered)["entry_supported"] is False
+    inconsistent = copy.deepcopy(observed)
+    inconsistent["entry_prefix"]["file_bytes_hex"] = "00" * len(_ENTRY_BLOB)
+    assert replay_taken_prefix(inconsistent)["entry_supported"] is False
+
+
+def test_retained_bytes_must_agree_with_the_claimed_je() -> None:
+    observed, _taken, _files = _collect()
+    disagreed = copy.deepcopy(observed)
+    disagreed["je"]["target"] = "0x1000"
+    assert replay_taken_prefix(disagreed)["entry_supported"] is False
+    other_path = copy.deepcopy(observed)
+    other_path["fallthrough"] = ["0x1000"]
+    assert replay_taken_prefix(other_path)["entry_supported"] is False
+    foreign = copy.deepcopy(observed)
+    foreign["entry_prefix"]["pid"] = 99
+    assert replay_taken_prefix(foreign)["entry_supported"] is False
 
 
 def test_invalid_five_site_coverage_does_not_read() -> None:

@@ -205,6 +205,106 @@ def _closed(head: str | None, tree: str | None) -> dict[str, object]:
     }
 
 
+def _empty_entry_prefix() -> dict[str, object]:
+    return {
+        "address": None,
+        "end": None,
+        "requested_length": PREFIX_BYTE_LIMIT,
+        "captured_length": 0,
+        "decoded_length": 0,
+        "incomplete_trailing_hex": "",
+        "loaded_bytes_hex": None,
+        "file_bytes_hex": None,
+        "loaded_bytes_match_file": False,
+        "image": None,
+        "pid": None,
+        "thread_id": None,
+    }
+
+
+def _entry_prefix_record(
+    entry: int,
+    loaded: bytes,
+    file_bytes: bytes | None,
+    image: str,
+    pid: int,
+    thread_id: str,
+) -> dict[str, object]:
+    decoded, trailing = _split_prefix(loaded, entry)
+    return {
+        "address": hex(entry),
+        "end": hex(entry + len(loaded)),
+        "requested_length": PREFIX_BYTE_LIMIT,
+        "captured_length": len(loaded),
+        "decoded_length": len(decoded),
+        "incomplete_trailing_hex": trailing.hex(),
+        "loaded_bytes_hex": loaded.hex(),
+        "file_bytes_hex": None if file_bytes is None else file_bytes.hex(),
+        "loaded_bytes_match_file": file_bytes == loaded,
+        "image": image,
+        "pid": pid,
+        "thread_id": thread_id,
+    }
+
+
+def _unsupported(reason: str) -> dict[str, object]:
+    return {"entry_supported": False, "reason": reason, "instruction_bytes": [], "preservation_established": False}
+
+
+def replay_taken_prefix(payload: Mapping[str, object]) -> dict[str, object]:
+    """Rebuild the entry walk from retained bytes. A summary does not supply them."""
+    entry = payload.get("entry_prefix")
+    if not isinstance(entry, Mapping):
+        return _unsupported("missing_entry_bytes")
+    loaded_hex = entry.get("loaded_bytes_hex")
+    file_hex = entry.get("file_bytes_hex")
+    address = entry.get("address")
+    if not isinstance(loaded_hex, str) or not loaded_hex or not isinstance(file_hex, str) or not file_hex:
+        return _unsupported("missing_entry_bytes")
+    if not isinstance(address, str) or not isinstance(entry.get("end"), str):
+        return _unsupported("missing_entry_bytes")
+    try:
+        loaded = bytes.fromhex(loaded_hex)
+        file_bytes = bytes.fromhex(file_hex)
+        entry_address = int(address, 16)
+    except ValueError:
+        return _unsupported("tampered_entry_bytes")
+    if not loaded or loaded != file_bytes or entry.get("loaded_bytes_match_file") is not True:
+        return _unsupported("inconsistent_entry_bytes")
+    if entry.get("requested_length") != PREFIX_BYTE_LIMIT or entry.get("captured_length") != len(loaded):
+        return _unsupported("truncated_entry_bytes")
+    if entry.get("end") != hex(entry_address + len(loaded)):
+        return _unsupported("truncated_entry_bytes")
+    if type(entry.get("pid")) is not int or not isinstance(entry.get("thread_id"), str) or not entry.get("thread_id"):
+        return _unsupported("missing_entry_bytes")
+    if not isinstance(entry.get("image"), str) or not entry.get("image"):
+        return _unsupported("missing_entry_bytes")
+    decoded, trailing = _split_prefix(loaded, entry_address)
+    if entry.get("decoded_length") != len(decoded) or entry.get("incomplete_trailing_hex") != trailing.hex():
+        return _unsupported("tampered_entry_bytes")
+    instructions = [] if not decoded else _decode_complete(decoded, entry_address) or []
+    insn, path = _fallthrough_je(instructions, entry_address)
+    rebuilt = [hex(item.address) for item in path]
+    instruction_bytes = [item.bytes.hex() for item in path]
+    claimed_path = payload.get("fallthrough")
+    claimed = payload.get("je")
+    if not isinstance(claimed_path, list) or rebuilt != [str(item) for item in claimed_path]:
+        return _unsupported("path_disagreement")
+    if insn is None or not isinstance(claimed, Mapping) or claimed.get("established") is not True:
+        return _unsupported("path_disagreement")
+    evidence = je_site_evidence(insn.address, bytes(insn.bytes), insn.mnemonic, insn.size, bytes(insn.bytes))
+    if any(claimed.get(key) != evidence[key] for key in ("address", "end", "exact_bytes", "displacement", "target")):
+        return _unsupported("path_disagreement")
+    if any(claimed.get(key) != entry.get(key) for key in ("image", "pid", "thread_id")):
+        return _unsupported("path_disagreement")
+    return {
+        "entry_supported": True,
+        "reason": "reconstructed",
+        "instruction_bytes": instruction_bytes,
+        "preservation_established": False,
+    }
+
+
 def collect_taken_branch(
     edges: list[dict[str, object]],
     *,
@@ -244,6 +344,7 @@ def collect_taken_branch(
     five_ok = correspondence["established"] is True and isinstance(correspondence["target"], str)
     je = _empty_je()
     fallthrough: list[str] = []
+    entry_prefix = _empty_entry_prefix()
     entry_file_match = False
     entry_captured = 0
     prefix = _empty_prefix(limit, refused=refused_limit)
@@ -255,15 +356,17 @@ def collect_taken_branch(
             entry_captured = len(entry_blob)
             accounting["entry_file"].append({"address": hex(entry), "size": len(entry_blob)})
             file_entry = read_file(entry, len(entry_blob))
-            entry_file_match = file_entry == bytes(entry_blob)
+            file_bytes = bytes(file_entry) if isinstance(file_entry, (bytes, bytearray)) else None
+            entry_prefix = _entry_prefix_record(entry, bytes(entry_blob), file_bytes, image, pid, thread_id)
+            entry_file_match = entry_prefix["loaded_bytes_match_file"] is True
             decoded_bytes, _trailing = _split_prefix(bytes(entry_blob), entry)
             instructions = [] if not decoded_bytes else _decode_complete(decoded_bytes, entry) or []
             insn, path = _fallthrough_je(instructions, entry)
             fallthrough = [hex(item.address) for item in path]
-            if entry_file_match and insn is not None and isinstance(file_entry, (bytes, bytearray)):
+            if entry_file_match and insn is not None and file_bytes is not None:
                 offset = insn.address - entry
                 loaded = bytes(entry_blob[offset : offset + insn.size])
-                file_slice = bytes(file_entry[offset : offset + insn.size])
+                file_slice = file_bytes[offset : offset + insn.size]
                 if loaded == bytes(insn.bytes):
                     je = je_site_evidence(insn.address, bytes(insn.bytes), insn.mnemonic, insn.size, file_slice)
                     je["image"] = image
@@ -324,6 +427,7 @@ def collect_taken_branch(
         "edges": _json_copy(edges),
         "entry_file_match": entry_file_match,
         "entry_captured_length": entry_captured,
+        "entry_prefix": entry_prefix,
         "fallthrough": fallthrough,
         "je": je,
         "taken_target_correspondence": taken_match,
