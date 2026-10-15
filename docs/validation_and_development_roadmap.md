@@ -706,3 +706,32 @@ no source/surface/BEM/FEA/trajectory execution or freeze is authorized by this
 documentation proposal. External CAD/STEP is optional. 13-inch source conventions
 remain separate from the 250 mm project baseline. Broader strength evidence and
 physical gates remain unchanged; no ADR-009 acceptance or qualification promotion.
+
+## 2026-10-15 chord-bearing surface screening of the 50 mm hinge
+
+First GEOM-03 screening of the existing 50 mm trial hinge, using the merged
+preview mesh and surface-clearance service. Pins: main
+`022b466303c59b8c0adb02f935f9c2f065b0e2b5`; PR #99 parent canonical SHA-256
+`1a149afec4cb192703a597e86717e5040d15e3c7fcb1697b4898ea3d26b6eada` at head
+`3db6b8909aa3e929a557699d98593fccb3fe8c4a`; PR #100 study head
+`56a3b52a439c408cbdd13ae3baf8c43fa577bf71`, SHA-256
+`f3c3e927c0ede938e5e770cce2eab405ca8413cec997eb17ab620b5fe22a7124`; PR #101
+head `3ed68e9b8a2f1c9424204f1fb39404e000f539cf`. The 50 mm study draft
+`89dfdd1907e9fe2221adea7ffa193f1849fbc1d6052dced1dafe5d20279c07d1` is a
+separate identity from that parent.
+
+Three synchronous paths run from 0 deg to the proposed stops -120, -135, and
+-150 deg. Requested clearance is 0 m for modeled contact diagnostics. Default
+work budgets are unchanged, with no retry or increase. Attachment exclusions
+stay 0. The hub obstacle is the existing infinite cylinder. No joint relief,
+hardware, hub height, endcap, or gap-filling surface was added.
+
+Outcome: every path is `unknown` and `blocked`. `full_propeller_clearance`
+stays null and `physical_qualification` stays false. Retained-mesh hub queries
+return separated lower bounds against the infinite cylinder. The first
+own-root/tip query stays unresolved after the default node and feature
+budgets. The remaining own-root/tip query and every interblade query stay
+unknown with `global_budget_exhausted`. Station coverage remains incomplete.
+Mesh radial envelope and axial extent are recorded separately from the pinned
+centerline radii. No qualified winner. No provider, BEM, CFD, FEA, or
+transient execution.
