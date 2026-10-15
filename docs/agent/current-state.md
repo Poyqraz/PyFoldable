@@ -555,3 +555,11 @@ and -150 deg, are `unknown` / `blocked`. Shared-hinge and interblade queries
 remain unresolved, including rows left unknown by `global_budget_exhausted`.
 `full_propeller_clearance` stays null. Mesh radial envelope and axial extent
 are separate from the pinned centerline radii. `physical_qualification=false`.
+
+The separate interblade diagnostic on reviewed head
+`284a2e4f3b33f999fddcb9d8eb0b3a98ebf53c26` does not replace those three
+reports. On the continuous 0 deg to -135 deg path, the four retained
+interblade pairs have separated lower bounds down to
+`0.0004699207959556334` m for the tip/tip pair. That is not full propeller
+clearance. The original own-root/tip rows stay UNKNOWN, coverage stays
+incomplete, and no stop or hinge is selected.

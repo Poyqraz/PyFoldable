@@ -735,3 +735,24 @@ unknown with `global_budget_exhausted`. Station coverage remains incomplete.
 Mesh radial envelope and axial extent are recorded separately from the pinned
 centerline radii. No qualified winner. No provider, BEM, CFD, FEA, or
 transient execution.
+
+A later pair-level diagnostic on reviewed head
+`284a2e4f3b33f999fddcb9d8eb0b3a98ebf53c26` keeps those three reports and the
+retained inputs byte-for-byte. It reuses that study draft
+`89dfdd1907e9fe2221adea7ffa193f1849fbc1d6052dced1dafe5d20279c07d1`, including
+the same triangles, pivots and frames. Four `pair_clearance` calls cover the
+continuous 0 deg to -135 deg interblade pairs, one call each, with an
+allowance of 50000 node comparisons, 2048 feature tests, depth 6 and 127
+intervals. The additional aggregate ceiling is 200000 comparisons and 8192
+feature tests. No retry or increase was used. Requested clearance and
+attachment exclusions stay 0.
+
+The four retained-triangle pairs returned separated lower bounds:
+blade_1_root/blade_2_root `0.04999999982537702` m,
+blade_1_root/blade_2_tip `0.005843301527710933` m,
+blade_1_tip/blade_2_root `0.00619576112130861` m, and
+blade_1_tip/blade_2_tip `0.0004699207959556334` m. Aggregate use was 7648
+node comparisons and 2048 feature tests. These bounds are only between those
+retained triangle sets. The original -135 deg own-root/tip rows stay
+UNKNOWN, station coverage stays incomplete, and `full_propeller_clearance`
+stays null. No stop or hinge is selected. `physical_qualification=false`.

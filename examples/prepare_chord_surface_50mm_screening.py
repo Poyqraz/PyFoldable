@@ -13,6 +13,7 @@ import hashlib
 import json
 import math
 import platform
+from dataclasses import asdict
 from importlib.metadata import version
 from pathlib import Path
 
@@ -20,6 +21,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.collections import PolyCollection
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 from pyfoldable import __version__
@@ -29,10 +31,17 @@ from pyfoldable.application.design_draft import (
     DraftUnitSelection,
     build_design_draft,
 )
+from pyfoldable.application.geometry_search import _inputs
 from pyfoldable.application.surface_clearance import (
     SurfaceClearanceInputs,
+    _parts,
     prepare_surface_clearance,
     run_surface_clearance,
+)
+from pyfoldable.geometry.surface_clearance import (
+    ClearanceControls,
+    _rotate,
+    pair_clearance,
 )
 from pyfoldable.core.airfoil import airfoil_coordinate_sha256
 from pyfoldable.core.config import load_design_config
@@ -56,6 +65,25 @@ PARENT_PACKET_SHA256 = "5df16176a8774b02a0b2d3bd5dfc3b98c2e272761714f5f7b5c743d7
 HINGE_STUDY_SHA256 = "f3c3e927c0ede938e5e770cce2eab405ca8413cec997eb17ab620b5fe22a7124"
 FOLD_STUDY_SHA256 = "8d219acb44aa7cdd5fcf7d858ab1a59636d9aa413214d0756384102a8e4e2815"
 MAIN_HEAD = "022b466303c59b8c0adb02f935f9c2f065b0e2b5"
+REVIEWED_SURFACE_HEAD = "284a2e4f3b33f999fddcb9d8eb0b3a98ebf53c26"
+STUDY_DRAFT_SHA256 = "89dfdd1907e9fe2221adea7ffa193f1849fbc1d6052dced1dafe5d20279c07d1"
+ORIGINAL_STUDY_SHA256 = "ae2f3434fea0687f79fbbe9a9b5d7e0e4efe488c276e53d5fb3423e411738718"
+ORIGINAL_REPORT_SHA256 = "546e95e1b61bd19ea57a00741cd429d338dd2f0aefc1b2c34169506a95729537"
+ORIGINAL_PLAN_SHA256 = "434990960aeec4f2e27c3dba8e29e75c5040e91ebee45ea2b4cf177703f36244"
+ORIGINAL_SURFACE_SHA256 = "8b88f5a8f03852f540e63f91ad770f8e9d8c6f34c9e85d7bd22d45a7e6a15c52"
+DIAGNOSTIC_END_DEG = -135.0
+INTERBLADE_PAIRS = (
+    ("blade_1_root", "blade_2_root"),
+    ("blade_1_root", "blade_2_tip"),
+    ("blade_1_tip", "blade_2_root"),
+    ("blade_1_tip", "blade_2_tip"),
+)
+PAIR_NODE_COMPARISONS = 50000
+PAIR_FEATURE_TESTS = 2048
+PAIR_MAX_DEPTH = 6
+PAIR_MAX_INTERVALS = 127
+AGGREGATE_NODE_COMPARISONS = 200000
+AGGREGATE_FEATURE_TESTS = 8192
 _BUDGET_FIELDS = (
     "max_depth",
     "max_intervals",
@@ -657,9 +685,409 @@ def write_chord_surface_study(repository_root: Path, output_dir: Path) -> dict[s
     return study
 
 
+def _original_bytes(root: Path) -> dict[str, bytes]:
+    directory = root / "reports" / "chord_surface_50mm_screening"
+    return {
+        "study.json": (directory / "study.json").read_bytes(),
+        "report.md": (directory / "report.md").read_bytes(),
+        "plan_view.png": (directory / "plan_view.png").read_bytes(),
+        "surface_view.png": (directory / "surface_view.png").read_bytes(),
+    }
+
+
+def _require_original_bytes(root: Path) -> dict[str, bytes]:
+    payload = _original_bytes(root)
+    expected = {
+        "study.json": ORIGINAL_STUDY_SHA256,
+        "report.md": ORIGINAL_REPORT_SHA256,
+        "plan_view.png": ORIGINAL_PLAN_SHA256,
+        "surface_view.png": ORIGINAL_SURFACE_SHA256,
+    }
+    for name, digest in expected.items():
+        if _sha256_bytes(payload[name]) != digest:
+            raise ValueError(f"Original surface artifact {name} is no longer the reviewed bytes.")
+    for relative, digest in (
+        (PARENT_PACKET, PARENT_PACKET_SHA256),
+        (HINGE_STUDY, HINGE_STUDY_SHA256),
+        (FOLD_STUDY, FOLD_STUDY_SHA256),
+    ):
+        if _sha256_bytes((root / relative).read_bytes()) != digest:
+            raise ValueError(f"Retained input {relative} changed.")
+    return payload
+
+
+def _retained_parts(root: Path):
+    packet = _load_pin(root, PARENT_PACKET, PARENT_PACKET_SHA256)
+    hinge_study = _load_pin(root, HINGE_STUDY, HINGE_STUDY_SHA256)
+    bundle, _parsed, _profile, trial, draft, _blade_count = _study_draft(root, packet, hinge_study)
+    if draft.draft_sha256 != STUDY_DRAFT_SHA256:
+        raise ValueError("Retained study-draft identity changed.")
+    model, _target, foil = _inputs(draft)
+    inputs = SurfaceClearanceInputs(end_angle_deg=DIAGNOSTIC_END_DEG, required_clearance_m=0.0)
+    defaults = SurfaceClearanceInputs()
+    if inputs.root_attachment_m != defaults.root_attachment_m or inputs.hinge_attachment_m != defaults.hinge_attachment_m:
+        raise ValueError("Diagnostic attachments differ from the retained zero exclusions.")
+    if inputs.required_clearance_m != 0.0:
+        raise ValueError("Diagnostic clearance must stay at zero.")
+    parts, _original_count = _parts(model, foil, inputs)
+    return bundle, trial, draft, parts
+
+
+def _pair_controls() -> ClearanceControls:
+    return ClearanceControls(
+        max_depth=PAIR_MAX_DEPTH,
+        max_intervals=PAIR_MAX_INTERVALS,
+        max_node_comparisons=PAIR_NODE_COMPARISONS,
+        max_feature_tests=PAIR_FEATURE_TESTS,
+    )
+
+
+def build_interblade_pair_diagnostic(repository_root: Path) -> dict[str, object]:
+    """Run four separate interblade pair queries without touching the original reports."""
+    root = repository_root.resolve()
+    original = _require_original_bytes(root)
+    study = json.loads(original["study.json"])
+    if study["study_draft"]["sha256"] != STUDY_DRAFT_SHA256:
+        raise ValueError("Pinned study draft does not match the reviewed surface record.")
+    stop_angles = [stop["end_angle_deg"] for stop in study["stops"]]
+    if DIAGNOSTIC_END_DEG not in stop_angles:
+        raise ValueError("The diagnostic endpoint is not one of the recorded proposed stops.")
+    original_stop = next(stop for stop in study["stops"] if stop["end_angle_deg"] == DIAGNOSTIC_END_DEG)
+    original_report = original_stop["geom_report"]
+    if original_report["full_propeller_clearance"] is not None or original_report["physical_qualification"]:
+        raise ValueError("The original report no longer preserves the null clearance gate.")
+    own_rows = [row for row in original_report["queries"] if row["kind"] == "own_root_tip"]
+    if len(own_rows) != 2 or any(row["result"]["status"] != "unknown" for row in own_rows):
+        raise ValueError("The original own-root/tip UNKNOWN findings are no longer intact.")
+    bundle, trial, draft, parts = _retained_parts(root)
+    lookup = {part.name: part for part in parts}
+    if tuple(lookup) != tuple(part.name for part in parts):
+        raise ValueError("Retained part names are not unique.")
+    for left, right in INTERBLADE_PAIRS:
+        if left not in lookup or right not in lookup:
+            raise ValueError("A declared interblade pair is missing from the retained surfaces.")
+    controls = _pair_controls()
+    angle_min = math.radians(DIAGNOSTIC_END_DEG)
+    if angle_min >= 0.0 or abs(angle_min) > math.pi:
+        raise ValueError("The diagnostic path is outside the kernel's continuous interval.")
+    used_nodes = 0
+    used_features = 0
+    rows = []
+    for left, right in INTERBLADE_PAIRS:
+        if used_nodes + controls.max_node_comparisons > AGGREGATE_NODE_COMPARISONS:
+            raise ValueError("Aggregate comparison ceiling would be increased.")
+        if used_features + controls.max_feature_tests > AGGREGATE_FEATURE_TESTS:
+            raise ValueError("Aggregate feature-test ceiling would be increased.")
+        result = pair_clearance(
+            lookup[left],
+            lookup[right],
+            angle_min_rad=angle_min,
+            angle_max_rad=0.0,
+            clearance_m=0.0,
+            controls=controls,
+        )
+        mapped = json.loads(_canonical(asdict(result)))
+        if mapped["node_comparisons"] > PAIR_NODE_COMPARISONS or mapped["feature_tests"] > PAIR_FEATURE_TESTS:
+            raise ValueError("A pair query exceeded its declared budget.")
+        used_nodes += mapped["node_comparisons"]
+        used_features += mapped["feature_tests"]
+        rows.append({"a": left, "b": right, "result": mapped})
+    if used_nodes > AGGREGATE_NODE_COMPARISONS or used_features > AGGREGATE_FEATURE_TESTS:
+        raise ValueError("Aggregate diagnostic ceiling exceeded.")
+    return {
+        "record_id": "interblade_pair_diagnostic_50mm_m135",
+        "evidence_class": "additional_pair_level_diagnostic_not_the_original_global_report",
+        "physical_qualification": False,
+        "qualified_winner": None,
+        "selected_stop": None,
+        "selected_hinge": None,
+        "full_propeller_clearance": None,
+        "reviewed_surface_head": REVIEWED_SURFACE_HEAD,
+        "study_draft_sha256": draft.draft_sha256,
+        "parent_canonical_sha256": PARENT_SHA256,
+        "hinge_declaration": trial["declaration"],
+        "path": {
+            "start_deg": 0.0,
+            "end_deg": DIAGNOSTIC_END_DEG,
+            "meaning": "continuous kernel interval from deployment to this recorded pose; not a selected stop",
+        },
+        "declaration": {
+            "required_clearance_m": 0.0,
+            "root_attachment_m": 0.0,
+            "hinge_attachment_m": 0.0,
+            "calls_per_pair": 1,
+            "retries": False,
+            "automatic_budget_increases": False,
+            "per_pair": {
+                "max_node_comparisons": PAIR_NODE_COMPARISONS,
+                "max_feature_tests": PAIR_FEATURE_TESTS,
+                "max_depth": PAIR_MAX_DEPTH,
+                "max_intervals": PAIR_MAX_INTERVALS,
+            },
+            "aggregate_ceiling": {
+                "max_node_comparisons": AGGREGATE_NODE_COMPARISONS,
+                "max_feature_tests": AGGREGATE_FEATURE_TESTS,
+            },
+        },
+        "retained_parts": [
+            {
+                "name": part.name,
+                "moving": part.moving,
+                "pivot_m": list(part.pivot),
+                "triangle_count": len(part.triangles),
+            }
+            for part in parts
+        ],
+        "preserved_original_m135": {
+            "source": "reports/chord_surface_50mm_screening/study.json",
+            "sha256": ORIGINAL_STUDY_SHA256,
+            "modeled_surface_status": original_report["modeled_surface_status"],
+            "classification": original_report["classification"],
+            "station_span_complete": original_report["station_span_complete"],
+            "root_gap_m": original_report["root_gap_m"],
+            "tip_gap_m": original_report["tip_gap_m"],
+            "full_propeller_clearance": original_report["full_propeller_clearance"],
+            "own_root_tip": [
+                {
+                    "a": row["a"],
+                    "b": row["b"],
+                    "status": row["result"]["status"],
+                    "reason": row["result"]["reason"],
+                }
+                for row in own_rows
+            ],
+        },
+        "aggregate_used": {
+            "node_comparisons": used_nodes,
+            "feature_tests": used_features,
+            "pair_calls": len(rows),
+        },
+        "pairs": rows,
+        "not_executed": ["polar provider", "BEM", "CFD", "FEA", "transient", "original_three_surface_reports"],
+        "runtime": {
+            "python": platform.python_version(),
+            "pyfoldable_version": __version__,
+            "physical_qualification": False,
+        },
+    }
+
+
+def render_interblade_pair_report(record: dict[str, object]) -> str:
+    lines = [
+        "# Interblade pair diagnostic, 50 mm hinge, 0 deg to -135 deg",
+        "",
+        "Additional pair-level diagnostic on the retained surfaces. This is not the original globally budgeted GEOM-03 report, and it does not select a stop or a hinge.",
+        "",
+        "physical_qualification: false",
+        "Qualified winner: none",
+        "Selected stop: none",
+        "Selected hinge: none",
+        "full_propeller_clearance: null",
+        "",
+        f"Reviewed surface head `{record['reviewed_surface_head']}`.",
+        f"Study draft SHA-256 `{record['study_draft_sha256']}`.",
+        f"Parent canonical SHA-256 `{record['parent_canonical_sha256']}`.",
+        "Requested clearance remains 0 m. Attachment exclusions remain 0 m. Each pair is allowed one call and at most 50000 node comparisons, 2048 feature tests, depth 6 and 127 intervals. The additional aggregate ceiling is 200000 comparisons and 8192 feature tests. There is no retry and no automatic increase.",
+        "",
+        "## Preserved original -135 deg findings",
+        "",
+        f"Original study SHA-256 `{record['preserved_original_m135']['sha256']}`.",
+        f"modeled_surface_status: {record['preserved_original_m135']['modeled_surface_status']}",
+        f"classification: {record['preserved_original_m135']['classification']}",
+        f"station_span_complete: {str(record['preserved_original_m135']['station_span_complete']).lower()}",
+        f"root_gap_m: {record['preserved_original_m135']['root_gap_m']!r}",
+        f"tip_gap_m: {record['preserved_original_m135']['tip_gap_m']!r}",
+    ]
+    for row in record["preserved_original_m135"]["own_root_tip"]:
+        lines.append(f"own_root_tip {row['a']} / {row['b']}: {row['status']}; {row['reason']}")
+    lines.extend(
+        [
+            "",
+            "## Pair results",
+            "",
+            f"Aggregate node comparisons: {record['aggregate_used']['node_comparisons']}",
+            f"Aggregate feature tests: {record['aggregate_used']['feature_tests']}",
+            f"Pair calls: {record['aggregate_used']['pair_calls']}",
+            "",
+            "| A | B | Status | Contact | Nodes | Feature tests | Intervals | Lower bound m | Witness m | Reason |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        ]
+    )
+    for row in record["pairs"]:
+        result = row["result"]
+        lines.append(
+            "| {a} | {b} | {status} | {contact} | {nodes} | {features} | {intervals} | {lower} | {witness} | {reason} |".format(
+                a=row["a"],
+                b=row["b"],
+                status=result["status"],
+                contact=result["contact_status"],
+                nodes=result["node_comparisons"],
+                features=result["feature_tests"],
+                intervals=len(result["intervals"]),
+                lower="" if result["lower_bound_m"] is None else result["lower_bound_m"],
+                witness="" if result["witness_clearance_m"] is None else result["witness_clearance_m"],
+                reason=result["reason"],
+            )
+        )
+    lines.extend(
+        [
+            "",
+            "The JSON file retains every interval. A separated row is a continuous lower bound between those two retained triangle sets only. It does not close the original own-root/tip result, the missing station span, or full propeller clearance.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def _posed_triangles(part, angle_rad: float) -> list[list[tuple[float, float, float]]]:
+    posed = []
+    for triangle in part.triangles:
+        posed.append([_rotate(point, part, angle_rad) for point in triangle])
+    return posed
+
+
+def _boundary_segments(triangles: list[list[tuple[float, float, float]]]) -> list[tuple[tuple[float, float], tuple[float, float]]]:
+    counts: dict[tuple[tuple[float, float, float], tuple[float, float, float]], int] = {}
+    for triangle in triangles:
+        for start, end in zip(triangle, triangle[1:] + triangle[:1]):
+            key = tuple(sorted((
+                tuple(round(float(coord), 12) for coord in start),
+                tuple(round(float(coord), 12) for coord in end),
+            )))
+            counts[key] = counts.get(key, 0) + 1
+    segments = []
+    for key, count in counts.items():
+        if count == 1:
+            segments.append(((key[0][0], key[0][1]), (key[1][0], key[1][1])))
+    return segments
+
+
+def _draw_assembly(axis, parts, bundle: dict[str, object], hinge_radius_m: float, angle_deg: float) -> None:
+    angle_rad = math.radians(angle_deg)
+    for part in parts:
+        triangles = _posed_triangles(part, angle_rad)
+        color = "#c47b2b" if part.moving else "#1f4e79"
+        axis.add_collection(
+            PolyCollection(
+                [[(point[0], point[1]) for point in triangle] for triangle in triangles],
+                facecolors=color,
+                edgecolors="none",
+                alpha=0.72,
+                zorder=2,
+            )
+        )
+        for start, end in _boundary_segments(triangles):
+            axis.plot(
+                [start[0], end[0]],
+                [start[1], end[1]],
+                color="#7a2f2a",
+                linewidth=0.45,
+                solid_capstyle="round",
+                zorder=3,
+            )
+    axis.add_patch(plt.Circle((0.0, 0.0), bundle["hub_radius"], fill=False, color="0.35", linewidth=1.0, zorder=4))
+    for sign in (1.0, -1.0):
+        for segment in _uncovered_segments(bundle, hinge_radius_m, angle_deg):
+            axis.plot(
+                [sign * segment[0][0], sign * segment[1][0]],
+                [sign * segment[0][1], sign * segment[1][1]],
+                color="#a33b32",
+                linestyle=(0, (1.2, 1.0)),
+                linewidth=1.8,
+                zorder=5,
+            )
+    axis.set_aspect("equal")
+    axis.set_xlabel("x, m", fontsize=8)
+    axis.set_ylabel("y, m", fontsize=8)
+
+
+def write_assembly_views(parts, bundle: dict[str, object], hinge_radius_m: float, output_dir: Path) -> None:
+    """Draw retained triangles at the recorded poses and a hinge-region close-up."""
+    angles = [0.0, -120.0, DIAGNOSTIC_END_DEG, -150.0]
+    titles = ["0 deg\ndeployment"] + [
+        f"{angle:.0f} deg\nproposed pose, not selected" for angle in angles[1:]
+    ]
+    assembly, axes = plt.subplots(2, 2, figsize=(8.8, 9.2))
+    limit = bundle["diameter"] / 2.0 * 1.15
+    for axis, angle, title in zip(axes.ravel(), angles, titles):
+        _draw_assembly(axis, parts, bundle, hinge_radius_m, angle)
+        axis.set_xlim(-limit, limit)
+        axis.set_ylim(-limit, limit)
+        axis.set_title(title, fontsize=9)
+    assembly.suptitle(
+        "Retained-triangle assembly\nFixed root and moving tip; open boundaries; not a solid or a selected design",
+        fontsize=11,
+    )
+    assembly.legend(
+        handles=[
+            plt.Line2D([0], [0], color="#1f4e79", linewidth=4, label="fixed root triangles"),
+            plt.Line2D([0], [0], color="#c47b2b", linewidth=4, label="moving tip triangles"),
+            plt.Line2D([0], [0], color="#7a2f2a", label="open boundary"),
+            plt.Line2D([0], [0], color="0.35", label="hub radius"),
+            plt.Line2D([0], [0], color="#a33b32", linestyle=(0, (1.2, 1.0)), label="uncovered root and tip span"),
+        ],
+        loc="lower center",
+        ncol=2,
+        frameon=False,
+        fontsize=8,
+        bbox_to_anchor=(0.5, 0.02),
+        borderaxespad=0.0,
+    )
+    assembly.subplots_adjust(left=0.08, right=0.98, top=0.88, bottom=0.16, hspace=0.42, wspace=0.28)
+    pivot = next(part.pivot for part in parts if part.name == "blade_1_root")
+    half = abs(pivot[0]) - bundle["hub_radius"]
+    close, close_axes = plt.subplots(2, 2, figsize=(8.8, 9.2))
+    for axis, angle, title in zip(close_axes.ravel(), angles, titles):
+        _draw_assembly(axis, parts, bundle, hinge_radius_m, angle)
+        axis.set_xlim(pivot[0] - half, pivot[0] + half)
+        axis.set_ylim(pivot[1] - half, pivot[1] + half)
+        axis.set_title(title, fontsize=9)
+    close.suptitle(
+        "Blade 1 hinge region at equal metres\nOpen root/tip boundary; no endcap or added hardware",
+        fontsize=11,
+    )
+    close.legend(
+        handles=[
+            plt.Line2D([0], [0], color="#1f4e79", linewidth=4, label="fixed root triangles"),
+            plt.Line2D([0], [0], color="#c47b2b", linewidth=4, label="moving tip triangles"),
+            plt.Line2D([0], [0], color="#7a2f2a", label="open boundary"),
+            plt.Line2D([0], [0], color="#a33b32", linestyle=(0, (1.2, 1.0)), label="uncovered root and tip span"),
+        ],
+        loc="lower center",
+        ncol=2,
+        frameon=False,
+        fontsize=8,
+        bbox_to_anchor=(0.5, 0.02),
+        borderaxespad=0.0,
+    )
+    close.subplots_adjust(left=0.08, right=0.98, top=0.88, bottom=0.16, hspace=0.42, wspace=0.28)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    assembly.savefig(output_dir / "assembly_view.png", dpi=140)
+    close.savefig(output_dir / "hinge_closeup.png", dpi=140)
+    plt.close(assembly)
+    plt.close(close)
+
+
+def write_interblade_pair_diagnostic(repository_root: Path, output_dir: Path) -> dict[str, object]:
+    before = _require_original_bytes(repository_root)
+    record = build_interblade_pair_diagnostic(repository_root)
+    stored = json.loads(_canonical(record))
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "interblade_pair_diagnostic.json").write_text(_canonical(stored) + "\n", encoding="utf-8")
+    (output_dir / "interblade_pair_diagnostic.md").write_text(
+        render_interblade_pair_report(stored),
+        encoding="utf-8",
+    )
+    bundle, trial, _draft, parts = _retained_parts(repository_root)
+    write_assembly_views(parts, bundle, trial["radius_m"], output_dir)
+    if _original_bytes(repository_root) != before:
+        raise ValueError("The diagnostic writer changed an original surface artifact.")
+    return stored
+
+
 def main() -> None:
     root = Path(__file__).resolve().parents[1]
-    write_chord_surface_study(root, root / "reports" / "chord_surface_50mm_screening")
+    write_interblade_pair_diagnostic(root, root / "reports" / "chord_surface_50mm_screening")
 
 
 if __name__ == "__main__":
