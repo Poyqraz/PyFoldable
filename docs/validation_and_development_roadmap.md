@@ -706,3 +706,29 @@ no source/surface/BEM/FEA/trajectory execution or freeze is authorized by this
 documentation proposal. External CAD/STEP is optional. 13-inch source conventions
 remain separate from the 250 mm project baseline. Broader strength evidence and
 physical gates remain unchanged; no ADR-009 acceptance or qualification promotion.
+
+## 2026-10-15 centerline hinge screening and pending surface verification
+
+Completed geometric screening, still not clearance or qualification:
+
+- PR #99, head `3db6b8909aa3e929a557699d98593fccb3fe8c4a`, binds the 250 mm
+  schema-example parent. Canonical SHA-256
+  `1a149afec4cb192703a597e86717e5040d15e3c7fcb1697b4898ea3d26b6eada`.
+  Joint gap, step, misalignment, hardware, and tolerances remain absent.
+- PR #100, head `56a3b52a439c408cbdd13ae3baf8c43fa577bf71`, compares the
+  existing 100 mm and 50 mm stations at 0, -90, and -180 deg. The 100 mm
+  necessary centerline bound is 200 mm. The 50 mm full stow intersects the
+  hub. Neither result selects a hinge.
+- The 50 mm intermediate-fold follow-up keeps that archived study. Its
+  unrounded centerline interval is about (-158.899803975907 deg,
+  -115.46756014247238 deg]. The displayed roots -115.47 deg and -158.90 deg
+  are half-up rounding to 0.01 deg. The envelope root is included and the
+  contact root is excluded. Poses -120, -135, and -150 deg are proposed
+  alternatives only. The canonical -180 deg collision and the missing
+  hub-to-tip station coverage remain on every pose.
+
+Pending, and not implied by the centerline interval: a finite-surface
+clearance study. It still needs chord-bearing surfaces, the absent joint
+thickness and hardware, explicit root and tip gap treatment, both blade
+surfaces and the hub, and a declared GEOM tolerance. No provider, BEM, CFD,
+FEA, transient, or qualification was run for this screening.

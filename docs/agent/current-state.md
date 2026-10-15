@@ -542,3 +542,13 @@ model choices/pending evidence. No surface/solver execution, freeze or strength
 acceptance; external CAD/STEP remains optional. 13-inch and 250 mm scenarios stay
 separate. PR #81/#84/#91 and C2V-09 unchanged; `physical_qualification=false`,
 ADR-009 unaccepted, unknown clearance/physical gates preserved.
+
+## 2026-10-15 centerline screening is not surface verification
+
+PR #100 at `56a3b52a439c408cbdd13ae3baf8c43fa577bf71` completed the 100 mm and
+50 mm centerline comparison on the PR #99 parent
+`1a149afec4cb192703a597e86717e5040d15e3c7fcb1697b4898ea3d26b6eada`. The 50 mm
+intermediate-fold note keeps the canonical -180 deg hub collision and the
+missing station coverage. A partial-fold centerline interval is not surface
+clearance, controlled folding, or a selected hinge. Finite-surface clearance
+remains pending. `physical_qualification=false`.
