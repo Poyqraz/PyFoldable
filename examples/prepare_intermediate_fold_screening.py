@@ -38,7 +38,23 @@ REQUIREMENT_M = 0.140
 STATION_RATIOS = (0.20, 0.40, 0.60, 0.80, 0.98)
 REPORT_ANGLES_DEG = (-120.0, -135.0, -150.0)
 CANONICAL_STOW_DEG = -180.0
+# Slightly less folded than the envelope root. The 1e-9 m audit rule can still
+# pass here; analytic membership must not.
+TOLERANCE_WITNESS_DEG = -115.46756004247239
 AUDIT_TOLERANCE_M = max(1.0e-9, (DIAMETER_M / 2.0) * 1.0e-9)
+_PATH_MINIMUM_PROOF = (
+    "From deployment at 0 deg to -90 deg, the perpendicular foot lies before the "
+    "hinge, so the closest point on the movable centerline is the hinge and hub "
+    "clearance is constant at hinge radius minus hub radius. From -90 deg to "
+    "-180 deg, t = -hinge*cos(theta) stays on the 75 mm segment because the hinge "
+    "radius is smaller than the tip length, and clearance is -hinge*sin(theta) - hub. "
+    "Its derivative -hinge*cos(theta) is positive on that interval, so clearance "
+    "increases as theta increases. The minimum from deployment to a stop is "
+    "therefore the clearance at that stop. That continuous-path minimum is a "
+    "different quantity from the instantaneous clearance at another angle and "
+    "from the canonical full-stow diagnostic, which remains the separate -180 deg "
+    "path finding."
+)
 
 
 def _canonical(value: object) -> str:
@@ -88,7 +104,28 @@ def _derived_angles() -> dict[str, float]:
     }
 
 
-def _audit(angle_deg: float) -> dict[str, object]:
+def _analytic_hub_clearance_m(angle_deg: float) -> float:
+    """Movable-centerline hub clearance from the closed-form segment distance.
+
+    The formula is the perpendicular distance only while the foot stays on the
+    segment. This hinge satisfies that from -90 deg through -180 deg because
+    the hinge radius is smaller than the tip length.
+    """
+    theta = math.radians(angle_deg)
+    length = DIAMETER_M / 2.0 - HINGE_M
+    foot = -HINGE_M * math.cos(theta)
+    if angle_deg > -90.0:
+        if foot > 1.0e-12:
+            raise ValueError("Deployed-side foot is not at the hinge.")
+        return HINGE_M - HUB_M
+    if foot < -1.0e-12 or foot > length:
+        raise ValueError(
+            "Perpendicular foot leaves the movable segment; the closed form does not apply."
+        )
+    return -HINGE_M * math.sin(theta) - HUB_M
+
+
+def _audit(angle_deg: float, derived: dict[str, float]) -> dict[str, object]:
     audit = build_mechanism_geometry_audit(
         MechanismGeometryInputs(
             diameter_m=DIAMETER_M,
@@ -105,10 +142,17 @@ def _audit(angle_deg: float) -> dict[str, object]:
     mapped["instant_hub_clearance_strictly_positive"] = (
         mapped["hub_centerline_clearance_m"] > 0.0
     )
+    mapped["tolerance_based_envelope_diagnostic"] = mapped[
+        "current_envelope_requirement_met"
+    ]
     mapped["inside_partial_fold_interval"] = (
-        mapped["current_envelope_requirement_met"]
-        and mapped["instant_hub_clearance_strictly_positive"]
+        derived["contact_deg"] < angle_deg <= derived["envelope_deg"]
     )
+    analytic_clearance = _analytic_hub_clearance_m(angle_deg)
+    if abs(analytic_clearance - mapped["hub_centerline_clearance_m"]) > 1.0e-12:
+        raise ValueError("Analytic hub clearance does not match the geometry audit.")
+    mapped["analytic_hub_clearance_m"] = analytic_clearance
+    mapped["deployment_to_stop_minimum_hub_clearance_m"] = analytic_clearance
     return mapped
 
 
@@ -121,23 +165,36 @@ def build_intermediate_fold_study(repository_root: Path) -> dict[str, object]:
     if archived["parent"]["canonical_sha256"] != ACCEPTED_PARENT_SHA256:
         raise ValueError("Archived study parent identity changed.")
     derived = _derived_angles()
-    envelope_audit = _audit(derived["envelope_deg"])
-    contact_audit = _audit(derived["contact_deg"])
+    envelope_audit = _audit(derived["envelope_deg"], derived)
+    contact_audit = _audit(derived["contact_deg"], derived)
+    witness = _audit(TOLERANCE_WITNESS_DEG, derived)
     if abs(envelope_audit["centerline_envelope_diameter_m"] - REQUIREMENT_M) > 1.0e-12:
         raise ValueError("Derived envelope angle does not meet the audit diameter.")
     if abs(contact_audit["hub_centerline_clearance_m"]) > 1.0e-9:
         raise ValueError("Derived contact angle is not a numerical zero clearance.")
     if contact_audit["instant_hub_clearance_strictly_positive"]:
         raise ValueError("Contact angle must be excluded from the open interval.")
-    reported = [_audit(angle) for angle in REPORT_ANGLES_DEG]
-    canonical = _audit(CANONICAL_STOW_DEG)
+    reported = [_audit(angle, derived) for angle in REPORT_ANGLES_DEG]
+    canonical = _audit(CANONICAL_STOW_DEG, derived)
     required_reasons = {
         "full_stow_path_intersects_hub",
         "surface_stations_do_not_cover_hub_to_tip",
     }
-    for pose in (*reported, envelope_audit, contact_audit, canonical):
+    for pose in (*reported, envelope_audit, contact_audit, witness, canonical):
         if not required_reasons.issubset(pose["compatibility_reasons"]):
             raise ValueError("A partial-fold record dropped a full-stow or coverage finding.")
+        if pose["deployment_to_stop_minimum_hub_clearance_m"] != pose["analytic_hub_clearance_m"]:
+            raise ValueError("Path minimum must be the closed-form clearance at the stop.")
+    if not envelope_audit["inside_partial_fold_interval"]:
+        raise ValueError("Envelope equality must remain inside the analytic interval.")
+    if contact_audit["inside_partial_fold_interval"]:
+        raise ValueError("First contact must remain outside the analytic interval.")
+    if not witness["tolerance_based_envelope_diagnostic"]:
+        raise ValueError("Witness must pass the legacy tolerance envelope diagnostic.")
+    if witness["inside_partial_fold_interval"]:
+        raise ValueError("Witness must lie outside the analytic interval.")
+    if witness["fold_angle_deg"] in REPORT_ANGLES_DEG:
+        raise ValueError("Witness must stay out of the proposed-stop list.")
     return {
         "study_id": "intermediate_fold_50mm_centerline_screening",
         "evidence_class": "nominal_centerline_screening_not_surface_clearance",
@@ -175,22 +232,57 @@ def build_intermediate_fold_study(repository_root: Path) -> dict[str, object]:
                 "Angles more folded than the envelope root, up to but not including "
                 "first contact: (contact_deg, envelope_deg]."
             ),
+            "membership_rule": (
+                "inside_partial_fold_interval is contact_deg < theta <= envelope_deg "
+                "on the unrounded roots. Envelope equality is included. First contact "
+                "is excluded. The tolerance-based envelope diagnostic is a separate field."
+            ),
         },
         "boundary_audits": {
             "envelope_entry": envelope_audit,
             "first_contact": contact_audit,
         },
+        "inert_tolerance_witness": {
+            "role": "inert_regression_not_a_proposed_stop",
+            "fold_angle_deg": TOLERANCE_WITNESS_DEG,
+            "tolerance_based_envelope_diagnostic": witness[
+                "tolerance_based_envelope_diagnostic"
+            ],
+            "inside_partial_fold_interval": witness["inside_partial_fold_interval"],
+            "audit": witness,
+        },
+        "deployment_to_stop_minimum": {
+            "quantity": (
+                "minimum movable-centerline hub clearance on the continuous path "
+                "from 0 deg to the posed stop"
+            ),
+            "proof": _PATH_MINIMUM_PROOF,
+            "established_by": "closed_form_monotonicity",
+            "sampled_poses_are_proof": False,
+        },
         "reported_poses": reported,
         "canonical_full_stow": canonical,
         "distinctions": {
-            "endpoint_envelope": (
-                "At the envelope root the centerline diameter equals 140 mm. "
-                "The audit includes that boundary when the margin is at least -1e-9 m."
+            "analytic_interval": (
+                "inside_partial_fold_interval is membership in (contact_deg, envelope_deg] "
+                "using the unrounded roots."
             ),
-            "path_hub_clearance": (
-                "Instant hub clearance is the current movable centerline. "
-                "full_stow_path_hub_clearance_m stays negative for this hinge at every pose, "
-                "including poses inside the partial-fold interval."
+            "tolerance_based_envelope_diagnostic": (
+                "current_envelope_requirement_met remains the existing audit rule that a "
+                "140 mm margin of at least -1e-9 m passes. That diagnostic is separate "
+                "from analytic interval membership."
+            ),
+            "endpoint_envelope": (
+                "At the unrounded envelope root the centerline diameter equals 140 mm "
+                "and the angle is inside the analytic interval."
+            ),
+            "path_hub_clearance": _PATH_MINIMUM_PROOF,
+            "three_clearances": (
+                "hub_centerline_clearance_m is the clearance at the posed angle. "
+                "deployment_to_stop_minimum_hub_clearance_m is the minimum of that "
+                "clearance on the continuous path from deployment to the posed stop. "
+                "full_stow_path_hub_clearance_m is the canonical full-stow diagnostic "
+                "and stays negative at every pose of this hinge."
             ),
         },
         "surface_clearance_inputs_still_required": [
@@ -242,7 +334,7 @@ def render_intermediate_fold_report(study: dict[str, object]) -> str:
         "That quotient is -0.43 in exact decimal arithmetic. "
         f"Unrounded fold angle: {derived['envelope_deg']!r} deg. "
         f"Rounded half up to 0.01 deg: {derived['envelope_deg_rounded']} deg. "
-        "That root is included: the audit treats a margin of at least -1e-9 m as meeting 140 mm.",
+        "The analytic interval is closed at that unrounded root, so envelope equality is included.",
         "",
         "First contact solves `theta = -pi + asin(0.018 / 0.05)` because the 75 mm segment reaches the hub tangent. "
         f"Unrounded fold angle: {derived['contact_deg']!r} deg. "
@@ -251,24 +343,46 @@ def render_intermediate_fold_report(study: dict[str, object]) -> str:
         "The rounded label is slightly more folded than the root and is not the interval endpoint.",
         "",
         "Open-closed interval of the unrounded roots: (first contact, envelope entry].",
-        "Instant hub clearance can be positive inside that interval while `full_stow_path_intersects_hub` and `surface_stations_do_not_cover_hub_to_tip` remain.",
+        "`inside_partial_fold_interval` follows that predicate. "
+        "`tolerance_based_envelope_diagnostic` keeps the existing audit rule that a 140 mm margin of at least -1e-9 m passes.",
+        "Instant hub clearance can be positive inside the analytic interval while `full_stow_path_intersects_hub` and `surface_stations_do_not_cover_hub_to_tip` remain.",
         "",
-        "## Reported poses",
+        "## Inert tolerance witness",
         "",
-        "These three angles are proposed intermediate-stop alternatives. They do not replace the canonical -180 deg declaration.",
-        "",
-        "| Pose deg | Centerline diameter m | Instant hub clearance m | Envelope met | Strict clearance | Full-stow collision retained | Missing surface retained |",
-        "| --- | --- | --- | --- | --- | --- | --- |",
     ]
+    witness = study["inert_tolerance_witness"]
+    lines.extend(
+        [
+            f"Fold angle {witness['fold_angle_deg']!r} deg is an inert regression, not a proposed stop.",
+            "It sits slightly less folded than the envelope root.",
+            f"Tolerance-based envelope diagnostic: {str(witness['tolerance_based_envelope_diagnostic']).lower()}.",
+            f"Analytic interval membership: {str(witness['inside_partial_fold_interval']).lower()}.",
+            "",
+            "## Deployment-to-stop minimum",
+            "",
+            study["deployment_to_stop_minimum"]["proof"],
+            "The retained value on each proposed stop is that closed-form stop clearance. Sampled poses are not the proof.",
+            f"Canonical full-stow clearance on every pose: {study['canonical_full_stow']['full_stow_path_hub_clearance_m']!r} m.",
+            "",
+            "## Reported poses",
+            "",
+            "These three angles are proposed intermediate-stop alternatives. They do not replace the canonical -180 deg declaration.",
+            "",
+            "| Pose deg | Centerline diameter m | Instant hub clearance m | Deployment-to-stop minimum m | Canonical full-stow clearance m | Analytic interval | Tolerance envelope diagnostic | Full-stow collision retained | Missing surface retained |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        ]
+    )
     for pose in study["reported_poses"]:
         reasons = set(pose["compatibility_reasons"])
         lines.append(
-            "| {angle:.0f} | {diameter!r} | {clearance!r} | {met} | {strict} | {stow} | {surface} |".format(
+            "| {angle:.0f} | {diameter!r} | {instant!r} | {path_min!r} | {full_stow!r} | {member} | {tolerance} | {stow} | {surface} |".format(
                 angle=pose["fold_angle_deg"],
                 diameter=pose["centerline_envelope_diameter_m"],
-                clearance=pose["hub_centerline_clearance_m"],
-                met=str(pose["current_envelope_requirement_met"]).lower(),
-                strict=str(pose["instant_hub_clearance_strictly_positive"]).lower(),
+                instant=pose["hub_centerline_clearance_m"],
+                path_min=pose["deployment_to_stop_minimum_hub_clearance_m"],
+                full_stow=pose["full_stow_path_hub_clearance_m"],
+                member=str(pose["inside_partial_fold_interval"]).lower(),
+                tolerance=str(pose["tolerance_based_envelope_diagnostic"]).lower(),
                 stow=str("full_stow_path_intersects_hub" in reasons).lower(),
                 surface=str("surface_stations_do_not_cover_hub_to_tip" in reasons).lower(),
             )
@@ -281,6 +395,8 @@ def render_intermediate_fold_report(study: dict[str, object]) -> str:
             "",
             f"Centerline diameter {stow['centerline_envelope_diameter_m']!r} m.",
             f"Instant hub clearance {stow['hub_centerline_clearance_m']!r} m.",
+            f"Deployment-to-stop minimum if the stop were -180 deg: {stow['deployment_to_stop_minimum_hub_clearance_m']!r} m.",
+            f"Canonical full-stow clearance {stow['full_stow_path_hub_clearance_m']!r} m.",
             "Reasons: " + ", ".join(stow["compatibility_reasons"]) + ".",
             "This collision finding stays in force if an intermediate stop is later proposed.",
             "",
@@ -317,7 +433,7 @@ def _blade_segments(pose: dict[str, object]) -> tuple[list[tuple[float, float]],
 def write_plan_panels(study: dict[str, object], path: Path) -> None:
     """Draw both opposed centerlines at the reported poses and at -180 deg."""
     poses = list(study["reported_poses"]) + [study["canonical_full_stow"]]
-    figure, axes = plt.subplots(2, 2, figsize=(8.4, 8.2))
+    figure, axes = plt.subplots(2, 2, figsize=(8.8, 9.4))
     requirement = REQUIREMENT_M / 2.0
     for axis, pose in zip(axes.ravel(), poses):
         axis.add_patch(plt.Circle((0.0, 0.0), requirement, fill=False, linestyle="--", color="black", linewidth=0.8))
@@ -333,13 +449,15 @@ def write_plan_panels(study: dict[str, object], path: Path) -> None:
                     [sign * start[0], sign * end[0]],
                     [sign * start[1], sign * end[1]],
                     color="#a33b32",
-                    linestyle=":",
-                    linewidth=1.2,
+                    linestyle=(0, (1.2, 1.0)),
+                    linewidth=2.0,
                 )
         angle = pose["fold_angle_deg"]
         suffix = "canonical stow; collision retained" if angle == CANONICAL_STOW_DEG else "proposed alternative"
         axis.set_title(f"{angle:.0f} deg\n{suffix}", fontsize=9)
         axis.set_aspect("equal")
+        axis.set_xlim(-0.095, 0.095)
+        axis.set_ylim(-0.095, 0.095)
         axis.set_xlabel("x, m", fontsize=8)
         axis.set_ylabel("y, m", fontsize=8)
     figure.suptitle(
@@ -355,14 +473,15 @@ def write_plan_panels(study: dict[str, object], path: Path) -> None:
             plt.Line2D([0], [0], color="#a33b32", linestyle=":", label="uncovered root and tip span"),
         ],
         loc="lower center",
-        ncol=3,
+        ncol=2,
         frameon=False,
-        fontsize=8,
-        bbox_to_anchor=(0.5, -0.02),
+        fontsize=9,
+        bbox_to_anchor=(0.5, 0.02),
+        borderaxespad=0.0,
     )
-    figure.tight_layout()
+    figure.subplots_adjust(left=0.08, right=0.98, top=0.90, bottom=0.16, hspace=0.48, wspace=0.28)
     path.parent.mkdir(parents=True, exist_ok=True)
-    figure.savefig(path, dpi=130)
+    figure.savefig(path, dpi=140)
     plt.close(figure)
 
 

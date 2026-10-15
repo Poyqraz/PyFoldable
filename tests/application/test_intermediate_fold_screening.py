@@ -40,19 +40,45 @@ def test_partial_fold_interval_does_not_clear_the_canonical_stow() -> None:
     assert recorded["derived"]["contact_deg_rounded"] == "-158.90"
     assert recorded["derived"]["envelope_endpoint"] == "included"
     assert recorded["derived"]["contact_endpoint"] == "excluded"
-    assert recorded["boundary_audits"]["envelope_entry"]["inside_partial_fold_interval"] is True
-    assert recorded["boundary_audits"]["first_contact"]["instant_hub_clearance_strictly_positive"] is False
+    envelope = recorded["boundary_audits"]["envelope_entry"]
+    contact = recorded["boundary_audits"]["first_contact"]
+    assert envelope["inside_partial_fold_interval"] is True
+    assert envelope["tolerance_based_envelope_diagnostic"] is True
+    assert contact["inside_partial_fold_interval"] is False
+    assert contact["instant_hub_clearance_strictly_positive"] is False
+    witness = recorded["inert_tolerance_witness"]
+    assert witness["role"] == "inert_regression_not_a_proposed_stop"
+    assert witness["fold_angle_deg"] == -115.46756004247239
+    assert witness["tolerance_based_envelope_diagnostic"] is True
+    assert witness["inside_partial_fold_interval"] is False
+    assert witness["audit"]["tolerance_based_envelope_diagnostic"] is True
+    assert witness["audit"]["inside_partial_fold_interval"] is False
     assert [pose["fold_angle_deg"] for pose in recorded["reported_poses"]] == [-120.0, -135.0, -150.0]
+    assert witness["fold_angle_deg"] not in [pose["fold_angle_deg"] for pose in recorded["reported_poses"]]
+    proof = recorded["deployment_to_stop_minimum"]["proof"]
+    assert recorded["deployment_to_stop_minimum"]["established_by"] == "closed_form_monotonicity"
+    assert recorded["deployment_to_stop_minimum"]["sampled_poses_are_proof"] is False
+    assert "derivative" in proof
     for pose in recorded["reported_poses"]:
         assert pose["inside_partial_fold_interval"] is True
+        assert pose["deployment_to_stop_minimum_hub_clearance_m"] == pose["analytic_hub_clearance_m"]
+        assert pose["deployment_to_stop_minimum_hub_clearance_m"] == pose["hub_centerline_clearance_m"]
+        assert pose["deployment_to_stop_minimum_hub_clearance_m"] > 0.0
+        assert pose["full_stow_path_hub_clearance_m"] < 0.0
+        assert pose["deployment_to_stop_minimum_hub_clearance_m"] != pose["full_stow_path_hub_clearance_m"]
         assert "full_stow_path_intersects_hub" in pose["compatibility_reasons"]
         assert "surface_stations_do_not_cover_hub_to_tip" in pose["compatibility_reasons"]
     stow = recorded["canonical_full_stow"]
     assert stow["fold_angle_deg"] == -180.0
     assert stow["inside_partial_fold_interval"] is False
+    assert stow["deployment_to_stop_minimum_hub_clearance_m"] == stow["analytic_hub_clearance_m"]
     assert "tip_centerline_intersects_hub" in stow["compatibility_reasons"]
     assert "full_stow_path_intersects_hub" in stow["compatibility_reasons"]
     report = REPORT.read_text(encoding="utf-8")
     assert render_intermediate_fold_report(recorded) == report
     assert "Qualified winner: none" in report
+    assert "-115.46756004247239" in report
+    assert "Analytic interval membership: false" in report
+    assert "Tolerance-based envelope diagnostic: true" in report
+    assert "Sampled poses are not the proof." in report
     assert FIGURE.read_bytes().startswith(b"\x89PNG")

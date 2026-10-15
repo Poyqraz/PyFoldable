@@ -549,6 +549,10 @@ PR #100 at `56a3b52a439c408cbdd13ae3baf8c43fa577bf71` completed the 100 mm and
 50 mm centerline comparison on the PR #99 parent
 `1a149afec4cb192703a597e86717e5040d15e3c7fcb1697b4898ea3d26b6eada`. The 50 mm
 intermediate-fold note keeps the canonical -180 deg hub collision and the
-missing station coverage. A partial-fold centerline interval is not surface
-clearance, controlled folding, or a selected hinge. Finite-surface clearance
-remains pending. `physical_qualification=false`.
+missing station coverage. Analytic interval membership is separate from the
+1e-9 m envelope diagnostic. Each proposed stop retains a deployment-to-stop
+minimum hub clearance proved by the closed-form derivative, distinct from the
+instantaneous clearance and from the canonical full-stow finding. A
+partial-fold centerline interval is not surface clearance, controlled
+folding, or a selected hinge. Finite-surface clearance remains pending.
+`physical_qualification=false`.

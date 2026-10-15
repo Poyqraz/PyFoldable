@@ -722,9 +722,18 @@ Completed geometric screening, still not clearance or qualification:
 - The 50 mm intermediate-fold follow-up keeps that archived study. Its
   unrounded centerline interval is about (-158.899803975907 deg,
   -115.46756014247238 deg]. The displayed roots -115.47 deg and -158.90 deg
-  are half-up rounding to 0.01 deg. The envelope root is included and the
-  contact root is excluded. Poses -120, -135, and -150 deg are proposed
-  alternatives only. The canonical -180 deg collision and the missing
+  are half-up rounding to 0.01 deg. Analytic membership is
+  `contact < theta <= envelope` on those unrounded roots: envelope equality
+  is included and first contact is excluded. The existing 1e-9 m envelope
+  diagnostic stays a separate field. At -115.46756004247239 deg that
+  diagnostic passes and analytic membership is false. Poses -120, -135, and
+  -150 deg are proposed alternatives only. Each retains a deployment-to-stop
+  minimum movable-centerline hub clearance equal to the closed-form clearance
+  at that stop. Clearance is constant from 0 deg to -90 deg and increases
+  with theta from -180 deg to -90 deg, so the continuous-path minimum is the
+  stop value. Sampled poses are not that proof. The minimum is separate from
+  the instantaneous clearance at another angle and from the canonical
+  full-stow finding. The canonical -180 deg collision and the missing
   hub-to-tip station coverage remain on every pose.
 
 Pending, and not implied by the centerline interval: a finite-surface
