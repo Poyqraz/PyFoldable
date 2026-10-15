@@ -562,4 +562,8 @@ reports. On the continuous 0 deg to -135 deg path, the four retained
 interblade pairs have separated lower bounds down to
 `0.0004699207959556334` m for the tip/tip pair. That is not full propeller
 clearance. The original own-root/tip rows stay UNKNOWN, coverage stays
-incomplete, and no stop or hinge is selected.
+incomplete, and no stop or hinge is selected. Those four bounds cover only
+the synchronous 0 deg to -135 deg interblade path. The first assembly
+figures are XY projections. Oblique 3D views and hinge XZ/YZ views show the
+same triangles. The deployed shared boundary is the duplicated hinge
+section. Projected overlap is not a contact or separation result.

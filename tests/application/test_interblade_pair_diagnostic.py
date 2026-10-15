@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import runpy
 from pathlib import Path
 
@@ -118,3 +119,42 @@ def test_diagnostic_calls_each_interblade_pair_once(monkeypatch) -> None:
     ]
     assert all(isinstance(call["controls"], ClearanceControls) for call in calls)
     assert record["aggregate_used"]["pair_calls"] == 4
+
+
+def _point_set(part, angle_deg: float) -> set[tuple[float, float, float]]:
+    return {
+        tuple(round(coord, 9) for coord in point)
+        for triangle in _SCRIPT["_posed_triangles"](part, math.radians(angle_deg))
+        for point in triangle
+    }
+
+
+def test_spatial_views_keep_the_numerical_record_and_the_shared_boundary(monkeypatch) -> None:
+    module = build_interblade_pair_diagnostic.__globals__
+
+    def _forbidden(*_args, **_kwargs):
+        raise AssertionError("clearance was rerun")
+
+    monkeypatch.setitem(module, "pair_clearance", _forbidden)
+    monkeypatch.setitem(module, "run_surface_clearance", _forbidden)
+    before = _hashes()
+    json_bytes = DIAGNOSTIC.read_bytes()
+    module["write_spatial_views"](ROOT, DIRECTORY)
+    module["refresh_interblade_report"](ROOT, DIRECTORY)
+    assert _hashes() == before
+    assert DIAGNOSTIC.read_bytes() == json_bytes
+    report = REPORT.read_text(encoding="utf-8")
+    assert report == render_interblade_pair_report(json.loads(json_bytes))
+    assert "XY projections" in report
+    assert "copies the hinge station twice" in report
+    assert "not a contact finding" in report
+    assert (DIRECTORY / "assembly_oblique.png").read_bytes().startswith(b"\x89PNG")
+    assert (DIRECTORY / "hinge_region_views.png").read_bytes().startswith(b"\x89PNG")
+    _bundle, _trial, _draft, parts = module["_retained_parts"](ROOT)
+    lookup = {part.name: part for part in parts}
+    assert _point_set(lookup["blade_1_root"], 0.0) == _point_set(lookup["blade_1_root"], -135.0)
+    assert _point_set(lookup["blade_1_tip"], 0.0) != _point_set(lookup["blade_1_tip"], -135.0)
+    shared_deployed = _point_set(lookup["blade_1_root"], 0.0) & _point_set(lookup["blade_1_tip"], 0.0)
+    shared_folded = _point_set(lookup["blade_1_root"], -135.0) & _point_set(lookup["blade_1_tip"], -135.0)
+    assert len(shared_deployed) > 10
+    assert len(shared_folded) < len(shared_deployed)

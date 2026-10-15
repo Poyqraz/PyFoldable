@@ -37,4 +37,12 @@ Pair calls: 4
 | blade_1_tip | blade_2_root | separated | separated | 9 | 0 | 1 | 0.00619576112130861 |  | continuous conservative mesh bounds against mesh surface |
 | blade_1_tip | blade_2_tip | separated | separated | 7629 | 2048 | 3 | 0.0004699207959556334 |  | continuous conservative mesh bounds against mesh surface |
 
-The JSON file retains every interval. A separated row is a continuous lower bound between those two retained triangle sets only. It does not close the original own-root/tip result, the missing station span, or full propeller clearance.
+The JSON file retains every interval. A separated row is a continuous lower bound between those two retained triangle sets on the synchronous path from 0 deg to -135 deg. It leaves the original own-root/tip result UNKNOWN, leaves the station span incomplete, and leaves full_propeller_clearance null.
+
+## Views and the deployed shared boundary
+
+assembly_view.png and hinge_closeup.png are XY projections of the retained triangles. assembly_oblique.png is the oblique 3D assembly of both blades at 0, -120, -135 and -150 deg. hinge_region_views.png adds, for the blade 1 hinge, an oblique view and XZ and YZ orthographic views at those same angles.
+
+The preview mesh copies the hinge station twice, once onto the fixed root and once onto the moving tip. At 0 deg the tip rotation is the identity, so those copies occupy one section. That coincidence is the deployed shared boundary of the open mesh.
+
+A nonzero fold rotates only the moving copy about the hinge pivot's z axis. The fixed copy stays in place. Where an XY projection shows the tip outline crossing the root outline, that crossing is a projection. It is not a contact finding and it is not a separation finding. The own-root/tip queries remain UNKNOWN. No joint relief, offset, hardware, endcap, or permitted-contact exclusion is added. Hub height remains absent; the drawn circle is the retained hub radius.

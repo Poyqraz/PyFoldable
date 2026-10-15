@@ -756,3 +756,10 @@ node comparisons and 2048 feature tests. These bounds are only between those
 retained triangle sets. The original -135 deg own-root/tip rows stay
 UNKNOWN, station coverage stays incomplete, and `full_propeller_clearance`
 stays null. No stop or hinge is selected. `physical_qualification=false`.
+The four separated bounds cover only that synchronous 0 deg to -135 deg
+interblade path. `assembly_view.png` and `hinge_closeup.png` remain XY
+projections. Oblique assemblies and hinge XZ/YZ views use the same retained
+triangles. The deployed shared boundary is the duplicated hinge-station
+copy. An overlap in an XY projection is not contact evidence and not
+separation evidence. No joint relief, offset, hardware, or permitted-contact
+exclusion is added.

@@ -22,7 +22,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.collections import PolyCollection
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from matplotlib.ticker import FormatStrFormatter, MaxNLocator
+from mpl_toolkits.mplot3d.art3d import Line3DCollection, Poly3DCollection
 
 from pyfoldable import __version__
 from pyfoldable.application.blade_stations import parse_station_bundle
@@ -932,7 +933,15 @@ def render_interblade_pair_report(record: dict[str, object]) -> str:
     lines.extend(
         [
             "",
-            "The JSON file retains every interval. A separated row is a continuous lower bound between those two retained triangle sets only. It does not close the original own-root/tip result, the missing station span, or full propeller clearance.",
+            "The JSON file retains every interval. A separated row is a continuous lower bound between those two retained triangle sets on the synchronous path from 0 deg to -135 deg. It leaves the original own-root/tip result UNKNOWN, leaves the station span incomplete, and leaves full_propeller_clearance null.",
+            "",
+            "## Views and the deployed shared boundary",
+            "",
+            "assembly_view.png and hinge_closeup.png are XY projections of the retained triangles. assembly_oblique.png is the oblique 3D assembly of both blades at 0, -120, -135 and -150 deg. hinge_region_views.png adds, for the blade 1 hinge, an oblique view and XZ and YZ orthographic views at those same angles.",
+            "",
+            "The preview mesh copies the hinge station twice, once onto the fixed root and once onto the moving tip. At 0 deg the tip rotation is the identity, so those copies occupy one section. That coincidence is the deployed shared boundary of the open mesh.",
+            "",
+            "A nonzero fold rotates only the moving copy about the hinge pivot's z axis. The fixed copy stays in place. Where an XY projection shows the tip outline crossing the root outline, that crossing is a projection. It is not a contact finding and it is not a separation finding. The own-root/tip queries remain UNKNOWN. No joint relief, offset, hardware, endcap, or permitted-contact exclusion is added. Hub height remains absent; the drawn circle is the retained hub radius.",
             "",
         ]
     )
@@ -1068,6 +1077,251 @@ def write_assembly_views(parts, bundle: dict[str, object], hinge_radius_m: float
     plt.close(close)
 
 
+def _boundary_polylines(triangles: list[list[tuple[float, float, float]]]) -> list[list[tuple[float, float, float]]]:
+    counts: dict[tuple[tuple[float, float, float], tuple[float, float, float]], int] = {}
+    for triangle in triangles:
+        for start, end in zip(triangle, triangle[1:] + triangle[:1]):
+            key = tuple(sorted((
+                tuple(round(float(coord), 12) for coord in start),
+                tuple(round(float(coord), 12) for coord in end),
+            )))
+            counts[key] = counts.get(key, 0) + 1
+    return [[key[0], key[1]] for key, count in counts.items() if count == 1]
+
+
+def _equal_metre_limits(points: list[tuple[float, float, float]]) -> tuple[tuple[float, float], tuple[float, float], tuple[float, float]]:
+    spans = []
+    limits = []
+    for axis in range(3):
+        low = min(point[axis] for point in points)
+        high = max(point[axis] for point in points)
+        if high - low < 1.0e-9:
+            high = low + 1.0e-9
+        spans.append(high - low)
+        limits.append((low, high))
+    pad = 0.04 * max(spans)
+    return tuple((low - pad, high + pad) for low, high in limits)
+
+
+def _apply_equal_metres(axis, limits: tuple[tuple[float, float], tuple[float, float], tuple[float, float]]) -> None:
+    axis.set_xlim(*limits[0])
+    axis.set_ylim(*limits[1])
+    axis.set_zlim(*limits[2])
+    axis.set_box_aspect(tuple(high - low for low, high in limits))
+    axis.set_proj_type("ortho")
+    axis.autoscale(False)
+
+
+def _screen_length(axis, vector: tuple[float, float, float]) -> float:
+    axis.figure.canvas.draw()
+    matrix = axis.get_proj()
+    start = matrix @ (0.0, 0.0, 0.0, 1.0)
+    end = matrix @ (*vector, 1.0)
+    start_xy = start[:2] / start[3]
+    end_xy = end[:2] / end[3]
+    return math.hypot(float(end_xy[0] - start_xy[0]), float(end_xy[1] - start_xy[1]))
+
+
+def _require_orthographic_scale(axis, horizontal: tuple[float, float, float], vertical: tuple[float, float, float], hidden: tuple[float, float, float]) -> None:
+    horizontal_length = _screen_length(axis, horizontal)
+    vertical_length = _screen_length(axis, vertical)
+    hidden_length = _screen_length(axis, hidden)
+    if horizontal_length <= 0.0 or abs(vertical_length - horizontal_length) / horizontal_length > 0.02:
+        raise ValueError("Orthographic view stretches one metre relative to another.")
+    if hidden_length > 0.02 * horizontal_length:
+        raise ValueError("Orthographic view does not look along the requested axis.")
+
+
+def _draw_retained_faces(axis, parts, angle_deg: float) -> None:
+    angle_rad = math.radians(angle_deg)
+    for part in parts:
+        triangles = _posed_triangles(part, angle_rad)
+        axis.add_collection3d(Poly3DCollection(
+            triangles,
+            facecolors="#c47b2b" if part.moving else "#1f4e79",
+            edgecolors="none",
+            alpha=0.78,
+        ))
+        boundaries = _boundary_polylines(triangles)
+        if boundaries:
+            axis.add_collection3d(Line3DCollection(boundaries, colors="#7a2f2a", linewidths=0.7))
+
+
+def _draw_spatial_annotations(axis, parts, bundle: dict[str, object], hinge_radius_m: float, angle_deg: float) -> None:
+    for sign in (1.0, -1.0):
+        for segment in _uncovered_segments(bundle, hinge_radius_m, angle_deg):
+            axis.plot(
+                [sign * segment[0][0], sign * segment[1][0]],
+                [sign * segment[0][1], sign * segment[1][1]],
+                [sign * segment[0][2], sign * segment[1][2]],
+                color="#a33b32",
+                linestyle=(0, (1.2, 1.0)),
+                linewidth=1.4,
+            )
+    hub = bundle["hub_radius"]
+    circle = [
+        (hub * math.cos(2.0 * math.pi * index / 80.0), hub * math.sin(2.0 * math.pi * index / 80.0), 0.0)
+        for index in range(81)
+    ]
+    axis.plot([point[0] for point in circle], [point[1] for point in circle], [point[2] for point in circle], color="0.35", linewidth=0.8)
+    z_low, z_high = axis.get_zlim()
+    for part in parts:
+        if not part.name.endswith("_root"):
+            continue
+        pivot = part.pivot
+        axis.plot([pivot[0], pivot[0]], [pivot[1], pivot[1]], [z_low, z_high], color="#111111", linewidth=1.1)
+        axis.scatter([pivot[0]], [pivot[1]], [pivot[2]], color="#111111", s=12, depthshade=False)
+
+
+def _style_spatial_axis(axis, limits, title: str) -> None:
+    _apply_equal_metres(axis, limits)
+    axis.set_title(title, fontsize=8)
+    axis.set_xlabel("x, m", fontsize=7)
+    axis.set_ylabel("y, m", fontsize=7)
+    axis.set_zlabel("z, m", fontsize=7, labelpad=10)
+    axis.tick_params(labelsize=6)
+    axis.xaxis.set_major_locator(MaxNLocator(nbins=4))
+    axis.yaxis.set_major_locator(MaxNLocator(nbins=4))
+    axis.zaxis.set_major_locator(MaxNLocator(nbins=3))
+    axis.zaxis.set_major_formatter(FormatStrFormatter("%.3f"))
+
+
+def write_spatial_views(repository_root: Path, output_dir: Path) -> None:
+    """Add oblique and orthographic views without rewriting the XY figures or clearance records."""
+    root = repository_root.resolve()
+    before = _original_bytes(root)
+    diagnostic_files = (
+        "interblade_pair_diagnostic.json",
+        "interblade_pair_diagnostic.md",
+        "assembly_view.png",
+        "hinge_closeup.png",
+    )
+    diagnostic_before = {
+        name: (output_dir / name).read_bytes()
+        for name in diagnostic_files
+        if (output_dir / name).is_file()
+    }
+    bundle, trial, _draft, parts = _retained_parts(root)
+    angles = (0.0, -120.0, DIAGNOSTIC_END_DEG, -150.0)
+    posed_points = [
+        point
+        for angle in angles
+        for part in parts
+        for triangle in _posed_triangles(part, math.radians(angle))
+        for point in triangle
+    ]
+    for angle in angles:
+        for sign in (1.0, -1.0):
+            for segment in _uncovered_segments(bundle, trial["radius_m"], angle):
+                posed_points.extend((
+                    (sign * segment[0][0], sign * segment[0][1], sign * segment[0][2]),
+                    (sign * segment[1][0], sign * segment[1][1], sign * segment[1][2]),
+                ))
+    assembly_limits = _equal_metre_limits(posed_points)
+    oblique, oblique_axes = plt.subplots(2, 2, figsize=(10.2, 10.4), subplot_kw={"projection": "3d"})
+    for axis, angle in zip(oblique_axes.ravel(), angles):
+        _draw_retained_faces(axis, parts, angle)
+        _style_spatial_axis(axis, assembly_limits, f"fold angle {angle:.0f} deg\noblique, equal metres")
+        _draw_spatial_annotations(axis, parts, bundle, trial["radius_m"], angle)
+        _apply_equal_metres(axis, assembly_limits)
+        axis.view_init(elev=24, azim=-58)
+    oblique.suptitle(
+        "Retained-triangle assembly in 3D\nBoth blades; equal metres on x, y and z; no vertical exaggeration; hardware absent",
+        fontsize=11,
+    )
+    oblique.legend(
+        handles=[
+            plt.Line2D([0], [0], color="#1f4e79", linewidth=4, label="fixed root triangles"),
+            plt.Line2D([0], [0], color="#c47b2b", linewidth=4, label="moving tip triangles"),
+            plt.Line2D([0], [0], color="#7a2f2a", label="open boundary"),
+            plt.Line2D([0], [0], color="#111111", label="hinge pivot and z axis"),
+            plt.Line2D([0], [0], color="0.35", label="hub radius at z = 0"),
+            plt.Line2D([0], [0], color="#a33b32", linestyle=(0, (1.2, 1.0)), label="uncovered root and tip span"),
+        ],
+        loc="lower center",
+        ncol=2,
+        frameon=False,
+        fontsize=8,
+        bbox_to_anchor=(0.5, 0.01),
+        borderaxespad=0.0,
+    )
+    oblique.subplots_adjust(left=0.04, right=0.90, top=0.88, bottom=0.16, hspace=0.32, wspace=0.22)
+    pivot = next(part.pivot for part in parts if part.name == "blade_1_root")
+    half = abs(pivot[0]) - bundle["hub_radius"]
+    window_points = [
+        point
+        for angle in angles
+        for part in parts
+        for triangle in _posed_triangles(part, math.radians(angle))
+        for point in triangle
+        if abs(point[0] - pivot[0]) <= half and abs(point[1] - pivot[1]) <= half
+    ]
+    window_points.extend((
+        (pivot[0] - half, pivot[1] - half, min(point[2] for point in window_points)),
+        (pivot[0] + half, pivot[1] + half, max(point[2] for point in window_points)),
+    ))
+    hinge_limits = _equal_metre_limits(window_points)
+    hinge_limits = (
+        (pivot[0] - half, pivot[0] + half),
+        (pivot[1] - half, pivot[1] + half),
+        hinge_limits[2],
+    )
+    close, close_axes = plt.subplots(4, 3, figsize=(11.4, 13.6), subplot_kw={"projection": "3d"})
+    view_specs = (
+        ("oblique", 24, -58, None),
+        ("XZ orthographic", 0, -90, ((1.0, 0.0, 0.0), (0.0, 0.0, 1.0), (0.0, 1.0, 0.0))),
+        ("YZ orthographic", 0, 0, ((0.0, 1.0, 0.0), (0.0, 0.0, 1.0), (1.0, 0.0, 0.0))),
+    )
+    for row, angle in enumerate(angles):
+        for column, (label, elev, azim, scale_check) in enumerate(view_specs):
+            axis = close_axes[row, column]
+            _draw_retained_faces(axis, parts, angle)
+            _style_spatial_axis(axis, hinge_limits, f"fold angle {angle:.0f} deg\n{label}, equal metres")
+            _draw_spatial_annotations(axis, parts, bundle, trial["radius_m"], angle)
+            _apply_equal_metres(axis, hinge_limits)
+            axis.view_init(elev=elev, azim=azim)
+            if label.startswith("XZ"):
+                axis.set_yticks([])
+                axis.set_ylabel("")
+                axis.set_xlabel("")
+            elif label.startswith("YZ"):
+                axis.set_xticks([])
+                axis.set_xlabel("")
+                axis.set_ylabel("")
+            if scale_check is not None:
+                _require_orthographic_scale(axis, *scale_check)
+    close.suptitle(
+        "Blade 1 hinge region\nPivot and z rotation axis; open boundaries; missing span marked; no hardware or endcap",
+        fontsize=11,
+    )
+    close.legend(
+        handles=[
+            plt.Line2D([0], [0], color="#1f4e79", linewidth=4, label="fixed root triangles"),
+            plt.Line2D([0], [0], color="#c47b2b", linewidth=4, label="moving tip triangles"),
+            plt.Line2D([0], [0], color="#7a2f2a", label="open boundary"),
+            plt.Line2D([0], [0], color="#111111", label="hinge pivot and z axis"),
+            plt.Line2D([0], [0], color="#a33b32", linestyle=(0, (1.2, 1.0)), label="uncovered root and tip span"),
+        ],
+        loc="lower center",
+        ncol=2,
+        frameon=False,
+        fontsize=8,
+        bbox_to_anchor=(0.5, 0.005),
+        borderaxespad=0.0,
+    )
+    close.subplots_adjust(left=0.04, right=0.96, top=0.92, bottom=0.10, hspace=0.42, wspace=0.22)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    oblique.savefig(output_dir / "assembly_oblique.png", dpi=130)
+    close.savefig(output_dir / "hinge_region_views.png", dpi=120)
+    plt.close(oblique)
+    plt.close(close)
+    if _original_bytes(root) != before:
+        raise ValueError("Spatial views changed an original surface artifact.")
+    for name, payload in diagnostic_before.items():
+        if (output_dir / name).read_bytes() != payload:
+            raise ValueError(f"Spatial views changed {name}.")
+
+
 def write_interblade_pair_diagnostic(repository_root: Path, output_dir: Path) -> dict[str, object]:
     before = _require_original_bytes(repository_root)
     record = build_interblade_pair_diagnostic(repository_root)
@@ -1085,9 +1339,23 @@ def write_interblade_pair_diagnostic(repository_root: Path, output_dir: Path) ->
     return stored
 
 
+def refresh_interblade_report(repository_root: Path, output_dir: Path) -> None:
+    """Rewrite the readable diagnostic report from the retained JSON without a clearance call."""
+    payload = (output_dir / "interblade_pair_diagnostic.json").read_bytes()
+    record = json.loads(payload)
+    (output_dir / "interblade_pair_diagnostic.md").write_text(
+        render_interblade_pair_report(record),
+        encoding="utf-8",
+    )
+    if (output_dir / "interblade_pair_diagnostic.json").read_bytes() != payload:
+        raise ValueError("Refreshing the report changed the numerical diagnostic record.")
+
+
 def main() -> None:
     root = Path(__file__).resolve().parents[1]
-    write_interblade_pair_diagnostic(root, root / "reports" / "chord_surface_50mm_screening")
+    output = root / "reports" / "chord_surface_50mm_screening"
+    refresh_interblade_report(root, output)
+    write_spatial_views(root, output)
 
 
 if __name__ == "__main__":
