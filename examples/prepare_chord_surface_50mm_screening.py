@@ -350,9 +350,9 @@ def build_chord_surface_study(repository_root: Path) -> dict[str, object]:
         "distinctions": {
             "mesh_versus_centerline": (
                 "mesh_envelope_radius_m is the largest radial distance of a preview-mesh "
-                "vertex. centerline_envelope_radius_m is the preview centerline quantity "
-                "and, at the three stops, matches the pinned PR #101 centerline diameter. "
-                "axial_min_m and axial_max_m are the mesh vertex z extent."
+                "vertex. centerline_envelope_radius_m is the preview centerline radius. "
+                "At the three stops that radius equals half the pinned PR #101 centerline "
+                "diameter. axial_min_m and axial_max_m are the mesh vertex z extent."
             ),
             "shared_hinge": (
                 "Attachment exclusions stay zero, so the shared hinge boundary remains "
@@ -539,7 +539,8 @@ def _draw_plan(axis, mesh, bundle, hinge_radius_m: float, angle_deg: float) -> N
     axis.set_ylabel("y, m", fontsize=8)
 
 
-def _draw_section(axis, mesh) -> None:
+def _draw_section(axis, mesh, angle_deg: float) -> None:
+    """Draw one tip section face-on, with one metre having the same screen length on each axis."""
     station = mesh.station_count - 1
     per_section = mesh.section_vertex_count
     start = station * per_section
@@ -558,20 +559,46 @@ def _draw_section(axis, mesh) -> None:
     ys = [point[1] for point in loop]
     zs = [point[2] for point in loop]
     span = max(max(xs) - min(xs), max(ys) - min(ys), max(zs) - min(zs), 1.0e-6)
-    pad = 0.35 * span
-    axis.set_xlim(min(xs) - pad, max(xs) + pad)
-    axis.set_ylim(min(ys) - pad, max(ys) + pad)
-    axis.set_zlim(min(zs) - pad, max(zs) + pad)
-    axis.set_box_aspect((1.0, 1.0, 1.0))
-    axis.view_init(elev=18, azim=-58)
-    axis.set_xlabel("x, m", fontsize=7)
-    axis.set_ylabel("y, m", fontsize=7)
+    pad = 0.2 * span
+    limits = (
+        (min(xs) - pad, max(xs) + pad),
+        (min(ys) - pad, max(ys) + pad),
+        (min(zs) - pad, max(zs) + pad),
+    )
+    axis.set_xlim(*limits[0])
+    axis.set_ylim(*limits[1])
+    axis.set_zlim(*limits[2])
+    axis.set_box_aspect(tuple(high - low for low, high in limits))
+    axis.set_proj_type("ortho")
+    axis.view_init(elev=0, azim=angle_deg)
     axis.set_zlabel("z, m", fontsize=7)
     axis.tick_params(labelsize=7)
+    theta = math.radians(angle_deg)
+    # x and y tick labels share the section plane and overlap. The z ticks keep the metre scale.
+    axis.set_xticks([])
+    axis.set_yticks([])
+    axis.set_xlabel("")
+    axis.set_ylabel("")
+    axis.figure.canvas.draw()
+    matrix = axis.get_proj()
+
+    def screen_length(vector: tuple[float, float, float]) -> float:
+        start_point = matrix @ (0.0, 0.0, 0.0, 1.0)
+        end_point = matrix @ (*vector, 1.0)
+        start_xy = start_point[:2] / start_point[3]
+        end_xy = end_point[:2] / end_point[3]
+        return math.hypot(float(end_xy[0] - start_xy[0]), float(end_xy[1] - start_xy[1]))
+
+    chord_direction = (-math.sin(theta), math.cos(theta), 0.0)
+    thickness_direction = (0.0, 0.0, 1.0)
+    chord_pixels = screen_length(chord_direction)
+    thickness_pixels = screen_length(thickness_direction)
+    if chord_pixels <= 0.0 or abs(thickness_pixels - chord_pixels) / chord_pixels > 0.02:
+        raise ValueError("Tip-station view does not use equal metre scale.")
 
 
 def write_views(repository_root: Path, output_dir: Path) -> None:
-    """Draw the full-rotor plan and equal-scale tip sections at four poses."""
+    """Draw the full-rotor plan and face-on tip sections at four poses."""
     root = repository_root.resolve()
     packet = json.loads((root / PARENT_PACKET).read_text(encoding="utf-8"))
     hinge_study = json.loads((root / HINGE_STUDY).read_text(encoding="utf-8"))
@@ -606,11 +633,11 @@ def write_views(repository_root: Path, output_dir: Path) -> None:
     )
     plan.subplots_adjust(left=0.08, right=0.98, top=0.88, bottom=0.16, hspace=0.46, wspace=0.28)
     surface, surface_axes = plt.subplots(2, 2, figsize=(8.8, 9.0), subplot_kw={"projection": "3d"})
-    for axis, mesh, title in zip(surface_axes.ravel(), meshes, titles):
-        _draw_section(axis, mesh)
+    for axis, mesh, title, angle in zip(surface_axes.ravel(), meshes, titles, angles):
+        _draw_section(axis, mesh, angle)
         axis.set_title(title, fontsize=9)
     surface.suptitle(
-        "Tip-station preview at equal scale\nChord, thickness, and twist; not a solid or a clearance result",
+        "Tip station, face-on orthographic view\nEqual metres on the section axes; not a solid or a clearance result",
         fontsize=11,
     )
     surface.subplots_adjust(left=0.02, right=0.98, top=0.88, bottom=0.06, hspace=0.28, wspace=0.12)
