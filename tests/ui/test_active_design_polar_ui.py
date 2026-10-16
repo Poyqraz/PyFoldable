@@ -139,6 +139,34 @@ def test_unicode_failure_is_controlled_and_clears_previous_result():
     assert RESULT_KEY not in app.session_state
 
 
+def test_profile_switch_keeps_the_saved_comparison_and_does_not_solve(monkeypatch) -> None:
+    import pyfoldable.application.design_analysis as analysis
+    calls = {"n": 0}
+    real = analysis.solve_bem_rotor
+
+    def counted(*args, **kwargs):
+        calls["n"] += 1
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(analysis, "solve_bem_rotor", counted)
+    app = _run(_upload(_app()))
+    assert calls["n"] == 1
+    _widget(app.button, "Aktif sonucu karşılaştırmaya ekle").click().run(timeout=30)
+    assert calls["n"] == 1
+    saved = app.session_state["py03_profile_comparison_records"]
+    assert saved[0]["airfoil_id"] == "NACA2412"
+    assert saved[0]["thrust_n"] is not None
+    monkeypatch.setattr(analysis, "solve_bem_rotor", lambda *args, **kwargs: pytest.fail("selection reran BEM"))
+    _widget(app.selectbox, "Kesit modeli").set_value("NACA0012").run(timeout=30)
+    assert not app.exception
+    assert RESULT_KEY not in app.session_state
+    assert any("reddedildi" in item.value for item in app.error)
+    assert app.session_state["py03_profile_comparison_records"][0]["airfoil_id"] == "NACA2412"
+    assert any(item.label == "Karşılaştırmayı JSON indir" for item in app.download_button)
+    assert any(item.label == "Karşılaştırmayı CSV indir" for item in app.download_button)
+    assert any("BLOCKED" in item.value for item in app.warning)
+
+
 def test_uploaded_source_is_plain_text_not_active_markdown():
     source = "![tracking](https://example.invalid/pixel) <https://example.invalid/>"
     doc = json.loads(_payload())

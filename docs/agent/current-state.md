@@ -542,3 +542,16 @@ model choices/pending evidence. No surface/solver execution, freeze or strength
 acceptance; external CAD/STEP remains optional. 13-inch and 250 mm scenarios stay
 separate. PR #81/#84/#91 and C2V-09 unchanged; `physical_qualification=false`,
 ADR-009 unaccepted, unknown clearance/physical gates preserved.
+
+## 2026-10-16 catalog profile comparison is software-complete and data-blocked
+
+The geometry workspace can select NACA0012, NACA2412, NACA23012, NACA4415,
+or NACA63-412, require a coordinate-matched polar bundle, and explicitly run
+the existing fully-open BEM path. Comparison rows are immutable snapshots.
+Changing the active profile invalidates the active result and does not
+relabel saved rows. Unlike settings are not presented as a controlled
+comparison. Genuine provider comparison remains BLOCKED: no matching
+real-provider bundles are in this tree, and the blocked PR #97 provider
+requests are not repeated. Inert fixtures are labeled as such.
+`physical_qualification=false`. Hinge optimization, mixed-profile surfaces,
+and joint-loss models stay outside this workflow.

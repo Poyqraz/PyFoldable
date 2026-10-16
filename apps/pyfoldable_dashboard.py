@@ -39,7 +39,12 @@ from pyfoldable.application.blade_stations import (
 )
 from pyfoldable.core.config import load_design_config
 from pyfoldable.application.design_analysis import DesignAnalysisArtifact, DesignAnalysisError, prepare_design_analysis
-from pyfoldable.application.polar_upload import MAX_POLAR_UPLOAD_BYTES, PolarRunRequest, prepare_polar_run, run_polar_run
+from pyfoldable.application.polar_upload import (
+    MAX_POLAR_UPLOAD_BYTES, PolarUploadError, PolarRunRequest, prepare_polar_run, run_polar_run,
+)
+from pyfoldable.application.profile_bem_comparison import (
+    comparison_csv, comparison_document, snapshot_failure, snapshot_success,
+)
 from pyfoldable.application.active_design_search import prepare_active_search, run_active_search
 from pyfoldable.application.geometry_search import prepare_geometry_search, run_geometry_search
 from pyfoldable.application.hardware_contract import MAX_HARDWARE_BYTES
@@ -112,6 +117,8 @@ ANALYSIS_RESULT_KEY = "ui04_analysis_result"
 ANALYSIS_REQUEST_KEY = "ui04_analysis_request"
 POLAR_RESULT_KEY = "py03_polar_result"
 POLAR_REQUEST_KEY = "py03_polar_request"
+POLAR_FAILURE_KEY = "py03_polar_failure"
+COMPARISON_KEY = "py03_profile_comparison_records"
 EVIDENCE_KIND_BY_LABEL = {
     "Yayımlanmış CFD referans fixture'ı": "cfd_reference",
     "PR-09 FEA sözleşme raporu": "fea_contract_report",
@@ -151,8 +158,80 @@ def _clear_search_result() -> None:
 def _clear_polar_result(*, clear_search: bool = True) -> None:
     st.session_state.pop(POLAR_RESULT_KEY, None)
     st.session_state.pop(POLAR_REQUEST_KEY, None)
+    st.session_state.pop(POLAR_FAILURE_KEY, None)
     if clear_search:
         _clear_search_result()
+
+
+def _append_comparison_record(record: dict) -> None:
+    saved = list(st.session_state.get(COMPARISON_KEY, []))
+    saved.append(json.loads(json.dumps(record)))
+    st.session_state[COMPARISON_KEY] = saved
+
+
+def _render_profile_comparison(draft: DesignDraftArtifact, *, annulus_count: int, rejection: str | None) -> None:
+    st.subheader("Katalog profilleri · Karşılaştırma kayıtları")
+    st.caption(
+        "Kayıtlar ekleme anındaki profili, poları ve ayarları taşır. Seçiciyi değiştirmek "
+        "eski kaydın profilini değiştirmez. Şaft gücü elektrik gücü değildir. "
+        "Hover itki verimi sıralama ölçütü olarak kullanılmaz."
+    )
+    st.warning(
+        "Gerçek provider karşılaştırması BLOCKED. Depoda beş katalog profili için "
+        "eşleşmiş gerçek polar demeti yoktur. Bu tablo yazılım akışını ve yüklenen "
+        "tabloları kaydeder; physical_qualification=false."
+    )
+    result = st.session_state.get(POLAR_RESULT_KEY)
+    failure = st.session_state.get(POLAR_FAILURE_KEY)
+    if isinstance(result, DesignAnalysisArtifact) and st.button("Aktif sonucu karşılaştırmaya ekle"):
+        _append_comparison_record(snapshot_success(result, evidence_class="caller_supplied_unqualified"))
+        st.session_state[POLAR_RESULT_KEY] = result
+    elif failure is None and rejection and st.button("Başarısız polar denemesini karşılaştırmaya ekle"):
+        _append_comparison_record(snapshot_failure(
+            draft, reason=rejection, annulus_count=int(annulus_count),
+            evidence_class="caller_supplied_unqualified",
+        ))
+    elif isinstance(failure, dict) and st.button("Başarısız BEM denemesini karşılaştırmaya ekle"):
+        _append_comparison_record(failure)
+    records = list(st.session_state.get(COMPARISON_KEY, []))
+    if not records:
+        st.info("Karşılaştırma kaydı yok. Profil seçmek veya sayfayı yenilemek BEM çalıştırmaz.")
+        return
+    document = comparison_document(records, evidence_class="caller_supplied_unqualified")
+    if not document["settings_compatible"]:
+        st.warning(
+            "Kayıtların planform, çalışma koşulu veya çözücü ayarları aynı değil. "
+            "Bu tablo kontrollü bir karşılaştırma değildir: "
+            + ", ".join(document["mismatch_reasons"])
+        )
+    else:
+        st.caption("Yazılım ayarları uyumlu. Gerçek provider kabulü yine BLOCKED.")
+    _render_markdown_table([
+        {
+            "Profil": row["airfoil_id"],
+            "Durum": row["status"],
+            "İtki [N]": row["thrust_n"],
+            "Şaft torku [N·m]": row["torque_nm"],
+            "Şaft gücü [W]": row["shaft_power_w"],
+            "İç yarıçap [m]": row["inner_radius_m"],
+            "Dış yarıçap [m]": row["outer_radius_m"],
+        }
+        for row in document["records"]
+    ])
+    st.download_button(
+        "Karşılaştırmayı JSON indir",
+        data=json.dumps(document, sort_keys=True, ensure_ascii=False, indent=2),
+        file_name="catalog_profile_bem_comparison.json",
+        mime="application/json",
+        key="py03_comparison_json",
+    )
+    st.download_button(
+        "Karşılaştırmayı CSV indir",
+        data=comparison_csv(document),
+        file_name="catalog_profile_bem_comparison.csv",
+        mime="text/csv",
+        key="py03_comparison_csv",
+    )
 
 
 def _render_active_search(base: PolarRunRequest) -> None:
@@ -227,68 +306,79 @@ def _render_active_polar_run(draft: DesignDraftArtifact) -> None:
         "Reynolds, Mach ve Cl/Cd/Cm boyutsuzdur. Dosya/polar sınırı dışında "
         "clamp, extrapolasyon veya otomatik provider/proxy yoktur."
     )
+    rejection = None
+    request = None
     if uploaded is None:
         _clear_polar_result()
         st.info("Aktif taslağı çalıştırmak için koordinat kimliği eşleşen polar JSON yükleyin.")
-        return
-    if uploaded.size > MAX_POLAR_UPLOAD_BYTES:
+    elif uploaded.size > MAX_POLAR_UPLOAD_BYTES:
         _clear_polar_result()
         st.error("Polar reddedildi: dosya 2 MiB sınırını aşıyor.")
-        return
-    try:
-        request = prepare_polar_run(draft, uploaded.getvalue(), annulus_count=annuli)
-    except (DesignAnalysisError, OSError) as exc:
-        _clear_polar_result()
-        st.error(f"Polar/aktif taslak reddedildi: {exc}")
-        return
-    if st.session_state.get(POLAR_REQUEST_KEY) != request.request_sha256:
-        _clear_polar_result(clear_search=False)
-    summary = json.loads(request.summary_json)
-    st.caption(
-        f"Polar sözleşmesi doğrulandı · {summary['airfoil_id']} · "
-        f"{summary['table_count']} tablo / {summary['point_count']} nokta · "
-        f"Yüklenen dosya SHA-256: {summary['source_sha256']}"
-    )
-    _render_markdown_table([
-        {"Re": row["reynolds"], "Mach": row["mach"],
-         "α alt [deg]": math.degrees(row["alpha_min_rad"]),
-         "α üst [deg]": math.degrees(row["alpha_max_rad"])}
-        for row in summary["tables"]
-    ])
-    with st.expander("Beyan edilen polar kaynakları"):
-        st.text("\n".join(dict.fromkeys(row["source"] for row in summary["tables"])))
-    st.caption(
-        "Tablo aralıkları tam BEM sorgu kapsamını kanıtlamaz. Çözücü kapsam dışına "
-        "çıkarsa toplam veya kısmi performans sonucu yayımlanmaz."
-    )
-    if st.button("Aktif taslağı BEM ile çalıştır", type="primary"):
-        _clear_polar_result(clear_search=False)
-        with st.spinner("Aktif taslak, yüklenen polarlarla çözülüyor…"):
-            try:
-                result = run_polar_run(request)
-            except (DesignAnalysisError, OSError) as exc:
-                st.error(f"Aktif BEM kapalı biçimde durduruldu: {exc}")
-            else:
-                st.session_state[POLAR_RESULT_KEY] = result
-                st.session_state[POLAR_REQUEST_KEY] = request.request_sha256
-    _render_active_search(request)
-    result = st.session_state.get(POLAR_RESULT_KEY)
-    if not isinstance(result, DesignAnalysisArtifact):
-        return
-    doc = json.loads(result.report_json)
-    rotor = doc["rotor"]
-    st.subheader("Aktif taslağın tarama sonucu")
-    thrust, torque, power = st.columns(3)
-    thrust.metric("Aktif itki [N]", f"{rotor['thrust_n']:.6g}")
-    torque.metric("Aktif şaft torku [N·m]", f"{rotor['torque_nm']:.6g}")
-    power.metric("Aktif şaft gücü [W]", f"{rotor['shaft_power_w']:.6g}")
-    st.caption(
-        f"{doc['artifact_class']} · {doc['qualification']} · physical_qualification=false · "
-        f"station_span: {rotor['inner_radius_m']:.5g}–{rotor['outer_radius_m']:.5g} m"
-    )
-    st.caption(f"Aktif BEM rapor SHA-256: {result.report_sha256}")
-    st.download_button("Aktif BEM sonucunu JSON indir", data=result.report_json,
-        file_name=result.filename, mime="application/json")
+        rejection = "Polar reddedildi: dosya 2 MiB sınırını aşıyor."
+    else:
+        try:
+            request = prepare_polar_run(draft, uploaded.getvalue(), annulus_count=int(annuli))
+        except (DesignAnalysisError, PolarUploadError, OSError, ValueError) as exc:
+            _clear_polar_result()
+            rejection = str(exc)
+            st.error(f"Polar/aktif taslak reddedildi: {exc}")
+        else:
+            if st.session_state.get(POLAR_REQUEST_KEY) != request.request_sha256:
+                _clear_polar_result(clear_search=False)
+            summary = json.loads(request.summary_json)
+            st.caption(
+                f"Polar sözleşmesi doğrulandı · {summary['airfoil_id']} · "
+                f"{summary['table_count']} tablo / {summary['point_count']} nokta · "
+                f"Yüklenen dosya SHA-256: {summary['source_sha256']}"
+            )
+            _render_markdown_table([
+                {"Re": row["reynolds"], "Mach": row["mach"],
+                 "α alt [deg]": math.degrees(row["alpha_min_rad"]),
+                 "α üst [deg]": math.degrees(row["alpha_max_rad"])}
+                for row in summary["tables"]
+            ])
+            with st.expander("Beyan edilen polar kaynakları"):
+                st.text("\n".join(dict.fromkeys(row["source"] for row in summary["tables"])))
+            st.caption(
+                "Tablo aralıkları tam BEM sorgu kapsamını kanıtlamaz. Çözücü kapsam dışına "
+                "çıkarsa toplam veya kısmi performans sonucu yayımlanmaz."
+            )
+            if st.button("Aktif taslağı BEM ile çalıştır", type="primary"):
+                _clear_polar_result(clear_search=False)
+                with st.spinner("Aktif taslak, yüklenen polarlarla çözülüyor…"):
+                    try:
+                        result = run_polar_run(request)
+                    except (DesignAnalysisError, PolarUploadError, OSError, ValueError) as exc:
+                        st.session_state[POLAR_FAILURE_KEY] = snapshot_failure(
+                            draft, reason=str(exc), annulus_count=int(annuli),
+                            evidence_class="caller_supplied_unqualified",
+                            polar_source_sha256=summary["source_sha256"],
+                        )
+                        st.error(f"Aktif BEM kapalı biçimde durduruldu: {exc}")
+                    else:
+                        st.session_state[POLAR_RESULT_KEY] = result
+                        st.session_state[POLAR_REQUEST_KEY] = request.request_sha256
+            _render_active_search(request)
+            result = st.session_state.get(POLAR_RESULT_KEY)
+            if isinstance(result, DesignAnalysisArtifact):
+                doc = json.loads(result.report_json)
+                rotor = doc["rotor"]
+                st.subheader("Aktif taslağın tarama sonucu")
+                thrust, torque, power = st.columns(3)
+                thrust.metric("Aktif itki [N]", f"{rotor['thrust_n']:.6g}")
+                torque.metric("Aktif şaft torku [N·m]", f"{rotor['torque_nm']:.6g}")
+                power.metric("Aktif şaft gücü [W]", f"{rotor['shaft_power_w']:.6g}")
+                st.caption(
+                    f"{doc['artifact_class']} · {doc['qualification']} · physical_qualification=false · "
+                    f"station_span: {rotor['inner_radius_m']:.5g}–{rotor['outer_radius_m']:.5g} m"
+                )
+                st.caption(
+                    "Aktif sonuç yalnız seçili profil içindir. Şaft gücü elektrik gücü değildir."
+                )
+                st.caption(f"Aktif BEM rapor SHA-256: {result.report_sha256}")
+                st.download_button("Aktif BEM sonucunu JSON indir", data=result.report_json,
+                    file_name=result.filename, mime="application/json")
+    _render_profile_comparison(draft, annulus_count=int(annuli), rejection=rejection)
 
 
 def _render_design_preparation(draft: DesignDraftArtifact) -> None:
