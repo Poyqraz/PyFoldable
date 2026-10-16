@@ -77,6 +77,12 @@ def test_five_catalog_profiles_keep_distinct_geometry_and_one_planform() -> None
     assert planforms == {identities[0]["planform_sha256"]}
     assert conditions == {identities[0]["condition_sha256"]}
     assert all(row["physical_qualification"] is False for row in identities)
+    snapshots = [_success(airfoil_id) for airfoil_id in PROJECT_AIRFOIL_IDS]
+    assert [row["airfoil_id"] for row in snapshots] == list(PROJECT_AIRFOIL_IDS)
+    assert len({row["record_sha256"] for row in snapshots}) == 5
+    assert len({row["geometry_sha256"] for row in snapshots}) == 5
+    assert {row["planform_sha256"] for row in snapshots} == planforms
+    assert all(row["status"] == "success" and row["evidence_class"] == "inert_fixture" for row in snapshots)
 
 
 def test_saved_record_keeps_its_profile_after_the_selector_changes() -> None:
@@ -119,7 +125,16 @@ def test_wrong_coordinate_polar_and_solver_failure_have_no_totals(monkeypatch) -
     failure = snapshot_failure(
         draft, reason="Polar coordinate SHA-256 does not match the active draft.",
         annulus_count=4, evidence_class="inert_fixture",
+        polar_source_sha256="a" * 64,
     )
+    other = snapshot_failure(
+        draft, reason="Polar coordinate SHA-256 does not match the active draft.",
+        annulus_count=4, evidence_class="inert_fixture",
+        polar_source_sha256="b" * 64,
+    )
+    assert failure["record_sha256"] != other["record_sha256"]
+    csv_text = comparison_csv(comparison_document((failure,), evidence_class="inert_fixture"))
+    assert "null,null,null" in csv_text
     assert failure["status"] == "failure"
     assert failure["thrust_n"] is None
     assert failure["torque_nm"] is None

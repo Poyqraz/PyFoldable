@@ -712,11 +712,14 @@ physical gates remain unchanged; no ADR-009 acceptance or qualification promotio
 The geometry page can switch among the five catalog profiles, bind a matching
 polar bundle, and explicitly run the existing fully-open zero-offset BEM
 service. A successful or failed attempt can be appended as an immutable
-comparison snapshot. JSON and CSV exports keep thrust, shaft torque, and
-shaft power. Shaft power is not electrical power, and hover propulsive
-efficiency is not a ranking metric. Unlike planform, condition, or solver
-settings are reported as an uncontrolled set. Optimal hinge selection is not
-a prerequisite for this fully-open screening workflow.
+comparison snapshot. A failed explicit run stays attached to that same polar
+and settings request across rerenders, with null thrust, shaft torque, and
+shaft power, until the profile, polar, geometry, condition, or solver settings
+change. JSON and CSV exports keep thrust, shaft torque, and shaft power.
+Shaft power is not electrical power, and hover propulsive efficiency is not a
+ranking metric. Unlike planform, condition, or solver settings are reported
+as an uncontrolled set. Optimal hinge selection is not a prerequisite for
+this fully-open screening workflow.
 
 Genuine provider comparison remains **BLOCKED**. This tree has no matching
 real-provider polar bundles for the catalog profiles, and Draft PR #97's

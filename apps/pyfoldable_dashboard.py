@@ -169,7 +169,13 @@ def _append_comparison_record(record: dict) -> None:
     st.session_state[COMPARISON_KEY] = saved
 
 
-def _render_profile_comparison(draft: DesignDraftArtifact, *, annulus_count: int, rejection: str | None) -> None:
+def _render_profile_comparison(
+    draft: DesignDraftArtifact,
+    *,
+    annulus_count: int,
+    rejection: str | None,
+    rejection_source_sha256: str | None,
+) -> None:
     st.subheader("Katalog profilleri · Karşılaştırma kayıtları")
     st.caption(
         "Kayıtlar ekleme anındaki profili, poları ve ayarları taşır. Seçiciyi değiştirmek "
@@ -190,6 +196,7 @@ def _render_profile_comparison(draft: DesignDraftArtifact, *, annulus_count: int
         _append_comparison_record(snapshot_failure(
             draft, reason=rejection, annulus_count=int(annulus_count),
             evidence_class="caller_supplied_unqualified",
+            polar_source_sha256=rejection_source_sha256,
         ))
     elif isinstance(failure, dict) and st.button("Başarısız BEM denemesini karşılaştırmaya ekle"):
         _append_comparison_record(failure)
@@ -198,7 +205,12 @@ def _render_profile_comparison(draft: DesignDraftArtifact, *, annulus_count: int
         st.info("Karşılaştırma kaydı yok. Profil seçmek veya sayfayı yenilemek BEM çalıştırmaz.")
         return
     document = comparison_document(records, evidence_class="caller_supplied_unqualified")
-    if not document["settings_compatible"]:
+    if document["mismatch_reasons"] == ["fewer_than_two_records"]:
+        st.caption(
+            "Tek kayıt kontrollü bir karşılaştırma değildir. "
+            "İkinci profili ayrıca çalıştırıp ekleyin."
+        )
+    elif not document["settings_compatible"]:
         st.warning(
             "Kayıtların planform, çalışma koşulu veya çözücü ayarları aynı değil. "
             "Bu tablo kontrollü bir karşılaştırma değildir: "
@@ -307,6 +319,7 @@ def _render_active_polar_run(draft: DesignDraftArtifact) -> None:
         "clamp, extrapolasyon veya otomatik provider/proxy yoktur."
     )
     rejection = None
+    rejection_source_sha256 = None
     request = None
     if uploaded is None:
         _clear_polar_result()
@@ -316,11 +329,13 @@ def _render_active_polar_run(draft: DesignDraftArtifact) -> None:
         st.error("Polar reddedildi: dosya 2 MiB sınırını aşıyor.")
         rejection = "Polar reddedildi: dosya 2 MiB sınırını aşıyor."
     else:
+        payload = uploaded.getvalue()
         try:
-            request = prepare_polar_run(draft, uploaded.getvalue(), annulus_count=int(annuli))
+            request = prepare_polar_run(draft, payload, annulus_count=int(annuli))
         except (DesignAnalysisError, PolarUploadError, OSError, ValueError) as exc:
             _clear_polar_result()
             rejection = str(exc)
+            rejection_source_sha256 = hashlib.sha256(payload).hexdigest()
             st.error(f"Polar/aktif taslak reddedildi: {exc}")
         else:
             if st.session_state.get(POLAR_REQUEST_KEY) != request.request_sha256:
@@ -354,10 +369,23 @@ def _render_active_polar_run(draft: DesignDraftArtifact) -> None:
                             evidence_class="caller_supplied_unqualified",
                             polar_source_sha256=summary["source_sha256"],
                         )
-                        st.error(f"Aktif BEM kapalı biçimde durduruldu: {exc}")
+                        st.session_state[POLAR_REQUEST_KEY] = request.request_sha256
                     else:
                         st.session_state[POLAR_RESULT_KEY] = result
                         st.session_state[POLAR_REQUEST_KEY] = request.request_sha256
+            stored_failure = st.session_state.get(POLAR_FAILURE_KEY)
+            if isinstance(stored_failure, dict) and not isinstance(
+                st.session_state.get(POLAR_RESULT_KEY), DesignAnalysisArtifact
+            ):
+                st.error(
+                    "Aktif BEM kapalı biçimde durduruldu: "
+                    f"{stored_failure['failure_reason']}"
+                )
+                st.caption(
+                    "Bu başarısızlık yalnız bu polar ve ayar isteğine aittir. "
+                    "Sayfayı yeniden çizmek analizi tekrarlamaz ve toplam uydurmaz. "
+                    "Profil, polar, geometri, koşul veya çözücü ayarı değişince silinir."
+                )
             _render_active_search(request)
             result = st.session_state.get(POLAR_RESULT_KEY)
             if isinstance(result, DesignAnalysisArtifact):
@@ -378,7 +406,10 @@ def _render_active_polar_run(draft: DesignDraftArtifact) -> None:
                 st.caption(f"Aktif BEM rapor SHA-256: {result.report_sha256}")
                 st.download_button("Aktif BEM sonucunu JSON indir", data=result.report_json,
                     file_name=result.filename, mime="application/json")
-    _render_profile_comparison(draft, annulus_count=int(annuli), rejection=rejection)
+    _render_profile_comparison(
+        draft, annulus_count=int(annuli), rejection=rejection,
+        rejection_source_sha256=rejection_source_sha256,
+    )
 
 
 def _render_design_preparation(draft: DesignDraftArtifact) -> None:

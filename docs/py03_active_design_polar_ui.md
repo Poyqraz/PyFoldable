@@ -91,9 +91,34 @@ out-of-range queries stop without clamping, extrapolation or partial totals.
 
 Only the explicit button solves. Rerenders do not solve again. Draft, upload or
 annulus changes remove old output/downloads; so do invalid geometry, missing or
-invalid upload, preparation failure and failed reruns. Results are session-only,
-without config/repository/report writes. UI reports shaft torque/power, not
-hinge torque or battery power.
+invalid upload, preparation failure and failed reruns. A failed explicit run
+remains the active failure for that same request until one of those inputs
+changes, and it can be appended without inventing thrust, shaft torque, or
+shaft power. Results are session-only, without config/repository/report writes.
+UI reports shaft torque/power, not hinge torque, electrical power, or battery
+power. Hover propulsive efficiency is not a ranking metric.
+
+## Catalog comparison snapshots
+
+The same geometry page and the same "Kesit modeli" selector cover NACA0012,
+NACA2412, NACA23012, NACA4415, and NACA63-412. There is no second solver.
+"Aktif sonucu karşılaştırmaya ekle" copies the current explicit result into
+`py03_profile_comparison_records`. Each copy keeps the profile, coordinate
+hash, draft hash, geometry hash, polar-source hash, settings, status, and
+radial elements from the moment it was added. Shared planform, condition, and
+solver-setting hashes are separate, so a different airfoil is not treated as
+the same geometry. Later selector changes do not rewrite saved rows.
+
+JSON and CSV downloads are `catalog_profile_bem_comparison`. CSV writes the
+token `null` for an absent total so a blank cell is not read as zero. A
+rejected upload keeps the SHA-256 of the uploaded bytes on its failure row.
+Unlike planform,
+condition, or settings are an uncontrolled set and are not normalized. The
+export's `performance_comparison` stays false while this tree has no matching
+real-provider bundles. Inert and caller-supplied tables exercise the software
+workflow only. `physical_qualification` stays false, and no qualified winner
+is selected. Optimal hinge selection is not a prerequisite for this
+fully-open path.
 
 The 140 mm folding conflict, external-data gates and unknown material/structural
 constraints remain. No 85% thrust retention or matched-condition denominator is

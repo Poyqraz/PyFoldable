@@ -292,7 +292,7 @@ def comparison_csv(document: Mapping[str, object]) -> str:
         row = {"record_sha256": record["record_sha256"]}
         for field in _SUMMARY_FIELDS:
             value = record[field]
-            row[field] = "" if value is None else value
+            row[field] = "null" if value is None else value
         row["settings_compatible"] = document["settings_compatible"]
         row["software_controlled_comparison"] = document["software_controlled_comparison"]
         row["performance_comparison"] = document["performance_comparison"]
