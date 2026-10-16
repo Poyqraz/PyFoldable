@@ -729,3 +729,12 @@ the conditional first query. The existing Re 200000 NACA0012 XFOIL and
 NeuralFoil captures remain real and coverage-incompatible. Capture receipts
 are written before XFOIL's temporary directory is removed. The probe stays
 unexecuted. Genuine comparison remains UNESTABLISHED.
+
+Correction: text that said the adapter already stopped before the next cell
+overstated enforcement. The manifest does not launch cells or apply that stop.
+`run_declared_probe` is the enforcement point: at most eight ordered cells,
+one attempt, 90 s, 37 descending angles, no retry, no INIT, and no BEM call.
+A failed, partial, undecodable, or evidence-incomplete cell prevents the next
+launch. Declared XFOIL source and compiler flags remain a build requirement,
+not verified provenance of the executable that ran. The genuine probe is still
+unexecuted. Genuine comparison remains UNESTABLISHED. `physical_qualification=false`.

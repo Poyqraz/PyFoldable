@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -31,8 +32,13 @@ from pyfoldable.core.bem_rotor import (
 )
 from pyfoldable.core.polar import PolarInterpolationError, PolarQueryResult
 from pyfoldable.core.profile_catalog import PROJECT_AIRFOIL_IDS, load_project_airfoil
-from pyfoldable.core.providers import PolarGenerationRequest, PolarProviderCapabilityError
+from pyfoldable.core.providers import (
+    PolarGenerationRequest,
+    PolarGenerationResult,
+    PolarProviderCapabilityError,
+)
 from pyfoldable.providers.neuralfoil import _CAPABILITIES as NEURALFOIL_CAPABILITIES
+from pyfoldable.providers.xfoil import _build_command_script
 
 
 SOURCE_DESIGN = "configs/designs/TIP_HINGED_250_CANONICAL.toml"
@@ -555,18 +561,26 @@ def _experiment(
             "No point is discarded, clamped, or replaced. Coordinate hashes match the catalog."
         ),
         "cell_execution": (
-            "The existing adapter submits one cell as one complete script. After a failed "
-            "cell, stop before launching the next cell. This does not interrupt the "
-            "running script at the first bad angle."
+            "run_declared_probe is the enforcement point. It launches at most eight "
+            "declared cells, one attempt each, and stops before the next cell after "
+            "a failed cell. The adapter still submits each launched cell as one complete "
+            "script and does not interrupt that script at the first bad angle. A manifest "
+            "alone does not enforce these limits, and this diagnostic does not launch the probe."
         ),
         "capture": (
-            "XfoilProvider.generate(capture_dir=...) writes the receipt before temporary-directory "
-            "cleanup, including timeout and exception paths. Omitting capture_dir preserves "
-            "the default provider result."
+            "XfoilProvider.generate(capture_dir=...) writes raw stdout, stderr, and polar "
+            "bytes before temporary-directory cleanup, including timeout, decode failure, "
+            "and exception paths. Replacement-decoded diagnostic text is not those raw bytes. "
+            "Executable identity is the file hash immediately before and after the subprocess "
+            "call; a missing or changed hash blocks evidence readiness even when the parsed "
+            "output is usable. Declared source and compiler flags remain an unverified build "
+            "requirement. Omitting capture_dir preserves the default provider result."
         ),
         "stop_conditions": [
-            "After a cell returns any not_converged, rejected, timeout, nonzero exit, or malformed output, do not launch the next cell.",
+            "run_declared_probe stops before the next cell after not_converged, timeout, nonzero exit, malformed output, undecodable output, missing evidence, executable mismatch, persistence failure, or an unexpected exception.",
+            "A partial ledger does not authorize continuation.",
             "Do not retry, change ITER, send INIT, clamp, substitute coefficients, or start a BEM call.",
+            "The manifest does not launch cells and does not enforce the stop.",
         ],
         "can_establish": (
             "Whether this declared eight-cell grid, descending order, kinematic Mach and "
@@ -675,6 +689,155 @@ def build_polar_query_feasibility(repository_root: str | Path) -> dict[str, Any]
     return report
 
 
+def declared_probe_requests(
+    experiment: dict[str, Any],
+    airfoils: dict[str, AirfoilDefinition],
+) -> tuple[PolarGenerationRequest, ...]:
+    """Build the eight declared cells without launching a solver."""
+    if experiment.get("experiment_id") != "xfoil_positive_first_potential_image_probe_v1":
+        raise PolarQueryFeasibilityError(
+            "run_declared_probe only builds xfoil_positive_first_potential_image_probe_v1."
+        )
+    if experiment.get("bem_calls") != 0:
+        raise PolarQueryFeasibilityError("The declared probe cannot include a BEM call.")
+    if experiment.get("retry") is not False or experiment.get("attempt_limit_per_call") != 1:
+        raise PolarQueryFeasibilityError("The declared probe allows one attempt per cell and no retry.")
+    if experiment.get("timeout_s") != 90.0:
+        raise PolarQueryFeasibilityError("The declared probe timeout is 90 seconds.")
+    raw_requests = experiment.get("requests")
+    if experiment.get("call_limit") != 8 or not isinstance(raw_requests, list) or len(raw_requests) != 8:
+        raise PolarQueryFeasibilityError("The declared probe launches at most eight cells.")
+    alphas = tuple(experiment["alpha_rad_descending"])
+    if len(alphas) != 37 or any(alphas[index] <= alphas[index + 1] for index in range(36)):
+        raise PolarQueryFeasibilityError("The declared probe uses 37 strictly descending angles.")
+    provider = experiment["provider"]
+    expected = [
+        (profile, mach, reynolds)
+        for profile in ("NACA0012", "NACA2412")
+        for mach in experiment["mach_grid"]
+        for reynolds in experiment["reynolds_grid"]
+    ]
+    actual = [(cell["profile"], cell["mach"], cell["reynolds"]) for cell in raw_requests]
+    if actual != expected:
+        raise PolarQueryFeasibilityError("Declared cell order is not the retained serial order.")
+    requests: list[PolarGenerationRequest] = []
+    for cell in raw_requests:
+        if cell["mach"] <= 0.0:
+            raise PolarQueryFeasibilityError("The declared probe does not request Mach 0.")
+        try:
+            airfoil = airfoils[cell["profile"]]
+        except KeyError as error:
+            raise PolarQueryFeasibilityError(
+                f"Probe airfoil {cell['profile']} was not supplied."
+            ) from error
+        if airfoil_coordinate_sha256(airfoil) != cell["coordinate_sha256"]:
+            raise PolarQueryFeasibilityError("Probe airfoil coordinates do not match the declared cell.")
+        if cell["alpha_count"] != 37 or cell["alpha_rad_first"] != alphas[0] or cell["alpha_rad_last"] != alphas[-1]:
+            raise PolarQueryFeasibilityError("A declared cell does not use the retained descending angle list.")
+        request = PolarGenerationRequest(
+            airfoil=airfoil,
+            alpha_rad=alphas,
+            reynolds=cell["reynolds"],
+            mach=cell["mach"],
+            n_crit=provider["n_crit"],
+            xtr_upper=provider["xtr_upper"],
+            xtr_lower=provider["xtr_lower"],
+            max_iterations=provider["max_iterations"],
+            timeout_s=experiment["timeout_s"],
+            scenario_id=experiment["experiment_id"],
+            options={"repanel": provider["repanel"]},
+        )
+        script = _build_command_script(request, {"repanel": bool(provider["repanel"])})
+        if any(line.strip().upper() == "INIT" or line.strip().upper().startswith("INIT ") for line in script.splitlines()):
+            raise PolarQueryFeasibilityError("The declared probe script contains INIT.")
+        if sum(line.startswith("ALFA ") for line in script.splitlines()) != 37:
+            raise PolarQueryFeasibilityError("The declared probe script does not contain 37 angles.")
+        requests.append(request)
+    return tuple(requests)
+
+
+def run_declared_probe(
+    experiment: dict[str, Any],
+    airfoils: dict[str, AirfoilDefinition],
+    launch: Callable[[PolarGenerationRequest], PolarGenerationResult],
+) -> dict[str, Any]:
+    """Launch the declared cells through an injected provider seam and stop on failure.
+
+    The diagnostic builder does not call this function. A returned stop reason
+    means no later cell was launched. Partial output does not authorize another cell.
+    """
+    requests = declared_probe_requests(experiment, airfoils)
+    cells: list[dict[str, Any]] = []
+    stop_reason: str | None = None
+    for index, request in enumerate(requests):
+        if len(cells) >= 8:
+            stop_reason = "stopped at the eight-launch ceiling"
+            break
+        try:
+            result = launch(request)
+        except Exception as error:
+            cells.append(_probe_cell(index, request, result=None, error=error))
+            stop_reason = "launch failed before a complete evidence-ready cell"
+            break
+        if not isinstance(result, PolarGenerationResult):
+            cells.append(
+                _probe_cell(
+                    index,
+                    request,
+                    result=None,
+                    error=TypeError("launch did not return a polar result"),
+                )
+            )
+            stop_reason = "launch did not return a polar result"
+            break
+        cells.append(_probe_cell(index, request, result=result, error=None))
+        evidence_ready = result.metadata.get("capture_evidence_ready") is True
+        if not result.complete or not evidence_ready:
+            stop_reason = "partial or evidence-incomplete cell does not authorize continuation"
+            break
+    return {
+        "experiment_id": experiment["experiment_id"],
+        "launch_count": len(cells),
+        "bem_calls": 0,
+        "bem_accounting": (
+            "This driver does not call the rotor solver. bem_calls counts driver calls only "
+            "and does not audit work hidden inside the injected launch."
+        ),
+        "timeout_accounting": (
+            "Each launched request carries timeout_s 90. This driver does not start a second "
+            "clock; XfoilProvider.generate enforces that timeout on its subprocess."
+        ),
+        "retries": 0,
+        "attempt_limit_per_call": 1,
+        "timeout_s": 90.0,
+        "alpha_count": 37,
+        "stop_reason": stop_reason,
+        "manifest_enforces_execution": False,
+        "cells": cells,
+    }
+
+
+def _probe_cell(
+    index: int,
+    request: PolarGenerationRequest,
+    *,
+    result: PolarGenerationResult | None,
+    error: BaseException | None,
+) -> dict[str, Any]:
+    return {
+        "index": index,
+        "profile": request.airfoil.id,
+        "mach": request.mach,
+        "reynolds": request.reynolds,
+        "timeout_s": request.timeout_s,
+        "alpha_count": len(request.alpha_rad),
+        "complete": None if result is None else result.complete,
+        "evidence_ready": bool(result is not None and result.metadata.get("capture_evidence_ready") is True),
+        "error_type": None if error is None else type(error).__name__,
+        "error": None if error is None else str(error),
+    }
+
+
 def render_polar_query_feasibility(report: dict[str, Any]) -> str:
     """Render the cause map and the single recommended experiment."""
     rectangle = report["pr97_rectangle"]
@@ -740,11 +903,13 @@ def render_polar_query_feasibility(report: dict[str, Any]) -> str:
         "A Mach 0 corner is not a correlated annulus state. "
         "Starting at +32 deg does not execute the +30.65875 deg conditional first query.",
         "",
-        f"`{experiment['experiment_id']}` is not executed here. It requests {experiment['call_limit']} "
-        "XFOIL cells, 37 descending angles, one 90 s attempt, no retry, no INIT, and no BEM call. "
-        "The adapter submits each cell as one script and stops before the next cell after a failure. "
-        "It does not interrupt a cell at the first bad angle. Mach 0 is not requested, so a "
-        "difference from PR #97 is not evidence about sequencing alone.",
+        f"`{experiment['experiment_id']}` is not executed here. The driver `run_declared_probe` "
+        f"enforces {experiment['call_limit']} XFOIL cells, 37 descending angles, one 90 s attempt, "
+        "no retry, no INIT, and no BEM call. The adapter submits each launched cell as one script "
+        "and does not interrupt that script at the first bad angle. The driver stops before the "
+        "next cell after a failed or partial cell. A manifest alone does not enforce that stop; "
+        "earlier text that attributed the stop to the adapter overstated what the manifest did. "
+        "Mach 0 is not requested, so a difference from PR #97 is not evidence about sequencing alone.",
         "",
         "### Can establish",
         "",

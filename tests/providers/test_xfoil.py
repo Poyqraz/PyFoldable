@@ -67,6 +67,11 @@ def fake_xfoil(tmp_path: Path) -> Path:
             if mode == "malformed":
                 pathlib.Path("polar.txt").write_text("not a polar\n", encoding="utf-8")
                 raise SystemExit(0)
+            if mode == "invalid_utf8":
+                pathlib.Path("polar.txt").write_bytes(b"alpha CL\n\xff\xfe\n")
+                raise SystemExit(0)
+            if mode == "binary_stderr":
+                sys.stderr.buffer.write(b"marker \xff\xfe\n")
 
             alphas = [
                 float(line.split()[1])
@@ -90,6 +95,11 @@ def fake_xfoil(tmp_path: Path) -> Path:
                     f"{alpha:8.4f} {cl:9.5f} {cd:9.6f} 0.005000 -0.02000 0.8000 0.7000"
                 )
             pathlib.Path("polar.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+            if mode == "rewrite_self":
+                target = pathlib.Path(sys.argv[0])
+                target.write_bytes(target.read_bytes() + b"\n# mutated\n")
+            if mode == "unlink_self":
+                pathlib.Path(sys.argv[0]).unlink()
             """
         ).lstrip(),
         encoding="utf-8",
@@ -334,15 +344,27 @@ def test_capture_survives_cleanup_for_success_and_nonconvergence(
     result = provider.generate(polar_request, capture_dir=success_dir)
     receipt = json.loads((success_dir / "capture.json").read_text(encoding="utf-8"))
     assert result.complete
-    assert not Path(receipt["executable"]["path"]).is_relative_to(success_dir)
+    assert result.metadata["capture_evidence_ready"] is True
+    prelaunch = receipt["executable_identity"]["prelaunch"]
+    assert Path(prelaunch["path"]).is_absolute()
+    assert not Path(prelaunch["path"]).is_relative_to(success_dir)
+    assert receipt["executable_identity"]["matched"] is True
+    assert receipt["executable_identity"]["postlaunch"]["sha256"] == prelaunch["sha256"]
+    preimage = (success_dir / "request_preimage.json").read_bytes()
     assert receipt["request_cache_key"] == polar_request.cache_key(provider.identity)
+    assert receipt["request_preimage_sha256"] == __import__("hashlib").sha256(preimage).hexdigest()
+    assert receipt["request_cache_key"] == receipt["request_preimage_sha256"]
     assert receipt["coordinate_sha256"]
     assert receipt["script_sha256"] == __import__("hashlib").sha256((success_dir / "script.txt").read_bytes()).hexdigest()
     assert receipt["declared_build_policy"]["ubuntu_dfsg_package_allowed"] is False
-    assert receipt["executable"]["sha256"]
+    assert receipt["declared_build_policy"]["verified_against_this_executable"] is False
+    assert "does not prove" in receipt["executable_identity"]["limits"]
     assert receipt["polar_file"]["status"] == "present"
+    assert receipt["polar_decoding_status"] == "decoded"
     assert receipt["points"][0]["status"] == "converged"
-    assert receipt["solver_success"] is True
+    assert receipt["evidence_ready"] is True
+    assert receipt["solver_output_usable"] is True
+    assert receipt["stream_text_is_not_raw_bytes"] is True
     assert "ALFA" in (success_dir / "script.txt").read_text(encoding="utf-8")
 
     monkeypatch.setenv("FAKE_XFOIL_MODE", "partial")
@@ -350,9 +372,12 @@ def test_capture_survives_cleanup_for_success_and_nonconvergence(
     partial = provider.generate(polar_request, capture_dir=partial_dir)
     partial_receipt = json.loads((partial_dir / "capture.json").read_text(encoding="utf-8"))
     assert partial.points[1].status == "not_converged"
+    assert partial.metadata["capture_evidence_ready"] is False
     assert partial_receipt["points"][1]["status"] == "not_converged"
     assert partial_receipt["points"][1]["cl"] is None
-    assert partial_receipt["solver_success"] is False
+    assert partial_receipt["evidence_ready"] is False
+    assert partial_receipt["solver_output_usable"] is False
+    assert partial_receipt["executable_identity"]["matched"] is True
     assert partial_receipt["polar_parsed"] is True
 
 
@@ -379,7 +404,8 @@ def test_capture_does_not_invent_points_for_timeout_exit_or_malformed_output(
     assert {point["status"] for point in timeout_receipt["points"]} == {"unavailable"}
     assert all(point["cl"] is None for point in timeout_receipt["points"])
     assert timeout_receipt["stdout"]["status"] in {"empty", "partial", "unavailable"}
-    assert timeout_receipt["solver_success"] is False
+    assert timeout_receipt["evidence_ready"] is False
+    assert timeout_receipt["polar_decoding_status"] == "not_attempted"
 
     monkeypatch.setenv("FAKE_XFOIL_MODE", "nonzero")
     exit_dir = _capture(tmp_path, "nonzero")
@@ -423,3 +449,113 @@ def test_coefficients_are_mapped_from_degrees(
         0.01 + 0.0001 * math.degrees(0.1) ** 2,
         abs=1.0e-6,
     )
+
+
+_ADJACENT_REYNOLDS = (26030.624179244653, 26030.624179244656)
+
+
+def test_invalid_utf8_polar_keeps_raw_bytes_and_withholds_coefficients(
+    fake_xfoil: Path,
+    polar_request: PolarGenerationRequest,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("FAKE_XFOIL_MODE", "invalid_utf8")
+    capture_dir = _capture(tmp_path, "invalid-utf8")
+    with pytest.raises(PolarProviderExecutionError, match="could not be decoded as UTF-8"):
+        _provider(fake_xfoil).generate(polar_request, capture_dir=capture_dir)
+
+    raw = (capture_dir / "polar.bin").read_bytes()
+    receipt = json.loads((capture_dir / "capture.json").read_text(encoding="utf-8"))
+    assert raw == b"alpha CL\n\xff\xfe\n"
+    assert receipt["polar_decoding_status"] == "failed"
+    assert receipt["polar_file"]["status"] == "present"
+    assert receipt["polar_file"]["sha256"] == __import__("hashlib").sha256(raw).hexdigest()
+    assert receipt["evidence_ready"] is False
+    assert {point["status"] for point in receipt["points"]} == {"unavailable"}
+    assert all(point["cl"] is None and point["cd"] is None and point["cm"] is None for point in receipt["points"])
+    assert "\ufffd" not in (capture_dir / "capture.json").read_text(encoding="utf-8")
+
+
+def test_binary_streams_stay_bytes_and_replacement_text_is_not_the_raw_capture(
+    fake_xfoil: Path,
+    polar_request: PolarGenerationRequest,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("FAKE_XFOIL_MODE", "binary_stderr")
+    capture_dir = _capture(tmp_path, "binary-stderr")
+    result = _provider(fake_xfoil).generate(polar_request, capture_dir=capture_dir)
+    raw = (capture_dir / "stderr.bin").read_bytes()
+    receipt = json.loads((capture_dir / "capture.json").read_text(encoding="utf-8"))
+    assert raw == b"marker \xff\xfe\n"
+    assert receipt["stderr"]["sha256"] == __import__("hashlib").sha256(raw).hexdigest()
+    assert receipt["stream_text_is_not_raw_bytes"] is True
+    assert "\ufffd" in result.metadata["stderr_tail"]
+    assert "\ufffd" not in (capture_dir / "capture.json").read_text(encoding="utf-8")
+    assert result.metadata["capture_evidence_ready"] is True
+
+
+@pytest.mark.parametrize("mode", ["rewrite_self", "unlink_self"])
+def test_missing_or_changed_executable_blocks_ready_evidence(
+    fake_xfoil: Path,
+    polar_request: PolarGenerationRequest,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mode: str,
+) -> None:
+    monkeypatch.setenv("FAKE_XFOIL_MODE", mode)
+    capture_dir = _capture(tmp_path, mode)
+    with pytest.raises(PolarProviderExecutionError, match="not evidence-ready"):
+        _provider(fake_xfoil).generate(polar_request, capture_dir=capture_dir)
+
+    receipt = json.loads((capture_dir / "capture.json").read_text(encoding="utf-8"))
+    assert receipt["evidence_ready"] is False
+    assert receipt["executable_identity"]["matched"] is False
+    assert receipt["solver_output_usable"] is True
+    assert receipt["points"][0]["cl"] is not None
+    assert (capture_dir / "polar.bin").is_file()
+    assert receipt["declared_build_policy"]["verified_against_this_executable"] is False
+    if mode == "unlink_self":
+        assert receipt["executable_identity"]["postlaunch"]["sha256"] is None
+    else:
+        assert receipt["executable_identity"]["prelaunch"]["sha256"] != receipt["executable_identity"]["postlaunch"]["sha256"]
+
+
+def test_adjacent_reynolds_values_keep_distinct_exact_requests(
+    fake_xfoil: Path,
+    polar_request: PolarGenerationRequest,
+    tmp_path: Path,
+) -> None:
+    import hashlib
+
+    provider = _provider(fake_xfoil)
+    scripts = []
+    preimages = []
+    keys = []
+    for index, reynolds in enumerate(_ADJACENT_REYNOLDS):
+        request = PolarGenerationRequest(
+            airfoil=polar_request.airfoil,
+            alpha_rad=polar_request.alpha_rad,
+            reynolds=reynolds,
+            mach=polar_request.mach,
+        )
+        capture_dir = _capture(tmp_path, f"reynolds-{index}")
+        provider.generate(request, capture_dir=capture_dir)
+        script = (capture_dir / "script.txt").read_text(encoding="utf-8")
+        preimage = (capture_dir / "request_preimage.json").read_bytes()
+        receipt = json.loads((capture_dir / "capture.json").read_text(encoding="utf-8"))
+        digest = hashlib.sha256(preimage).hexdigest()
+        assert digest == request.cache_key(provider.identity)
+        assert digest == receipt["request_cache_key"]
+        assert digest == receipt["request_preimage_sha256"]
+        assert json.loads(preimage)["reynolds"] == reynolds
+        scripts.append(script)
+        preimages.append(preimage)
+        keys.append(digest)
+
+    assert format(_ADJACENT_REYNOLDS[0], ".12g") == format(_ADJACENT_REYNOLDS[1], ".12g")
+    assert "VISC 26030.6241792\n" in scripts[0]
+    assert scripts[0] == scripts[1]
+    assert preimages[0] != preimages[1]
+    assert keys[0] != keys[1]

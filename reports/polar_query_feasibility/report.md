@@ -27,7 +27,7 @@ The current NeuralFoil adapter rejects nonzero Mach. Its author documents compre
 
 The historical rectangle pads the image extrema to -40 deg and +32 deg. The image extrema are about -39.72917 deg and +30.65875 deg. A Mach 0 corner is not a correlated annulus state. Starting at +32 deg does not execute the +30.65875 deg conditional first query.
 
-`xfoil_positive_first_potential_image_probe_v1` is not executed here. It requests 8 XFOIL cells, 37 descending angles, one 90 s attempt, no retry, no INIT, and no BEM call. The adapter submits each cell as one script and stops before the next cell after a failure. It does not interrupt a cell at the first bad angle. Mach 0 is not requested, so a difference from PR #97 is not evidence about sequencing alone.
+`xfoil_positive_first_potential_image_probe_v1` is not executed here. The driver `run_declared_probe` enforces 8 XFOIL cells, 37 descending angles, one 90 s attempt, no retry, no INIT, and no BEM call. The adapter submits each launched cell as one script and does not interrupt that script at the first bad angle. The driver stops before the next cell after a failed or partial cell. A manifest alone does not enforce that stop; earlier text that attributed the stop to the adapter overstated what the manifest did. Mach 0 is not requested, so a difference from PR #97 is not evidence about sequencing alone.
 
 ### Can establish
 

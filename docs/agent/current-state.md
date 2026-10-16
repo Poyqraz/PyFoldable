@@ -563,3 +563,10 @@ profile, or the project infeasible, and its Mach-grid change blocks a
 sequencing-only conclusion. The Re 200000 fixture captures are real,
 promoted separately from their raw review, and do not cover this baseline.
 `physical_qualification=false`. Genuine comparison remains UNESTABLISHED.
+
+Further correction: the adapter does not itself stop the next cell. The
+manifest records the limit, and `run_declared_probe` enforces it: eight cells,
+one 90 s attempt, 37 descending angles, no retry, no INIT, and no BEM call.
+Partial or evidence-incomplete output does not authorize another launch.
+Declared build flags are not verified executable provenance. The genuine probe
+remains unexecuted.

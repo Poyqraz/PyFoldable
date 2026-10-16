@@ -2177,8 +2177,8 @@
     "call_limit": 8,
     "can_establish": "Whether this declared eight-cell grid, descending order, kinematic Mach and Reynolds endpoints, and one-script-per-cell execution produce a complete usable ledger.",
     "cannot_establish": "A genuine two-profile BEM comparison. A failure establishes failure of this grid, sequencing, and execution configuration only. It does not establish infeasibility of the correlated kinematic image, the actual solver path, either profile, or the project. Differences from PR #97 cannot be attributed only to sequencing because the Mach grid also changes. Starting at the padded +32 deg grid angle does not execute the +30.65875 deg conditional first query.",
-    "capture": "XfoilProvider.generate(capture_dir=...) writes the receipt before temporary-directory cleanup, including timeout and exception paths. Omitting capture_dir preserves the default provider result.",
-    "cell_execution": "The existing adapter submits one cell as one complete script. After a failed cell, stop before launching the next cell. This does not interrupt the running script at the first bad angle.",
+    "capture": "XfoilProvider.generate(capture_dir=...) writes raw stdout, stderr, and polar bytes before temporary-directory cleanup, including timeout, decode failure, and exception paths. Replacement-decoded diagnostic text is not those raw bytes. Executable identity is the file hash immediately before and after the subprocess call; a missing or changed hash blocks evidence readiness even when the parsed output is usable. Declared source and compiler flags remain an unverified build requirement. Omitting capture_dir preserves the default provider result.",
+    "cell_execution": "run_declared_probe is the enforcement point. It launches at most eight declared cells, one attempt each, and stops before the next cell after a failed cell. The adapter still submits each launched cell as one complete script and does not interrupt that script at the first bad angle. A manifest alone does not enforce these limits, and this diagnostic does not launch the probe.",
     "executed_by_this_diagnostic": false,
     "experiment_id": "xfoil_positive_first_potential_image_probe_v1",
     "first_query_alpha_rad": [
@@ -2305,8 +2305,10 @@
     ],
     "serial_order": "NACA0012 then NACA2412; within a profile, Mach ascending and Reynolds ascending.",
     "stop_conditions": [
-      "After a cell returns any not_converged, rejected, timeout, nonzero exit, or malformed output, do not launch the next cell.",
-      "Do not retry, change ITER, send INIT, clamp, substitute coefficients, or start a BEM call."
+      "run_declared_probe stops before the next cell after not_converged, timeout, nonzero exit, malformed output, undecodable output, missing evidence, executable mismatch, persistence failure, or an unexpected exception.",
+      "A partial ledger does not authorize continuation.",
+      "Do not retry, change ITER, send INIT, clamp, substitute coefficients, or start a BEM call.",
+      "The manifest does not launch cells and does not enforce the stop."
     ],
     "timeout_s": 90.0
   },
