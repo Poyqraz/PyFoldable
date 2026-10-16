@@ -542,3 +542,18 @@ model choices/pending evidence. No surface/solver execution, freeze or strength
 acceptance; external CAD/STEP remains optional. 13-inch and 250 mm scenarios stay
 separate. PR #81/#84/#91 and C2V-09 unchanged; `physical_qualification=false`,
 ADR-009 unaccepted, unknown clearance/physical gates preserved.
+
+## 2026-10-16 genuine profile comparison is still blocked on polar acquisition
+
+Draft PR #103 (`fc545b1584d679951fd28db0767cd71c790a7b06`) is the
+software-workflow baseline for catalog-profile switching and immutable
+fully-open BEM snapshots. It remains Draft and unmerged and is not a genuine
+numerical comparison. The offline
+[polar-query diagnostic](../../reports/polar_query_feasibility/report.md) keeps
+PR #97's failure record: NACA0012's Mach 0, low-Reynolds cell rejected angles
+−40° through −24°, NACA2412 timed out on that cell, and no BEM call was made.
+The conditional first query is the inboard no-induction angle, about +30.7°.
+The potential search image reaches about −39.7° and is not an observed query.
+NeuralFoil's current adapter rejects nonzero Mach, so it is not a replacement.
+The next probe is `xfoil_positive_first_potential_image_probe_v1`, unexecuted.
+Joint and geometry records are unchanged. `physical_qualification=false`.

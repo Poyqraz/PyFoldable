@@ -706,3 +706,18 @@ no source/surface/BEM/FEA/trajectory execution or freeze is authorized by this
 documentation proposal. External CAD/STEP is optional. 13-inch source conventions
 remain separate from the 250 mm project baseline. Broader strength evidence and
 physical gates remain unchanged; no ADR-009 acceptance or qualification promotion.
+
+## 2026-10-16 polar-query feasibility
+
+Draft PR #103 at `fc545b1584d679951fd28db0767cd71c790a7b06` is the
+software-workflow baseline for switching catalog profiles and saving explicit
+fully-open BEM snapshots. It remains Draft and unmerged. Genuine two-profile
+numerical comparison remains unestablished.
+The offline diagnostic in
+[polar_query_feasibility/report.md](../reports/polar_query_feasibility/report.md)
+separates the conditional no-induction query, the potential psi-endpoint image,
+and PR #97's rectangular family. PR #97's retained provider failures and zero
+BEM calls stay historical. The one recommended next probe is
+`xfoil_positive_first_potential_image_probe_v1`; it is not executed here and
+does not authorize a BEM call, a narrower search, or a NeuralFoil replacement.
+Joint and geometry evidence is unchanged. `physical_qualification=false`.
