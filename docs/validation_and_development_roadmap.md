@@ -706,3 +706,15 @@ no source/surface/BEM/FEA/trajectory execution or freeze is authorized by this
 documentation proposal. External CAD/STEP is optional. 13-inch source conventions
 remain separate from the 250 mm project baseline. Broader strength evidence and
 physical gates remain unchanged; no ADR-009 acceptance or qualification promotion.
+
+## 2026-10-16 APC 13x5.5MR and ANSYS evidence gap
+
+The separate [reconciliation report](../reports/apc_13x55mr_ansys_reconciliation/report.md)
+records official APC 13x5.5MR file identities and leaves the full vendor table
+local. 13x5.5E, the pusher, and the folding blades are different products.
+The ANSYS draft named in the task was not available to hash, so engineer loads,
+convergence windows, and mesh evidence remain a handoff. The proposed next
+calculation is a same-mesh second-order 4000 RPM comparison, and it is not
+authorized here. Mesh and domain studies stay later. This does not change the
+250 mm jointed design, the blocked polar study, or any qualification gate.
+`physical_qualification=false`.

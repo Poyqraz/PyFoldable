@@ -542,3 +542,15 @@ model choices/pending evidence. No surface/solver execution, freeze or strength
 acceptance; external CAD/STEP remains optional. 13-inch and 250 mm scenarios stay
 separate. PR #81/#84/#91 and C2V-09 unchanged; `physical_qualification=false`,
 ADR-009 unaccepted, unknown clearance/physical gates preserved.
+
+## 2026-10-16 APC 13x5.5MR reference inventory
+
+The [APC/ANSYS reconciliation](../../reports/apc_13x55mr_ansys_reconciliation/report.md)
+inventories official 13x5.5MR geometry and performance files and keeps the vendor
+tables out of git. Nominal 330.2 mm, PE0 footer diameter 328.676 mm, and the last
+station diameter 328.93 mm are not the task-supplied CAD diameter 329.3519 mm.
+The named ANSYS draft was not in the workspace, so its expected SHA-256 is
+unverified and its loads were not read. APC performance remains a manufacturer
+computation, separate from the 250 mm design and the blocked 7100 RPM polar study.
+No solver was run. `physical_qualification=false`. Genuine two-profile comparison
+remains UNESTABLISHED.
