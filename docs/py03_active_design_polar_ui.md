@@ -109,15 +109,29 @@ radial elements from the moment it was added. Shared planform, condition, and
 solver-setting hashes are separate, so a different airfoil is not treated as
 the same geometry. Later selector changes do not rewrite saved rows.
 
-JSON and CSV downloads are `catalog_profile_bem_comparison`. CSV writes the
-token `null` for an absent total so a blank cell is not read as zero. A
-rejected upload keeps the SHA-256 of the uploaded bytes on its failure row.
-Unlike planform,
-condition, or settings are an uncontrolled set and are not normalized. The
-export's `performance_comparison` stays false while this tree has no matching
-real-provider bundles. Inert and caller-supplied tables exercise the software
-workflow only. `physical_qualification` stays false, and no qualified winner
-is selected. Optimal hinge selection is not a prerequisite for this
+JSON and CSV downloads are `catalog_profile_bem_comparison` schema 2. The
+snapshot keeps the admitted solver policy, including the nested annulus
+settings, and the report text whose SHA-256 is `report_sha256`. CSV carries
+`record_sha256`, the originating analysis request, the prepared UI request
+when one exists, and `report_sha256`. It does not repeat radial elements.
+Radial elements and their query envelopes remain in the JSON record, so the
+report reference survives after the active session result is cleared.
+
+A preflight rejection has no executed solver request. A structurally valid
+foreign bundle keeps its declared profile, coordinate hash, and raw-byte hash,
+separate from the attempted draft. An uninspectable upload keeps only the
+facts that could be read and an explicit unavailable reason. A solver failure
+after a prepared request keeps that prepared policy and UI request identity;
+executed settings and totals stay null. CSV writes `null` for an absent total.
+
+Settings compatibility uses the complete admitted policy. Tip-loss, iteration,
+and the other serialized solver controls are part of that identity. Repeated
+runs of one coordinate identity stay visible and are not a software-controlled
+profile comparison. Two distinct catalog coordinate hashes under one complete
+policy are. `performance_comparison` stays false while this tree has no
+matching real-provider bundles. Inert and caller-supplied tables exercise the
+software workflow only. `physical_qualification` stays false, and no qualified
+winner is selected. Optimal hinge selection is not a prerequisite for this
 fully-open path.
 
 The 140 mm folding conflict, external-data gates and unknown material/structural

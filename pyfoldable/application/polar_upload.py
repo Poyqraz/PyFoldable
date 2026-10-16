@@ -209,13 +209,18 @@ def run_polar_run(request: PolarRunRequest) -> analysis.DesignAnalysisArtifact:
     result = analysis.run_design_analysis(request.draft, {bundle.airfoil_id: bundle.to_family()},
         settings=BEMRotorSettings(annulus_count=request.annulus_count))
     doc = json.loads(result.report_json)
-    doc["request"].update({"ui_request_sha256": request.request_sha256,
-        "ui_request": json.loads(request.context_json), "polar_upload": {
-        "schema_version": 1, "source_json": request.payload.decode("utf-8"),
-        "source_sha256": bundle.source_sha256,
-        "normalized_sha256": _sha(bundle.normalized_json.encode()),
-        "identity_scope": "caller_declared_content_not_authenticated_evidence",
-    }})
+    doc["request"].update({
+        "analysis_request_sha256": result.request_sha256,
+        "ui_request_sha256": request.request_sha256,
+        "ui_request": json.loads(request.context_json),
+        "polar_upload": {
+            "schema_version": 1,
+            "source_json": request.payload.decode("utf-8"),
+            "source_sha256": bundle.source_sha256,
+            "normalized_sha256": _sha(bundle.normalized_json.encode()),
+            "identity_scope": "caller_declared_content_not_authenticated_evidence",
+        },
+    })
     doc["request_sha256"] = _sha(_json(doc["request"]).encode())
     report = _json(doc) + "\n"
     return analysis.DesignAnalysisArtifact(doc["request_sha256"], _sha(report.encode()), report, "active_design_polar_screening.json")

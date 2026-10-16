@@ -721,6 +721,9 @@ ranking metric. Unlike planform, condition, or solver settings are reported
 as an uncontrolled set. Optimal hinge selection is not a prerequisite for
 this fully-open screening workflow.
 
+Comparison records now keep the complete admitted solver policy and separate
+repeated runs of one coordinate identity from a software-controlled profile
+comparison. A preflight rejection does not receive an executed request hash.
 Genuine provider comparison remains **BLOCKED**. This tree has no matching
 real-provider polar bundles for the catalog profiles, and Draft PR #97's
 blocked polar generation is not replayed or relaxed. Inert fixtures exercise

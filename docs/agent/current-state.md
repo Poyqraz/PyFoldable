@@ -551,7 +551,9 @@ the existing fully-open BEM path. Comparison rows are immutable snapshots.
 Changing the active profile invalidates the active result and does not
 relabel saved rows. A failed explicit run remains visible for that request
 until those inputs change; rerendering does not solve again or invent totals.
-Unlike settings are not presented as a controlled comparison. Genuine
+Unlike settings are not presented as a controlled comparison. The admitted
+policy includes the nested annulus settings, and repeating one coordinate
+identity does not become a two-profile comparison. Genuine
 provider comparison remains BLOCKED: no matching real-provider bundles are
 in this tree, and the blocked PR #97 provider requests are not repeated.
 Inert fixtures are labeled as such. `physical_qualification=false`. Hinge

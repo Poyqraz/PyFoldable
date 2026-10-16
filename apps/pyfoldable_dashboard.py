@@ -40,7 +40,8 @@ from pyfoldable.application.blade_stations import (
 from pyfoldable.core.config import load_design_config
 from pyfoldable.application.design_analysis import DesignAnalysisArtifact, DesignAnalysisError, prepare_design_analysis
 from pyfoldable.application.polar_upload import (
-    MAX_POLAR_UPLOAD_BYTES, PolarUploadError, PolarRunRequest, prepare_polar_run, run_polar_run,
+    MAX_POLAR_UPLOAD_BYTES, PolarUploadError, PolarRunRequest, inspect_polar_bundle,
+    prepare_polar_run, run_polar_run,
 )
 from pyfoldable.application.profile_bem_comparison import (
     comparison_csv, comparison_document, snapshot_failure, snapshot_success,
@@ -172,9 +173,11 @@ def _append_comparison_record(record: dict) -> None:
 def _render_profile_comparison(
     draft: DesignDraftArtifact,
     *,
-    annulus_count: int,
     rejection: str | None,
     rejection_source_sha256: str | None,
+    rejection_polar_airfoil_id: str | None,
+    rejection_polar_coordinate_sha256: str | None,
+    rejection_polar_unavailable_reason: str | None,
 ) -> None:
     st.subheader("Katalog profilleri · Karşılaştırma kayıtları")
     st.caption(
@@ -194,9 +197,12 @@ def _render_profile_comparison(
         st.session_state[POLAR_RESULT_KEY] = result
     elif failure is None and rejection and st.button("Başarısız polar denemesini karşılaştırmaya ekle"):
         _append_comparison_record(snapshot_failure(
-            draft, reason=rejection, annulus_count=int(annulus_count),
-            evidence_class="caller_supplied_unqualified",
+            draft, reason=rejection, evidence_class="caller_supplied_unqualified",
+            failure_stage="preflight_rejection",
             polar_source_sha256=rejection_source_sha256,
+            polar_airfoil_id=rejection_polar_airfoil_id,
+            polar_coordinate_sha256=rejection_polar_coordinate_sha256,
+            polar_unavailable_reason=rejection_polar_unavailable_reason,
         ))
     elif isinstance(failure, dict) and st.button("Başarısız BEM denemesini karşılaştırmaya ekle"):
         _append_comparison_record(failure)
@@ -212,12 +218,22 @@ def _render_profile_comparison(
         )
     elif not document["settings_compatible"]:
         st.warning(
-            "Kayıtların planform, çalışma koşulu veya çözücü ayarları aynı değil. "
-            "Bu tablo kontrollü bir karşılaştırma değildir: "
-            + ", ".join(document["mismatch_reasons"])
+            "Kayıtların planform, pose, çalışma koşulu veya yürütülmüş çözücü "
+            "politikası aynı değil. Bu tablo kontrollü bir profil karşılaştırması "
+            "değildir: " + ", ".join(document["mismatch_reasons"])
+        )
+    elif not document["software_controlled_comparison"]:
+        st.warning(
+            "Bu kayıtlar tekrarlı çalışma kanıtı olarak durabilir. Aynı koordinat "
+            "kimliğinin tekrarı, eksik koordinat veya başarısız kayıt A+B profil "
+            "karşılaştırması değildir: " + ", ".join(document["profile_reasons"])
+            + ". Gerçek provider kabulü BLOCKED."
         )
     else:
-        st.caption("Yazılım ayarları uyumlu. Gerçek provider kabulü yine BLOCKED.")
+        st.caption(
+            "Yazılım politikası uyumlu ve koordinat kimlikleri farklı. "
+            "Gerçek provider kabulü yine BLOCKED."
+        )
     _render_markdown_table([
         {
             "Profil": row["airfoil_id"],
@@ -320,6 +336,9 @@ def _render_active_polar_run(draft: DesignDraftArtifact) -> None:
     )
     rejection = None
     rejection_source_sha256 = None
+    rejection_polar_airfoil_id = None
+    rejection_polar_coordinate_sha256 = None
+    rejection_polar_unavailable_reason = None
     request = None
     if uploaded is None:
         _clear_polar_result()
@@ -328,6 +347,7 @@ def _render_active_polar_run(draft: DesignDraftArtifact) -> None:
         _clear_polar_result()
         st.error("Polar reddedildi: dosya 2 MiB sınırını aşıyor.")
         rejection = "Polar reddedildi: dosya 2 MiB sınırını aşıyor."
+        rejection_polar_unavailable_reason = "Dosya 2 MiB sınırını aştığı için polar kimliği okunmadı."
     else:
         payload = uploaded.getvalue()
         try:
@@ -336,6 +356,13 @@ def _render_active_polar_run(draft: DesignDraftArtifact) -> None:
             _clear_polar_result()
             rejection = str(exc)
             rejection_source_sha256 = hashlib.sha256(payload).hexdigest()
+            try:
+                inspected = inspect_polar_bundle(payload)
+            except (DesignAnalysisError, PolarUploadError, OSError, ValueError) as inspect_error:
+                rejection_polar_unavailable_reason = str(inspect_error)
+            else:
+                rejection_polar_airfoil_id = inspected.airfoil_id
+                rejection_polar_coordinate_sha256 = inspected.coordinate_sha256
             st.error(f"Polar/aktif taslak reddedildi: {exc}")
         else:
             if st.session_state.get(POLAR_REQUEST_KEY) != request.request_sha256:
@@ -365,9 +392,13 @@ def _render_active_polar_run(draft: DesignDraftArtifact) -> None:
                         result = run_polar_run(request)
                     except (DesignAnalysisError, PolarUploadError, OSError, ValueError) as exc:
                         st.session_state[POLAR_FAILURE_KEY] = snapshot_failure(
-                            draft, reason=str(exc), annulus_count=int(annuli),
-                            evidence_class="caller_supplied_unqualified",
+                            draft, reason=str(exc), evidence_class="caller_supplied_unqualified",
+                            failure_stage="solver_invocation",
                             polar_source_sha256=summary["source_sha256"],
+                            polar_airfoil_id=summary["airfoil_id"],
+                            polar_coordinate_sha256=summary["coordinate_sha256"],
+                            prepared_policy=json.loads(request.context_json)["settings"],
+                            ui_request_sha256=request.request_sha256,
                         )
                         st.session_state[POLAR_REQUEST_KEY] = request.request_sha256
                     else:
@@ -407,8 +438,10 @@ def _render_active_polar_run(draft: DesignDraftArtifact) -> None:
                 st.download_button("Aktif BEM sonucunu JSON indir", data=result.report_json,
                     file_name=result.filename, mime="application/json")
     _render_profile_comparison(
-        draft, annulus_count=int(annuli), rejection=rejection,
-        rejection_source_sha256=rejection_source_sha256,
+        draft, rejection=rejection, rejection_source_sha256=rejection_source_sha256,
+        rejection_polar_airfoil_id=rejection_polar_airfoil_id,
+        rejection_polar_coordinate_sha256=rejection_polar_coordinate_sha256,
+        rejection_polar_unavailable_reason=rejection_polar_unavailable_reason,
     )
 
 

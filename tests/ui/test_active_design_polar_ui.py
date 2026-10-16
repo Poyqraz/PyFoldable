@@ -265,6 +265,12 @@ def test_profile_cycle_rejects_wrong_polar_and_exports_the_saved_rows(monkeypatc
     assert rows[1]["torque_nm"] is None
     assert rows[1]["shaft_power_w"] is None
     assert rows[1]["polar_source_sha256"] == hashlib.sha256(wrong_bytes).hexdigest()
+    assert rows[1]["failure_stage"] == "preflight_rejection"
+    assert rows[1]["polar_airfoil_id"] == "NACA2412"
+    assert rows[1]["polar_coordinate_sha256"] == "0" * 64
+    assert rows[1]["analysis_request_sha256"] is None
+    assert rows[1]["report_sha256"] is None
+    assert rows[1]["executed_policy"] is None
     _widget(app.selectbox, "Kesit modeli").set_value("NACA0012").run(timeout=30)
     assert calls["n"] == 1
     assert RESULT_KEY not in app.session_state
@@ -306,7 +312,7 @@ def test_profile_cycle_rejects_wrong_polar_and_exports_the_saved_rows(monkeypatc
     assert rows[0] == alpha
     assert rows[-1]["airfoil_id"] == "NACA2412"
     assert rows[-1]["condition_sha256"] != alpha["condition_sha256"]
-    assert any("kontrollü bir karşılaştırma değildir" in item.value for item in app.warning)
+    assert any("profil karşılaştırması değildir" in item.value for item in app.warning)
     assert any("condition_sha256" in item.value for item in app.warning)
     assert not any("verim" in item.label.lower() for item in app.metric)
     document = json.loads(next(data for label, data in reversed(exported) if label == "Karşılaştırmayı JSON indir"))
