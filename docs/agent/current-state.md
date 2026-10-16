@@ -542,3 +542,44 @@ model choices/pending evidence. No surface/solver execution, freeze or strength
 acceptance; external CAD/STEP remains optional. 13-inch and 250 mm scenarios stay
 separate. PR #81/#84/#91 and C2V-09 unchanged; `physical_qualification=false`,
 ADR-009 unaccepted, unknown clearance/physical gates preserved.
+
+## 2026-10-15 chord-bearing 50 mm screening is blocked
+
+The 50 mm chord-bearing surface screening keeps PR #99 parent
+`1a149afec4cb192703a597e86717e5040d15e3c7fcb1697b4898ea3d26b6eada`, PR #100
+study `56a3b52a439c408cbdd13ae3baf8c43fa577bf71`, and PR #101 head
+`3ed68e9b8a2f1c9424204f1fb39404e000f539cf`. Its study draft
+`89dfdd1907e9fe2221adea7ffa193f1849fbc1d6052dced1dafe5d20279c07d1` is not that
+parent. Three default-budget GEOM-03 paths, from deployment to -120, -135,
+and -150 deg, are `unknown` / `blocked`. Shared-hinge and interblade queries
+remain unresolved, including rows left unknown by `global_budget_exhausted`.
+`full_propeller_clearance` stays null. Mesh radial envelope and axial extent
+are separate from the pinned centerline radii. `physical_qualification=false`.
+
+The separate interblade diagnostic on reviewed head
+`284a2e4f3b33f999fddcb9d8eb0b3a98ebf53c26` does not replace those three
+reports. On the continuous 0 deg to -135 deg path, the four retained
+interblade pairs have separated lower bounds down to
+`0.0004699207959556334` m for the tip/tip pair. That is not full propeller
+clearance. The original own-root/tip rows stay UNKNOWN, coverage stays
+incomplete, and no stop or hinge is selected. Those four bounds cover only
+the synchronous 0 deg to -135 deg interblade path. The first assembly
+figures are XY projections. Oblique 3D views and hinge XZ/YZ views show the
+same triangles. The deployed shared boundary is the duplicated hinge
+section. Projected overlap is not a contact or separation result.
+
+## 2026-10-16 long-main intent is not met by the recorded trials
+
+The owner requires one blade's proximal segment to be longer than its hinged
+distal segment. The original TÜBİTAK PDF is not in this environment; its
+recorded SHA-256 remains
+`e16db4182fe5171dc7d06bb05c74875e0e80fac726cd8be52df366c29a7e1541`. The 50 mm
+trial fails that length comparison. The 100 mm trial meets it and already
+needs a 200 mm span between opposed hinge points. The necessary window
+62.5 mm < h <= 70 mm is not a selected hinge. It is incompatible with
+positive full-fold centerline hub clearance only when the schema hub radius,
+zero offset, and -180 deg stop are added. `hinge_region_views_blade1.png`
+is the corrected blade 1 close-up. The earlier mixed-blade figure remains. Numerical clearance
+records are unchanged. Draft PR #97 stays a separate blocked polar comparison.
+`full_propeller_clearance` remains null and `physical_qualification` remains
+false.

@@ -706,3 +706,112 @@ no source/surface/BEM/FEA/trajectory execution or freeze is authorized by this
 documentation proposal. External CAD/STEP is optional. 13-inch source conventions
 remain separate from the 250 mm project baseline. Broader strength evidence and
 physical gates remain unchanged; no ADR-009 acceptance or qualification promotion.
+
+## 2026-10-15 chord-bearing surface screening of the 50 mm hinge
+
+First GEOM-03 screening of the existing 50 mm trial hinge, using the merged
+preview mesh and surface-clearance service. Pins: main
+`022b466303c59b8c0adb02f935f9c2f065b0e2b5`; PR #99 parent canonical SHA-256
+`1a149afec4cb192703a597e86717e5040d15e3c7fcb1697b4898ea3d26b6eada` at head
+`3db6b8909aa3e929a557699d98593fccb3fe8c4a`; PR #100 study head
+`56a3b52a439c408cbdd13ae3baf8c43fa577bf71`, SHA-256
+`f3c3e927c0ede938e5e770cce2eab405ca8413cec997eb17ab620b5fe22a7124`; PR #101
+head `3ed68e9b8a2f1c9424204f1fb39404e000f539cf`. The 50 mm study draft
+`89dfdd1907e9fe2221adea7ffa193f1849fbc1d6052dced1dafe5d20279c07d1` is a
+separate identity from that parent.
+
+Three synchronous paths run from 0 deg to the proposed stops -120, -135, and
+-150 deg. Requested clearance is 0 m for modeled contact diagnostics. Default
+work budgets are unchanged, with no retry or increase. Attachment exclusions
+stay 0. The hub obstacle is the existing infinite cylinder. No joint relief,
+hardware, hub height, endcap, or gap-filling surface was added.
+
+Outcome: every path is `unknown` and `blocked`. `full_propeller_clearance`
+stays null and `physical_qualification` stays false. Retained-mesh hub queries
+return separated lower bounds against the infinite cylinder. The first
+own-root/tip query stays unresolved after the default node and feature
+budgets. The remaining own-root/tip query and every interblade query stay
+unknown with `global_budget_exhausted`. Station coverage remains incomplete.
+Mesh radial envelope and axial extent are recorded separately from the pinned
+centerline radii. No qualified winner. No provider, BEM, CFD, FEA, or
+transient execution.
+
+A later pair-level diagnostic on reviewed head
+`284a2e4f3b33f999fddcb9d8eb0b3a98ebf53c26` keeps those three reports and the
+retained inputs byte-for-byte. It reuses that study draft
+`89dfdd1907e9fe2221adea7ffa193f1849fbc1d6052dced1dafe5d20279c07d1`, including
+the same triangles, pivots and frames. Four `pair_clearance` calls cover the
+continuous 0 deg to -135 deg interblade pairs, one call each, with an
+allowance of 50000 node comparisons, 2048 feature tests, depth 6 and 127
+intervals. The additional aggregate ceiling is 200000 comparisons and 8192
+feature tests. No retry or increase was used. Requested clearance and
+attachment exclusions stay 0.
+
+The four retained-triangle pairs returned separated lower bounds:
+blade_1_root/blade_2_root `0.04999999982537702` m,
+blade_1_root/blade_2_tip `0.005843301527710933` m,
+blade_1_tip/blade_2_root `0.00619576112130861` m, and
+blade_1_tip/blade_2_tip `0.0004699207959556334` m. Aggregate use was 7648
+node comparisons and 2048 feature tests. These bounds are only between those
+retained triangle sets. The original -135 deg own-root/tip rows stay
+UNKNOWN, station coverage stays incomplete, and `full_propeller_clearance`
+stays null. No stop or hinge is selected. `physical_qualification=false`.
+The four separated bounds cover only that synchronous 0 deg to -135 deg
+interblade path. `assembly_view.png` and `hinge_closeup.png` remain XY
+projections. Oblique assemblies and hinge XZ/YZ views use the same retained
+triangles. The deployed shared boundary is the duplicated hinge-station
+copy. An overlap in an XY projection is not contact evidence and not
+separation evidence. No joint relief, offset, hardware, or permitted-contact
+exclusion is added.
+
+## 2026-10-16 owner-intent reconciliation
+
+The owner requires the proximal main segment of one rotor blade to be longer
+than its hinged distal segment. In that wording, first blade and second blade
+are those two segments, not the two opposed rotor blades. The intended product
+deploys into aligned, load-transferring geometry and produces thrust, holds
+acceptable rotating vibration and deformation, folds under control, accounts
+for joint and distal-segment losses with applicable models, calibration and
+uncertainty, and supports reproducible profile comparisons and user-facing
+outputs. No new acceptance number is declared.
+
+The original proposal file
+`2209_B_arastirma_onerisi_formu_18112025 (1).pdf`, SHA-256
+`e16db4182fe5171dc7d06bb05c74875e0e80fac726cd8be52df366c29a7e1541`, is not
+present in this working environment, so this entry does not re-read it. The
+hash remains the 2026-09-09 citation above. The 250 mm deployed / 140 mm
+folded concept, rotor-parallel hinge axes, and passive opening and folding
+stay distinct from the schema example. The example 18 mm hub, 50 mm and
+100 mm hinge trials, and the -180 deg stop are not promoted into proposal
+requirements.
+
+Under the axis-to-axis convention and the retained R = 125 mm, h = 50 mm gives
+a 50 mm main segment and a 75 mm distal segment, so it misses the long-main
+requirement. h = 100 mm gives a 100 mm main segment and a 25 mm distal
+segment, and the opposed hinge points already span 200 mm. The necessary
+geometric condition from long-main geometry and the 140 mm fixed-point bound
+is 62.5 mm < h <= 70 mm. It is not a selected hinge or a clearance result.
+Under the further schema assumptions of zero offset, the retained hub radius,
+and a -180 deg centerline fold, positive hub clearance requires h greater
+than 71.5 mm. That assumption set is incompatible with the 62.5 mm < h <= 70 mm
+window. It does not show that the 140 mm folded concept is impossible.
+Historical trials are unchanged. The parent is not rescaled, distal twist is
+not reset, and no replacement stop is selected.
+
+`hinge_region_views.png` remains the earlier close-up that received every
+blade part. `hinge_region_views_blade1.png` is the corrected blade 1 view.
+Own-root/tip findings remain UNKNOWN. The separated interblade bounds cover
+only the retained pairs on the synchronous 0 deg to -135 deg path. A -150 deg
+picture does not extend that query. The canonical -180 deg collision evidence
+remains. `full_propeller_clearance` remains null and
+`physical_qualification` remains false. This geometry note does not resume
+Draft PR #97. The readable reconciliation is
+[owner-intent reconciliation](../reports/chord_surface_50mm_screening/owner_intent_reconciliation.md).
+
+Next inputs, still without invented measurements or acceptance limits: an
+owner-declared hinge length or an explicit revision of the long-main or
+140 mm intent; a proposal hub radius, offset, and fold stop separate from the
+schema example; the absent joint gap, hardware, and offsets; loss-model
+source, method, applicability, and uncertainty; vibration and deformation
+evidence; and controlled-fold actuation, completion, contact, latch, and
+release evidence.
