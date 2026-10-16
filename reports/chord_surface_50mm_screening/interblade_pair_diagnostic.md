@@ -41,8 +41,10 @@ The JSON file retains every interval. A separated row is a continuous lower boun
 
 ## Views and the deployed shared boundary
 
-assembly_view.png and hinge_closeup.png are XY projections of the retained triangles. assembly_oblique.png is the oblique 3D assembly of both blades at 0, -120, -135 and -150 deg. hinge_region_views.png adds, for the blade 1 hinge, an oblique view and XZ and YZ orthographic views at those same angles.
+assembly_view.png and hinge_closeup.png are historical XY projections. assembly_oblique.png is the historical oblique assembly of both blades. hinge_region_views.png is the earlier hinge figure: its panels still received every blade part, and the axis limits did not remove the opposed blade. Its YZ projection can superimpose that opposed blade after the X axis is suppressed.
+
+hinge_region_views_blade1.png is the corrected close-up. It draws blade 1's fixed root and moving tip only. The faces are complete hinge-neighborhood triangles. Faces omitted from that selection are absent from the panel; they are not sliced into display endcaps. Both blades remain in the assembly views.
 
 The preview mesh copies the hinge station twice, once onto the fixed root and once onto the moving tip. At 0 deg the tip rotation is the identity, so those copies occupy one section. That coincidence is the deployed shared boundary of the open mesh.
 
-A nonzero fold rotates only the moving copy about the hinge pivot's z axis. The fixed copy stays in place. Where an XY projection shows the tip outline crossing the root outline, that crossing is a projection. It is not a contact finding and it is not a separation finding. The own-root/tip queries remain UNKNOWN. No joint relief, offset, hardware, endcap, or permitted-contact exclusion is added. Hub height remains absent; the drawn circle is the retained hub radius.
+A nonzero fold rotates only the moving copy about the hinge pivot's z axis. The fixed copy stays in place. Where an XY projection shows the tip outline crossing the root outline, that crossing is a projection. It is not a contact finding and it is not a separation finding. The own-root/tip queries remain UNKNOWN. The four separated interblade bounds cover only the named retained pairs on the synchronous path from 0 deg to -135 deg. A picture at -150 deg does not extend that query. The canonical -180 deg collision finding remains the archived full-stow result. No joint relief, offset, hardware, endcap, or permitted-contact exclusion is added. Hub height remains absent.

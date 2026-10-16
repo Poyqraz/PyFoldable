@@ -41,6 +41,7 @@ from pyfoldable.application.surface_clearance import (
 )
 from pyfoldable.geometry.surface_clearance import (
     ClearanceControls,
+    SurfacePart,
     _rotate,
     pair_clearance,
 )
@@ -937,11 +938,149 @@ def render_interblade_pair_report(record: dict[str, object]) -> str:
             "",
             "## Views and the deployed shared boundary",
             "",
-            "assembly_view.png and hinge_closeup.png are XY projections of the retained triangles. assembly_oblique.png is the oblique 3D assembly of both blades at 0, -120, -135 and -150 deg. hinge_region_views.png adds, for the blade 1 hinge, an oblique view and XZ and YZ orthographic views at those same angles.",
+            "assembly_view.png and hinge_closeup.png are historical XY projections. assembly_oblique.png is the historical oblique assembly of both blades. hinge_region_views.png is the earlier hinge figure: its panels still received every blade part, and the axis limits did not remove the opposed blade. Its YZ projection can superimpose that opposed blade after the X axis is suppressed.",
+            "",
+            "hinge_region_views_blade1.png is the corrected close-up. It draws blade 1's fixed root and moving tip only. The faces are complete hinge-neighborhood triangles. Faces omitted from that selection are absent from the panel; they are not sliced into display endcaps. Both blades remain in the assembly views.",
             "",
             "The preview mesh copies the hinge station twice, once onto the fixed root and once onto the moving tip. At 0 deg the tip rotation is the identity, so those copies occupy one section. That coincidence is the deployed shared boundary of the open mesh.",
             "",
-            "A nonzero fold rotates only the moving copy about the hinge pivot's z axis. The fixed copy stays in place. Where an XY projection shows the tip outline crossing the root outline, that crossing is a projection. It is not a contact finding and it is not a separation finding. The own-root/tip queries remain UNKNOWN. No joint relief, offset, hardware, endcap, or permitted-contact exclusion is added. Hub height remains absent; the drawn circle is the retained hub radius.",
+            "A nonzero fold rotates only the moving copy about the hinge pivot's z axis. The fixed copy stays in place. Where an XY projection shows the tip outline crossing the root outline, that crossing is a projection. It is not a contact finding and it is not a separation finding. The own-root/tip queries remain UNKNOWN. The four separated interblade bounds cover only the named retained pairs on the synchronous path from 0 deg to -135 deg. A picture at -150 deg does not extend that query. The canonical -180 deg collision finding remains the archived full-stow result. No joint relief, offset, hardware, endcap, or permitted-contact exclusion is added. Hub height remains absent.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def reconcile_owner_segment_lengths(repository_root: Path) -> dict[str, object]:
+    """Compare declared hinge trials with the long-main and 140 mm conditions.
+
+    The arithmetic uses retained parent and study values. It does not run a
+    clearance query and it does not select a hinge.
+    """
+    root = repository_root.resolve()
+    packet = _load_pin(root, PARENT_PACKET, PARENT_PACKET_SHA256)
+    hinge_study = _load_pin(root, HINGE_STUDY, HINGE_STUDY_SHA256)
+    fold_study = _load_pin(root, FOLD_STUDY, FOLD_STUDY_SHA256)
+    bundle = packet["parent"]["bundle"]
+    radius = bundle["diameter"] / 2.0
+    hub = bundle["hub_radius"]
+    requirement = fold_study["requirement_m"]
+    long_main_lower = radius / 2.0
+    fixed_point_upper = requirement / 2.0
+    positive_clearance_lower = (radius + hub) / 2.0
+    if not long_main_lower < fixed_point_upper < positive_clearance_lower:
+        raise ValueError("The necessary range and the full-fold clearance threshold overlap.")
+    trials = []
+    for item in hinge_study["hinges"]:
+        hinge = item["radius_m"]
+        distal = radius - hinge
+        if hinge > distal:
+            full_fold_clearance = (2.0 * hinge - radius) - hub
+        else:
+            full_fold_clearance = -hub
+        trials.append(
+            {
+                "id": item["id"],
+                "declaration": item["declaration"],
+                "hinge_m": hinge,
+                "main_segment_m": hinge,
+                "distal_segment_m": distal,
+                "exposed_proximal_span_m": hinge - hub,
+                "long_main": hinge > distal,
+                "opposed_hinge_point_span_m": 2.0 * hinge,
+                "opposed_points_fit_requirement": 2.0 * hinge <= requirement,
+                "zero_offset_full_fold_centerline_hub_clearance_m": full_fold_clearance,
+            }
+        )
+    first = bundle["stations"][0]["radius"]
+    last = bundle["stations"][-1]["radius"]
+    return {
+        "pdf_available": False,
+        "pdf_name": "2209_B_arastirma_onerisi_formu_18112025 (1).pdf",
+        "pdf_sha256": "e16db4182fe5171dc7d06bb05c74875e0e80fac726cd8be52df366c29a7e1541",
+        "deployed_radius_m": radius,
+        "hub_radius_m": hub,
+        "folded_requirement_m": requirement,
+        "retained_surface_inner_m": first,
+        "retained_surface_outer_m": last,
+        "root_gap_m": first - hub,
+        "tip_gap_m": radius - last,
+        "long_main_requires_hinge_m_greater_than": long_main_lower,
+        "fixed_opposed_points_require_hinge_m_at_most": fixed_point_upper,
+        "positive_full_fold_centerline_clearance_requires_hinge_m_greater_than": positive_clearance_lower,
+        "necessary_range": "62.5 mm < h <= 70 mm",
+        "necessary_range_meets_positive_full_fold_clearance": False,
+        "trials": trials,
+        "canonical_stow_deg": fold_study["canonical_full_stow"]["fold_angle_deg"],
+        "canonical_stow_reasons": list(fold_study["canonical_full_stow"]["compatibility_reasons"]),
+    }
+
+
+def render_owner_intent_reconciliation(repository_root: Path) -> str:
+    record = reconcile_owner_segment_lengths(repository_root)
+    lines = [
+        "# Owner-intent reconciliation for the 50 mm screening",
+        "",
+        "This note records the owner's stated design intent beside the existing trials. It does not select a hinge, a stop, or a qualified design.",
+        "",
+        f"The original proposal file `{record['pdf_name']}` SHA-256 `{record['pdf_sha256']}` is not in this environment. These sentences do not come from a fresh reading of that PDF. The hash is the one already cited in the 2026-09-09 roadmap entry. The owner's follow-up states the 250 mm deployed and 140 mm folded concept, rotor-parallel hinge axes, and passive opening and folding. Those intents stay distinct from the schema example. The example hub radius, the 50 mm and 100 mm hinge trials, and the -180 deg stop are not proposal requirements.",
+        "",
+        "In the owner's wording, the proximal main segment of one rotor blade is longer than its hinged distal segment. \"First blade\" and \"second blade\" name those two segments. They do not name the two opposed rotor blades.",
+        "",
+        "The intended product deploys into aligned, load-transferring blade geometry and produces thrust. It maintains acceptable rotating vibration and deformation, folds in a controlled manner, and accounts for joint and distal-segment losses with applicable models, calibration, and uncertainty. It supports reproducible profile comparisons and user-facing outputs. No acceptance number for vibration, deformation, loss, or thrust is supplied here.",
+        "",
+        "Lengths below use the axis-to-axis convention. `h` is the motor-axis-to-hinge length. `R-h` is the hinge-to-nominal-tip length. `h-b` is the exposed proximal span. Retained surface coverage is the parent station span and is shorter than those axis lengths.",
+        "",
+        f"Retained deployed radius R = `{record['deployed_radius_m']!r}` m.",
+        f"Retained hub radius b = `{record['hub_radius_m']!r}` m.",
+        f"Folded requirement = `{record['folded_requirement_m']!r}` m.",
+        f"Retained stations run from `{record['retained_surface_inner_m']!r}` m to `{record['retained_surface_outer_m']!r}` m.",
+        f"Root gap `{record['root_gap_m']!r}` m. Tip gap `{record['tip_gap_m']!r}` m.",
+        "",
+        f"Long-main geometry requires h greater than `{record['long_main_requires_hinge_m_greater_than']!r}` m.",
+        f"Opposed hinge points fit the folded requirement only when h is at most `{record['fixed_opposed_points_require_hinge_m_at_most']!r}` m.",
+        "The resulting necessary geometric condition is 62.5 mm < h <= 70 mm. It is not a selected hinge and it is not a clearance result.",
+        "",
+        f"Under the additional schema assumptions of zero hinge offset, this hub radius, and a -180 deg centerline fold, positive hub clearance requires h greater than `{record['positive_full_fold_centerline_clearance_requires_hinge_m_greater_than']!r}` m. That threshold lies outside 62.5 mm < h <= 70 mm. The incompatibility belongs to those combined assumptions. It does not show that the folded 140 mm concept is impossible under a different hub radius, stop angle, or offset.",
+        "",
+        "| Trial | h m | Main m | Distal m | Exposed proximal m | Long main | Opposed-point span m | Fits 140 mm | Zero-offset -180 deg centerline hub clearance m |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for trial in record["trials"]:
+        lines.append(
+            "| {declaration} | {hinge!r} | {main!r} | {distal!r} | {exposed!r} | {long_main} | {span!r} | {fits} | {clearance!r} |".format(
+                declaration=trial["declaration"],
+                hinge=trial["hinge_m"],
+                main=trial["main_segment_m"],
+                distal=trial["distal_segment_m"],
+                exposed=trial["exposed_proximal_span_m"],
+                long_main=str(trial["long_main"]).lower(),
+                span=trial["opposed_hinge_point_span_m"],
+                fits=str(trial["opposed_points_fit_requirement"]).lower(),
+                clearance=trial["zero_offset_full_fold_centerline_hub_clearance_m"],
+            )
+        )
+    lines.extend(
+        [
+            "",
+            "In exact millimetre arithmetic on a 125 mm radius, the 50 mm hinge has a 50 mm main segment and a 75 mm distal segment. The 100 mm hinge has a 100 mm main segment and a 25 mm distal segment. The table keeps the retained floating-point subtraction. The 50 mm trial has a distal segment longer than its main segment. The 100 mm trial meets the long-main comparison, and its opposed hinge points span 0.2 m, which is already larger than the 140 mm folded requirement. Neither trial is replaced, rescaled, or given a new twist or stop.",
+            "",
+            f"The archived canonical stow remains {record['canonical_stow_deg']:.0f} deg with reasons: "
+            + ", ".join(record["canonical_stow_reasons"])
+            + ".",
+            "",
+            "Own-root/tip findings on the original surface reports remain UNKNOWN. The separated interblade bounds cover only the retained triangle pairs on the synchronous path from 0 deg to -135 deg. A -150 deg picture does not extend that query. full_propeller_clearance remains null. physical_qualification remains false.",
+            "",
+            "This geometry note does not resume the blocked real-polar comparison in Draft PR #97.",
+            "",
+            "Next inputs, with no invented measurements or acceptance limits:",
+            "",
+            "- an owner-declared motor-axis-to-hinge length, or an explicit revision of the long-main or 140 mm intent",
+            "- a proposal hub radius, hinge offset, and fold-stop angle, recorded separately from the schema example",
+            "- joint gap, step, hardware, and offsets; these remain absent",
+            "- source, method, applicability, and uncertainty for joint and distal-segment loss models",
+            "- rotating vibration and deformation evidence",
+            "- controlled-fold actuation history, completion, contact, latch, and release evidence",
             "",
         ]
     )
@@ -1132,8 +1271,58 @@ def _require_orthographic_scale(axis, horizontal: tuple[float, float, float], ve
         raise ValueError("Orthographic view does not look along the requested axis.")
 
 
-def _draw_retained_faces(axis, parts, angle_deg: float) -> None:
+def _open_edge_keys(triangles: list[list[tuple[float, float, float]]]) -> set[tuple[tuple[float, float, float], tuple[float, float, float]]]:
+    return {key for key, count in _edge_counts(triangles).items() if count == 1}
+
+
+def _edge_counts(triangles: list[list[tuple[float, float, float]]]) -> dict[tuple[tuple[float, float, float], tuple[float, float, float]], int]:
+    counts: dict[tuple[tuple[float, float, float], tuple[float, float, float]], int] = {}
+    for triangle in triangles:
+        for start, end in zip(triangle, triangle[1:] + triangle[:1]):
+            key = tuple(sorted((
+                tuple(round(float(coord), 12) for coord in start),
+                tuple(round(float(coord), 12) for coord in end),
+            )))
+            counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
+def _blade1_hinge_parts(parts) -> tuple[SurfacePart, ...]:
+    """Return complete hinge-neighborhood triangles for blade 1 only."""
+    selected = []
+    for part in parts:
+        if not part.name.startswith("blade_1_"):
+            continue
+        pivot = part.pivot
+        hinge_vertices = [
+            point
+            for triangle in part.triangles
+            for point in triangle
+            if abs(point[0] - pivot[0]) <= 1.0e-9
+        ]
+        if not hinge_vertices:
+            raise ValueError(f"{part.name} has no duplicated hinge section.")
+        section_radius = max(math.dist(point, pivot) for point in hinge_vertices)
+        kept = tuple(
+            triangle
+            for triangle in part.triangles
+            if any(math.dist(point, pivot) <= section_radius + 1.0e-9 for point in triangle)
+        )
+        if not kept:
+            raise ValueError(f"{part.name} hinge neighborhood is empty.")
+        selected.append(SurfacePart(part.name, kept, part.pivot, part.moving))
+    if [part.name for part in selected] != ["blade_1_root", "blade_1_tip"]:
+        raise ValueError("Blade 1 hinge selection did not keep the fixed and moving parts.")
+    return tuple(selected)
+
+
+def _draw_retained_faces(axis, parts, angle_deg: float, boundary_parts=None) -> None:
     angle_rad = math.radians(angle_deg)
+    sources = parts if boundary_parts is None else boundary_parts
+    open_edges = {
+        part.name: _open_edge_keys(_posed_triangles(part, angle_rad))
+        for part in sources
+    }
     for part in parts:
         triangles = _posed_triangles(part, angle_rad)
         axis.add_collection3d(Poly3DCollection(
@@ -1142,14 +1331,33 @@ def _draw_retained_faces(axis, parts, angle_deg: float) -> None:
             edgecolors="none",
             alpha=0.78,
         ))
-        boundaries = _boundary_polylines(triangles)
+        allowed = open_edges.get(part.name, set())
+        boundaries = [
+            list(key)
+            for key, count in _edge_counts(triangles).items()
+            if count >= 1 and key in allowed
+        ]
         if boundaries:
             axis.add_collection3d(Line3DCollection(boundaries, colors="#7a2f2a", linewidths=0.7))
 
 
-def _draw_spatial_annotations(axis, parts, bundle: dict[str, object], hinge_radius_m: float, angle_deg: float) -> None:
-    for sign in (1.0, -1.0):
-        for segment in _uncovered_segments(bundle, hinge_radius_m, angle_deg):
+def _draw_spatial_annotations(
+    axis,
+    parts,
+    bundle: dict[str, object],
+    hinge_radius_m: float,
+    angle_deg: float,
+    *,
+    include_opposed: bool = True,
+    include_hub_circle: bool = True,
+    proximal_gap_only: bool = False,
+) -> None:
+    signs = (1.0, -1.0) if include_opposed else (1.0,)
+    for sign in signs:
+        segments = _uncovered_segments(bundle, hinge_radius_m, angle_deg)
+        if proximal_gap_only:
+            segments = segments[:1]
+        for segment in segments:
             axis.plot(
                 [sign * segment[0][0], sign * segment[1][0]],
                 [sign * segment[0][1], sign * segment[1][1]],
@@ -1158,15 +1366,22 @@ def _draw_spatial_annotations(axis, parts, bundle: dict[str, object], hinge_radi
                 linestyle=(0, (1.2, 1.0)),
                 linewidth=1.4,
             )
-    hub = bundle["hub_radius"]
-    circle = [
-        (hub * math.cos(2.0 * math.pi * index / 80.0), hub * math.sin(2.0 * math.pi * index / 80.0), 0.0)
-        for index in range(81)
-    ]
-    axis.plot([point[0] for point in circle], [point[1] for point in circle], [point[2] for point in circle], color="0.35", linewidth=0.8)
+    if include_hub_circle:
+        hub = bundle["hub_radius"]
+        circle = [
+            (hub * math.cos(2.0 * math.pi * index / 80.0), hub * math.sin(2.0 * math.pi * index / 80.0), 0.0)
+            for index in range(81)
+        ]
+        axis.plot(
+            [point[0] for point in circle],
+            [point[1] for point in circle],
+            [point[2] for point in circle],
+            color="0.35",
+            linewidth=0.8,
+        )
     z_low, z_high = axis.get_zlim()
     for part in parts:
-        if not part.name.endswith("_root"):
+        if part.name != "blade_1_root" and not (include_opposed and part.name.endswith("_root")):
             continue
         pivot = part.pivot
         axis.plot([pivot[0], pivot[0]], [pivot[1], pivot[1]], [z_low, z_high], color="#111111", linewidth=1.1)
@@ -1322,6 +1537,103 @@ def write_spatial_views(repository_root: Path, output_dir: Path) -> None:
             raise ValueError(f"Spatial views changed {name}.")
 
 
+def write_blade1_hinge_views(repository_root: Path, output_dir: Path) -> None:
+    """Draw blade 1 hinge neighborhoods without rewriting historical figures or clearance records."""
+    root = repository_root.resolve()
+    before = _original_bytes(root)
+    preserved = (
+        "interblade_pair_diagnostic.json",
+        "assembly_view.png",
+        "hinge_closeup.png",
+        "assembly_oblique.png",
+        "hinge_region_views.png",
+    )
+    preserved_before = {
+        name: (output_dir / name).read_bytes()
+        for name in preserved
+        if (output_dir / name).is_file()
+    }
+    bundle, trial, _draft, parts = _retained_parts(root)
+    blade1 = tuple(part for part in parts if part.name.startswith("blade_1_"))
+    neighborhood = _blade1_hinge_parts(parts)
+    angles = (0.0, -120.0, DIAGNOSTIC_END_DEG, -150.0)
+    posed_points = [
+        point
+        for angle in angles
+        for part in neighborhood
+        for triangle in _posed_triangles(part, math.radians(angle))
+        for point in triangle
+    ]
+    root_gap = _uncovered_segments(bundle, trial["radius_m"], 0.0)[0]
+    posed_points.extend(root_gap)
+    hinge_limits = _equal_metre_limits(posed_points)
+    close, close_axes = plt.subplots(4, 3, figsize=(11.4, 13.6), subplot_kw={"projection": "3d"})
+    view_specs = (
+        ("oblique", 24, -58, None),
+        ("XZ orthographic", 0, -90, ((1.0, 0.0, 0.0), (0.0, 0.0, 1.0), (0.0, 1.0, 0.0))),
+        ("YZ orthographic", 0, 0, ((0.0, 1.0, 0.0), (0.0, 0.0, 1.0), (1.0, 0.0, 0.0))),
+    )
+    for row, angle in enumerate(angles):
+        for column, (label, elev, azim, scale_check) in enumerate(view_specs):
+            axis = close_axes[row, column]
+            _draw_retained_faces(axis, neighborhood, angle, boundary_parts=blade1)
+            _style_spatial_axis(
+                axis,
+                hinge_limits,
+                f"fold angle {angle:.0f} deg\n{label}, blade 1 only, equal metres",
+            )
+            _draw_spatial_annotations(
+                axis,
+                neighborhood,
+                bundle,
+                trial["radius_m"],
+                angle,
+                include_opposed=False,
+                include_hub_circle=False,
+                proximal_gap_only=True,
+            )
+            _apply_equal_metres(axis, hinge_limits)
+            axis.view_init(elev=elev, azim=azim)
+            if label.startswith("XZ"):
+                axis.set_yticks([])
+                axis.set_ylabel("")
+                axis.set_xlabel("")
+            elif label.startswith("YZ"):
+                axis.set_xticks([])
+                axis.set_xlabel("")
+                axis.set_ylabel("")
+            if scale_check is not None:
+                _require_orthographic_scale(axis, *scale_check)
+    close.suptitle(
+        "Corrected blade 1 hinge neighborhood\nComplete triangles only; equal metres; opposed blade omitted; no added endcap",
+        fontsize=11,
+    )
+    close.legend(
+        handles=[
+            plt.Line2D([0], [0], color="#1f4e79", linewidth=4, label="fixed root triangles"),
+            plt.Line2D([0], [0], color="#c47b2b", linewidth=4, label="moving tip triangles"),
+            plt.Line2D([0], [0], color="#7a2f2a", label="open boundary of the full blade 1 mesh"),
+            plt.Line2D([0], [0], color="#111111", label="blade 1 hinge pivot and z axis"),
+            plt.Line2D([0], [0], color="#a33b32", linestyle=(0, (1.2, 1.0)), label="blade 1 uncovered root span"),
+        ],
+        loc="lower center",
+        ncol=2,
+        frameon=False,
+        fontsize=8,
+        bbox_to_anchor=(0.5, 0.005),
+        borderaxespad=0.0,
+    )
+    close.subplots_adjust(left=0.04, right=0.96, top=0.92, bottom=0.10, hspace=0.42, wspace=0.22)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    close.savefig(output_dir / "hinge_region_views_blade1.png", dpi=120)
+    plt.close(close)
+    if _original_bytes(root) != before:
+        raise ValueError("Blade 1 views changed an original surface artifact.")
+    for name, payload in preserved_before.items():
+        if (output_dir / name).read_bytes() != payload:
+            raise ValueError(f"Blade 1 views changed historical file {name}.")
+
+
 def write_interblade_pair_diagnostic(repository_root: Path, output_dir: Path) -> dict[str, object]:
     before = _require_original_bytes(repository_root)
     record = build_interblade_pair_diagnostic(repository_root)
@@ -1351,11 +1663,19 @@ def refresh_interblade_report(repository_root: Path, output_dir: Path) -> None:
         raise ValueError("Refreshing the report changed the numerical diagnostic record.")
 
 
+def write_owner_intent_reconciliation(repository_root: Path, output_dir: Path) -> None:
+    (output_dir / "owner_intent_reconciliation.md").write_text(
+        render_owner_intent_reconciliation(repository_root),
+        encoding="utf-8",
+    )
+
+
 def main() -> None:
     root = Path(__file__).resolve().parents[1]
     output = root / "reports" / "chord_surface_50mm_screening"
     refresh_interblade_report(root, output)
-    write_spatial_views(root, output)
+    write_owner_intent_reconciliation(root, output)
+    write_blade1_hinge_views(root, output)
 
 
 if __name__ == "__main__":

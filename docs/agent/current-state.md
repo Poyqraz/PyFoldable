@@ -567,3 +567,19 @@ the synchronous 0 deg to -135 deg interblade path. The first assembly
 figures are XY projections. Oblique 3D views and hinge XZ/YZ views show the
 same triangles. The deployed shared boundary is the duplicated hinge
 section. Projected overlap is not a contact or separation result.
+
+## 2026-10-16 long-main intent is not met by the recorded trials
+
+The owner requires one blade's proximal segment to be longer than its hinged
+distal segment. The original TÜBİTAK PDF is not in this environment; its
+recorded SHA-256 remains
+`e16db4182fe5171dc7d06bb05c74875e0e80fac726cd8be52df366c29a7e1541`. The 50 mm
+trial fails that length comparison. The 100 mm trial meets it and already
+needs a 200 mm span between opposed hinge points. The necessary window
+62.5 mm < h <= 70 mm is not a selected hinge. It is incompatible with
+positive full-fold centerline hub clearance only when the schema hub radius,
+zero offset, and -180 deg stop are added. `hinge_region_views_blade1.png`
+is the corrected blade 1 close-up. The earlier mixed-blade figure remains. Numerical clearance
+records are unchanged. Draft PR #97 stays a separate blocked polar comparison.
+`full_propeller_clearance` remains null and `physical_qualification` remains
+false.

@@ -763,3 +763,55 @@ triangles. The deployed shared boundary is the duplicated hinge-station
 copy. An overlap in an XY projection is not contact evidence and not
 separation evidence. No joint relief, offset, hardware, or permitted-contact
 exclusion is added.
+
+## 2026-10-16 owner-intent reconciliation
+
+The owner requires the proximal main segment of one rotor blade to be longer
+than its hinged distal segment. In that wording, first blade and second blade
+are those two segments, not the two opposed rotor blades. The intended product
+deploys into aligned, load-transferring geometry and produces thrust, holds
+acceptable rotating vibration and deformation, folds under control, accounts
+for joint and distal-segment losses with applicable models, calibration and
+uncertainty, and supports reproducible profile comparisons and user-facing
+outputs. No new acceptance number is declared.
+
+The original proposal file
+`2209_B_arastirma_onerisi_formu_18112025 (1).pdf`, SHA-256
+`e16db4182fe5171dc7d06bb05c74875e0e80fac726cd8be52df366c29a7e1541`, is not
+present in this working environment, so this entry does not re-read it. The
+hash remains the 2026-09-09 citation above. The 250 mm deployed / 140 mm
+folded concept, rotor-parallel hinge axes, and passive opening and folding
+stay distinct from the schema example. The example 18 mm hub, 50 mm and
+100 mm hinge trials, and the -180 deg stop are not promoted into proposal
+requirements.
+
+Under the axis-to-axis convention and the retained R = 125 mm, h = 50 mm gives
+a 50 mm main segment and a 75 mm distal segment, so it misses the long-main
+requirement. h = 100 mm gives a 100 mm main segment and a 25 mm distal
+segment, and the opposed hinge points already span 200 mm. The necessary
+geometric condition from long-main geometry and the 140 mm fixed-point bound
+is 62.5 mm < h <= 70 mm. It is not a selected hinge or a clearance result.
+Under the further schema assumptions of zero offset, the retained hub radius,
+and a -180 deg centerline fold, positive hub clearance requires h greater
+than 71.5 mm. That assumption set is incompatible with the 62.5 mm < h <= 70 mm
+window. It does not show that the 140 mm folded concept is impossible.
+Historical trials are unchanged. The parent is not rescaled, distal twist is
+not reset, and no replacement stop is selected.
+
+`hinge_region_views.png` remains the earlier close-up that received every
+blade part. `hinge_region_views_blade1.png` is the corrected blade 1 view.
+Own-root/tip findings remain UNKNOWN. The separated interblade bounds cover
+only the retained pairs on the synchronous 0 deg to -135 deg path. A -150 deg
+picture does not extend that query. The canonical -180 deg collision evidence
+remains. `full_propeller_clearance` remains null and
+`physical_qualification` remains false. This geometry note does not resume
+Draft PR #97. The readable reconciliation is
+[owner-intent reconciliation](../reports/chord_surface_50mm_screening/owner_intent_reconciliation.md).
+
+Next inputs, still without invented measurements or acceptance limits: an
+owner-declared hinge length or an explicit revision of the long-main or
+140 mm intent; a proposal hub radius, offset, and fold stop separate from the
+schema example; the absent joint gap, hardware, and offsets; loss-model
+source, method, applicability, and uncertainty; vibration and deformation
+evidence; and controlled-fold actuation, completion, contact, latch, and
+release evidence.

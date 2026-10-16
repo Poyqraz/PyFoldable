@@ -139,18 +139,41 @@ def test_spatial_views_keep_the_numerical_record_and_the_shared_boundary(monkeyp
     monkeypatch.setitem(module, "run_surface_clearance", _forbidden)
     before = _hashes()
     json_bytes = DIAGNOSTIC.read_bytes()
-    module["write_spatial_views"](ROOT, DIRECTORY)
+    historical = {
+        name: (DIRECTORY / name).read_bytes()
+        for name in (
+            "assembly_view.png",
+            "hinge_closeup.png",
+            "assembly_oblique.png",
+            "hinge_region_views.png",
+        )
+    }
     module["refresh_interblade_report"](ROOT, DIRECTORY)
+    module["write_owner_intent_reconciliation"](ROOT, DIRECTORY)
+    module["write_blade1_hinge_views"](ROOT, DIRECTORY)
     assert _hashes() == before
     assert DIAGNOSTIC.read_bytes() == json_bytes
+    assert {name: (DIRECTORY / name).read_bytes() for name in historical} == historical
     report = REPORT.read_text(encoding="utf-8")
     assert report == render_interblade_pair_report(json.loads(json_bytes))
     assert "XY projections" in report
     assert "copies the hinge station twice" in report
     assert "not a contact finding" in report
-    assert (DIRECTORY / "assembly_oblique.png").read_bytes().startswith(b"\x89PNG")
-    assert (DIRECTORY / "hinge_region_views.png").read_bytes().startswith(b"\x89PNG")
+    assert "hinge_region_views_blade1.png" in report
+    reconciliation = (DIRECTORY / "owner_intent_reconciliation.md").read_text(encoding="utf-8")
+    assert reconciliation == module["render_owner_intent_reconciliation"](ROOT)
+    assert "not in this environment" in reconciliation
+    assert "62.5 mm < h <= 70 mm" in reconciliation
+    assert "not a selected hinge" in reconciliation
+    assert "Draft PR #97" in reconciliation
+    corrected = DIRECTORY / "hinge_region_views_blade1.png"
+    assert corrected.read_bytes().startswith(b"\x89PNG")
     _bundle, _trial, _draft, parts = module["_retained_parts"](ROOT)
+    neighborhood = module["_blade1_hinge_parts"](parts)
+    assert [part.name for part in neighborhood] == ["blade_1_root", "blade_1_tip"]
+    full_by_name = {part.name: part for part in parts}
+    assert len(neighborhood[1].triangles) < len(full_by_name["blade_1_tip"].triangles)
+    assert not any(part.name.startswith("blade_2_") for part in neighborhood)
     lookup = {part.name: part for part in parts}
     assert _point_set(lookup["blade_1_root"], 0.0) == _point_set(lookup["blade_1_root"], -135.0)
     assert _point_set(lookup["blade_1_tip"], 0.0) != _point_set(lookup["blade_1_tip"], -135.0)
