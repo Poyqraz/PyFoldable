@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 import os
 import textwrap
@@ -316,6 +317,99 @@ def test_missing_or_malformed_polar_is_rejected(
 
     with pytest.raises(PolarProviderExecutionError, match=message):
         generate_polar(_provider(fake_xfoil), polar_request)
+
+
+def _capture(tmp_path: Path, name: str) -> Path:
+    return tmp_path / name
+
+
+def test_capture_survives_cleanup_for_success_and_nonconvergence(
+    fake_xfoil: Path,
+    polar_request: PolarGenerationRequest,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = _provider(fake_xfoil)
+    success_dir = _capture(tmp_path, "success")
+    result = provider.generate(polar_request, capture_dir=success_dir)
+    receipt = json.loads((success_dir / "capture.json").read_text(encoding="utf-8"))
+    assert result.complete
+    assert not Path(receipt["executable"]["path"]).is_relative_to(success_dir)
+    assert receipt["request_cache_key"] == polar_request.cache_key(provider.identity)
+    assert receipt["coordinate_sha256"]
+    assert receipt["script_sha256"] == __import__("hashlib").sha256((success_dir / "script.txt").read_bytes()).hexdigest()
+    assert receipt["declared_build_policy"]["ubuntu_dfsg_package_allowed"] is False
+    assert receipt["executable"]["sha256"]
+    assert receipt["polar_file"]["status"] == "present"
+    assert receipt["points"][0]["status"] == "converged"
+    assert receipt["solver_success"] is True
+    assert "ALFA" in (success_dir / "script.txt").read_text(encoding="utf-8")
+
+    monkeypatch.setenv("FAKE_XFOIL_MODE", "partial")
+    partial_dir = _capture(tmp_path, "partial")
+    partial = provider.generate(polar_request, capture_dir=partial_dir)
+    partial_receipt = json.loads((partial_dir / "capture.json").read_text(encoding="utf-8"))
+    assert partial.points[1].status == "not_converged"
+    assert partial_receipt["points"][1]["status"] == "not_converged"
+    assert partial_receipt["points"][1]["cl"] is None
+    assert partial_receipt["solver_success"] is False
+    assert partial_receipt["polar_parsed"] is True
+
+
+def test_capture_does_not_invent_points_for_timeout_exit_or_malformed_output(
+    fake_xfoil: Path,
+    polar_request: PolarGenerationRequest,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = _provider(fake_xfoil)
+    monkeypatch.setenv("FAKE_XFOIL_MODE", "sleep")
+    timeout_request = PolarGenerationRequest(
+        airfoil=polar_request.airfoil,
+        alpha_rad=polar_request.alpha_rad,
+        reynolds=polar_request.reynolds,
+        timeout_s=0.05,
+    )
+    timeout_dir = _capture(tmp_path, "timeout")
+    with pytest.raises(PolarProviderTimeoutError):
+        provider.generate(timeout_request, capture_dir=timeout_dir)
+    timeout_receipt = json.loads((timeout_dir / "capture.json").read_text(encoding="utf-8"))
+    assert timeout_receipt["process_status"] == "timeout"
+    assert timeout_receipt["polar_file"]["status"] == "unavailable"
+    assert {point["status"] for point in timeout_receipt["points"]} == {"unavailable"}
+    assert all(point["cl"] is None for point in timeout_receipt["points"])
+    assert timeout_receipt["stdout"]["status"] in {"empty", "partial", "unavailable"}
+    assert timeout_receipt["solver_success"] is False
+
+    monkeypatch.setenv("FAKE_XFOIL_MODE", "nonzero")
+    exit_dir = _capture(tmp_path, "nonzero")
+    with pytest.raises(PolarProviderExecutionError, match="status 7"):
+        provider.generate(polar_request, capture_dir=exit_dir)
+    exit_receipt = json.loads((exit_dir / "capture.json").read_text(encoding="utf-8"))
+    assert exit_receipt["returncode"] == 7
+    assert exit_receipt["polar_file"]["status"] == "unavailable"
+    assert {point["status"] for point in exit_receipt["points"]} == {"unavailable"}
+
+    monkeypatch.setenv("FAKE_XFOIL_MODE", "malformed")
+    malformed_dir = _capture(tmp_path, "malformed")
+    with pytest.raises(PolarProviderExecutionError, match="no recognized header"):
+        provider.generate(polar_request, capture_dir=malformed_dir)
+    malformed = json.loads((malformed_dir / "capture.json").read_text(encoding="utf-8"))
+    assert malformed["polar_file"]["status"] == "present"
+    assert malformed["polar_parsed"] is False
+    assert {point["status"] for point in malformed["points"]} == {"unavailable"}
+    assert "not_converged" not in json.dumps(malformed["points"])
+
+
+def test_capture_persistence_failure_is_not_a_success(
+    fake_xfoil: Path,
+    polar_request: PolarGenerationRequest,
+    tmp_path: Path,
+) -> None:
+    blocker = tmp_path / "not-a-directory"
+    blocker.write_text("blocked", encoding="utf-8")
+    with pytest.raises(PolarProviderExecutionError, match="not evidence-complete"):
+        _provider(fake_xfoil).generate(polar_request, capture_dir=blocker)
 
 
 def test_coefficients_are_mapped_from_degrees(

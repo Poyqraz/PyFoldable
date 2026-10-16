@@ -125,7 +125,116 @@
     "role": "historical_sufficient_rectangle_for_the_potential_image"
   },
   "provider_audit": {
+    "angle_distinction": {
+      "cartesian_corner": {
+        "alpha_rad": -0.6981317007977318,
+        "is_a_correlated_annulus_state": false,
+        "mach": 0.0,
+        "reason": "Mach 0 combined with an alpha/Reynolds endpoint is a grid corner, not one annulus state.",
+        "reynolds": 26030.624179244653
+      },
+      "conditional_first_query_deg": 30.65875,
+      "descending_start_executes_the_conditional_first_query": false,
+      "image_maximum_deg": 30.65875,
+      "image_minimum_deg": -39.729166663801884,
+      "padded_grid_high_deg": 32.0,
+      "padded_grid_low_deg": -40.0
+    },
     "declaration_reference": "41cc665295d1d5d667fb70ca8238d7c0304ce7779aca3430e97dbf1d6820ebcd",
+    "existing_real_captures": {
+      "active_design_polar_bundle": false,
+      "baseline_catalog_coordinate_sha256": "ab62d56cc86a591da4f83c1980ea5b07743c4e47bdb0eb63a8e166e190a96d42",
+      "case_name": "naca0012_re200k_real_v1",
+      "classification": "existing_but_coverage_incompatible",
+      "coordinate_sha256": "ab62d56cc86a591da4f83c1980ea5b07743c4e47bdb0eb63a8e166e190a96d42",
+      "coordinate_source": "configs/airfoils/NACA0012_81.dat",
+      "coverage": {
+        "alpha_deg_max": 10.0,
+        "alpha_deg_min": -6.000000000000001,
+        "alpha_rad_max": 0.17453292519943295,
+        "alpha_rad_min": -0.10471975511965978,
+        "mach": 0.0,
+        "point_count": 9,
+        "reynolds": 200000.0
+      },
+      "files": [
+        {
+          "path": "tests/fixtures/polar_real_qualification/naca0012_re200k_real_v1/capture/manifest.json",
+          "sha256": "b9231a49c17f0f6896a24c8561c729f029963d8df3e29c2f2315621cee919e48",
+          "size_bytes": 2961
+        },
+        {
+          "path": "tests/fixtures/polar_real_qualification/naca0012_re200k_real_v1/capture/benchmark.json",
+          "sha256": "251e92c55806527d1454c0997dddf4a604561d31a38ffda818768b9caa521ac5",
+          "size_bytes": 5866
+        },
+        {
+          "path": "tests/fixtures/polar_real_qualification/naca0012_re200k_real_v1/capture/results/00-xfoil-subprocess.json",
+          "sha256": "8f09607ea56a40737ff079ac2c1669d7acf7f718f6a86157e09b18786bcf0d41",
+          "size_bytes": 9367
+        },
+        {
+          "path": "tests/fixtures/polar_real_qualification/naca0012_re200k_real_v1/capture/results/01-neuralfoil.json",
+          "sha256": "6edd1155d6fbf99254d839902f96ef7131fa48696e247386f075fc48cec0e38e",
+          "size_bytes": 10119
+        },
+        {
+          "path": "tests/fixtures/polar_real_qualification/naca0012_re200k_real_v1/promotion.json",
+          "sha256": "bdb05f808cf7a4bfbbacefb8dd35cd008c118df8b307e5969d689b374a8e9a05",
+          "size_bytes": 2291
+        },
+        {
+          "path": "tests/fixtures/polar_real_qualification/naca0012_re200k_real_v1/golden.json",
+          "sha256": "e115ccd405726c1f5592cea6d2c7f6f25461c0d469921c59d8d6f887c41afb40",
+          "size_bytes": 8469
+        },
+        {
+          "path": "tests/fixtures/polar_real_qualification/naca0012_re200k_real_v1/comparison.json",
+          "sha256": "477248186e8e4b9575e4e2e1d075416f73f60cd3515d2877865d175d84bdec60",
+          "size_bytes": 744
+        },
+        {
+          "path": "tests/fixtures/polar_real_qualification/naca0012_re200k_real_v1/second_capture_manifest.json",
+          "sha256": "f239575ba8b4f1172366d4d12db6ff0071586e631734f9b37b68e54d346072ef",
+          "size_bytes": 2961
+        }
+      ],
+      "later_promotion_status": {
+        "physical_review_decision": "accepted",
+        "promotion_allowed": true,
+        "review_state": "approved",
+        "source_revision": "464dde5eea0a3266c830c6db6ff20f44fbc4e21e"
+      },
+      "matches_baseline_catalog_coordinate": true,
+      "raw_capture_status": {
+        "promotion_allowed": false,
+        "review_state": "unreviewed",
+        "source_revision": "464dde5eea0a3266c830c6db6ff20f44fbc4e21e"
+      },
+      "raw_neuralfoil_capture": {
+        "adapter_version": "1",
+        "backend_version": "0.3.3",
+        "complete": true,
+        "kind": "polar-provider-raw-result",
+        "minimum_confidence": 0.964351504329081,
+        "model_size": "xlarge",
+        "point_count": 9,
+        "provider": "neuralfoil"
+      },
+      "raw_xfoil_capture": {
+        "adapter_version": "2",
+        "backend_version": "6.99",
+        "complete": true,
+        "kind": "polar-provider-raw-result",
+        "point_count": 9,
+        "provider": "xfoil-subprocess",
+        "returncode": 0,
+        "statuses": [
+          "converged"
+        ]
+      },
+      "synthetic": false
+    },
     "historical_failures": {
       "NACA0012": {
         "bem_calls": 0,
@@ -158,8 +267,7 @@
       "NACA0012 cell 1/4 at Mach 0 and Reynolds 26030.6 was rejected. Usable fraction 0.756757 < 1. Point indices 0 through 8, angles -40 deg through -24 deg, are not_converged. No BEM call was made.",
       "NACA2412 cell 1/4 at the same Mach and Reynolds timed out after 90 s. The retained record has no per-angle disposition. No BEM call was made."
     ],
-    "retained_bundle_note": "No active_design_polar_bundle or qualified real-provider family for these catalog coordinates is present on current main. PR #97 retained provider failures and published no polar tables.",
-    "retained_real_bundles_in_repository": [],
+    "retained_bundle_note": "The Re 200000 NACA0012 captures are real provider outputs with a later promotion record. Their alpha, Reynolds, and Mach coverage does not contain this baseline. They are not an active-design polar bundle.",
     "xfoil_primary_documentation": {
       "numerical_behavior": "Viscous analysis can fail for excessive angle of attack or Reynolds number that is too low. Newton iteration resumes from the last solution; the primer recommends sequencing alpha gradually.",
       "physical_applicability": "The primer does not qualify this rotor, these coordinates, or the retained failed angles.",
@@ -2067,8 +2175,10 @@
     "attempt_limit_per_call": 1,
     "bem_calls": 0,
     "call_limit": 8,
-    "comparison_requirement_not_satisfied": "A genuine two-profile BEM comparison. Actual solver queries remain unavailable, and success of this probe still requires a separate decision to attempt BEM. Failure means the unchanged potential image is not provider-feasible under positive-first sequencing either.",
-    "evidence_this_can_obtain": "A point ledger for the potential-image rectangle when XFOIL starts at the high positive grid angle and steps downward, at the kinematic Mach and Reynolds endpoints rather than at Mach 0.",
+    "can_establish": "Whether this declared eight-cell grid, descending order, kinematic Mach and Reynolds endpoints, and one-script-per-cell execution produce a complete usable ledger.",
+    "cannot_establish": "A genuine two-profile BEM comparison. A failure establishes failure of this grid, sequencing, and execution configuration only. It does not establish infeasibility of the correlated kinematic image, the actual solver path, either profile, or the project. Differences from PR #97 cannot be attributed only to sequencing because the Mach grid also changes. Starting at the padded +32 deg grid angle does not execute the +30.65875 deg conditional first query.",
+    "capture": "XfoilProvider.generate(capture_dir=...) writes the receipt before temporary-directory cleanup, including timeout and exception paths. Omitting capture_dir preserves the default provider result.",
+    "cell_execution": "The existing adapter submits one cell as one complete script. After a failed cell, stop before launching the next cell. This does not interrupt the running script at the first bad angle.",
     "executed_by_this_diagnostic": false,
     "experiment_id": "xfoil_positive_first_potential_image_probe_v1",
     "first_query_alpha_rad": [
@@ -2081,7 +2191,6 @@
       0.2649894145852458
     ],
     "physical_qualification": false,
-    "prerequisite": "The unchanged positive_only policy can query the whole psi image, whose negative endpoint is inside this request. This probe does not authorize a narrower search, a Mach-0 family, coefficient substitution, or a NeuralFoil replacement.",
     "profiles": [
       "NACA0012",
       "NACA2412"
@@ -2196,9 +2305,8 @@
     ],
     "serial_order": "NACA0012 then NACA2412; within a profile, Mach ascending and Reynolds ascending.",
     "stop_conditions": [
-      "Any not_converged or rejected point.",
-      "Timeout, nonzero exit, or malformed polar output.",
-      "Do not retry, change ITER, send INIT, clamp, or start a BEM call."
+      "After a cell returns any not_converged, rejected, timeout, nonzero exit, or malformed output, do not launch the next cell.",
+      "Do not retry, change ITER, send INIT, clamp, substitute coefficients, or start a BEM call."
     ],
     "timeout_s": 90.0
   },

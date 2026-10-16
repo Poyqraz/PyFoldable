@@ -721,3 +721,11 @@ BEM calls stay historical. The one recommended next probe is
 `xfoil_positive_first_potential_image_probe_v1`; it is not executed here and
 does not authorize a BEM call, a narrower search, or a NeuralFoil replacement.
 Joint and geometry evidence is unchanged. `physical_qualification=false`.
+
+A failure of `xfoil_positive_first_potential_image_probe_v1` would establish
+failure of that grid, order, and Mach selection only. The padded −40°/+32°
+samples are not the image extrema near −39.72917°/+30.65875°, and +32° is not
+the conditional first query. The existing Re 200000 NACA0012 XFOIL and
+NeuralFoil captures remain real and coverage-incompatible. Capture receipts
+are written before XFOIL's temporary directory is removed. The probe stays
+unexecuted. Genuine comparison remains UNESTABLISHED.

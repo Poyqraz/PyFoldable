@@ -16,6 +16,7 @@ from typing import Any
 from pyfoldable.application.design_analysis import _load
 from pyfoldable.application.design_draft import DesignDraftInputs, build_design_draft
 from pyfoldable.core.airfoil import airfoil_coordinate_sha256
+from pyfoldable.core.models import AirfoilDefinition
 from pyfoldable.core.bem import (
     BEMAnnulusSettings,
     _AIR_GAMMA,
@@ -42,6 +43,17 @@ PIN_SHA256 = {
     "NACA2412.json": "900298c707e56157e2e956b0de90bfa1b3a1984931b0548f70c734ed22499a61",
 }
 MATCHED_PAIR = ("NACA0012", "NACA2412")
+REAL_CAPTURE_CASE = "tests/fixtures/polar_real_qualification/naca0012_re200k_real_v1"
+REAL_CAPTURE_FILES = (
+    "capture/manifest.json",
+    "capture/benchmark.json",
+    "capture/results/00-xfoil-subprocess.json",
+    "capture/results/01-neuralfoil.json",
+    "promotion.json",
+    "golden.json",
+    "comparison.json",
+    "second_capture_manifest.json",
+)
 ANNULUS_COUNT = 40
 ALPHA_STEP_RAD = math.radians(2.0)
 SYNTHETIC_SOURCE = "synthetic feasibility trace; not a provider polar"
@@ -293,7 +305,108 @@ def synthetic_trace(design, *, alpha_min: float, alpha_max: float, label: str) -
     }
 
 
-def _provider_audit(declaration: dict[str, Any], failures: dict[str, Any], rectangle: dict[str, Any]) -> dict[str, Any]:
+def _real_capture_inventory(repository_root: Path, catalog_coordinate_sha256: str) -> dict[str, Any]:
+    case = repository_root / REAL_CAPTURE_CASE
+    files = []
+    for relative in REAL_CAPTURE_FILES:
+        path = case / relative
+        payload = path.read_bytes()
+        files.append({
+            "path": f"{REAL_CAPTURE_CASE}/{relative}",
+            "sha256": _sha_bytes(payload),
+            "size_bytes": len(payload),
+        })
+    golden = json.loads((case / "golden.json").read_text(encoding="utf-8"))
+    request = golden["request"]
+    coordinates = tuple(tuple(point) for point in request["airfoil"]["coordinates"])
+    airfoil = AirfoilDefinition(request["airfoil"]["id"], request["airfoil"]["source"], coordinates)
+    coordinate_sha256 = airfoil_coordinate_sha256(airfoil)
+    alphas = [float(value) for value in request["alpha_rad"]]
+    xfoil = json.loads((case / "capture/results/00-xfoil-subprocess.json").read_text(encoding="utf-8"))
+    neuralfoil = json.loads((case / "capture/results/01-neuralfoil.json").read_text(encoding="utf-8"))
+    raw_manifest = json.loads((case / "capture/manifest.json").read_text(encoding="utf-8"))
+    promotion = json.loads((case / "promotion.json").read_text(encoding="utf-8"))
+    return {
+        "classification": "existing_but_coverage_incompatible",
+        "synthetic": False,
+        "active_design_polar_bundle": False,
+        "case_name": "naca0012_re200k_real_v1",
+        "files": files,
+        "coordinate_sha256": coordinate_sha256,
+        "coordinate_source": request["airfoil"]["source"],
+        "matches_baseline_catalog_coordinate": coordinate_sha256 == catalog_coordinate_sha256,
+        "baseline_catalog_coordinate_sha256": catalog_coordinate_sha256,
+        "coverage": {
+            "alpha_rad_min": min(alphas),
+            "alpha_rad_max": max(alphas),
+            "alpha_deg_min": math.degrees(min(alphas)),
+            "alpha_deg_max": math.degrees(max(alphas)),
+            "point_count": len(alphas),
+            "reynolds": request["reynolds"],
+            "mach": request["mach"],
+        },
+        "raw_xfoil_capture": {
+            "kind": xfoil["kind"],
+            "provider": "xfoil-subprocess",
+            "adapter_version": "2",
+            "backend_version": "6.99",
+            "returncode": xfoil["metadata"]["returncode"],
+            "point_count": xfoil["metadata"]["polar_row_count"],
+            "complete": xfoil["complete"],
+            "statuses": sorted({point["status"] for point in xfoil["points"]}),
+        },
+        "raw_neuralfoil_capture": {
+            "kind": neuralfoil["kind"],
+            "provider": "neuralfoil",
+            "adapter_version": "1",
+            "backend_version": "0.3.3",
+            "model_size": neuralfoil["metadata"]["model_size"],
+            "point_count": len(neuralfoil["points"]),
+            "complete": neuralfoil["complete"],
+            "minimum_confidence": min(point["confidence"] for point in neuralfoil["points"]),
+        },
+        "raw_capture_status": {
+            "review_state": raw_manifest["review_state"],
+            "promotion_allowed": raw_manifest["promotion_allowed"],
+            "source_revision": raw_manifest["source_revision"],
+        },
+        "later_promotion_status": {
+            "review_state": promotion["review_state"],
+            "promotion_allowed": promotion["promotion_allowed"],
+            "physical_review_decision": promotion["physical_review"]["decision"],
+            "source_revision": promotion["source_revision"],
+        },
+    }
+
+
+def _angle_distinction(query_map: dict[str, Any], rectangle: dict[str, Any]) -> dict[str, Any]:
+    grid = rectangle["alpha_rad"]
+    first = query_map["rows"][0]["first_no_induction_query"]["alpha_rad"]
+    return {
+        "padded_grid_low_deg": math.degrees(grid[0]),
+        "padded_grid_high_deg": math.degrees(grid[-1]),
+        "image_minimum_deg": math.degrees(rectangle["alpha_rad_min"]),
+        "image_maximum_deg": math.degrees(rectangle["alpha_rad_max"]),
+        "conditional_first_query_deg": math.degrees(first),
+        "descending_start_executes_the_conditional_first_query": False,
+        "cartesian_corner": {
+            "alpha_rad": grid[0],
+            "reynolds": rectangle["reynolds_grid"][0],
+            "mach": rectangle["mach_grid"][0],
+            "is_a_correlated_annulus_state": False,
+            "reason": "Mach 0 combined with an alpha/Reynolds endpoint is a grid corner, not one annulus state.",
+        },
+    }
+
+
+def _provider_audit(
+    repository_root: Path,
+    declaration: dict[str, Any],
+    failures: dict[str, Any],
+    rectangle: dict[str, Any],
+    query_map: dict[str, Any],
+    catalog_coordinate_sha256: str,
+) -> dict[str, Any]:
     foil = load_project_airfoil("NACA0012")
     request = PolarGenerationRequest(
         airfoil=foil,
@@ -310,11 +423,12 @@ def _provider_audit(declaration: dict[str, Any], failures: dict[str, Any], recta
     if neuralfoil_rejection is None or NEURALFOIL_CAPABILITIES.supports_mach:
         raise PolarQueryFeasibilityError("NeuralFoil Mach capability did not fail closed.")
     return {
-        "retained_real_bundles_in_repository": [],
+        "existing_real_captures": _real_capture_inventory(repository_root, catalog_coordinate_sha256),
+        "angle_distinction": _angle_distinction(query_map, rectangle),
         "retained_bundle_note": (
-            "No active_design_polar_bundle or qualified real-provider family for these "
-            "catalog coordinates is present on current main. PR #97 retained provider "
-            "failures and published no polar tables."
+            "The Re 200000 NACA0012 captures are real provider outputs with a later "
+            "promotion record. Their alpha, Reynolds, and Mach coverage does not contain "
+            "this baseline. They are not an active-design polar bundle."
         ),
         "historical_failures": {
             airfoil_id: {
@@ -440,26 +554,31 @@ def _experiment(
             "Every requested point is usable and the cell usable fraction is 1. "
             "No point is discarded, clamped, or replaced. Coordinate hashes match the catalog."
         ),
+        "cell_execution": (
+            "The existing adapter submits one cell as one complete script. After a failed "
+            "cell, stop before launching the next cell. This does not interrupt the "
+            "running script at the first bad angle."
+        ),
+        "capture": (
+            "XfoilProvider.generate(capture_dir=...) writes the receipt before temporary-directory "
+            "cleanup, including timeout and exception paths. Omitting capture_dir preserves "
+            "the default provider result."
+        ),
         "stop_conditions": [
-            "Any not_converged or rejected point.",
-            "Timeout, nonzero exit, or malformed polar output.",
-            "Do not retry, change ITER, send INIT, clamp, or start a BEM call.",
+            "After a cell returns any not_converged, rejected, timeout, nonzero exit, or malformed output, do not launch the next cell.",
+            "Do not retry, change ITER, send INIT, clamp, substitute coefficients, or start a BEM call.",
         ],
-        "evidence_this_can_obtain": (
-            "A point ledger for the potential-image rectangle when XFOIL starts at the "
-            "high positive grid angle and steps downward, at the kinematic Mach and "
-            "Reynolds endpoints rather than at Mach 0."
+        "can_establish": (
+            "Whether this declared eight-cell grid, descending order, kinematic Mach and "
+            "Reynolds endpoints, and one-script-per-cell execution produce a complete usable ledger."
         ),
-        "comparison_requirement_not_satisfied": (
-            "A genuine two-profile BEM comparison. Actual solver queries remain "
-            "unavailable, and success of this probe still requires a separate decision "
-            "to attempt BEM. Failure means the unchanged potential image is not "
-            "provider-feasible under positive-first sequencing either."
-        ),
-        "prerequisite": (
-            "The unchanged positive_only policy can query the whole psi image, whose "
-            "negative endpoint is inside this request. This probe does not authorize a "
-            "narrower search, a Mach-0 family, coefficient substitution, or a NeuralFoil replacement."
+        "cannot_establish": (
+            "A genuine two-profile BEM comparison. A failure establishes failure of this "
+            "grid, sequencing, and execution configuration only. It does not establish "
+            "infeasibility of the correlated kinematic image, the actual solver path, "
+            "either profile, or the project. Differences from PR #97 cannot be attributed "
+            "only to sequencing because the Mach grid also changes. Starting at the padded "
+            "+32 deg grid angle does not execute the +30.65875 deg conditional first query."
         ),
         "physical_qualification": False,
     }
@@ -547,7 +666,10 @@ def build_polar_query_feasibility(repository_root: str | Path) -> dict[str, Any]
         "query_map": query_map,
         "pr97_rectangle": rectangle,
         "synthetic_traces": [wide, positive_gap],
-        "provider_audit": _provider_audit(declaration, failures, rectangle),
+        "provider_audit": _provider_audit(
+            root, declaration, failures, rectangle, query_map,
+            bindings["NACA0012"]["coordinate_sha256"],
+        ),
         "recommended_experiment": manifest,
     }
     return report
@@ -599,19 +721,38 @@ def render_polar_query_feasibility(report: dict[str, Any]) -> str:
         f"{wide['min_alpha_rad']:.12g} rad, totals withheld. The trace stopped above the potential "
         "terminal alpha. Synthetic coverage of -40 deg through +10 deg and not the first positive "
         f"query: failed at annulus {gap['failed_annulus_index']} after {gap['query_count']} query. "
-        "Removing the historical negative-alpha failures does not make the baseline executable.",
+        "A table that covers those negative angles and stops at +10 deg still fails on the "
+        "conditional first query. That does not make the kinematic image, either profile, "
+        "or the project infeasible.",
+        "",
+        "The retained NACA0012 Re 200000 captures are real XFOIL and NeuralFoil outputs at "
+        "about -6 deg to +10 deg and Mach 0. Raw capture review is separate from the later "
+        "promotion record. That coverage is incompatible with this baseline and is not an "
+        "active-design bundle.",
         "",
         "The current NeuralFoil adapter rejects nonzero Mach. Its author documents compressible "
         "corrections as an AeroSandbox extension. It is not a replacement for this Mach image.",
         "",
         "## Recommended experiment",
         "",
+        "The historical rectangle pads the image extrema to -40 deg and +32 deg. "
+        "The image extrema are about -39.72917 deg and +30.65875 deg. "
+        "A Mach 0 corner is not a correlated annulus state. "
+        "Starting at +32 deg does not execute the +30.65875 deg conditional first query.",
+        "",
         f"`{experiment['experiment_id']}` is not executed here. It requests {experiment['call_limit']} "
-        "XFOIL cells, one attempt each, 90 s, no retry, alpha descending from the high positive grid "
-        "angle, at the kinematic Mach and Reynolds endpoints. Mach 0 is not requested. BEM calls: 0.",
-        experiment["evidence_this_can_obtain"],
-        experiment["comparison_requirement_not_satisfied"],
-        experiment["prerequisite"],
+        "XFOIL cells, 37 descending angles, one 90 s attempt, no retry, no INIT, and no BEM call. "
+        "The adapter submits each cell as one script and stops before the next cell after a failure. "
+        "It does not interrupt a cell at the first bad angle. Mach 0 is not requested, so a "
+        "difference from PR #97 is not evidence about sequencing alone.",
+        "",
+        "### Can establish",
+        "",
+        experiment["can_establish"],
+        "",
+        "### Cannot establish",
+        "",
+        experiment["cannot_establish"],
         "",
     ]
     return "\n".join(lines)

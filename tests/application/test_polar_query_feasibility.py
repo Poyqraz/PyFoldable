@@ -76,7 +76,26 @@ def test_synthetic_traces_keep_positive_first_query_and_withhold_totals() -> Non
 def test_provider_audit_preserves_failures_and_rejects_neuralfoil_mach() -> None:
     report = _report()
     audit = report["provider_audit"]
-    assert audit["retained_real_bundles_in_repository"] == []
+    captures = audit["existing_real_captures"]
+    assert captures["classification"] == "existing_but_coverage_incompatible"
+    assert captures["synthetic"] is False
+    assert captures["active_design_polar_bundle"] is False
+    assert captures["coverage"]["reynolds"] == 200000.0
+    assert captures["coverage"]["mach"] == 0.0
+    assert math.isclose(captures["coverage"]["alpha_deg_min"], -6.0, abs_tol=1.0e-6)
+    assert math.isclose(captures["coverage"]["alpha_deg_max"], 10.0, abs_tol=1.0e-6)
+    assert captures["raw_capture_status"]["promotion_allowed"] is False
+    assert captures["later_promotion_status"]["promotion_allowed"] is True
+    assert captures["raw_xfoil_capture"]["backend_version"] == "6.99"
+    assert captures["raw_neuralfoil_capture"]["backend_version"] == "0.3.3"
+    assert captures["matches_baseline_catalog_coordinate"] is True
+    assert captures["coordinate_sha256"] == "ab62d56cc86a591da4f83c1980ea5b07743c4e47bdb0eb63a8e166e190a96d42"
+    angles = audit["angle_distinction"]
+    assert math.isclose(angles["padded_grid_low_deg"], -40.0, abs_tol=1.0e-6)
+    assert math.isclose(angles["padded_grid_high_deg"], 32.0, abs_tol=1.0e-6)
+    assert math.isclose(angles["image_minimum_deg"], -39.729166663801884, abs_tol=1.0e-9)
+    assert math.isclose(angles["image_maximum_deg"], 30.65875, abs_tol=1.0e-9)
+    assert angles["descending_start_executes_the_conditional_first_query"] is False
     naca0012 = audit["historical_failures"]["NACA0012"]
     naca2412 = audit["historical_failures"]["NACA2412"]
     assert naca0012["bem_calls"] == 0
@@ -114,8 +133,16 @@ def test_recommended_experiment_is_one_unexecuted_probe() -> None:
     assert experiment["alpha_rad_descending"][0] > report["query_map"]["rows"][0]["first_no_induction_query"]["alpha_rad"]
     assert experiment["provider"]["name"] == "xfoil-subprocess"
     assert "INIT" in experiment["provider"]["initialization"]
+    assert "next cell" in experiment["cell_execution"]
+    assert "does not interrupt" in experiment["cell_execution"]
     assert experiment["physical_qualification"] is False
+    assert "genuine two-profile BEM comparison" in experiment["cannot_establish"]
+    assert "sequencing alone" in experiment["cannot_establish"] or "only to sequencing" in experiment["cannot_establish"]
     text = render_polar_query_feasibility(report)
     assert "UNESTABLISHED" in text
+    assert "### Can establish" in text
+    assert "### Cannot establish" in text
+    assert "+32 deg" in text
+    assert "+30.65875 deg" in text
     assert experiment["experiment_id"] in text
     assert "physical_qualification: false" in text

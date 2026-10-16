@@ -557,3 +557,9 @@ The potential search image reaches about −39.7° and is not an observed query.
 NeuralFoil's current adapter rejects nonzero Mach, so it is not a replacement.
 The next probe is `xfoil_positive_first_potential_image_probe_v1`, unexecuted.
 Joint and geometry records are unchanged. `physical_qualification=false`.
+
+Correction: that probe's failure would not make the kinematic image, either
+profile, or the project infeasible, and its Mach-grid change blocks a
+sequencing-only conclusion. The Re 200000 fixture captures are real,
+promoted separately from their raw review, and do not cover this baseline.
+`physical_qualification=false`. Genuine comparison remains UNESTABLISHED.

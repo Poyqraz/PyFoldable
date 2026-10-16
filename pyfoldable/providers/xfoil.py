@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import math
 import os
 import re
@@ -14,6 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
+from ..core.airfoil import airfoil_coordinate_sha256
 from ..core.providers import (
     PolarGenerationRequest,
     PolarGenerationResult,
@@ -46,6 +48,16 @@ _CAPABILITIES = ProviderCapabilities(
     supports_timeout=True,
 )
 _ALLOWED_OPTIONS = {"repanel"}
+_DECLARED_XFOIL_BUILD_POLICY = {
+    "source_url": "https://web.mit.edu/drela/Public/web/xfoil/xfoil6.99.tgz",
+    "source_archive_sha256": "5c0250643f52ce0e75d7338ae2504ce7907f2d49a30f921826717b8ac12ebe40",
+    "fortran_flags": "-O2 -fdefault-real-8 -fallow-argument-mismatch",
+    "ubuntu_dfsg_package_allowed": False,
+    "role": (
+        "Inherited build requirement. A capture records this policy and the "
+        "actual executable hash; it does not rebuild XFOIL or prove they match."
+    ),
+}
 
 
 @dataclass(frozen=True)
@@ -90,16 +102,30 @@ class XfoilProvider:
     def identity(self) -> ProviderIdentity:
         return self._identity
 
-    def generate(self, request: PolarGenerationRequest) -> PolarGenerationResult:
-        """Run one isolated XFOIL session and reconcile its saved polar rows."""
+    def generate(
+        self,
+        request: PolarGenerationRequest,
+        *,
+        capture_dir: str | os.PathLike[str] | None = None,
+    ) -> PolarGenerationResult:
+        """Run one isolated XFOIL session and reconcile its saved polar rows.
+
+        ``capture_dir`` is off by default. When set, the receipt is written
+        outside the temporary directory before that directory is removed,
+        including timeout, nonzero-exit, and unreadable-polar paths. A failed
+        capture does not return an evidence-complete success.
+        """
         request.validate_capabilities(self.capabilities)
         options = _validated_options(request.options)
         started = time.perf_counter()
 
         with tempfile.TemporaryDirectory(prefix="pyfoldable-xfoil-") as temporary:
             working_directory = Path(temporary)
-            _write_airfoil(working_directory / _AIRFOIL_FILENAME, request)
+            airfoil_path = working_directory / _AIRFOIL_FILENAME
+            _write_airfoil(airfoil_path, request)
             command_script = _build_command_script(request, options)
+            airfoil_bytes = airfoil_path.read_bytes()
+            script_bytes = command_script.encode("utf-8")
             try:
                 completed = subprocess.run(
                     [self.executable],
@@ -113,35 +139,89 @@ class XfoilProvider:
                     check=False,
                 )
             except subprocess.TimeoutExpired as error:
+                self._persist_capture(
+                    capture_dir, request, airfoil_bytes, script_bytes, working_directory,
+                    process_status="timeout", returncode=None,
+                    stdout=error.stdout, stderr=error.stderr, partial_streams=True,
+                    points=_unavailable_points(request, "Timeout occurred before a complete polar file could be established."),
+                    parsed=False,
+                )
                 raise PolarProviderTimeoutError(
                     f"XFOIL exceeded the {request.timeout_s:g} s request timeout."
                 ) from error
             except OSError as error:
+                self._persist_capture(
+                    capture_dir, request, airfoil_bytes, script_bytes, working_directory,
+                    process_status="start_failed", returncode=None,
+                    stdout=None, stderr=None, partial_streams=False,
+                    points=_unavailable_points(request, "The executable did not start."),
+                    parsed=False,
+                )
                 raise PolarProviderUnavailableError(
                     f"XFOIL executable could not be started: {self.executable}."
                 ) from error
 
             elapsed_s = time.perf_counter() - started
+            polar_path = working_directory / _POLAR_FILENAME
             if completed.returncode != 0:
+                self._persist_capture(
+                    capture_dir, request, airfoil_bytes, script_bytes, working_directory,
+                    process_status="completed", returncode=completed.returncode,
+                    stdout=completed.stdout, stderr=completed.stderr, partial_streams=False,
+                    points=_unavailable_points(
+                        request, "Nonzero exit occurred; point disposition was not inferred from a missing or unused polar."
+                    ),
+                    parsed=False,
+                )
                 diagnostics = _diagnostic_tail(completed.stdout, completed.stderr)
                 raise PolarProviderExecutionError(
                     f"XFOIL exited with status {completed.returncode}.{diagnostics}"
                 )
 
-            polar_path = working_directory / _POLAR_FILENAME
             if not polar_path.is_file():
+                self._persist_capture(
+                    capture_dir, request, airfoil_bytes, script_bytes, working_directory,
+                    process_status="completed", returncode=completed.returncode,
+                    stdout=completed.stdout, stderr=completed.stderr, partial_streams=False,
+                    points=_unavailable_points(request, "XFOIL exited without creating a polar file."),
+                    parsed=False,
+                )
                 diagnostics = _diagnostic_tail(completed.stdout, completed.stderr)
                 raise PolarProviderExecutionError(
                     f"XFOIL did not create {_POLAR_FILENAME}.{diagnostics}"
                 )
             try:
-                rows, parse_warnings = _parse_polar(polar_path.read_text(encoding="utf-8"))
+                polar_text = polar_path.read_text(encoding="utf-8")
+                rows, parse_warnings = _parse_polar(polar_text)
             except OSError as error:
+                self._persist_capture(
+                    capture_dir, request, airfoil_bytes, script_bytes, working_directory,
+                    process_status="completed", returncode=completed.returncode,
+                    stdout=completed.stdout, stderr=completed.stderr, partial_streams=False,
+                    points=_unavailable_points(request, "The polar file could not be read."),
+                    parsed=False,
+                )
                 raise PolarProviderExecutionError(
                     "XFOIL polar output could not be read."
                 ) from error
+            except PolarProviderExecutionError as error:
+                self._persist_capture(
+                    capture_dir, request, airfoil_bytes, script_bytes, working_directory,
+                    process_status="completed", returncode=completed.returncode,
+                    stdout=completed.stdout, stderr=completed.stderr, partial_streams=False,
+                    points=_unavailable_points(request, f"Polar output could not be parsed: {error}"),
+                    parsed=False,
+                )
+                raise
 
-        points, reconcile_warnings = _reconcile_rows(request, rows)
+            points, reconcile_warnings = _reconcile_rows(request, rows)
+            self._persist_capture(
+                capture_dir, request, airfoil_bytes, script_bytes, working_directory,
+                process_status="completed", returncode=completed.returncode,
+                stdout=completed.stdout, stderr=completed.stderr, partial_streams=False,
+                points=_ledger_from_points(points),
+                parsed=True,
+            )
         warnings = (*parse_warnings, *reconcile_warnings)
         metadata: dict[str, Any] = {
             "adapter": "subprocess",
@@ -160,6 +240,70 @@ class XfoilProvider:
             warnings=warnings,
             metadata=metadata,
         )
+
+    def _persist_capture(
+        self,
+        capture_dir: str | os.PathLike[str] | None,
+        request: PolarGenerationRequest,
+        airfoil_bytes: bytes,
+        script_bytes: bytes,
+        working_directory: Path,
+        *,
+        process_status: str,
+        returncode: int | None,
+        stdout: str | bytes | None,
+        stderr: str | bytes | None,
+        partial_streams: bool,
+        points: list[dict[str, Any]],
+        parsed: bool,
+    ) -> None:
+        if capture_dir is None:
+            return
+        try:
+            directory = Path(capture_dir)
+            directory.mkdir(parents=True, exist_ok=False)
+            _write_optional_bytes(directory / "script.txt", script_bytes)
+            _write_optional_bytes(directory / "airfoil_input.dat", airfoil_bytes)
+            stdout_bytes = _as_bytes(stdout)
+            stderr_bytes = _as_bytes(stderr)
+            if stdout_bytes is not None:
+                _write_optional_bytes(directory / "stdout.txt", stdout_bytes)
+            if stderr_bytes is not None:
+                _write_optional_bytes(directory / "stderr.txt", stderr_bytes)
+            polar_path = working_directory / _POLAR_FILENAME
+            polar_bytes = polar_path.read_bytes() if polar_path.is_file() else None
+            if polar_bytes is not None:
+                _write_optional_bytes(directory / "polar.bin", polar_bytes)
+            document = {
+                "schema_version": 1,
+                "artifact_class": "xfoil_subprocess_capture",
+                "request_cache_key": request.cache_key(self.identity),
+                "coordinate_sha256": airfoil_coordinate_sha256(request.airfoil),
+                "script_sha256": hashlib.sha256(script_bytes).hexdigest(),
+                "airfoil_input_sha256": hashlib.sha256(airfoil_bytes).hexdigest(),
+                "declared_build_policy": dict(_DECLARED_XFOIL_BUILD_POLICY),
+                "executable": _executable_identity(self.executable),
+                "provider_identity": self.identity.as_mapping(),
+                "adapter_source_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+                "pyfoldable_version": _package_version(),
+                "process_status": process_status,
+                "returncode": returncode,
+                "stdout": _byte_receipt(stdout_bytes, partial=partial_streams),
+                "stderr": _byte_receipt(stderr_bytes, partial=partial_streams),
+                "polar_file": _byte_receipt(polar_bytes, partial=False),
+                "polar_parsed": parsed,
+                "points": points,
+                "solver_success": parsed and all(point["status"] in {"converged", "low_confidence"} for point in points),
+                "capture_receipt_written": True,
+            }
+            (directory / "capture.json").write_text(
+                json.dumps(document, sort_keys=True, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+        except OSError as error:
+            raise PolarProviderExecutionError(
+                "XFOIL capture could not be persisted; the run is not evidence-complete."
+            ) from error
 
 
 def _resolve_executable(executable: str | os.PathLike[str]) -> str:
@@ -377,6 +521,81 @@ def _reconcile_rows(
     if unused:
         warnings.append(f"Ignored {len(unused)} unmatched XFOIL polar row(s).")
     return tuple(points), tuple(warnings)
+
+
+def _package_version() -> str:
+    # Deferred: importing the package while this provider module is loading is circular.
+    import pyfoldable
+
+    return pyfoldable.__version__
+
+
+def _as_bytes(value: str | bytes | None) -> bytes | None:
+    if value is None:
+        return None
+    if isinstance(value, bytes):
+        return value
+    return value.encode("utf-8", errors="replace")
+
+
+def _byte_receipt(payload: bytes | None, *, partial: bool) -> dict[str, Any]:
+    if payload is None:
+        return {"status": "unavailable", "sha256": None, "byte_count": None}
+    if len(payload) == 0:
+        status = "empty"
+    elif partial:
+        status = "partial"
+    else:
+        status = "present"
+    return {
+        "status": status,
+        "sha256": hashlib.sha256(payload).hexdigest(),
+        "byte_count": len(payload),
+    }
+
+
+def _write_optional_bytes(path: Path, payload: bytes) -> None:
+    path.write_bytes(payload)
+
+
+def _executable_identity(executable: str) -> dict[str, Any]:
+    try:
+        payload = Path(executable).read_bytes()
+    except OSError as error:
+        return {"path": executable, "sha256": None, "unavailable_reason": str(error)}
+    return {
+        "path": executable,
+        "sha256": hashlib.sha256(payload).hexdigest(),
+        "unavailable_reason": None,
+    }
+
+
+def _unavailable_points(request: PolarGenerationRequest, reason: str) -> list[dict[str, Any]]:
+    return [
+        {
+            "alpha_rad": alpha,
+            "status": "unavailable",
+            "cl": None,
+            "cd": None,
+            "cm": None,
+            "message": reason,
+        }
+        for alpha in request.alpha_rad
+    ]
+
+
+def _ledger_from_points(points: tuple[PolarPointResult, ...]) -> list[dict[str, Any]]:
+    return [
+        {
+            "alpha_rad": point.alpha_rad,
+            "status": point.status,
+            "cl": point.cl,
+            "cd": point.cd,
+            "cm": point.cm,
+            "message": point.message,
+        }
+        for point in points
+    ]
 
 
 def _diagnostic_tail(stdout: str, stderr: str) -> str:
