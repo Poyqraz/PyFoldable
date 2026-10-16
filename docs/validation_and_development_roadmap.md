@@ -706,3 +706,29 @@ no source/surface/BEM/FEA/trajectory execution or freeze is authorized by this
 documentation proposal. External CAD/STEP is optional. 13-inch source conventions
 remain separate from the 250 mm project baseline. Broader strength evidence and
 physical gates remain unchanged; no ADR-009 acceptance or qualification promotion.
+
+## 2026-10-16 catalog profile comparison workflow
+
+The geometry page can switch among the five catalog profiles, bind a matching
+polar bundle, and explicitly run the existing fully-open zero-offset BEM
+service. A successful or failed attempt can be appended as an immutable
+comparison snapshot. A failed explicit run stays attached to that same polar
+and settings request across rerenders, with null thrust, shaft torque, and
+shaft power, until the profile, polar, geometry, condition, or solver settings
+change. JSON and CSV exports keep thrust, shaft torque, and shaft power.
+Shaft power is not electrical power, and hover propulsive efficiency is not a
+ranking metric. Unlike planform, condition, or solver settings are reported
+as an uncontrolled set. Optimal hinge selection is not a prerequisite for
+this fully-open screening workflow.
+
+Comparison records now keep the complete admitted solver policy and separate
+repeated runs of one coordinate identity from a software-controlled profile
+comparison. A preflight rejection does not receive an executed request hash.
+Genuine provider comparison remains **BLOCKED**. This tree has no matching
+real-provider polar bundles for the catalog profiles, and Draft PR #97's
+blocked polar generation is not replayed or relaxed. Inert fixtures exercise
+the software path only. `physical_qualification=false`. The next data task is
+one source-bound real-provider bundle per compared profile, with coordinate
+hashes equal to the catalog profiles and coverage of that profile's
+fully-open query envelope. No synthetic substitution, clamp, or envelope
+reduction is authorized.
