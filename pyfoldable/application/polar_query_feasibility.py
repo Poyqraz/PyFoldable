@@ -36,6 +36,7 @@ from pyfoldable.core.providers import (
     PolarGenerationRequest,
     PolarGenerationResult,
     PolarProviderCapabilityError,
+    ProviderIdentity,
 )
 from pyfoldable.providers.neuralfoil import _CAPABILITIES as NEURALFOIL_CAPABILITIES
 from pyfoldable.providers.xfoil import _build_command_script
@@ -564,8 +565,11 @@ def _experiment(
             "run_declared_probe is the enforcement point. It launches at most eight "
             "declared cells, one attempt each, and stops before the next cell after "
             "a failed cell. The adapter still submits each launched cell as one complete "
-            "script and does not interrupt that script at the first bad angle. A manifest "
-            "alone does not enforce these limits, and this diagnostic does not launch the probe."
+            "script and does not interrupt that script at the first bad angle. A returned "
+            "result is admitted only when its canonical request and provider identity match "
+            "the launched cell and the declared provider, including retained capture request "
+            "identity. A manifest alone does not enforce these limits, and this diagnostic "
+            "does not launch the probe."
         ),
         "capture": (
             "XfoilProvider.generate(capture_dir=...) writes raw stdout, stderr, and polar "
@@ -756,6 +760,45 @@ def declared_probe_requests(
     return tuple(requests)
 
 
+def _declared_provider(experiment: dict[str, Any]) -> ProviderIdentity:
+    provider = experiment["provider"]
+    return ProviderIdentity(
+        name=str(provider["name"]),
+        adapter_version=str(provider["adapter_version"]),
+        backend_name=str(provider["backend_name"]),
+        backend_version=str(provider["backend_version"]),
+    )
+
+
+def _bind_returned_result(
+    launched: PolarGenerationRequest,
+    result: PolarGenerationResult,
+    declared: ProviderIdentity,
+) -> dict[str, Any]:
+    """Compare the launched cell with the returned result, not a self-derived cache key."""
+    attempted = launched.cache_key(declared)
+    returned = result.request.cache_key(declared)
+    capture_key = result.metadata.get("capture_request_sha256")
+    if not isinstance(capture_key, str):
+        capture_key = None
+    mismatch = None
+    if result.provider != declared:
+        mismatch = "Returned provider identity does not match the declared provider."
+    elif returned != attempted:
+        mismatch = "Returned request identity does not match the launched request."
+    elif result.metadata.get("capture_evidence_ready") is True and capture_key != attempted:
+        mismatch = "Retained capture request identity does not match the launched request."
+    return {
+        "attempted_request_sha256": attempted,
+        "returned_request_sha256": returned,
+        "attempted_profile": launched.airfoil.id,
+        "returned_profile": result.request.airfoil.id,
+        "returned_provider": result.provider.as_mapping(),
+        "capture_request_sha256": capture_key,
+        "identity_mismatch": mismatch,
+    }
+
+
 def run_declared_probe(
     experiment: dict[str, Any],
     airfoils: dict[str, AirfoilDefinition],
@@ -767,6 +810,7 @@ def run_declared_probe(
     means no later cell was launched. Partial output does not authorize another cell.
     """
     requests = declared_probe_requests(experiment, airfoils)
+    declared = _declared_provider(experiment)
     cells: list[dict[str, Any]] = []
     stop_reason: str | None = None
     for index, request in enumerate(requests):
@@ -776,7 +820,7 @@ def run_declared_probe(
         try:
             result = launch(request)
         except Exception as error:
-            cells.append(_probe_cell(index, request, result=None, error=error))
+            cells.append(_probe_cell(index, request, result=None, error=error, declared=declared))
             stop_reason = "launch failed before a complete evidence-ready cell"
             break
         if not isinstance(result, PolarGenerationResult):
@@ -786,13 +830,22 @@ def run_declared_probe(
                     request,
                     result=None,
                     error=TypeError("launch did not return a polar result"),
+                    declared=declared,
                 )
             )
             stop_reason = "launch did not return a polar result"
             break
-        cells.append(_probe_cell(index, request, result=result, error=None))
-        evidence_ready = result.metadata.get("capture_evidence_ready") is True
-        if not result.complete or not evidence_ready:
+        binding = _bind_returned_result(request, result, declared)
+        cells.append(_probe_cell(index, request, result=result, error=None, declared=declared, binding=binding))
+        evidence_ready = (
+            binding["identity_mismatch"] is None
+            and result.complete
+            and result.metadata.get("capture_evidence_ready") is True
+        )
+        if binding["identity_mismatch"]:
+            stop_reason = "returned result does not match the launched request"
+            break
+        if not evidence_ready:
             stop_reason = "partial or evidence-incomplete cell does not authorize continuation"
             break
     return {
@@ -823,7 +876,11 @@ def _probe_cell(
     *,
     result: PolarGenerationResult | None,
     error: BaseException | None,
+    declared: ProviderIdentity,
+    binding: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    binding = binding or {}
+    mismatch = binding.get("identity_mismatch")
     return {
         "index": index,
         "profile": request.airfoil.id,
@@ -832,7 +889,18 @@ def _probe_cell(
         "timeout_s": request.timeout_s,
         "alpha_count": len(request.alpha_rad),
         "complete": None if result is None else result.complete,
-        "evidence_ready": bool(result is not None and result.metadata.get("capture_evidence_ready") is True),
+        "evidence_ready": bool(
+            result is not None
+            and mismatch is None
+            and result.metadata.get("capture_evidence_ready") is True
+        ),
+        "attempted_request_sha256": binding.get("attempted_request_sha256", request.cache_key(declared)),
+        "returned_request_sha256": binding.get("returned_request_sha256"),
+        "attempted_profile": binding.get("attempted_profile", request.airfoil.id),
+        "returned_profile": binding.get("returned_profile"),
+        "returned_provider": binding.get("returned_provider"),
+        "capture_request_sha256": binding.get("capture_request_sha256"),
+        "identity_mismatch": mismatch,
         "error_type": None if error is None else type(error).__name__,
         "error": None if error is None else str(error),
     }
@@ -907,7 +975,9 @@ def render_polar_query_feasibility(report: dict[str, Any]) -> str:
         f"enforces {experiment['call_limit']} XFOIL cells, 37 descending angles, one 90 s attempt, "
         "no retry, no INIT, and no BEM call. The adapter submits each launched cell as one script "
         "and does not interrupt that script at the first bad angle. The driver stops before the "
-        "next cell after a failed or partial cell. A manifest alone does not enforce that stop; "
+        "next cell after a failed, partial, or misattributed cell. Admission requires the "
+        "returned request and provider to match the launched cell and the declared provider. "
+        "A manifest alone does not enforce that stop; "
         "earlier text that attributed the stop to the adapter overstated what the manifest did. "
         "Mach 0 is not requested, so a difference from PR #97 is not evidence about sequencing alone.",
         "",

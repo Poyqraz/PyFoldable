@@ -738,3 +738,9 @@ A failed, partial, undecodable, or evidence-incomplete cell prevents the next
 launch. Declared XFOIL source and compiler flags remain a build requirement,
 not verified provenance of the executable that ran. The genuine probe is still
 unexecuted. Genuine comparison remains UNESTABLISHED. `physical_qualification=false`.
+
+Further correction: readiness requires the returned request and provider to match
+the launched cell and the declared provider, including the retained capture
+request. An unreadable polar is not treated as missing evidence or as a successful
+capture. Executable hashes remain file observations, not build provenance. The
+genuine probe remains unexecuted. `physical_qualification=false`.

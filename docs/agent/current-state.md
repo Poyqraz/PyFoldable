@@ -570,3 +570,11 @@ one 90 s attempt, 37 descending angles, no retry, no INIT, and no BEM call.
 Partial or evidence-incomplete output does not authorize another launch.
 Declared build flags are not verified executable provenance. The genuine probe
 remains unexecuted.
+
+Further correction: a complete captured result is admitted only when its canonical
+request and provider identity match the launched cell and the declared provider.
+Retained capture request identity is bound to that same launched request. An
+unreadable polar file is a read-failure receipt with unavailable coefficients,
+written before temporary-directory cleanup. Before/after executable hashes remain
+file observations. The genuine probe remains unexecuted.
+`physical_qualification=false`. Genuine comparison remains UNESTABLISHED.

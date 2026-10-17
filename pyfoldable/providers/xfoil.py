@@ -121,6 +121,7 @@ class XfoilProvider:
         options = _validated_options(request.options)
         started = time.perf_counter()
         capture_evidence_ready: bool | None = None
+        capture_request_sha256: str | None = None
 
         with tempfile.TemporaryDirectory(prefix="pyfoldable-xfoil-") as temporary:
             working_directory = Path(temporary)
@@ -184,7 +185,19 @@ class XfoilProvider:
                     f"XFOIL exited with status {completed.returncode}.{diagnostics}"
                 )
 
-            if not polar_path.is_file():
+            polar_read, polar_bytes, polar_read_error = _read_polar_file(polar_path)
+            if polar_read == "read_failed":
+                self._persist_capture(
+                    capture_dir, request, airfoil_bytes, script_bytes, working_directory,
+                    process_status="completed", returncode=completed.returncode,
+                    stdout=completed.stdout, stderr=completed.stderr, partial_streams=False,
+                    points=_unavailable_points(request, "The polar file could not be read."),
+                    parsed=False, decoding_status="not_attempted",
+                    prelaunch_executable=prelaunch_executable,
+                    polar_read="read_failed", polar_read_error=polar_read_error,
+                )
+                raise PolarProviderExecutionError("XFOIL polar file could not be read.")
+            if polar_read == "unavailable":
                 self._persist_capture(
                     capture_dir, request, airfoil_bytes, script_bytes, working_directory,
                     process_status="completed", returncode=completed.returncode,
@@ -192,12 +205,12 @@ class XfoilProvider:
                     points=_unavailable_points(request, "XFOIL exited without creating a polar file."),
                     parsed=False, decoding_status="unavailable",
                     prelaunch_executable=prelaunch_executable,
+                    polar_read="unavailable",
                 )
                 diagnostics = _diagnostic_tail(stdout_text, stderr_text)
                 raise PolarProviderExecutionError(
                     f"XFOIL did not create {_POLAR_FILENAME}.{diagnostics}"
                 )
-            polar_bytes = polar_path.read_bytes()
             try:
                 polar_text = polar_bytes.decode("utf-8")
             except UnicodeDecodeError as error:
@@ -207,6 +220,7 @@ class XfoilProvider:
                     stdout=completed.stdout, stderr=completed.stderr, partial_streams=False,
                     points=_unavailable_points(request, "Polar bytes could not be decoded as UTF-8."),
                     parsed=False, decoding_status="failed", polar_bytes=polar_bytes,
+                    polar_read="present",
                     prelaunch_executable=prelaunch_executable,
                 )
                 raise PolarProviderExecutionError(
@@ -221,6 +235,7 @@ class XfoilProvider:
                     stdout=completed.stdout, stderr=completed.stderr, partial_streams=False,
                     points=_unavailable_points(request, "The polar file could not be read."),
                     parsed=False, decoding_status="decoded", polar_bytes=polar_bytes,
+                    polar_read="present",
                     prelaunch_executable=prelaunch_executable,
                 )
                 raise PolarProviderExecutionError(
@@ -233,6 +248,7 @@ class XfoilProvider:
                     stdout=completed.stdout, stderr=completed.stderr, partial_streams=False,
                     points=_unavailable_points(request, f"Polar output could not be parsed: {error}"),
                     parsed=False, decoding_status="decoded", polar_bytes=polar_bytes,
+                    polar_read="present",
                     prelaunch_executable=prelaunch_executable,
                 )
                 raise
@@ -244,6 +260,7 @@ class XfoilProvider:
                 stdout=completed.stdout, stderr=completed.stderr, partial_streams=False,
                 points=_ledger_from_points(points),
                 parsed=True, decoding_status="decoded", polar_bytes=polar_bytes,
+                polar_read="present",
                 prelaunch_executable=prelaunch_executable,
             )
             if capture_dir is not None and not receipt["identity_matched"]:
@@ -252,6 +269,7 @@ class XfoilProvider:
                 )
             if capture_dir is not None:
                 capture_evidence_ready = bool(receipt["evidence_ready"])
+                capture_request_sha256 = receipt["request_sha256"]
         warnings = (*parse_warnings, *reconcile_warnings)
         metadata: dict[str, Any] = {
             "adapter": "subprocess",
@@ -262,6 +280,8 @@ class XfoilProvider:
         }
         if capture_evidence_ready is not None:
             metadata["capture_evidence_ready"] = capture_evidence_ready
+        if capture_request_sha256 is not None:
+            metadata["capture_request_sha256"] = capture_request_sha256
         if stderr_text.strip():
             metadata["stderr_tail"] = stderr_text.strip()[-2000:]
         return PolarGenerationResult(
@@ -291,9 +311,17 @@ class XfoilProvider:
         decoding_status: str,
         prelaunch_executable: dict[str, Any] | None,
         polar_bytes: bytes | None = None,
-    ) -> dict[str, bool]:
+        polar_read: str = "not_attempted",
+        polar_read_error: str | None = None,
+    ) -> dict[str, Any]:
         if capture_dir is None:
-            return {"evidence_ready": True, "identity_matched": True}
+            return {"evidence_ready": True, "identity_matched": True, "request_sha256": None}
+        if polar_read == "not_attempted":
+            polar_read, polar_bytes, polar_read_error = _read_polar_file(
+                working_directory / _POLAR_FILENAME
+            )
+        elif polar_read in {"read_failed", "unavailable"}:
+            polar_bytes = None
         try:
             directory = Path(capture_dir)
             directory.mkdir(parents=True, exist_ok=False)
@@ -305,10 +333,7 @@ class XfoilProvider:
                 _write_optional_bytes(directory / "stdout.bin", stdout_bytes)
             if stderr_bytes is not None:
                 _write_optional_bytes(directory / "stderr.bin", stderr_bytes)
-            if polar_bytes is None:
-                polar_path = working_directory / _POLAR_FILENAME
-                polar_bytes = polar_path.read_bytes() if polar_path.is_file() else None
-            if polar_bytes is not None:
+            if polar_read == "present" and polar_bytes is not None:
                 _write_optional_bytes(directory / "polar.bin", polar_bytes)
             postlaunch_executable = _executable_identity(self.executable)
             identity_matched = bool(
@@ -317,6 +342,7 @@ class XfoilProvider:
                 and prelaunch_executable.get("sha256") == postlaunch_executable.get("sha256")
             )
             request_preimage = _request_preimage(request, self.identity)
+            request_sha256 = hashlib.sha256(request_preimage).hexdigest()
             _write_optional_bytes(directory / "request_preimage.json", request_preimage)
             points_usable = parsed and bool(points) and all(
                 point["status"] in {"converged", "low_confidence"} for point in points
@@ -325,8 +351,8 @@ class XfoilProvider:
             document = {
                 "schema_version": 1,
                 "artifact_class": "xfoil_subprocess_capture",
-                "request_cache_key": hashlib.sha256(request_preimage).hexdigest(),
-                "request_preimage_sha256": hashlib.sha256(request_preimage).hexdigest(),
+                "request_cache_key": request_sha256,
+                "request_preimage_sha256": request_sha256,
                 "coordinate_sha256": airfoil_coordinate_sha256(request.airfoil),
                 "script_sha256": hashlib.sha256(script_bytes).hexdigest(),
                 "airfoil_input_sha256": hashlib.sha256(airfoil_bytes).hexdigest(),
@@ -349,7 +375,9 @@ class XfoilProvider:
                 "stdout": _byte_receipt(stdout_bytes, partial=partial_streams),
                 "stderr": _byte_receipt(stderr_bytes, partial=partial_streams),
                 "stream_text_is_not_raw_bytes": True,
-                "polar_file": _byte_receipt(polar_bytes, partial=False),
+                "polar_file": _polar_file_receipt(polar_read, polar_bytes),
+                "polar_read_status": polar_read,
+                "polar_read_error": polar_read_error,
                 "polar_decoding_status": decoding_status,
                 "polar_parsed": parsed,
                 "points": points,
@@ -365,7 +393,11 @@ class XfoilProvider:
             raise PolarProviderExecutionError(
                 "XFOIL capture could not be persisted; the run is not evidence-complete."
             ) from error
-        return {"evidence_ready": evidence_ready, "identity_matched": identity_matched}
+        return {
+            "evidence_ready": evidence_ready,
+            "identity_matched": identity_matched,
+            "request_sha256": request_sha256,
+        }
 
 
 def _resolve_executable(executable: str | os.PathLike[str]) -> str:
@@ -622,6 +654,30 @@ def _as_bytes(value: str | bytes | None) -> bytes | None:
     if isinstance(value, bytes):
         return value
     return value.encode("utf-8", errors="replace")
+
+
+def _read_polar_file(path: Path) -> tuple[str, bytes | None, str | None]:
+    """Read polar bytes once. Existence checks and reads share one error boundary."""
+    try:
+        if not path.is_file():
+            return "unavailable", None, None
+        return "present", path.read_bytes(), None
+    except FileNotFoundError:
+        return "unavailable", None, None
+    except OSError as error:
+        try:
+            os.chmod(path.parent, 0o700)
+        except OSError:
+            pass
+        return "read_failed", None, f"{type(error).__name__}: {error}"
+
+
+def _polar_file_receipt(polar_read: str, payload: bytes | None) -> dict[str, Any]:
+    if polar_read == "read_failed":
+        return {"status": "read_failed", "sha256": None, "byte_count": None}
+    if polar_read != "present" or payload is None:
+        return {"status": "unavailable", "sha256": None, "byte_count": None}
+    return _byte_receipt(payload, partial=False)
 
 
 def _byte_receipt(payload: bytes | None, *, partial: bool) -> dict[str, Any]:

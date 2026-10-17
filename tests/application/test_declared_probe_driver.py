@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import textwrap
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,7 @@ from pyfoldable.application.polar_query_feasibility import (
     build_polar_query_feasibility,
     run_declared_probe,
 )
+from pyfoldable.core.models import AirfoilDefinition
 from pyfoldable.core.profile_catalog import load_project_airfoil
 from pyfoldable.core.providers import (
     PolarGenerationRequest,
@@ -93,7 +95,7 @@ def fake_xfoil(tmp_path: Path) -> Path:
 
 
 def _provider(executable: Path) -> XfoilProvider:
-    return XfoilProvider(executable, backend_version="6.99-test")
+    return XfoilProvider(executable, backend_version="6.99")
 
 
 def _complete_without_evidence(request: PolarGenerationRequest) -> PolarGenerationResult:
@@ -308,6 +310,130 @@ def test_driver_refuses_an_undeclared_ninth_launch_and_an_init_script(
     with pytest.raises(PolarQueryFeasibilityError, match="INIT"):
         run_declared_probe(experiment, airfoils, launch)
     assert launched == []
+
+
+def _declared_provider(experiment: dict) -> ProviderIdentity:
+    provider = experiment["provider"]
+    return ProviderIdentity(
+        name=provider["name"],
+        adapter_version=provider["adapter_version"],
+        backend_name=provider["backend_name"],
+        backend_version=provider["backend_version"],
+    )
+
+
+def _ready_result(
+    request: PolarGenerationRequest,
+    provider: ProviderIdentity,
+    *,
+    capture_sha256: str | None = None,
+) -> PolarGenerationResult:
+    points = tuple(
+        PolarPointResult(alpha_rad=alpha, status="converged", cl=0.1, cd=0.02, cm=0.0)
+        for alpha in request.alpha_rad
+    )
+    return PolarGenerationResult(
+        request=request,
+        provider=provider,
+        points=points,
+        elapsed_s=0.01,
+        metadata={
+            "capture_evidence_ready": True,
+            "capture_request_sha256": capture_sha256 or request.cache_key(provider),
+        },
+    )
+
+
+def _stop_on_second_cell(experiment, airfoils, second):
+    declared = _declared_provider(experiment)
+    launched: list[PolarGenerationRequest] = []
+    first: dict[str, PolarGenerationResult] = {}
+
+    def launch(request: PolarGenerationRequest) -> PolarGenerationResult:
+        launched.append(request)
+        if len(launched) == 1:
+            first["result"] = _ready_result(request, declared)
+            return first["result"]
+        return second(request, declared, first["result"])
+
+    outcome = run_declared_probe(experiment, airfoils, launch)
+    assert len(launched) == 2
+    assert outcome["launch_count"] == 2
+    assert outcome["stop_reason"]
+    cell = outcome["cells"][1]
+    assert cell["evidence_ready"] is False
+    assert cell["attempted_request_sha256"]
+    assert cell["returned_request_sha256"]
+    assert cell["identity_mismatch"]
+    return outcome, launched, declared
+
+
+def test_replayed_first_cell_result_does_not_authorize_the_next_cell(
+    experiment: dict,
+    airfoils: dict,
+) -> None:
+    outcome, _, declared = _stop_on_second_cell(
+        experiment,
+        airfoils,
+        lambda request, provider, first: first,
+    )
+    cell = outcome["cells"][1]
+    assert cell["attempted_request_sha256"] != cell["returned_request_sha256"]
+    assert cell["returned_request_sha256"] == outcome["cells"][0]["attempted_request_sha256"]
+    assert declared.backend_version == "6.99"
+
+
+def test_foreign_profile_and_wrong_condition_do_not_authorize_continuation(
+    experiment: dict,
+    airfoils: dict,
+) -> None:
+    foreign = AirfoilDefinition(
+        id="FOREIGN",
+        source="inert seam",
+        coordinates=((1.0, 0.0), (0.0, 0.1), (0.0, -0.1), (1.0, 0.0)),
+    )
+
+    def foreign_result(request, provider, first):
+        return _ready_result(replace(request, airfoil=foreign), provider)
+
+    outcome, _, _ = _stop_on_second_cell(experiment, airfoils, foreign_result)
+    assert outcome["cells"][1]["returned_profile"] == "FOREIGN"
+    assert outcome["cells"][1]["attempted_profile"] == "NACA0012"
+
+    def wrong_reynolds(request, provider, first):
+        return _ready_result(replace(request, reynolds=request.reynolds + 1.0), provider)
+
+    outcome, _, _ = _stop_on_second_cell(experiment, airfoils, wrong_reynolds)
+    assert outcome["cells"][1]["attempted_request_sha256"] != outcome["cells"][1]["returned_request_sha256"]
+
+    def wrong_mach(request, provider, first):
+        return _ready_result(replace(request, mach=request.mach + 0.01), provider)
+
+    outcome, _, _ = _stop_on_second_cell(experiment, airfoils, wrong_mach)
+    assert "mach" in outcome["cells"][1]["identity_mismatch"] or outcome["cells"][1]["identity_mismatch"]
+
+
+def test_provider_and_capture_identity_mismatches_stop_the_probe(
+    experiment: dict,
+    airfoils: dict,
+) -> None:
+    def wrong_provider(request, provider, first):
+        return _ready_result(
+            request,
+            replace(provider, backend_version="not-the-declared-provider"),
+        )
+
+    outcome, _, _ = _stop_on_second_cell(experiment, airfoils, wrong_provider)
+    assert outcome["cells"][1]["returned_provider"]["backend_version"] == "not-the-declared-provider"
+    assert outcome["cells"][1]["attempted_request_sha256"] == outcome["cells"][1]["returned_request_sha256"]
+
+    def wrong_capture(request, provider, first):
+        return _ready_result(request, provider, capture_sha256=first.request.cache_key(provider))
+
+    outcome, _, _ = _stop_on_second_cell(experiment, airfoils, wrong_capture)
+    cell = outcome["cells"][1]
+    assert cell["capture_request_sha256"] == outcome["cells"][0]["attempted_request_sha256"]
+    assert cell["capture_request_sha256"] != cell["attempted_request_sha256"]
 
 
 def test_driver_does_not_call_the_rotor_solver(
