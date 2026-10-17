@@ -1,0 +1,2371 @@
+{
+  "artifact_class": "polar_query_feasibility_diagnostic",
+  "baseline": {
+    "catalog_profile_ids": [
+      "NACA0012",
+      "NACA2412",
+      "NACA23012",
+      "NACA4415",
+      "NACA63-412"
+    ],
+    "policy_sha256": "f5a59ab1b9d487e0fa8478558f66d0b54e55c2670097d33134acb8abc39da8ae",
+    "profiles": {
+      "NACA0012": {
+        "coordinate_sha256": "ab62d56cc86a591da4f83c1980ea5b07743c4e47bdb0eb63a8e166e190a96d42",
+        "draft_sha256": "d993635db17360f767cff4f26226b3f238de9cd3fb7657c8180247366f2b4d4f"
+      },
+      "NACA2412": {
+        "coordinate_sha256": "3f84aba0f9234ed6e9fe4eedebe88ae8701a19ae181d70e21a02b0704916999a",
+        "draft_sha256": "c3200882dbe6c1f0771bb89772ea8becb4ee143dc6929c4f9346fe55da4371ae"
+      }
+    },
+    "solver_policy": {
+      "annulus_count": 40,
+      "annulus_settings": {
+        "angle_tolerance_rad": 1e-10,
+        "bracket_samples": 128,
+        "include_root_loss": false,
+        "include_tip_loss": true,
+        "loading_branch": "positive_only",
+        "max_iterations": 100,
+        "minimum_tip_loss_factor": 1e-06,
+        "relative_residual_tolerance": 1e-10,
+        "residual_tolerance_m2_s": 1e-08,
+        "rotational_augmentation": {
+          "kind": "disabled",
+          "lift_curve_slope_per_rad": null,
+          "maximum_absolute_alpha_rad": 0.7853981633974483,
+          "maximum_chord_over_radius": 0.75,
+          "model_id": "disabled",
+          "source": null,
+          "zero_lift_angle_rad": null
+        }
+      },
+      "bounds": "error",
+      "forward_speed_m_s": 0.0,
+      "radial_domain": "station_span",
+      "rotational_augmentation_kind": "disabled",
+      "solved_pose": "fully_open_zero_offset"
+    },
+    "source_design_sha256": "a3852e5d14f433528fa9ad63bae26dd076b5136eacf4a7860ef76971eec2afdc"
+  },
+  "genuine_bem_comparison": "UNESTABLISHED",
+  "genuine_query_coverage": "unavailable",
+  "historical_inputs": {
+    "bem_calls": 0,
+    "geometry_sha256": "9f28067fdd4a59b25da36d5d2e916e5804927232cd629c572e17880990644902",
+    "operating_condition_sha256": "875469fb9e0b3383ec262bc31617be0707611c5e45e2e33a5588bad80a4392d1",
+    "pin_sha256": {
+      "NACA0012.json": "0b07641a6d49f89d965871edfa1507e2ed237c76080c24e09c55f8c1590819eb",
+      "NACA2412.json": "900298c707e56157e2e956b0de90bfa1b3a1984931b0548f70c734ed22499a61",
+      "declaration.json": "feaa6ac2a39147605cfb23b1fd9a516ca95ca1a96a25080bc14eb65e766d5d5c"
+    },
+    "shared_declaration_sha256": "41cc665295d1d5d667fb70ca8238d7c0304ce7779aca3430e97dbf1d6820ebcd",
+    "study_id": "two_profile_bem_screening"
+  },
+  "performance_totals_published": false,
+  "physical_qualification": false,
+  "pr97_rectangle": {
+    "alpha_rad": [
+      -0.6981317007977318,
+      -0.6632251157578452,
+      -0.6283185307179586,
+      -0.593411945678072,
+      -0.5585053606381855,
+      -0.5235987755982988,
+      -0.48869219055841223,
+      -0.45378560551852565,
+      -0.41887902047863906,
+      -0.3839724354387525,
+      -0.3490658503988659,
+      -0.3141592653589793,
+      -0.27925268031909267,
+      -0.2443460952792061,
+      -0.2094395102393195,
+      -0.17453292519943298,
+      -0.13962634015954634,
+      -0.1047197551196597,
+      -0.06981317007977317,
+      -0.03490658503988653,
+      0.0,
+      0.03490658503988664,
+      0.06981317007977317,
+      0.10471975511965981,
+      0.13962634015954645,
+      0.17453292519943298,
+      0.20943951023931962,
+      0.24434609527920614,
+      0.2792526803190928,
+      0.3141592653589794,
+      0.34906585039886584,
+      0.3839724354387525,
+      0.4188790204786391,
+      0.45378560551852576,
+      0.4886921905584124,
+      0.5235987755982988,
+      0.5585053606381855
+    ],
+    "alpha_rad_max": 0.5350961320458115,
+    "alpha_rad_min": -0.6934047673569139,
+    "derivation": "positive_only psi endpoints at each station_span annulus midpoint; no induction solve and no post-failure expansion",
+    "mach_grid": [
+      0.0,
+      0.2649894145852458
+    ],
+    "mach_max": 0.2649894145852458,
+    "mach_min": 0.040507164718475736,
+    "mach_zero_is_outside_the_potential_image": true,
+    "observed_solver_queries": false,
+    "reynolds_grid": [
+      26030.624179244653,
+      88107.31488200535
+    ],
+    "reynolds_max": 88107.31488200535,
+    "reynolds_min": 26030.624179244653,
+    "role": "historical_sufficient_rectangle_for_the_potential_image"
+  },
+  "provider_audit": {
+    "angle_distinction": {
+      "cartesian_corner": {
+        "alpha_rad": -0.6981317007977318,
+        "is_a_correlated_annulus_state": false,
+        "mach": 0.0,
+        "reason": "Mach 0 combined with an alpha/Reynolds endpoint is a grid corner, not one annulus state.",
+        "reynolds": 26030.624179244653
+      },
+      "conditional_first_query_deg": 30.65875,
+      "descending_start_executes_the_conditional_first_query": false,
+      "image_maximum_deg": 30.65875,
+      "image_minimum_deg": -39.729166663801884,
+      "padded_grid_high_deg": 32.0,
+      "padded_grid_low_deg": -40.0
+    },
+    "declaration_reference": "41cc665295d1d5d667fb70ca8238d7c0304ce7779aca3430e97dbf1d6820ebcd",
+    "existing_real_captures": {
+      "active_design_polar_bundle": false,
+      "baseline_catalog_coordinate_sha256": "ab62d56cc86a591da4f83c1980ea5b07743c4e47bdb0eb63a8e166e190a96d42",
+      "case_name": "naca0012_re200k_real_v1",
+      "classification": "existing_but_coverage_incompatible",
+      "coordinate_sha256": "ab62d56cc86a591da4f83c1980ea5b07743c4e47bdb0eb63a8e166e190a96d42",
+      "coordinate_source": "configs/airfoils/NACA0012_81.dat",
+      "coverage": {
+        "alpha_deg_max": 10.0,
+        "alpha_deg_min": -6.000000000000001,
+        "alpha_rad_max": 0.17453292519943295,
+        "alpha_rad_min": -0.10471975511965978,
+        "mach": 0.0,
+        "point_count": 9,
+        "reynolds": 200000.0
+      },
+      "files": [
+        {
+          "path": "tests/fixtures/polar_real_qualification/naca0012_re200k_real_v1/capture/manifest.json",
+          "sha256": "b9231a49c17f0f6896a24c8561c729f029963d8df3e29c2f2315621cee919e48",
+          "size_bytes": 2961
+        },
+        {
+          "path": "tests/fixtures/polar_real_qualification/naca0012_re200k_real_v1/capture/benchmark.json",
+          "sha256": "251e92c55806527d1454c0997dddf4a604561d31a38ffda818768b9caa521ac5",
+          "size_bytes": 5866
+        },
+        {
+          "path": "tests/fixtures/polar_real_qualification/naca0012_re200k_real_v1/capture/results/00-xfoil-subprocess.json",
+          "sha256": "8f09607ea56a40737ff079ac2c1669d7acf7f718f6a86157e09b18786bcf0d41",
+          "size_bytes": 9367
+        },
+        {
+          "path": "tests/fixtures/polar_real_qualification/naca0012_re200k_real_v1/capture/results/01-neuralfoil.json",
+          "sha256": "6edd1155d6fbf99254d839902f96ef7131fa48696e247386f075fc48cec0e38e",
+          "size_bytes": 10119
+        },
+        {
+          "path": "tests/fixtures/polar_real_qualification/naca0012_re200k_real_v1/promotion.json",
+          "sha256": "bdb05f808cf7a4bfbbacefb8dd35cd008c118df8b307e5969d689b374a8e9a05",
+          "size_bytes": 2291
+        },
+        {
+          "path": "tests/fixtures/polar_real_qualification/naca0012_re200k_real_v1/golden.json",
+          "sha256": "e115ccd405726c1f5592cea6d2c7f6f25461c0d469921c59d8d6f887c41afb40",
+          "size_bytes": 8469
+        },
+        {
+          "path": "tests/fixtures/polar_real_qualification/naca0012_re200k_real_v1/comparison.json",
+          "sha256": "477248186e8e4b9575e4e2e1d075416f73f60cd3515d2877865d175d84bdec60",
+          "size_bytes": 744
+        },
+        {
+          "path": "tests/fixtures/polar_real_qualification/naca0012_re200k_real_v1/second_capture_manifest.json",
+          "sha256": "f239575ba8b4f1172366d4d12db6ff0071586e631734f9b37b68e54d346072ef",
+          "size_bytes": 2961
+        }
+      ],
+      "later_promotion_status": {
+        "physical_review_decision": "accepted",
+        "promotion_allowed": true,
+        "review_state": "approved",
+        "source_revision": "464dde5eea0a3266c830c6db6ff20f44fbc4e21e"
+      },
+      "matches_baseline_catalog_coordinate": true,
+      "raw_capture_status": {
+        "promotion_allowed": false,
+        "review_state": "unreviewed",
+        "source_revision": "464dde5eea0a3266c830c6db6ff20f44fbc4e21e"
+      },
+      "raw_neuralfoil_capture": {
+        "adapter_version": "1",
+        "backend_version": "0.3.3",
+        "complete": true,
+        "kind": "polar-provider-raw-result",
+        "minimum_confidence": 0.964351504329081,
+        "model_size": "xlarge",
+        "point_count": 9,
+        "provider": "neuralfoil"
+      },
+      "raw_xfoil_capture": {
+        "adapter_version": "2",
+        "backend_version": "6.99",
+        "complete": true,
+        "kind": "polar-provider-raw-result",
+        "point_count": 9,
+        "provider": "xfoil-subprocess",
+        "returncode": 0,
+        "statuses": [
+          "converged"
+        ]
+      },
+      "synthetic": false
+    },
+    "historical_failures": {
+      "NACA0012": {
+        "bem_calls": 0,
+        "coordinate_sha256": "ab62d56cc86a591da4f83c1980ea5b07743c4e47bdb0eb63a8e166e190a96d42",
+        "failure": "Polar family generation failed at cell 1/4 (Mach=0, Reynolds=26030.6); 0 cell(s) completed. | Polar provider chain exhausted (xfoil-subprocess#1:result_rejected). | Provider result rejected: usable fraction 0.756757 < 1; rejected point indices=(0, 1, 2, 3, 4, 5, 6, 7, 8). | Unusable polar points: -40 deg (not_converged), -38 deg (not_converged), -36 deg (not_converged), -34 deg (not_converged), -32 deg (not_converged), -30 deg (not_converged), -28 deg (not_converged), -26 deg (not_converged), -24 deg (not_converged)",
+        "polar_content_sha256": null,
+        "status": "polar_generation_failed"
+      },
+      "NACA2412": {
+        "bem_calls": 0,
+        "coordinate_sha256": "3f84aba0f9234ed6e9fe4eedebe88ae8701a19ae181d70e21a02b0704916999a",
+        "failure": "Polar family generation failed at cell 1/4 (Mach=0, Reynolds=26030.6); 0 cell(s) completed. | Polar provider chain exhausted (xfoil-subprocess#1:timeout). | XFOIL exceeded the 90 s request timeout. | Command '['/tmp/xfoil-build/install/xfoil']' timed out after 90.0 seconds",
+        "polar_content_sha256": null,
+        "status": "polar_generation_failed"
+      }
+    },
+    "hypotheses_not_observed": [
+      "The XFOIL primer says a viscous Newton step starts from the previous solution and that a large alpha change can fail. That mechanism is consistent with starting at -40 deg, but the retained ledger does not isolate order from angle, Reynolds, or Mach.",
+      "NACA2412's timeout is not evidence that a particular angle failed.",
+      "A synthetic constant-coefficient solve that stops before the terminal psi does not locate the queries a real polar would issue."
+    ],
+    "neuralfoil": {
+      "adapter_supports_mach": false,
+      "capability_rejection": "Provider does not support requested capabilities: mach.",
+      "primary_documentation": "NeuralFoil 0.3.3 README: compressible aerodynamics are described as an AeroSandbox extension, not as the standalone coordinate API used by this adapter.",
+      "reason": "The potential Mach image is above zero, and the current adapter rejects a nonzero Mach request before evaluation.",
+      "replacement_for_this_baseline": false
+    },
+    "observed_failures": [
+      "NACA0012 cell 1/4 at Mach 0 and Reynolds 26030.6 was rejected. Usable fraction 0.756757 < 1. Point indices 0 through 8, angles -40 deg through -24 deg, are not_converged. No BEM call was made.",
+      "NACA2412 cell 1/4 at the same Mach and Reynolds timed out after 90 s. The retained record has no per-angle disposition. No BEM call was made."
+    ],
+    "retained_bundle_note": "The Re 200000 NACA0012 captures are real provider outputs with a later promotion record. Their alpha, Reynolds, and Mach coverage does not contain this baseline. They are not an active-design polar bundle.",
+    "xfoil_primary_documentation": {
+      "numerical_behavior": "Viscous analysis can fail for excessive angle of attack or Reynolds number that is too low. Newton iteration resumes from the last solution; the primer recommends sequencing alpha gradually.",
+      "physical_applicability": "The primer does not qualify this rotor, these coordinates, or the retained failed angles.",
+      "scope": "Subsonic isolated airfoils, viscous analysis with limited trailing-edge separation and a Karman-Tsien compressibility correction.",
+      "source": "https://web.mit.edu/drela/Public/web/xfoil/xfoil_doc.txt"
+    },
+    "xfoil_request_order": {
+      "adapter_initialization": "PLOP, G F, LOAD, PANE when repanel is true, OPER, TYPE 1, VISC, MACH, VPAR N, XTR, ITER, PACC, then one ALFA command per requested angle in the original order. The adapter does not send INIT.",
+      "alpha_order_is_part_of_the_request": true,
+      "cell_order": "Mach-major, Reynolds-minor",
+      "historical_first_cell": "Mach 0, Reynolds minimum, alpha ascending from the most negative grid angle"
+    }
+  },
+  "qualified_winner": null,
+  "query_map": {
+    "annulus_count": 40,
+    "inner_radius_m": 0.025,
+    "outer_radius_m": 0.1225,
+    "radial_domain": "station_span",
+    "rows": [
+      {
+        "annulus_index": 0,
+        "chord_m": 0.0279025,
+        "first_no_induction_query": {
+          "alpha_rad": 0.5350961320458115,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.05728578171528503,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 19.493909664759414,
+          "reynolds": 36812.86174948416,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.025,
+        "midpoint_radius_m": 0.026218750000000002,
+        "outer_radius_m": 0.0274375,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.25030203130163675,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.040507164718475736,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 13.784275716478573,
+            "reynolds": 26030.624179244653
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.5350961320458115,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.05728578171528503,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 19.493909664759414,
+            "reynolds": 36812.86174948416
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.20975000000000002,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.5350961320458115
+      },
+      {
+        "annulus_index": 1,
+        "chord_m": 0.0277075,
+        "first_no_induction_query": {
+          "alpha_rad": 0.5231842599009502,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.06261151589143786,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 21.306215926799027,
+          "reynolds": 39954.08413231687,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.0274375,
+        "midpoint_radius_m": 0.02865625,
+        "outer_radius_m": 0.029875000000000002,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.2622139034464981,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.04427302746941865,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 15.065769764017702,
+            "reynolds": 28251.80382747169
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.5231842599009502,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.06261151589143786,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 21.306215926799027,
+            "reynolds": 39954.08413231687
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.22925,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.5231842599009502
+      },
+      {
+        "annulus_index": 2,
+        "chord_m": 0.027512500000000002,
+        "first_no_induction_query": {
+          "alpha_rad": 0.5112723877560889,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.0679372500675907,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 23.11852218883864,
+          "reynolds": 43047.470641299355,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.029875000000000002,
+        "midpoint_radius_m": 0.031093750000000003,
+        "outer_radius_m": 0.0323125,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.2741257755913594,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.04803889022036157,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 16.347263811556832,
+            "reynolds": 30439.158404913556
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.5112723877560889,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.0679372500675907,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 23.11852218883864,
+            "reynolds": 43047.470641299355
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.24875000000000003,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.5112723877560889
+      },
+      {
+        "annulus_index": 3,
+        "chord_m": 0.0273175,
+        "first_no_induction_query": {
+          "alpha_rad": 0.49936051561122763,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.07326298424374354,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 24.93082845087825,
+          "reynolds": 46093.02127643158,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.0323125,
+        "midpoint_radius_m": 0.03353125,
+        "outer_radius_m": 0.03475,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.28603764773622065,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.051804752971304484,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 17.62875785909596,
+            "reynolds": 32592.687911570225
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.49936051561122763,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.07326298424374354,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 24.93082845087825,
+            "reynolds": 46093.02127643158
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.26825,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.49936051561122763
+      },
+      {
+        "annulus_index": 4,
+        "chord_m": 0.0271225,
+        "first_no_induction_query": {
+          "alpha_rad": 0.48744864346636635,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.07858871841989638,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 26.74313471291786,
+          "reynolds": 49090.73603771357,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.03475,
+        "midpoint_radius_m": 0.03596875,
+        "outer_radius_m": 0.0371875,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.2979495198810819,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.0555706157222474,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 18.910251906635086,
+            "reynolds": 34712.39234744171
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.48744864346636635,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.07858871841989638,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 26.74313471291786,
+            "reynolds": 49090.73603771357
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.28775,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.48744864346636635
+      },
+      {
+        "annulus_index": 5,
+        "chord_m": 0.0269275,
+        "first_no_induction_query": {
+          "alpha_rad": 0.47553677132150507,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.08391445259604922,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 28.555440974957474,
+          "reynolds": 52040.61492514531,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.0371875,
+        "midpoint_radius_m": 0.03840625,
+        "outer_radius_m": 0.039625,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.3098613920259432,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.05933647847319032,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 20.191745954174216,
+            "reynolds": 36798.27171252802
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.47553677132150507,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.08391445259604922,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 28.555440974957474,
+            "reynolds": 52040.61492514531
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.30725,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.47553677132150507
+      },
+      {
+        "annulus_index": 6,
+        "chord_m": 0.026732500000000003,
+        "first_no_induction_query": {
+          "alpha_rad": 0.4636248991766438,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.08924018677220205,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 30.367747236997083,
+          "reynolds": 54942.65793872681,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.039625,
+        "midpoint_radius_m": 0.04084375,
+        "outer_radius_m": 0.0420625,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.3217732641708045,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.06310234122413323,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 21.473240001713343,
+            "reynolds": 38850.32600682914
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.4636248991766438,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.08924018677220205,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 30.367747236997083,
+            "reynolds": 54942.65793872681
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.32675,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.4636248991766438
+      },
+      {
+        "annulus_index": 7,
+        "chord_m": 0.026537500000000002,
+        "first_no_induction_query": {
+          "alpha_rad": 0.4517130270317825,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.09456592094835489,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 32.180053499036696,
+          "reynolds": 57796.86507845807,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.0420625,
+        "midpoint_radius_m": 0.04328125,
+        "outer_radius_m": 0.0445,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.33368513631566576,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.06686820397507615,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 22.75473404925247,
+            "reynolds": 40868.555230345075
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.4517130270317825,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.09456592094835489,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 32.180053499036696,
+            "reynolds": 57796.86507845807
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.34625,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.4517130270317825
+      },
+      {
+        "annulus_index": 8,
+        "chord_m": 0.0263425,
+        "first_no_induction_query": {
+          "alpha_rad": 0.4398011548869212,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.09989165512450773,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 33.99235976107631,
+          "reynolds": 60603.23634433907,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.0445,
+        "midpoint_radius_m": 0.04571875,
+        "outer_radius_m": 0.0469375,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.3455970084605271,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.07063406672601906,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 24.0362280967916,
+            "reynolds": 42852.959383075846
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.4398011548869212,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.09989165512450773,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 33.99235976107631,
+            "reynolds": 60603.23634433907
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.36575,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.4398011548869212
+      },
+      {
+        "annulus_index": 9,
+        "chord_m": 0.026147500000000004,
+        "first_no_induction_query": {
+          "alpha_rad": 0.42788928274205995,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.10521738930066057,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 35.80466602311592,
+          "reynolds": 63361.77173636985,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.0469375,
+        "midpoint_radius_m": 0.04815625,
+        "outer_radius_m": 0.049375,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.3575088806053883,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.07439992947696199,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 25.31772214433073,
+            "reynolds": 44803.538465021426
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.42788928274205995,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.10521738930066057,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 35.80466602311592,
+            "reynolds": 63361.77173636985
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.38525,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.42788928274205995
+      },
+      {
+        "annulus_index": 10,
+        "chord_m": 0.025928750000000004,
+        "first_no_induction_query": {
+          "alpha_rad": 0.4159774105971986,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.11054312347681342,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 37.61697228515553,
+          "reynolds": 66012.0061281735,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.049375,
+        "midpoint_radius_m": 0.05059375,
+        "outer_radius_m": 0.0518125,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.36942075275024966,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.0781657922279049,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 26.599216191869857,
+            "reynolds": 46677.537175293284
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.4159774105971986,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.11054312347681342,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 37.61697228515553,
+            "reynolds": 66012.0061281735
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.40475,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.4159774105971986
+      },
+      {
+        "annulus_index": 11,
+        "chord_m": 0.025636250000000003,
+        "first_no_induction_query": {
+          "alpha_rad": 0.4040655384523373,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.11586885765296626,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 39.429278547195146,
+          "reynolds": 68411.77246632743,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.0518125,
+        "midpoint_radius_m": 0.05303125,
+        "outer_radius_m": 0.05425,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.381332624895111,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.08193165497884781,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 27.880710239408987,
+            "reynolds": 48374.42822634999
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.4040655384523373,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.11586885765296626,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 39.429278547195146,
+            "reynolds": 68411.77246632743
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.42425,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.4040655384523373
+      },
+      {
+        "annulus_index": 12,
+        "chord_m": 0.02534375,
+        "first_no_induction_query": {
+          "alpha_rad": 0.392153666307476,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.12119459182911908,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 41.24158480923475,
+          "reynolds": 70739.78499370598,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.05425,
+        "midpoint_radius_m": 0.05546875,
+        "outer_radius_m": 0.0566875,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.3932444970399723,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.08569751772979073,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 29.16220428694811,
+            "reynolds": 50020.5816712289
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.392153666307476,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.12119459182911908,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 41.24158480923475,
+            "reynolds": 70739.78499370598
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.44375,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.392153666307476
+      },
+      {
+        "annulus_index": 13,
+        "chord_m": 0.02505125,
+        "first_no_induction_query": {
+          "alpha_rad": 0.3802417941626147,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.1265203260052719,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 43.053891071274364,
+          "reynolds": 72996.04371030918,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.0566875,
+        "midpoint_radius_m": 0.05790625,
+        "outer_radius_m": 0.059125000000000004,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.40515636918483355,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.08946338048073364,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 30.44369833448724,
+            "reynolds": 51615.99750993005
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.3802417941626147,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.1265203260052719,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 43.053891071274364,
+            "reynolds": 72996.04371030918
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.46325,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.3802417941626147
+      },
+      {
+        "annulus_index": 14,
+        "chord_m": 0.02475875,
+        "first_no_induction_query": {
+          "alpha_rad": 0.3683299220177534,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.13184606018142475,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 44.86619733331398,
+          "reynolds": 75180.54861613699,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.059125000000000004,
+        "midpoint_radius_m": 0.06034375,
+        "outer_radius_m": 0.0615625,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.4170682413296949,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.09322924323167656,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 31.725192382026368,
+            "reynolds": 53160.67574245342
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.3683299220177534,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.13184606018142475,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 44.86619733331398,
+            "reynolds": 75180.54861613699
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.48275,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.3683299220177534
+      },
+      {
+        "annulus_index": 15,
+        "chord_m": 0.02446625,
+        "first_no_induction_query": {
+          "alpha_rad": 0.35641804987289205,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.13717179435757762,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 46.6785035953536,
+          "reynolds": 77293.29971118948,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.0615625,
+        "midpoint_radius_m": 0.06278125000000001,
+        "outer_radius_m": 0.064,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.4289801134745562,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.0969951059826195,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 33.006686429565505,
+            "reynolds": 54654.61636879903
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.35641804987289205,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.13717179435757762,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 46.6785035953536,
+            "reynolds": 77293.29971118948
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.5022500000000001,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.35641804987289205
+      },
+      {
+        "annulus_index": 16,
+        "chord_m": 0.02417375,
+        "first_no_induction_query": {
+          "alpha_rad": 0.3445061777280308,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.14249752853373043,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 48.490809857393195,
+          "reynolds": 79334.29699546656,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.064,
+        "midpoint_radius_m": 0.06521874999999999,
+        "outer_radius_m": 0.06643750000000001,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.44089198561941745,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.1007609687335624,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 34.288180477104625,
+            "reynolds": 56097.81938896684
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.3445061777280308,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.14249752853373043,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 48.490809857393195,
+            "reynolds": 79334.29699546656
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.5217499999999999,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.3445061777280308
+      },
+      {
+        "annulus_index": 17,
+        "chord_m": 0.02388125,
+        "first_no_induction_query": {
+          "alpha_rad": 0.3325943055831695,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.14782326270988327,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 50.303116119432815,
+          "reynolds": 81303.54046896829,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.06643750000000001,
+        "midpoint_radius_m": 0.06765625,
+        "outer_radius_m": 0.06887499999999999,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.4528038577642788,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.10452683148450533,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 35.56967452464376,
+            "reynolds": 57490.28480295689
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.3325943055831695,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.14782326270988327,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 50.303116119432815,
+            "reynolds": 81303.54046896829
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.54125,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.3325943055831695
+      },
+      {
+        "annulus_index": 18,
+        "chord_m": 0.02358875,
+        "first_no_induction_query": {
+          "alpha_rad": 0.3206824334383081,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.15314899688603614,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 52.115422381472435,
+          "reynolds": 83201.03013169467,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.06887499999999999,
+        "midpoint_radius_m": 0.07009375000000001,
+        "outer_radius_m": 0.0713125,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.4647157299091402,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.10829269423544825,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 36.85116857218289,
+            "reynolds": 58832.01261076918
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.3206824334383081,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.15314899688603614,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 52.115422381472435,
+            "reynolds": 83201.03013169467
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.5607500000000001,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.3206824334383081
+      },
+      {
+        "annulus_index": 19,
+        "chord_m": 0.02329625,
+        "first_no_induction_query": {
+          "alpha_rad": 0.3087705612934469,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.15847473106218896,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 53.92772864351203,
+          "reynolds": 85026.76598364566,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.0713125,
+        "midpoint_radius_m": 0.07253124999999999,
+        "outer_radius_m": 0.07375000000000001,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.4766276020540014,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.11205855698639115,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 38.13266261972201,
+            "reynolds": 60123.002812403676
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.3087705612934469,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.15847473106218896,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 53.92772864351203,
+            "reynolds": 85026.76598364566
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.5802499999999999,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.3087705612934469
+      },
+      {
+        "annulus_index": 20,
+        "chord_m": 0.02300375,
+        "first_no_induction_query": {
+          "alpha_rad": 0.29685868914858554,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.16380046523834182,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 55.74003490555165,
+          "reynolds": 86780.7480248213,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.07375000000000001,
+        "midpoint_radius_m": 0.07496875,
+        "outer_radius_m": 0.07618749999999999,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.48853947419886273,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.11582441973733408,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 39.414156667261146,
+            "reynolds": 61363.2554078604
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.29685868914858554,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.16380046523834182,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 55.74003490555165,
+            "reynolds": 86780.7480248213
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.59975,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.29685868914858554
+      },
+      {
+        "annulus_index": 21,
+        "chord_m": 0.022422499999999998,
+        "first_no_induction_query": {
+          "alpha_rad": 0.2849468170037242,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.16912619941449467,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 57.552341167591266,
+          "reynolds": 87338.26121779757,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.07618749999999999,
+        "midpoint_radius_m": 0.07740625000000001,
+        "outer_radius_m": 0.078625,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.5004513463437241,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.119590282488277,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 40.69565071480027,
+            "reynolds": 61757.47676723459
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.2849468170037242,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.16912619941449467,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 57.552341167591266,
+            "reynolds": 87338.26121779757
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.6192500000000001,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.2849468170037242
+      },
+      {
+        "annulus_index": 22,
+        "chord_m": 0.021837500000000003,
+        "first_no_induction_query": {
+          "alpha_rad": 0.273034944858863,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.17445193359064745,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 59.364647429630864,
+          "reynolds": 87738.1200607509,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.078625,
+        "midpoint_radius_m": 0.07984374999999999,
+        "outer_radius_m": 0.08106250000000001,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.5123632184885853,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.12335614523921988,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 41.97714476233939,
+            "reynolds": 62040.21966661844
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.273034944858863,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.17445193359064745,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 59.364647429630864,
+            "reynolds": 87738.1200607509
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.6387499999999999,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.273034944858863
+      },
+      {
+        "annulus_index": 23,
+        "chord_m": 0.0212525,
+        "first_no_induction_query": {
+          "alpha_rad": 0.26112307271400165,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.17977766776680032,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 61.176953691670484,
+          "reynolds": 87994.47128215348,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.08106250000000001,
+        "midpoint_radius_m": 0.08228125,
+        "outer_radius_m": 0.08349999999999999,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.5242750906334466,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.12712200799016282,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 43.258638809878526,
+            "reynolds": 62221.48735364673
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.26112307271400165,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.17977766776680032,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 61.176953691670484,
+            "reynolds": 87994.47128215348
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.65825,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.26112307271400165
+      },
+      {
+        "annulus_index": 24,
+        "chord_m": 0.0206675,
+        "first_no_induction_query": {
+          "alpha_rad": 0.2492112005691403,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.1851034019429532,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 62.9892599537101,
+          "reynolds": 88107.31488200535,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.08349999999999999,
+        "midpoint_radius_m": 0.08471875000000001,
+        "outer_radius_m": 0.0859375,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.536186962778308,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.13088787074110575,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 44.54013285741766,
+            "reynolds": 62301.279828319464
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.2492112005691403,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.1851034019429532,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 62.9892599537101,
+            "reynolds": 88107.31488200535
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.6777500000000001,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.2492112005691403
+      },
+      {
+        "annulus_index": 25,
+        "chord_m": 0.0200825,
+        "first_no_induction_query": {
+          "alpha_rad": 0.23729932842427903,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.19042913611910603,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 64.80156621574972,
+          "reynolds": 88076.65086030649,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.0859375,
+        "midpoint_radius_m": 0.08715625,
+        "outer_radius_m": 0.08837500000000001,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.5480988349231692,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.13465373349204865,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 45.82162690495679,
+            "reynolds": 62279.597090636664
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.23729932842427903,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.19042913611910603,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 64.80156621574972,
+            "reynolds": 88076.65086030649
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.69725,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.23729932842427903
+      },
+      {
+        "annulus_index": 26,
+        "chord_m": 0.0194975,
+        "first_no_induction_query": {
+          "alpha_rad": 0.22538745627941775,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.19575487029525881,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 66.61387247778931,
+          "reynolds": 87902.47921705685,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.08837500000000001,
+        "midpoint_radius_m": 0.08959375,
+        "outer_radius_m": 0.09081249999999999,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.5600107070680305,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.13841959624299155,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 47.10312095249591,
+            "reynolds": 62156.43914059829
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.22538745627941775,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.19575487029525881,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 66.61387247778931,
+            "reynolds": 87902.47921705685
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.71675,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.22538745627941775
+      },
+      {
+        "annulus_index": 27,
+        "chord_m": 0.0189125,
+        "first_no_induction_query": {
+          "alpha_rad": 0.21347558413455642,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.2010806044714117,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 68.42617873982894,
+          "reynolds": 87584.79995225654,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.09081249999999999,
+        "midpoint_radius_m": 0.09203125000000001,
+        "outer_radius_m": 0.09325,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.5719225792128919,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.1421854589939345,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 48.38461500003505,
+            "reynolds": 61931.80597820439
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.21347558413455642,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.2010806044714117,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 68.42617873982894,
+            "reynolds": 87584.79995225654
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.7362500000000001,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.21347558413455642
+      },
+      {
+        "annulus_index": 28,
+        "chord_m": 0.018327500000000004,
+        "first_no_induction_query": {
+          "alpha_rad": 0.2015637119896952,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.2064063386475645,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 70.23848500186854,
+          "reynolds": 87123.61306590546,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.09325,
+        "midpoint_radius_m": 0.09446874999999999,
+        "outer_radius_m": 0.09568750000000001,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.5838344513577531,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.1459513217448774,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 49.66610904757417,
+            "reynolds": 61605.69760345494
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.2015637119896952,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.2064063386475645,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 70.23848500186854,
+            "reynolds": 87123.61306590546
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.7557499999999999,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.2015637119896952
+      },
+      {
+        "annulus_index": 29,
+        "chord_m": 0.0177425,
+        "first_no_induction_query": {
+          "alpha_rad": 0.18965183984483386,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.21173207282371734,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 72.05079126390815,
+          "reynolds": 86518.91855800364,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.09568750000000001,
+        "midpoint_radius_m": 0.09690625,
+        "outer_radius_m": 0.09812499999999999,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.5957463235026144,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.1497171844958203,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 50.947603095113294,
+            "reynolds": 61178.11401634992
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.18965183984483386,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.21173207282371734,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 72.05079126390815,
+            "reynolds": 86518.91855800364
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.77525,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.18965183984483386
+      },
+      {
+        "annulus_index": 30,
+        "chord_m": 0.0171575,
+        "first_no_induction_query": {
+          "alpha_rad": 0.17773996769997252,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.21705780699987023,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 73.86309752594778,
+          "reynolds": 85770.71642855111,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.09812499999999999,
+        "midpoint_radius_m": 0.09934375000000001,
+        "outer_radius_m": 0.1005625,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.6076581956474758,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.15348304724676326,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 52.229097142652435,
+            "reynolds": 60649.05521688937
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.17773996769997252,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.21705780699987023,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 73.86309752594778,
+            "reynolds": 85770.71642855111
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.7947500000000001,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.17773996769997252
+      },
+      {
+        "annulus_index": 31,
+        "chord_m": 0.016287500000000007,
+        "first_no_induction_query": {
+          "alpha_rad": 0.1676243302436221,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.222383541176023,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 75.67540378798736,
+          "reynolds": 83419.32848155442,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.1005625,
+        "midpoint_radius_m": 0.10178124999999999,
+        "outer_radius_m": 0.10300000000000001,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.6177738331038262,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.1572489099977061,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 53.51059119019154,
+            "reynolds": 58986.37285428454
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.1676243302436221,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.222383541176023,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 75.67540378798736,
+            "reynolds": 83419.32848155442
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.8142499999999999,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.1676243302436221
+      },
+      {
+        "annulus_index": 32,
+        "chord_m": 0.015312500000000003,
+        "first_no_induction_query": {
+          "alpha_rad": 0.15817046346198613,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.22770927535217586,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 77.48771005002699,
+          "reynolds": 80303.86387694874,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.10300000000000001,
+        "midpoint_radius_m": 0.10421875,
+        "outer_radius_m": 0.10543749999999999,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.6272276998854621,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.16101477274864906,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 54.79208523773068,
+            "reynolds": 56783.40670571108
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.15817046346198613,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.22770927535217586,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 77.48771005002699,
+            "reynolds": 80303.86387694874
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.83375,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.15817046346198613
+      },
+      {
+        "annulus_index": 33,
+        "chord_m": 0.0143375,
+        "first_no_induction_query": {
+          "alpha_rad": 0.14871659668035014,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.2330350095283287,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 79.3000163120666,
+          "reynolds": 76949.21990309186,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.10543749999999999,
+        "midpoint_radius_m": 0.10665625000000001,
+        "outer_radius_m": 0.107875,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.6366815666670982,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.164780635499592,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 56.07357928526981,
+            "reynolds": 54411.315203211656
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.14871659668035014,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.2330350095283287,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 79.3000163120666,
+            "reynolds": 76949.21990309186
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.8532500000000001,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.14871659668035014
+      },
+      {
+        "annulus_index": 34,
+        "chord_m": 0.013362500000000006,
+        "first_no_induction_query": {
+          "alpha_rad": 0.13926272989871424,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.23836074370448151,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 81.1123225741062,
+          "reynolds": 73355.39655998377,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.107875,
+        "midpoint_radius_m": 0.10909374999999999,
+        "outer_radius_m": 0.11031250000000001,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.646135433448734,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.16854649825053486,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 57.35507333280893,
+            "reynolds": 51870.09834678636
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.13926272989871424,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.23836074370448151,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 81.1123225741062,
+            "reynolds": 73355.39655998377
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.8727499999999999,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.13926272989871424
+      },
+      {
+        "annulus_index": 35,
+        "chord_m": 0.012387500000000003,
+        "first_no_induction_query": {
+          "alpha_rad": 0.12980886311707826,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.24368647788063438,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 82.92462883614583,
+          "reynolds": 69522.39384762444,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.11031250000000001,
+        "midpoint_radius_m": 0.11153125,
+        "outer_radius_m": 0.11274999999999999,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.65558930023037,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.17231236100147782,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 58.63656738034807,
+            "reynolds": 49159.75613643513
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.12980886311707826,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.24368647788063438,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 82.92462883614583,
+            "reynolds": 69522.39384762444
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.89225,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.12980886311707826
+      },
+      {
+        "annulus_index": 36,
+        "chord_m": 0.011412499999999997,
+        "first_no_induction_query": {
+          "alpha_rad": 0.12035499633544228,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.24901221205678722,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 84.73693509818544,
+          "reynolds": 65450.21176601385,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.11274999999999999,
+        "midpoint_radius_m": 0.11396875000000001,
+        "outer_radius_m": 0.1151875,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.665043167012006,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.17607822375242074,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 59.918061427887196,
+            "reynolds": 46280.28857215796
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.12035499633544228,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.24901221205678722,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 84.73693509818544,
+            "reynolds": 65450.21176601385
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.9117500000000001,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.12035499633544228
+      },
+      {
+        "annulus_index": 37,
+        "chord_m": 0.010437500000000006,
+        "first_no_induction_query": {
+          "alpha_rad": 0.11090112955380639,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.25433794623294004,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 86.54924136022504,
+          "reynolds": 61138.85031515209,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.1151875,
+        "midpoint_radius_m": 0.11640624999999999,
+        "outer_radius_m": 0.11762500000000001,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.6744970337936419,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.17984408650336361,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 61.199555475426315,
+            "reynolds": 43231.69565395493
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.11090112955380639,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.25433794623294004,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 86.54924136022504,
+            "reynolds": 61138.85031515209
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.9312499999999999,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.11090112955380639
+      },
+      {
+        "annulus_index": 38,
+        "chord_m": 0.009462500000000002,
+        "first_no_induction_query": {
+          "alpha_rad": 0.10144726277217041,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.2596636804090929,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 88.36154762226465,
+          "reynolds": 56588.30949503908,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.11762500000000001,
+        "midpoint_radius_m": 0.11884375,
+        "outer_radius_m": 0.12006249999999999,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.6839509005752779,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.18360994925430657,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 62.48104952296545,
+            "reynolds": 40013.97738182593
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.10144726277217041,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.2596636804090929,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 88.36154762226465,
+            "reynolds": 56588.30949503908
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.95075,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.10144726277217041
+      },
+      {
+        "annulus_index": 39,
+        "chord_m": 0.008487499999999997,
+        "first_no_induction_query": {
+          "alpha_rad": 0.09199339599053441,
+          "inflow_angle_rad": 0.0,
+          "mach": 0.2649894145852458,
+          "observed_solver_query": false,
+          "psi_rad": 0.0,
+          "relative_speed_m_s": 90.17385388430428,
+          "reynolds": 51798.58930567484,
+          "status": "conditional_on_reaching_this_annulus"
+        },
+        "geometry_extrapolated": false,
+        "inner_radius_m": 0.12006249999999999,
+        "midpoint_radius_m": 0.12128125000000001,
+        "outer_radius_m": 0.1225,
+        "potential_bracket_domain": {
+          "bracket_samples": 128,
+          "early_termination_possible": true,
+          "end": {
+            "alpha_rad": -0.6934047673569139,
+            "inflow_angle_rad": 0.7853981633474483,
+            "mach": 0.1873758120052495,
+            "psi_rad": 1.5707963266948965,
+            "relative_speed_m_s": 63.76254357050458,
+            "reynolds": 36627.13375577102
+          },
+          "max_iterations": 100,
+          "psi_end_rad": 1.5707963266948965,
+          "psi_start_rad": 0.0,
+          "query_count_not_determined_without_a_polar": true,
+          "start": {
+            "alpha_rad": 0.09199339599053441,
+            "inflow_angle_rad": 0.0,
+            "mach": 0.2649894145852458,
+            "psi_rad": 0.0,
+            "relative_speed_m_s": 90.17385388430428,
+            "reynolds": 51798.58930567484
+          },
+          "status": "potential_search_image_not_an_observed_query"
+        },
+        "r_over_R": 0.9702500000000001,
+        "reached_by_genuine_run": false,
+        "twist_rad": 0.09199339599053441
+      }
+    ],
+    "width_m": 0.0024375
+  },
+  "recommended_experiment": {
+    "acceptance": "Every requested point is usable and the cell usable fraction is 1. No point is discarded, clamped, or replaced. Coordinate hashes match the catalog.",
+    "alpha_rad_descending": [
+      0.5585053606381855,
+      0.5235987755982988,
+      0.4886921905584124,
+      0.45378560551852576,
+      0.4188790204786391,
+      0.3839724354387525,
+      0.34906585039886584,
+      0.3141592653589794,
+      0.2792526803190928,
+      0.24434609527920614,
+      0.20943951023931962,
+      0.17453292519943298,
+      0.13962634015954645,
+      0.10471975511965981,
+      0.06981317007977317,
+      0.03490658503988664,
+      0.0,
+      -0.03490658503988653,
+      -0.06981317007977317,
+      -0.1047197551196597,
+      -0.13962634015954634,
+      -0.17453292519943298,
+      -0.2094395102393195,
+      -0.2443460952792061,
+      -0.27925268031909267,
+      -0.3141592653589793,
+      -0.3490658503988659,
+      -0.3839724354387525,
+      -0.41887902047863906,
+      -0.45378560551852565,
+      -0.48869219055841223,
+      -0.5235987755982988,
+      -0.5585053606381855,
+      -0.593411945678072,
+      -0.6283185307179586,
+      -0.6632251157578452,
+      -0.6981317007977318
+    ],
+    "attempt_limit_per_call": 1,
+    "bem_calls": 0,
+    "call_limit": 8,
+    "can_establish": "Whether this declared eight-cell grid, descending order, kinematic Mach and Reynolds endpoints, and one-script-per-cell execution produce a complete usable ledger.",
+    "cannot_establish": "A genuine two-profile BEM comparison. A failure establishes failure of this grid, sequencing, and execution configuration only. It does not establish infeasibility of the correlated kinematic image, the actual solver path, either profile, or the project. Differences from PR #97 cannot be attributed only to sequencing because the Mach grid also changes. Starting at the padded +32 deg grid angle does not execute the +30.65875 deg conditional first query.",
+    "capture": "XfoilProvider.generate(capture_dir=...) writes raw stdout, stderr, and polar bytes before temporary-directory cleanup, including timeout, decode failure, and exception paths. Replacement-decoded diagnostic text is not those raw bytes. Executable identity is the file hash immediately before and after the subprocess call; a missing or changed hash blocks evidence readiness even when the parsed output is usable. Declared source and compiler flags remain an unverified build requirement. Omitting capture_dir preserves the default provider result.",
+    "cell_execution": "run_declared_probe is the enforcement point. It launches at most eight declared cells, one attempt each, and stops before the next cell after a failed cell. The adapter still submits each launched cell as one complete script and does not interrupt that script at the first bad angle. A returned result is admitted only when its canonical request and provider identity match the launched cell and the declared provider, including retained capture request identity. A manifest alone does not enforce these limits, and this diagnostic does not launch the probe.",
+    "executed_by_this_diagnostic": false,
+    "experiment_id": "xfoil_positive_first_potential_image_probe_v1",
+    "first_query_alpha_rad": [
+      0.09199339599053441,
+      0.5350961320458115
+    ],
+    "five_profile_workflow_unchanged": true,
+    "mach_grid": [
+      0.040507164718475736,
+      0.2649894145852458
+    ],
+    "physical_qualification": false,
+    "profiles": [
+      "NACA0012",
+      "NACA2412"
+    ],
+    "provider": {
+      "adapter_version": "2",
+      "backend_name": "XFOIL",
+      "backend_version": "6.99",
+      "initialization": "Existing adapter script only: PLOP, G F, LOAD, PANE, OPER, TYPE 1, VISC, MACH, VPAR N 9, XTR 1 1, ITER 80, PACC, then ALFA in descending alpha order. No INIT command and no replay of the ascending -40 deg request.",
+      "max_iterations": 80,
+      "n_crit": 9.0,
+      "name": "xfoil-subprocess",
+      "repanel": true,
+      "source_url": "https://web.mit.edu/drela/Public/web/xfoil/xfoil6.99.tgz",
+      "xtr_lower": 1.0,
+      "xtr_upper": 1.0
+    },
+    "requests": [
+      {
+        "alpha_count": 37,
+        "alpha_order": "descending_from_highest_positive_grid_angle",
+        "alpha_rad_first": 0.5585053606381855,
+        "alpha_rad_last": -0.6981317007977318,
+        "coordinate_sha256": "ab62d56cc86a591da4f83c1980ea5b07743c4e47bdb0eb63a8e166e190a96d42",
+        "mach": 0.040507164718475736,
+        "profile": "NACA0012",
+        "reynolds": 26030.624179244653
+      },
+      {
+        "alpha_count": 37,
+        "alpha_order": "descending_from_highest_positive_grid_angle",
+        "alpha_rad_first": 0.5585053606381855,
+        "alpha_rad_last": -0.6981317007977318,
+        "coordinate_sha256": "ab62d56cc86a591da4f83c1980ea5b07743c4e47bdb0eb63a8e166e190a96d42",
+        "mach": 0.040507164718475736,
+        "profile": "NACA0012",
+        "reynolds": 88107.31488200535
+      },
+      {
+        "alpha_count": 37,
+        "alpha_order": "descending_from_highest_positive_grid_angle",
+        "alpha_rad_first": 0.5585053606381855,
+        "alpha_rad_last": -0.6981317007977318,
+        "coordinate_sha256": "ab62d56cc86a591da4f83c1980ea5b07743c4e47bdb0eb63a8e166e190a96d42",
+        "mach": 0.2649894145852458,
+        "profile": "NACA0012",
+        "reynolds": 26030.624179244653
+      },
+      {
+        "alpha_count": 37,
+        "alpha_order": "descending_from_highest_positive_grid_angle",
+        "alpha_rad_first": 0.5585053606381855,
+        "alpha_rad_last": -0.6981317007977318,
+        "coordinate_sha256": "ab62d56cc86a591da4f83c1980ea5b07743c4e47bdb0eb63a8e166e190a96d42",
+        "mach": 0.2649894145852458,
+        "profile": "NACA0012",
+        "reynolds": 88107.31488200535
+      },
+      {
+        "alpha_count": 37,
+        "alpha_order": "descending_from_highest_positive_grid_angle",
+        "alpha_rad_first": 0.5585053606381855,
+        "alpha_rad_last": -0.6981317007977318,
+        "coordinate_sha256": "3f84aba0f9234ed6e9fe4eedebe88ae8701a19ae181d70e21a02b0704916999a",
+        "mach": 0.040507164718475736,
+        "profile": "NACA2412",
+        "reynolds": 26030.624179244653
+      },
+      {
+        "alpha_count": 37,
+        "alpha_order": "descending_from_highest_positive_grid_angle",
+        "alpha_rad_first": 0.5585053606381855,
+        "alpha_rad_last": -0.6981317007977318,
+        "coordinate_sha256": "3f84aba0f9234ed6e9fe4eedebe88ae8701a19ae181d70e21a02b0704916999a",
+        "mach": 0.040507164718475736,
+        "profile": "NACA2412",
+        "reynolds": 88107.31488200535
+      },
+      {
+        "alpha_count": 37,
+        "alpha_order": "descending_from_highest_positive_grid_angle",
+        "alpha_rad_first": 0.5585053606381855,
+        "alpha_rad_last": -0.6981317007977318,
+        "coordinate_sha256": "3f84aba0f9234ed6e9fe4eedebe88ae8701a19ae181d70e21a02b0704916999a",
+        "mach": 0.2649894145852458,
+        "profile": "NACA2412",
+        "reynolds": 26030.624179244653
+      },
+      {
+        "alpha_count": 37,
+        "alpha_order": "descending_from_highest_positive_grid_angle",
+        "alpha_rad_first": 0.5585053606381855,
+        "alpha_rad_last": -0.6981317007977318,
+        "coordinate_sha256": "3f84aba0f9234ed6e9fe4eedebe88ae8701a19ae181d70e21a02b0704916999a",
+        "mach": 0.2649894145852458,
+        "profile": "NACA2412",
+        "reynolds": 88107.31488200535
+      }
+    ],
+    "retained_raw_outputs": [
+      "command script",
+      "process stdout and stderr",
+      "raw polar file",
+      "per-angle status ledger",
+      "airfoil coordinate sha256",
+      "executable sha256"
+    ],
+    "retry": false,
+    "reynolds_grid": [
+      26030.624179244653,
+      88107.31488200535
+    ],
+    "serial_order": "NACA0012 then NACA2412; within a profile, Mach ascending and Reynolds ascending.",
+    "stop_conditions": [
+      "run_declared_probe stops before the next cell after not_converged, timeout, nonzero exit, malformed output, undecodable output, missing evidence, executable mismatch, persistence failure, or an unexpected exception.",
+      "A partial ledger does not authorize continuation.",
+      "Do not retry, change ITER, send INIT, clamp, substitute coefficients, or start a BEM call.",
+      "The manifest does not launch cells and does not enforce the stop."
+    ],
+    "timeout_s": 90.0
+  },
+  "schema_version": 1,
+  "software_workflow_baseline": {
+    "head": "fc545b1584d679951fd28db0767cd71c790a7b06",
+    "pr": 103,
+    "role": "software-workflow baseline; Draft and unmerged; not a numerical comparison"
+  },
+  "synthetic_traces": [
+    {
+      "alpha_table_rad": [
+        -2.0,
+        1.2
+      ],
+      "cd": 0.02,
+      "cl": 0.8,
+      "evidence_class": "synthetic_inert_trace",
+      "failed_annulus_index": null,
+      "failure_message": null,
+      "first_query": {
+        "alpha_rad": 0.5350961320458115,
+        "bounds": "error",
+        "mach": 0.05728578171528503,
+        "reynolds": 36812.86174948416
+      },
+      "label": "wide_constant_coefficients_can_terminate_before_the_terminal_psi",
+      "max_alpha_rad": 0.5350961320458115,
+      "min_alpha_rad": -0.006181374427896569,
+      "outcome": "completed_without_publishing_totals",
+      "performance_totals_published": false,
+      "query_count": 1309,
+      "source": "synthetic feasibility trace; not a provider polar"
+    },
+    {
+      "alpha_table_rad": [
+        -0.6981317007977318,
+        0.17453292519943295
+      ],
+      "cd": 0.02,
+      "cl": 0.8,
+      "evidence_class": "synthetic_inert_trace",
+      "failed_annulus_index": 0,
+      "failure_message": "Annulus 0 at r/R=0.20975 failed: Requested alpha_rad 0.535096 is outside [-0.698132, 0.174533].",
+      "first_query": {
+        "alpha_rad": 0.5350961320458115,
+        "bounds": "error",
+        "mach": 0.05728578171528503,
+        "reynolds": 36812.86174948416
+      },
+      "label": "negative_angles_without_the_first_positive_query",
+      "max_alpha_rad": 0.5350961320458115,
+      "min_alpha_rad": 0.5350961320458115,
+      "outcome": "stopped_on_existing_bounds_or_convergence_error",
+      "performance_totals_published": false,
+      "query_count": 1,
+      "source": "synthetic feasibility trace; not a provider polar"
+    }
+  ]
+}
