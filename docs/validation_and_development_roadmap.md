@@ -718,3 +718,23 @@ calculation is a same-mesh second-order 4000 RPM comparison, and it is not
 authorized here. Mesh and domain studies stay later. This does not change the
 250 mm jointed design, the blocked polar study, or any qualification gate.
 `physical_qualification=false`.
+
+## 2026-10-19 PR #105 source intake and experimental-source follow-up
+
+The [dated continuation](../reports/apc_13x55mr_ansys_reconciliation/intake_2026-10-19.md)
+records unavailable access to all four named opening-task attachments. The actual
+ANSYS DOCX hash/content/figures remain unverified; the earlier missing-document
+inventory stays historical. The [current engineer handoff](../reports/apc_13x55mr_ansys_reconciliation/engineer_handoff_2026-10-19.md)
+separates immediate DOCX transcription from CAD/case/data/raw-history replay.
+Missing solver files do not prevent recording a readable report faithfully.
+
+The [Maier–Narsipur–Deters source assessment](../reports/apc_13x55mr_ansys_reconciliation/literature_assessment_2026-10-19.md)
+verifies the experimental candidate's identity and conditions at the original-text
+level; no exact 4000 RPM data row, uncertainty or numerical curve is imported.
+The attached preliminary register still needs actual access and reconciliation.
+This remains a bounded documentation/research increment on Draft PR #105, with
+independent Astra-B review pending; no provider/BEM/clearance/CFD/FEA/transient
+study is authorized. Preserve the 250 mm/13-inch/7100 RPM distinctions, five-profile
+coordinate/polar identity and the separate joint-loss, load-transfer, vibration
+and folding evidence requirements. No gate or qualified-design decision changes;
+`physical_qualification=false`.

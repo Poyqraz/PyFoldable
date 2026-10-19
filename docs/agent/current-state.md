@@ -554,3 +554,28 @@ unverified and its loads were not read. APC performance remains a manufacturer
 computation, separate from the 250 mm design and the blocked 7100 RPM polar study.
 No solver was run. `physical_qualification=false`. Genuine two-profile comparison
 remains UNESTABLISHED.
+
+## 2026-10-19 PR #105 continuation — attachment access blocked
+
+The [dated intake checkpoint](../../reports/apc_13x55mr_ansys_reconciliation/intake_2026-10-19.md)
+continues Draft PR #105 from `d5704022bd727447dd61586567faee78ca889d9b` against
+main `022b466303c59b8c0adb02f935f9c2f065b0e2b5`. All four named opening-task
+attachments were inaccessible in this execution. No DOCX source hash, text,
+equations, tables or embedded figures were verified; CFD transcription remains
+blocked. The 2026-10-16 missing-document inventory is retained unchanged.
+
+The [revised engineer handoff](../../reports/apc_13x55mr_ansys_reconciliation/engineer_handoff_2026-10-19.md)
+allows faithful transcription from the actual DOCX independently of missing solver
+files, which remain necessary for stronger replay claims. The
+[literature assessment](../../reports/apc_13x55mr_ansys_reconciliation/literature_assessment_2026-10-19.md)
+checks the named Maier–Narsipur–Deters candidate through original paper text and
+institutional metadata; numeric experimental import is not admitted. SciSpace and
+Consensus access/retrieval limits are recorded. The preliminary register itself
+was not accessible. This does not establish an exact-4000-RPM experiment match,
+section polars, joint losses, load transfer, vibration or controlled folding.
+
+Astra-A now owns implementation; the owner's separate Astra-B chat performs
+independent review. [Review handoff](handoffs/pr105-astra-a-2026-10-19.md).
+Draft/open/unmerged status and Astra-B review pending are retained. PR #104 is
+outside this change; no genuine solver run, numerical-gate change or qualified
+design follows. `physical_qualification=false`.
