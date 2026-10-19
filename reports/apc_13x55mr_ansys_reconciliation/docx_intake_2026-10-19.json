@@ -1,0 +1,456 @@
+{
+  "schema_version": 1,
+  "artifact_class": "source_bound_docx_transcription_and_arithmetic",
+  "intake_date": "2026-10-19",
+  "starting_pr_head": "447caf8edd6ac4bc922d2d8cbaf893a328a9f599",
+  "physical_qualification": false,
+  "new_solver_or_provider_runs": [],
+  "genuine_two_profile_comparison": "UNESTABLISHED",
+  "source_identities": [
+    {
+      "filename": "TUBITAK_2209B_Research_Proposal.pdf",
+      "sha256": "e16db4182fe5171dc7d06bb05c74875e0e80fac726cd8be52df366c29a7e1541",
+      "size_bytes": 443253,
+      "bytes_read": true
+    },
+    {
+      "filename": "PyFoldable_Arastirma_Kaynak_Kaydi_2026-10-16.md",
+      "sha256": "fb73ea93c923ee0b7636a7f91b872f89480fbd5d105c35697e24946d32636b8c",
+      "size_bytes": 14433,
+      "bytes_read": true
+    },
+    {
+      "filename": "Tahir_APC_4000RPM_Haftalik_Rapor_Taslagi1.docx",
+      "sha256": "da6ea5414e49c10b40ff1202712193528b1bdb4b01fe7fde64b2d27ce5b856a3",
+      "size_bytes": 1054409,
+      "bytes_read": true
+    },
+    {
+      "filename": "PyFoldable_Two_Astra_Handoff_2026-10-19.md",
+      "sha256": "bbfa82a2506a3842203a6028eb2e01a113c16222c3f0a452cd5f0eef088a3b35",
+      "size_bytes": 17422,
+      "bytes_read": true
+    }
+  ],
+  "inspection": {
+    "docx_sha256_matches_expected": true,
+    "rendered_pages_checked": 8,
+    "source_tables_read": 5,
+    "native_equations_read": 2,
+    "embedded_figures_read": 5,
+    "proposal_pdf_pages_read": 9,
+    "actual_CAD_inspected": false,
+    "Fluent_case_data_inspected": false,
+    "raw_histories_inspected": false,
+    "history_replay_performed": false,
+    "numerical_verification_established": false,
+    "experimental_validation_established": false
+  },
+  "locators_note": "Body child indices count all direct children of w:body from 1, including empty paragraphs, tables and sectPr; namespaces are standard OOXML. Page numbers are from this LibreOffice render and are secondary to section/object locators.",
+  "native_tables": [
+    {
+      "label": "2.1",
+      "source_locator": "word/document.xml /w:document/w:body/*[10]",
+      "rendered_page": 1,
+      "classification": "report_stated_not_solver_verified",
+      "rows": [
+        [
+          "Özellik",
+          "Değer"
+        ],
+        [
+          "Referans geometri",
+          "APC 13×5.5MR; D = 329.3519 mm"
+        ],
+        [
+          "Hub",
+          "Çap 19 mm; yükseklik 14 mm"
+        ],
+        [
+          "Dönen bölge",
+          "Silindir çapı 1.2D; toplam eksenel uzunluk 0.5D"
+        ],
+        [
+          "Dış domain",
+          "Silindir çapı 4D; toplam eksenel uzunluk 8D"
+        ],
+        [
+          "Hacim ağı",
+          "Hibrit hacim ağı ve prizmatik duvar katmanları"
+        ],
+        [
+          "Hücre sayısı",
+          "4,475,758 hücre"
+        ],
+        [
+          "Kalite",
+          "Minimum orthogonal quality 0.1013; maksimum aspect ratio 161.16"
+        ],
+        [
+          "Kalan katman sorunu",
+          "Trailing edge boyunca 7 stair-stepping bölgesi"
+        ]
+      ]
+    },
+    {
+      "label": "3.1",
+      "source_locator": "word/document.xml /w:document/w:body/*[16]",
+      "rendered_page": 2,
+      "classification": "report_stated_not_solver_verified",
+      "rows": [
+        [
+          "Özellik",
+          "Tanım"
+        ],
+        [
+          "Çalışma noktası",
+          "4000 RPM; ileri uçuş hızı 0 m/s"
+        ],
+        [
+          "Hava",
+          "ρ = 1.225 kg/m³; μ = 1.7894×10⁻⁵ Pa s; Energy kapalı"
+        ],
+        [
+          "Dönen bölge",
+          "MRF Frame Motion; merkez (0, 0, 0); eksen (0, 0, 1)"
+        ],
+        [
+          "Dış sınırlar",
+          "Pressure inlet; outlet ve outer_radial pressure outlet; gauge basınçları 0 Pa"
+        ],
+        [
+          "Pervane duvarı",
+          "No slip; dönen çerçeveye göre Stationary Wall"
+        ],
+        [
+          "Ayrıklaştırma",
+          "Momentum, k ve ω için First Order Upwind"
+        ]
+      ]
+    },
+    {
+      "label": "4.1",
+      "source_locator": "word/document.xml /w:document/w:body/*[24]",
+      "rendered_page": 3,
+      "classification": "report_stated_not_solver_verified",
+      "rows": [
+        [
+          "Büyüklük",
+          "CFD ",
+          "APC J = 0",
+          "Sapma (%)"
+        ],
+        [
+          "İtki T (N)",
+          "5.212321",
+          "6.002",
+          "-13.16"
+        ],
+        [
+          "Tork Q (N m)",
+          "0.110850",
+          "0.108",
+          "+2.64"
+        ],
+        [
+          "Şaft gücü P (W)",
+          "46.432706",
+          "45.403",
+          "+2.27"
+        ],
+        [
+          "CT",
+          "0.081365",
+          "0.0941",
+          "-13.53"
+        ],
+        [
+          "CQ",
+          "0.005254",
+          "—",
+          "—"
+        ],
+        [
+          "CP",
+          "0.033011",
+          "0.0325",
+          "+1.57"
+        ]
+      ]
+    },
+    {
+      "label": "4.2",
+      "source_locator": "word/document.xml /w:document/w:body/*[32]",
+      "rendered_page": 4,
+      "classification": "report_stated_not_solver_verified",
+      "rows": [
+        [
+          "İterasyon",
+          "Ort T (N)",
+          "ΔT (%)",
+          "ΔQ (%)"
+        ],
+        [
+          "962–1061",
+          "5.214914",
+          "-0.1068",
+          "+0.0251"
+        ],
+        [
+          "862–1061",
+          "5.218080",
+          "-0.2283",
+          "+0.0107"
+        ]
+      ]
+    },
+    {
+      "label": "6.1",
+      "source_locator": "word/document.xml /w:document/w:body/*[57]",
+      "rendered_page": 8,
+      "classification": "report_stated_not_solver_verified",
+      "rows": [
+        [
+          "Çalışma",
+          "Amaç"
+        ],
+        [
+          "Aynı mesh üzerinde Second Order",
+          "Ayrıklaştırmanın T/Q/P ve wake üzerindeki etkisini belirlemek"
+        ],
+        [
+          "Tip, duvar katmanları ve wake iyileştirmesi",
+          "Katman sürekliliği, y⁺ ve yerel hız tepesinin mesh duyarlılığını değerlendirmek"
+        ],
+        [
+          "Üç mesh yoğunluğu ve ayrı domain karşılaştırması",
+          "Mesh ve dış sınır uzaklığı etkilerini ayırmak"
+        ],
+        [
+          "6000 ve 8000 RPM statik noktaları",
+          "APC trendlerini karşılaştırmak; her devirde y⁺, yakınsama ve sıkıştırılamazlık kabulünü kontrol etmek"
+        ],
+        [
+          "Kritik noktada sliding mesh ve yerel çıktılar",
+          "MRF/türbülans modelini değerlendirmek; radyal yükler ve ileri uçuş analizlerine geçmek"
+        ]
+      ]
+    }
+  ],
+  "native_equations": [
+    {
+      "label": "4.1",
+      "body_child_index": 21,
+      "rendered_page": 2,
+      "formulae": [
+        "n=RPM/60",
+        "Q=-Mz",
+        "P=2*pi*n*Q"
+      ]
+    },
+    {
+      "label": "4.2",
+      "body_child_index": 22,
+      "rendered_page": 3,
+      "formulae": [
+        "CT=T/(rho*n**2*D**4)",
+        "CQ=Q/(rho*n**2*D**5)",
+        "CP=P/(rho*n**3*D**5)"
+      ]
+    }
+  ],
+  "figures": [
+    {
+      "label": "4.1",
+      "body_child_index": 27,
+      "relationship_id": "rId8",
+      "member": "word/media/image1.png",
+      "sha256": "76d25a3b632b7bb422eab2c413e857e6f682d3f77c9e3e5a20a929d31fe21424",
+      "pixel_dimensions": [
+        1950,
+        1470
+      ],
+      "rendered_page": 3,
+      "native_image_inspected": true,
+      "digitized": false
+    },
+    {
+      "label": "4.2",
+      "body_child_index": 37,
+      "relationship_id": "rId9",
+      "member": "word/media/image2.png",
+      "sha256": "d981d48e12b112713df71f9d2933a3ddc36b64af36ef6f418ed8dae7817049d8",
+      "pixel_dimensions": [
+        1920,
+        1080
+      ],
+      "rendered_page": 5,
+      "native_image_inspected": true,
+      "digitized": false
+    },
+    {
+      "label": "5.1",
+      "body_child_index": 43,
+      "relationship_id": "rId10",
+      "member": "word/media/image3.png",
+      "sha256": "34c53736460c5ef98d4f0b1461234742d879fd71477bc4e516457d2a9edfa62b",
+      "pixel_dimensions": [
+        1818,
+        1051
+      ],
+      "rendered_page": 6,
+      "native_image_inspected": true,
+      "digitized": false
+    },
+    {
+      "label": "5.2",
+      "body_child_index": 46,
+      "relationship_id": "rId11",
+      "member": "word/media/image4.png",
+      "sha256": "7bb6db00edfe28341f53499daba625c1f4b5faeac48a24dc050305cbe0cbfaa5",
+      "pixel_dimensions": [
+        1920,
+        1080
+      ],
+      "rendered_page": 6,
+      "native_image_inspected": true,
+      "digitized": false
+    },
+    {
+      "label": "5.3",
+      "body_child_index": 50,
+      "relationship_id": "rId12",
+      "member": "word/media/image5.png",
+      "sha256": "7d08c2b288a98be6288ae3dcebe8160e3bca38883c89f2b1e08aef065be66f6b",
+      "pixel_dimensions": [
+        1920,
+        1080
+      ],
+      "rendered_page": 7,
+      "native_image_inspected": true,
+      "digitized": false
+    }
+  ],
+  "arithmetic_checks": {
+    "classification": "arithmetic_from_report_tokens_not_solver_replay",
+    "formulae": [
+      "n=RPM/60",
+      "Q=-Mz",
+      "omega=2*pi*n",
+      "P=omega*Q",
+      "CT=T/(rho*n**2*D**4)",
+      "CQ=Q/(rho*n**2*D**5)",
+      "CP=P/(rho*n**3*D**5)",
+      "deviation_percent=100*(CFD/APC-1)"
+    ],
+    "inputs": {
+      "T_N": "5.212321",
+      "Mz_N_m": "-0.110849921",
+      "Q_table_N_m": "0.110850",
+      "D_mm": "329.3519",
+      "rho_air_kg_m3": "1.225",
+      "rpm": "4000",
+      "locators": [
+        "section 4, body child 20",
+        "Table 4.1, body child 24",
+        "Tables 2.1 and 3.1"
+      ]
+    },
+    "results": {
+      "n_rps": 66.66666666666667,
+      "omega_rad_s": 418.8790204786391,
+      "positive_shaft_Q_N_m": 0.110849921,
+      "P_W": 46.43270632861453,
+      "CT": 0.08136486168073499,
+      "CQ": 0.005253889705163408,
+      "CP": 0.03301116260102482,
+      "P_from_table_rounded_Q_W": 46.432739420057146,
+      "CP_minus_2pi_CQ": 0.0
+    },
+    "rounded_six_decimal": {
+      "Q": "0.110850",
+      "P": "46.432706",
+      "CT": "0.081365",
+      "CQ": "0.005254",
+      "CP": "0.033011"
+    },
+    "percent_deviations_from_published_APC_tokens": {
+      "T": -13.156931022992325,
+      "Q_using_table_precision": 2.6388888888889017,
+      "P": 2.267925750753319,
+      "CT": -13.533622018347513,
+      "CP": 1.5728080031532699
+    },
+    "APC_display_precision_check": {
+      "power_from_displayed_Q_W": 45.23893421169303,
+      "published_P_W": "45.403",
+      "interpretation": "Preserve both source tokens; the displayed torque does not reproduce displayed power. This is not a replacement prediction."
+    }
+  },
+  "reported_history_and_windows": {
+    "classification": "report_stated_raw_CSV_unavailable",
+    "history_first_iteration": 1,
+    "history_last_iteration": 1061,
+    "history_complete_claim_verified": false,
+    "last_record_is_window_mean": false,
+    "windows": [
+      {
+        "first": 962,
+        "last": 1061,
+        "inclusive_integer_count": 100,
+        "mean_T_N": "5.214914",
+        "delta_T_percent": "-0.1068",
+        "delta_Q_percent": "+0.0251"
+      },
+      {
+        "first": 862,
+        "last": 1061,
+        "inclusive_integer_count": 200,
+        "mean_T_N": "5.218080",
+        "delta_T_percent": "-0.2283",
+        "delta_Q_percent": "+0.0107"
+      }
+    ],
+    "delta_definition": "100*(last-first)/first; not standard deviation, range or uncertainty",
+    "statistics_replayed": false,
+    "net_mass_imbalance_kg_s": "-1.17671e-6",
+    "net_mass_ratio_percent": "0.0000959",
+    "mass_ratio_denominator_available": false,
+    "mass_ratio_replayed": false
+  },
+  "manufacturer_reference": {
+    "url": "https://www.apcprop.com/files/PER3_13x55MR.dat",
+    "retrieval_date": "2026-10-19",
+    "sha256": "bcf3914a4f7ac4c843823d6b9ebf26120824f2052ed145e03a1dad8246ec9751",
+    "size_bytes": 117936,
+    "header_version": "v2022-0915",
+    "simulation_date": "2022-09-22",
+    "block_line_1based": 131,
+    "row_line_1based": 135,
+    "rpm": 4000,
+    "V_mph": "0.00",
+    "J": "0.0000",
+    "T_N": "6.002",
+    "Q_N_m": "0.108",
+    "P_W": "45.403",
+    "CT": "0.0941",
+    "CP": "0.0325",
+    "numeric_rho_in_file": null,
+    "classification": "manufacturer_computational_prediction_not_experiment",
+    "full_vendor_table_committed": false,
+    "matched_geometry_or_density_proven": false
+  },
+  "missing_inputs": [
+    "exact meshed CAD/revision and SKU/rotation correspondence",
+    "Fluent case/data or solver archive",
+    "complete raw residual/force/moment/flux histories and window rows",
+    "post-repair mesh counts/quality and full wall-layer/y-plus exports",
+    "moment report origin, exact surfaces/zones and pressure/viscous decomposition",
+    "boundary turbulence, operating pressure and unreported numerical settings",
+    "existing radial-load and field exports if available",
+    "independent matched experimental data with uncertainty"
+  ],
+  "boundary": "13-inch APC 4000 RPM report, not 250 mm jointed/7100 RPM baseline, five-profile section polars, joint-loss/load-transfer/vibration/folding qualification",
+  "canonical_cfd_qualification_bundle": false,
+  "scientific_gates_promoted": []
+}

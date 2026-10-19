@@ -706,3 +706,55 @@ no source/surface/BEM/FEA/trajectory execution or freeze is authorized by this
 documentation proposal. External CAD/STEP is optional. 13-inch source conventions
 remain separate from the 250 mm project baseline. Broader strength evidence and
 physical gates remain unchanged; no ADR-009 acceptance or qualification promotion.
+
+## 2026-10-16 APC 13x5.5MR and ANSYS evidence gap
+
+The separate [reconciliation report](../reports/apc_13x55mr_ansys_reconciliation/report.md)
+records official APC 13x5.5MR file identities and leaves the full vendor table
+local. 13x5.5E, the pusher, and the folding blades are different products.
+The ANSYS draft named in the task was not available to hash, so engineer loads,
+convergence windows, and mesh evidence remain a handoff. The proposed next
+calculation is a same-mesh second-order 4000 RPM comparison, and it is not
+authorized here. Mesh and domain studies stay later. This does not change the
+250 mm jointed design, the blocked polar study, or any qualification gate.
+`physical_qualification=false`.
+
+## 2026-10-19 PR #105 source intake and experimental-source follow-up
+
+The [dated continuation](../reports/apc_13x55mr_ansys_reconciliation/intake_2026-10-19.md)
+records unavailable access to all four named opening-task attachments. The actual
+ANSYS DOCX hash/content/figures remain unverified; the earlier missing-document
+inventory stays historical. The [current engineer handoff](../reports/apc_13x55mr_ansys_reconciliation/engineer_handoff_2026-10-19.md)
+separates immediate DOCX transcription from CAD/case/data/raw-history replay.
+Missing solver files do not prevent recording a readable report faithfully.
+
+The [Maier–Narsipur–Deters source assessment](../reports/apc_13x55mr_ansys_reconciliation/literature_assessment_2026-10-19.md)
+verifies the experimental candidate's identity and conditions at the original-text
+level; no exact 4000 RPM data row, uncertainty or numerical curve is imported.
+The attached preliminary register still needs actual access and reconciliation.
+This remains a bounded documentation/research increment on Draft PR #105, with
+independent Astra-B review pending; no provider/BEM/clearance/CFD/FEA/transient
+study is authorized. Preserve the 250 mm/13-inch/7100 RPM distinctions, five-profile
+coordinate/polar identity and the separate joint-loss, load-transfer, vibration
+and folding evidence requirements. No gate or qualified-design decision changes;
+`physical_qualification=false`.
+
+## 2026-10-19 later receipt — source-bound APC/ANSYS intake
+
+The [actual DOCX intake](../reports/apc_13x55mr_ansys_reconciliation/docx_intake_2026-10-19.md)
+supersedes the preceding access blocker after all four original sources arrived.
+Expected hashes were verified; report text/equations/tables/all five figures were
+read. Printed last-load power/coefficients and deviations are arithmetically
+consistent with retained report tokens. The 100/200-record window means/drifts
+remain reported statistics, not independently replayed CSV results. The earlier
+inventory and unavailable-file checkpoints remain history.
+
+Next is transfer/checking of existing exact CAD, Fluent case/data, raw load/
+residual/flux histories and post-repair mesh/wall records under the
+[updated engineer request](../reports/apc_13x55mr_ansys_reconciliation/engineer_handoff_2026-10-19.md#source-received--current-engineer-request-2026-10-19).
+Do not request a rewrite of the now-read DOCX or assume a new solver study is
+authorized. The preliminary R01–R10 register is reconciled by reading scope;
+experimental numeric admission and exact CFD/specimen correspondence remain open.
+Proposal goals and the owner's longer-proximal/global-parent/five-profile
+requirements survive unchanged. No solver, clearance, qualified-design decision,
+scientific-gate promotion or Astra-B approval; `physical_qualification=false`.

@@ -1,0 +1,445 @@
+{
+  "ansys_report": {
+    "bytes_present_in_workspace": false,
+    "expected_sha256": "da6ea5414e49c10b40ff1202712193528b1bdb4b01fe7fde64b2d27ce5b856a3",
+    "figures_read": false,
+    "filename": "Tahir_APC_4000RPM_Haftalik_Rapor_Taslagi1.docx",
+    "sha256_verified": false,
+    "tables_read": false,
+    "task_supplied_cad_diameter_mm": "329.3519",
+    "task_supplied_cad_diameter_status": "Stated by the reconciliation task. Not read from report bytes."
+  },
+  "artifact_class": "apc_13x55mr_ansys_reconciliation",
+  "derived_checks": {
+    "omega_4000_rpm_rad_s": 418.87902047863906,
+    "power_w_from_published_torque_0_108_Nm": 45.23893421169302,
+    "published_power_w": 45.403,
+    "rounded_torque_reproduces_published_power": false
+  },
+  "diameters_mm": {
+    "nominal_product": "330.2",
+    "pe0_footer_radius_times_two": "328.676",
+    "pe0_last_station_times_two": "328.93",
+    "task_supplied_cad": "329.3519"
+  },
+  "engineer_handoff": {
+    "existing_files": [
+      "Provide Tahir_APC_4000RPM_Haftalik_Rapor_Taslagi1.docx with SHA-256 da6ea5414e49c10b40ff1202712193528b1bdb4b01fe7fde64b2d27ce5b856a3.",
+      "Exact CAD of the solid that was meshed, including units and the feature that measures diameter.",
+      "Fluent case and data files, or the solver archive, with the settings actually run.",
+      "Complete residual and thrust/torque histories.",
+      "Written force and moment definitions and the component breakdown.",
+      "Post-repair mesh statistics and wall-resolution evidence.",
+      "Any radial-load export that already exists."
+    ],
+    "proposed_future_calculations": [
+      "After those files are in hand, one same-mesh second-order 4000 RPM comparison.",
+      "Mesh and domain changes only as a later, separate study."
+    ]
+  },
+  "gap_matrix": [
+    {
+      "available_from_apc": "Distinct SKUs, hub diameters, weights, and file hashes.",
+      "missing_handoff": "Confirm which SKU and rotation the CAD represents.",
+      "quantity": "Exact 13x5.5MR identity versus E, pusher, and folding variants",
+      "reported_by_ansys": "Not read. The named docx bytes were not in the workspace.",
+      "reproducible_from_retained_inputs": "Catalog rows and the hashed PE0/PER3 headers."
+    },
+    {
+      "available_from_apc": "Nominal 330.2 mm, footer-based 328.676 mm, last station 328.93 mm.",
+      "missing_handoff": "CAD diameter definition, units, and the solid that produced 329.3519 mm.",
+      "quantity": "Diameter",
+      "reported_by_ansys": "Task states 329.3519 mm. That value was not read from the docx.",
+      "reproducible_from_retained_inputs": "The three APC diameters and their inequalities."
+    },
+    {
+      "available_from_apc": "Catalog hub diameter 0.65 in. PE0 HUBRAD 0.32 in, which is 0.64 in diameter.",
+      "missing_handoff": "Which hub surface the CAD measures.",
+      "quantity": "Hub size",
+      "reported_by_ansys": "Not read. The named docx bytes were not in the workspace.",
+      "reproducible_from_retained_inputs": "Both published APC values."
+    },
+    {
+      "available_from_apc": "PE0 0.054915 lb / 0.024905 kg. Catalog 0.85 oz, 0.0529 lb, and 23.994911 g.",
+      "missing_handoff": "CAD mass and the material density actually solved.",
+      "quantity": "Mass",
+      "reported_by_ansys": "Not read. The named docx bytes were not in the workspace.",
+      "reproducible_from_retained_inputs": "The published pairs are not the same number."
+    },
+    {
+      "available_from_apc": "Published prediction 6.002 N, 0.108 N-m, 45.403 W.",
+      "missing_handoff": "Engineer's independent thrust, torque, and power, with their definitions.",
+      "quantity": "4000 RPM static thrust, torque, and power",
+      "reported_by_ansys": "Not read. The named docx bytes were not in the workspace.",
+      "reproducible_from_retained_inputs": "Rounded 0.108 N-m times 4000 RPM does not reproduce 45.403 W."
+    },
+    {
+      "available_from_apc": "4000 RPM has 30 speed rows from 0.00 mph through the file's last row.",
+      "missing_handoff": "Freestream speed, RPM, and reference density used in Fluent.",
+      "quantity": "Advance condition actually solved",
+      "reported_by_ansys": "Not read. The named docx bytes were not in the workspace.",
+      "reproducible_from_retained_inputs": "No ANSYS airspeed or advance ratio is available to select a row."
+    },
+    {
+      "available_from_apc": "Ct, Cp, J, and Pe formulas. Numeric rho is absent.",
+      "missing_handoff": "Force and moment definitions, component breakdown, and reference quantities.",
+      "quantity": "Coefficient and force definitions",
+      "reported_by_ansys": "Not read. The named docx bytes were not in the workspace.",
+      "reproducible_from_retained_inputs": "Formula text only."
+    },
+    {
+      "available_from_apc": "Not an APC performance-file quantity.",
+      "missing_handoff": "Complete convergence and load histories, with the window stated separately from the last iteration.",
+      "quantity": "Last iteration versus averaging window",
+      "reported_by_ansys": "Not read. The named docx bytes were not in the workspace.",
+      "reproducible_from_retained_inputs": "No history was supplied."
+    },
+    {
+      "available_from_apc": "Not in the performance file.",
+      "missing_handoff": "Post-repair mesh statistics, wall-resolution evidence, and any existing radial-load export.",
+      "quantity": "Mesh, wall resolution, and radial loads",
+      "reported_by_ansys": "Not read. The named docx bytes were not in the workspace.",
+      "reproducible_from_retained_inputs": "No mesh or radial export was supplied."
+    },
+    {
+      "available_from_apc": "PE0 names E63 and APC12 at stated stations. It does not supply those coordinates or a polar.",
+      "missing_handoff": "Not requested from this APC/CFD package. Coordinate-bound polars remain a separate blocked study.",
+      "quantity": "Section polars for the five selectable profiles",
+      "reported_by_ansys": "Not read. The named docx bytes were not in the workspace.",
+      "reproducible_from_retained_inputs": "No."
+    }
+  ],
+  "genuine_two_profile_comparison": "UNESTABLISHED",
+  "local_retention": {
+    "committed": false,
+    "gitignored": true,
+    "path": "outputs/apc_13x55mr_local/",
+    "role": "Original vendor bytes and the full parsed performance table stay local."
+  },
+  "model_separation": [
+    {
+      "catalog_hub_diameter": "0.65 in.",
+      "catalog_weight_g": 23.994911,
+      "catalog_weight_lb": 0.0529,
+      "catalog_weight_text": "0.85 oz.",
+      "kind": "fixed multi-rotor",
+      "name": "13x5.5MR",
+      "pe0_hub_diameter_in": 0.64,
+      "pe0_hub_radius_in": 0.32,
+      "pe0_weight_kg": 0.024905,
+      "pe0_weight_lb": 0.054915,
+      "selected_for_this_reconciliation": true,
+      "sku": "LP13055MR"
+    },
+    {
+      "catalog_hub_diameter": "0.80 in.",
+      "catalog_weight_text": "1.13 oz.",
+      "kind": "thin electric",
+      "name": "13x5.5E",
+      "pe0_hub_radius_m": 0.01016,
+      "selected_for_this_reconciliation": false,
+      "sku": "LP13055E"
+    },
+    {
+      "kind": "multi-rotor pusher, reverse rotation",
+      "name": "13x5.5MRP",
+      "selected_for_this_reconciliation": false,
+      "sku": "LP13055MRP"
+    },
+    {
+      "catalog_weight_text": "0.78 oz.",
+      "kind": "folding blades, left-hand, hub not included",
+      "name": "13x5.5MRF-L(B)",
+      "selected_for_this_reconciliation": false,
+      "sku": "LP13055MRF-L(B)"
+    },
+    {
+      "catalog_weight_text": "0.78 oz.",
+      "kind": "folding blades, right-hand, hub not included",
+      "name": "13x5.5MRF-R(B)",
+      "selected_for_this_reconciliation": false,
+      "sku": "LP13055MRF-R(B)"
+    }
+  ],
+  "next_step": [
+    "Assess the evidence now in hand: APC identities disagree with each other and with the task-supplied CAD diameter, and the ANSYS draft has not been read.",
+    "Do not tune a result to the APC prediction and do not copy the APC static load into the CFD record.",
+    "When the report and solver files arrive, compare the engineer's retained thrust, torque, and power with the published 4000 RPM row that matches the solved airspeed.",
+    "The first proposed calculation is a same-mesh second-order rerun at 4000 RPM. It is not authorized by this inventory.",
+    "Mesh and domain studies stay behind that same-mesh comparison."
+  ],
+  "performance_inventory": {
+    "classification": "manufacturer_computational_prediction",
+    "column_count": 15,
+    "columns": [
+      {
+        "definition": "model speed",
+        "token": "V",
+        "unit": "mph"
+      },
+      {
+        "definition": "V/nD",
+        "token": "J",
+        "unit": "1"
+      },
+      {
+        "definition": "Ct*J/Cp",
+        "token": "Pe",
+        "unit": "1"
+      },
+      {
+        "definition": "T/(rho * n**2 * D**4)",
+        "token": "Ct",
+        "unit": "1"
+      },
+      {
+        "definition": "P/(rho * n**3 * D**5)",
+        "token": "Cp",
+        "unit": "1"
+      },
+      {
+        "definition": "published power",
+        "token": "PWR",
+        "unit": "Hp"
+      },
+      {
+        "definition": "published torque",
+        "token": "Torque",
+        "unit": "In-Lbf"
+      },
+      {
+        "definition": "published thrust",
+        "token": "Thrust",
+        "unit": "Lbf"
+      },
+      {
+        "definition": "published power",
+        "token": "PWR",
+        "unit": "W"
+      },
+      {
+        "definition": "published torque",
+        "token": "Torque",
+        "unit": "N-m"
+      },
+      {
+        "definition": "published thrust",
+        "token": "Thrust",
+        "unit": "N"
+      },
+      {
+        "definition": "published thrust per power",
+        "token": "THR/PWR",
+        "unit": "g/W"
+      },
+      {
+        "definition": "at prop tip",
+        "token": "Mach",
+        "unit": "1"
+      },
+      {
+        "definition": "at 75% of span",
+        "token": "Reyn",
+        "unit": "1"
+      },
+      {
+        "definition": "figure of merit",
+        "token": "FOM",
+        "unit": "1"
+      }
+    ],
+    "experimental_measurement": false,
+    "full_coefficient_row_count": 502,
+    "full_table_committed": false,
+    "partial_speed_row_contents": "V and J tokens only; the other published fields are blank.",
+    "partial_speed_row_count": 8,
+    "rho_numeric_value_in_file": null,
+    "rpm_blocks": [
+      {
+        "full_coefficient_rows": 30,
+        "partial_speed_rows": 0,
+        "rpm": 1000
+      },
+      {
+        "full_coefficient_rows": 30,
+        "partial_speed_rows": 0,
+        "rpm": 2000
+      },
+      {
+        "full_coefficient_rows": 30,
+        "partial_speed_rows": 0,
+        "rpm": 3000
+      },
+      {
+        "full_coefficient_rows": 30,
+        "partial_speed_rows": 0,
+        "rpm": 4000
+      },
+      {
+        "full_coefficient_rows": 30,
+        "partial_speed_rows": 0,
+        "rpm": 5000
+      },
+      {
+        "full_coefficient_rows": 30,
+        "partial_speed_rows": 0,
+        "rpm": 6000
+      },
+      {
+        "full_coefficient_rows": 29,
+        "partial_speed_rows": 1,
+        "rpm": 7000
+      },
+      {
+        "full_coefficient_rows": 29,
+        "partial_speed_rows": 1,
+        "rpm": 8000
+      },
+      {
+        "full_coefficient_rows": 29,
+        "partial_speed_rows": 1,
+        "rpm": 9000
+      },
+      {
+        "full_coefficient_rows": 30,
+        "partial_speed_rows": 0,
+        "rpm": 10000
+      },
+      {
+        "full_coefficient_rows": 30,
+        "partial_speed_rows": 0,
+        "rpm": 11000
+      },
+      {
+        "full_coefficient_rows": 29,
+        "partial_speed_rows": 1,
+        "rpm": 12000
+      },
+      {
+        "full_coefficient_rows": 30,
+        "partial_speed_rows": 0,
+        "rpm": 13000
+      },
+      {
+        "full_coefficient_rows": 29,
+        "partial_speed_rows": 1,
+        "rpm": 14000
+      },
+      {
+        "full_coefficient_rows": 29,
+        "partial_speed_rows": 1,
+        "rpm": 15000
+      },
+      {
+        "full_coefficient_rows": 29,
+        "partial_speed_rows": 1,
+        "rpm": 16000
+      },
+      {
+        "full_coefficient_rows": 29,
+        "partial_speed_rows": 1,
+        "rpm": 17000
+      }
+    ],
+    "speed_line_count": 510
+  },
+  "performance_substitution_into_cfd": false,
+  "physical_qualification": false,
+  "published_4000_rpm_static_row": {
+    "Cp": "0.0325",
+    "Ct": "0.0941",
+    "FOM": "0.7095",
+    "J": "0.0000",
+    "Mach": "0.21",
+    "PWR_Hp": "0.061",
+    "PWR_W": "45.403",
+    "Pe": "0.0000",
+    "Reyn_token": "76245.",
+    "THR_PWR_g_per_W": "13.479",
+    "Thrust_Lbf": "1.349",
+    "Thrust_N": "6.002",
+    "Torque_In_Lbf": "0.959",
+    "Torque_N_m": "0.108",
+    "V_mph": "0.00",
+    "condition": "PROP RPM = 4000 and V = 0.00 mph",
+    "source": "published PER3_13x55MR.dat tokens"
+  },
+  "retrieved_at": "2026-10-16T20:20:43Z",
+  "schema_version": 1,
+  "solvers_executed": [],
+  "sources": [
+    {
+      "retrieved_at": "2026-10-16T20:20:43Z",
+      "role": "performance_index",
+      "statement": "APC generates these files with proprietary vortex-theory software from propeller geometry. Wind-tunnel data are identified separately as the UIUC site.",
+      "url": "https://www.apcprop.com/technical-information/performance-data/"
+    },
+    {
+      "retrieved_at": "2026-10-16T20:20:43Z",
+      "role": "engineering_method",
+      "statement": "Performance files estimate thrust, torque, and efficiency. Lift-drag inputs may be NASA TAIR, polar diagrams, or empirical minimum-drag notes. In-flight RPM and airspeed measurements are a separate design-evaluation practice, not this performance file.",
+      "url": "https://www.apcprop.com/technical-information/engineering/"
+    },
+    {
+      "retrieved_at": "2026-10-16T20:20:43Z",
+      "role": "download_index",
+      "url": "https://www.apcprop.com/technical-information/file-downloads/"
+    },
+    {
+      "bytes": 1232376,
+      "internal_version": "v2025-1001",
+      "matches_existing_public_pin": true,
+      "member": "PE0-FILES_WEB/13x55MR-PERF.PE0",
+      "member_bytes": 11389,
+      "member_sha256": "2972e1b99215f2eb052e586e48cc59730cbfd4f08c6627ea7461a8afa150c30f",
+      "role": "geometry_archive",
+      "sha256": "85a97375dd9ffaeb38022cef1b5d79ac86c56f2960e9917369ad0e55ce37df38",
+      "simulation_date": "2026-02-24",
+      "url": "https://www.apcprop.com/wp-content/uploads/2026/02/PE0-FILES_WEB-202602.zipx"
+    },
+    {
+      "bytes": 8275714,
+      "member": "PERFILES_WEB/PERFILES2/PER3_13x55MR.dat",
+      "member_sha256": "bcf3914a4f7ac4c843823d6b9ebf26120824f2052ed145e03a1dad8246ec9751",
+      "role": "performance_archive",
+      "sha256": "fdeaee160617b4006c6a96335050091af4349a1dd33362a1b1b6e74dfa77561f",
+      "url": "https://www.apcprop.com/wp-content/uploads/2026/02/PERFILES_WEB-202602.zipx"
+    },
+    {
+      "airfoil_aero_data": "POLAR DIAGRAMS",
+      "bytes": 117936,
+      "identical_to_202602_archive_member": true,
+      "internal_version": "v2022-0915",
+      "role": "performance_file",
+      "sha256": "bcf3914a4f7ac4c843823d6b9ebf26120824f2052ed145e03a1dad8246ec9751",
+      "simulation_date": "2022-09-22",
+      "url": "https://www.apcprop.com/files/PER3_13x55MR.dat"
+    },
+    {
+      "bytes": 366609,
+      "role": "technical_workbook",
+      "sha256": "4c0dd96f7cb04db95d721a11123fb2ed47956dfa136138a8062d5ee9b4aeb8f2",
+      "url": "https://www.apcprop.com/wp-content/uploads/2026/02/PROP-DATA-FILE_202602.xlsx",
+      "workbook_modified": "2026-02-20T22:24:27Z"
+    },
+    {
+      "internal_version": "v2022-0915",
+      "model": "13x5.5E",
+      "role": "adjacent_model_performance_file",
+      "sha256": "844645069d1457a2f68a5c2ad395a6c33095c7eb0bee0a0f61ba16085d3d0772",
+      "simulation_date": "2022-09-22",
+      "url": "https://www.apcprop.com/files/PER3_13x55E.dat"
+    },
+    {
+      "archive_member_sha256": "20deb3ffd1aa7c8ef44d48e5389094f6e5db9f5450fba6272ec1766e1e3489dd",
+      "internal_version": "v2022-0915",
+      "model": "13x5.5MRF-RH",
+      "role": "adjacent_model_performance_file",
+      "sha256": "d96a0e074b7b8cbe070de1dba770bd73aba07aede75892fd74eb4371d6ab895e",
+      "simulation_date": "2023-03-31",
+      "stripped_text_matches_archive_member": true,
+      "url": "https://www.apcprop.com/files/PER3_13x55MRF-RH.dat"
+    }
+  ],
+  "synthetic_apc_202602_fixture_is_manufacturer_data": false
+}

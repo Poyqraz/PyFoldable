@@ -542,3 +542,67 @@ model choices/pending evidence. No surface/solver execution, freeze or strength
 acceptance; external CAD/STEP remains optional. 13-inch and 250 mm scenarios stay
 separate. PR #81/#84/#91 and C2V-09 unchanged; `physical_qualification=false`,
 ADR-009 unaccepted, unknown clearance/physical gates preserved.
+
+## 2026-10-16 APC 13x5.5MR reference inventory
+
+The [APC/ANSYS reconciliation](../../reports/apc_13x55mr_ansys_reconciliation/report.md)
+inventories official 13x5.5MR geometry and performance files and keeps the vendor
+tables out of git. Nominal 330.2 mm, PE0 footer diameter 328.676 mm, and the last
+station diameter 328.93 mm are not the task-supplied CAD diameter 329.3519 mm.
+The named ANSYS draft was not in the workspace, so its expected SHA-256 is
+unverified and its loads were not read. APC performance remains a manufacturer
+computation, separate from the 250 mm design and the blocked 7100 RPM polar study.
+No solver was run. `physical_qualification=false`. Genuine two-profile comparison
+remains UNESTABLISHED.
+
+## 2026-10-19 PR #105 continuation — attachment access blocked
+
+The [dated intake checkpoint](../../reports/apc_13x55mr_ansys_reconciliation/intake_2026-10-19.md)
+continues Draft PR #105 from `d5704022bd727447dd61586567faee78ca889d9b` against
+main `022b466303c59b8c0adb02f935f9c2f065b0e2b5`. All four named opening-task
+attachments were inaccessible in this execution. No DOCX source hash, text,
+equations, tables or embedded figures were verified; CFD transcription remains
+blocked. The 2026-10-16 missing-document inventory is retained unchanged.
+
+The [revised engineer handoff](../../reports/apc_13x55mr_ansys_reconciliation/engineer_handoff_2026-10-19.md)
+allows faithful transcription from the actual DOCX independently of missing solver
+files, which remain necessary for stronger replay claims. The
+[literature assessment](../../reports/apc_13x55mr_ansys_reconciliation/literature_assessment_2026-10-19.md)
+checks the named Maier–Narsipur–Deters candidate through original paper text and
+institutional metadata; numeric experimental import is not admitted. SciSpace and
+Consensus access/retrieval limits are recorded. The preliminary register itself
+was not accessible. This does not establish an exact-4000-RPM experiment match,
+section polars, joint losses, load transfer, vibration or controlled folding.
+
+Astra-A now owns implementation; the owner's separate Astra-B chat performs
+independent review. [Review handoff](handoffs/pr105-astra-a-2026-10-19.md).
+Draft/open/unmerged status and Astra-B review pending are retained. PR #104 is
+outside this change; no genuine solver run, numerical-gate change or qualified
+design follows. `physical_qualification=false`.
+
+## 2026-10-19 later source receipt — PR #105 DOCX intake completed
+
+The owner supplied the four actual opening-task sources after the access-blocked
+checkpoint above. The [source-bound intake](../../reports/apc_13x55mr_ansys_reconciliation/docx_intake_2026-10-19.md)
+and [structured record](../../reports/apc_13x55mr_ansys_reconciliation/docx_intake_2026-10-19.json)
+verify the expected DOCX SHA-256 and record text, two native equations, five tables,
+all five native figures and eight rendered pages. The proposal's nine pages and
+the actual preliminary literature register were read. Earlier missing-document
+records remain historical; their access-blocked status is superseded.
+
+Report-stated last T=5.212321 N, signed Mz=-0.110849921 N m, CAD D=329.3519 mm,
+air rho=1.225 kg/m3 and 4000 RPM reproduce the printed Q/P/CT/CQ/CP arithmetic.
+They do not constitute solver replay. Last values remain distinct from reported
+100/200-record means/drifts. Raw CSV, exact meshed CAD, case/data, flux denominators
+and post-repair wall/mesh exports remain missing; setup and window-statistic replay,
+mesh/domain independence and experimental validation are unestablished.
+
+The [engineer request](../../reports/apc_13x55mr_ansys_reconciliation/engineer_handoff_2026-10-19.md#source-received--current-engineer-request-2026-10-19)
+now asks only for existing project-specific evidence. A fresh APC PER3 retrieval
+matches the previous hash/reference row and remains a manufacturer prediction.
+The literature continuation reconciles R01–R10 reading scope without admitting
+unverified numerical data. [Astra-B handoff](handoffs/pr105-source-intake-2026-10-19.md).
+This is a documentation/source-intake increment on the same Draft PR #105, not a
+new numerical study or independent Astra-B approval. PR #104 and scientific gates
+are unchanged; 250 mm/13-inch/profile/joint-loss/load-transfer/vibration/folding
+boundaries remain. `physical_qualification=false`.
