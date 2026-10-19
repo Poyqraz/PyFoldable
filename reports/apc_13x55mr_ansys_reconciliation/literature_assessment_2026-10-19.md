@@ -76,3 +76,64 @@ before use for a spanwise joint; none is admitted here. The 250 mm design and
 - AI summaries and search snippets were discovery aids only. The ledger above
   was checked against the original paper text; neither tool supplied a polar,
   transferable joint-loss factor, qualified design or CFD validation result.
+
+## Source receipt and preliminary register reconciliation — 2026-10-19
+
+The actual `PyFoldable_Arastirma_Kaynak_Kaydi_2026-10-16.md` is now available and
+was read in full: SHA-256
+`fb73ea93c923ee0b7636a7f91b872f89480fbd5d105c35697e24946d32636b8c`.
+This supersedes only the earlier inaccessible-register status above. Its ten
+entries are an assistant-authored preliminary discovery record, not approved
+datasets or a substitute for the originals. Its 2026-10-16 platform-access account
+remains history; the successful Consensus and limited SciSpace retrievals recorded
+above occurred on 2026-10-19 and are not retroactively attributed to 2026-10-16.
+
+The original Maier source-reading scope above already checks R03's exact title,
+model, static UIUC load acquisition, normalization and figure context. The now-read
+DOCX supplies a separate CFD record, not the missing experimental row. The
+[source intake](docx_intake_2026-10-19.md) keeps three evidence columns distinct:
+
+| Evidence stream | Present evidence | Admission boundary |
+| --- | --- | --- |
+| APC manufacturer | Fresh PER3 bytes/hash and 4000 RPM zero-speed row | Computational prediction; numeric density/matched CAD not established |
+| Engineer's CFD | Actual DOCX, stated last record, report windows, equations and figures; arithmetic reproduced | No case/data, raw histories or independent setup/statistic replay |
+| Independent experimental candidate R03 | Original paper text/model/condition and institutional identity | Exact 4000 RPM numeric row, uncertainty, specimen/CAD correspondence and raw/traceable curve data still pending |
+
+### R01–R10 claim / source / applicability ledger
+
+Reconciliation/access date for every row: **2026-10-19**. “Register only” means
+this execution read the supplied preliminary entry, not the linked original.
+Bibliographic details in those rows remain register-supplied. No numeric dataset,
+polar, hinge-loss factor or material limit is imported by any row. Missing
+uncertainty is not set to zero. Source URLs below are durable research leads,
+not proofs that a deferred original was opened.
+
+| ID / source identity | Current reading scope and locator | Intended use / operating scope | Applicability, uncertainty and disposition |
+| --- | --- | --- | --- |
+| R01 Brandt–Selig 2011, DOI [10.2514/6.2011-1255](https://doi.org/10.2514/6.2011-1255); [Vol.1](https://m-selig.ae.illinois.edu/props/volume-1/propDB-volume-1.html) | Register only; original methods/Notes not re-read in this continuation | Low-Re propeller test-method/data lead | **DEFER original/data review**; no exact APC13x5.5MR or five-profile identity inferred; no uncertainty imported |
+| R02 Deters 2014, [institutional thesis record](https://www.ideals.illinois.edu/items/49658); [Vol.2](https://m-selig.ae.illinois.edu/props/volume-2/propDB-volume-2.html) | Register only; thesis sections not read here | Reynolds/slipstream-method lead | **DEFER**; no transferable scale correction or admitted operating envelope/uncertainty |
+| R03 Maier–Narsipur–Deters 2021, DOI [10.2514/6.2021-2223](https://doi.org/10.2514/6.2021-2223) | Original author-uploaded paper text and institutional records read in the earlier same-day assessment above; II.A/II.C/Table1/III.B Figure16(a)/Appendix A10 | Static whole-rotor APC13x5.5MR candidate; right-handed specimen, paper's true D=13.0 in; no exact 4000 RPM load sample verified | **ACCEPT source candidate / HOLD numeric admission**; per-run conditions, uncertainty, data rights and CAD/specimen match remain open; no visual curve digitization |
+| R04 Dantsker et al. 2020, [UIUC Vol.3](https://m-selig.ae.illinois.edu/props/volume-3/propDB-volume-3.html) | Primary webpage re-read: opening, Notes1–4 and assembly description. Referenced PDF retrieval returned a tool error; cover not re-inspected | Root-pivot/yoke diameter and normalization-method context; static sweeps and forward-flow data page | **CONTEXT ONLY** for geometry/test provenance; not our spanwise-joint loss. Exact comparative data/uncertainty not admitted; 2020-2760/2762 discrepancy retained below |
+| R05 Dantsker et al. 2022, DOI [10.2514/6.2022-4020](https://doi.org/10.2514/6.2022-4020); [Vol.4](https://m-selig.ae.illinois.edu/props/volume-4/propDB-volume-4.html) | Register only; model table not newly checked | APC fixed-blade comparison-method lead | **DEFER**; no Thin Electric data substituted for MR. Matching operating range/specimen and uncertainty remain unassessed here |
+| R06 [NASA/NPARC spatial-convergence tutorial](https://www.grc.nasa.gov/www/wind/valid/tutorial/spatconv.html) | Primary method page re-read: Introduction, Grid Considerations and Order of Grid Convergence | Grid refinement and observed-order methodology, not a rotor experiment | **ACCEPT method context only**; explains successive grids and a three-solution observed-order estimate. No computed GCI/total uncertainty or universal propeller study sequence follows |
+| R07 [NASA OpenVSP propellers](https://www.nasa.gov/reference/openvsp-propellers/) | Register only; hinge placement/orientation sections not re-read | Geometry-parameterization lead | **DEFER**; no qualified hinge placement, clearance or manufacturing claim |
+| R08 Acar 2025, [article record](https://as-proceeding.com/index.php/ijanser/article/view/2790) | Register only for this article; register cites printed pp.150–151. Proposal pp.4–5 were independently read as proposal content | Background/model-assumption lead | **NO direct numeric transfer** from an unverified model correspondence. Do not turn auxiliary tip-rotor background into measured spanwise-joint loss; original article-specific review remains separate |
+| R09 [2017 APC Slow Flyer CFD paper](https://www.mdpi.com/2226-4310/4/1/10) | Register only; no fresh full-text/figure read | CFD-method critique lead | **DEFER**; different-model data are not imported. Nearest-reference tuning is not established verification; no uncertainty or model accuracy accepted here |
+| R10 Denton et al. 2022, DOI [10.1177/17568293221117189](https://doi.org/10.1177/17568293221117189) | Register only; rotor/hinge sections not newly read | Packaging, root-hinge/stops/deployment-method lead | **DEFER**; no geometry, material, vibration or deployment threshold transferred to our design |
+
+The primary Vol.3 page labels its reference **AIAA 2020-2760**. The preliminary
+register reports that the [linked original PDF](https://m-selig.ae.illinois.edu/pubs/DantskerCaccamoDetersSelig-2020-AIAA-Paper-2020-2762-CamPropsTesting.pdf)
+cover/DOI says **2020-2762**. The cover was not recovered in this continuation;
+therefore retain both provenance statements and leave bibliographic reconciliation
+open. The primary webpage's Notes/assembly text independently confirms that yoke
+selection participates in unfolded diameter and that screws at the blade roots
+are folding pivots. This supports the applicability restriction, not a loss value
+for a joint farther along an unchanged parent blade.
+
+The original proposal p.6's low-Re/multiple-profile test plan is a requirement,
+not a source of accepted measured polars. The proposal's illustrative analytic
+coefficients on p.5 cannot close coordinate-bound alpha/Re/Mach coverage. Nor do
+the now-transcribed CFD integrated loads close that gap. Separate joint-loss,
+load-transfer, forced-vibration and controlled-folding literature work remains
+future scope and does not block this bounded DOCX intake. No author messages,
+numeric digitization, new solver run or gate promotion; `physical_qualification=false`.

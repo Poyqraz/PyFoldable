@@ -579,3 +579,30 @@ independent review. [Review handoff](handoffs/pr105-astra-a-2026-10-19.md).
 Draft/open/unmerged status and Astra-B review pending are retained. PR #104 is
 outside this change; no genuine solver run, numerical-gate change or qualified
 design follows. `physical_qualification=false`.
+
+## 2026-10-19 later source receipt — PR #105 DOCX intake completed
+
+The owner supplied the four actual opening-task sources after the access-blocked
+checkpoint above. The [source-bound intake](../../reports/apc_13x55mr_ansys_reconciliation/docx_intake_2026-10-19.md)
+and [structured record](../../reports/apc_13x55mr_ansys_reconciliation/docx_intake_2026-10-19.json)
+verify the expected DOCX SHA-256 and record text, two native equations, five tables,
+all five native figures and eight rendered pages. The proposal's nine pages and
+the actual preliminary literature register were read. Earlier missing-document
+records remain historical; their access-blocked status is superseded.
+
+Report-stated last T=5.212321 N, signed Mz=-0.110849921 N m, CAD D=329.3519 mm,
+air rho=1.225 kg/m3 and 4000 RPM reproduce the printed Q/P/CT/CQ/CP arithmetic.
+They do not constitute solver replay. Last values remain distinct from reported
+100/200-record means/drifts. Raw CSV, exact meshed CAD, case/data, flux denominators
+and post-repair wall/mesh exports remain missing; setup and window-statistic replay,
+mesh/domain independence and experimental validation are unestablished.
+
+The [engineer request](../../reports/apc_13x55mr_ansys_reconciliation/engineer_handoff_2026-10-19.md#source-received--current-engineer-request-2026-10-19)
+now asks only for existing project-specific evidence. A fresh APC PER3 retrieval
+matches the previous hash/reference row and remains a manufacturer prediction.
+The literature continuation reconciles R01–R10 reading scope without admitting
+unverified numerical data. [Astra-B handoff](handoffs/pr105-source-intake-2026-10-19.md).
+This is a documentation/source-intake increment on the same Draft PR #105, not a
+new numerical study or independent Astra-B approval. PR #104 and scientific gates
+are unchanged; 250 mm/13-inch/profile/joint-loss/load-transfer/vibration/folding
+boundaries remain. `physical_qualification=false`.

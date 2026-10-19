@@ -738,3 +738,23 @@ study is authorized. Preserve the 250 mm/13-inch/7100 RPM distinctions, five-pro
 coordinate/polar identity and the separate joint-loss, load-transfer, vibration
 and folding evidence requirements. No gate or qualified-design decision changes;
 `physical_qualification=false`.
+
+## 2026-10-19 later receipt — source-bound APC/ANSYS intake
+
+The [actual DOCX intake](../reports/apc_13x55mr_ansys_reconciliation/docx_intake_2026-10-19.md)
+supersedes the preceding access blocker after all four original sources arrived.
+Expected hashes were verified; report text/equations/tables/all five figures were
+read. Printed last-load power/coefficients and deviations are arithmetically
+consistent with retained report tokens. The 100/200-record window means/drifts
+remain reported statistics, not independently replayed CSV results. The earlier
+inventory and unavailable-file checkpoints remain history.
+
+Next is transfer/checking of existing exact CAD, Fluent case/data, raw load/
+residual/flux histories and post-repair mesh/wall records under the
+[updated engineer request](../reports/apc_13x55mr_ansys_reconciliation/engineer_handoff_2026-10-19.md#source-received--current-engineer-request-2026-10-19).
+Do not request a rewrite of the now-read DOCX or assume a new solver study is
+authorized. The preliminary R01–R10 register is reconciled by reading scope;
+experimental numeric admission and exact CFD/specimen correspondence remain open.
+Proposal goals and the owner's longer-proximal/global-parent/five-profile
+requirements survive unchanged. No solver, clearance, qualified-design decision,
+scientific-gate promotion or Astra-B approval; `physical_qualification=false`.
