@@ -11,6 +11,10 @@ Kod/CI tabanlı tarihli durum, dokümantasyon farkları ve yeni ajan başlangıc
 [güncel repo hafızası](agent/current-state.md). Ayrıntılı özellik sözleşmeleri
 bu yol haritasındaki bağlantılarda kalır.
 
+2026-11-05 tarihli [CAD gerektirmeyen kullanıcı akışı, kod tabanlı açıklar ve ilk
+uygulama dilimi](#2026-11-05-cad-free-user-flow--code-audit-and-next-slice), aşağıdaki
+tarihsel planların bugünkü ürün önceliğini günceller; yeni bir yol haritası değildir.
+
 ## Güncel konum
 
 PR-04 ve PR-05 serileri tamamlandı. XFOIL ve NeuralFoil gerçek regresyonları,
@@ -706,3 +710,152 @@ no source/surface/BEM/FEA/trajectory execution or freeze is authorized by this
 documentation proposal. External CAD/STEP is optional. 13-inch source conventions
 remain separate from the 250 mm project baseline. Broader strength evidence and
 physical gates remain unchanged; no ADR-009 acceptance or qualification promotion.
+
+## 2026-11-05 CAD-free user flow — code audit and next slice
+
+This is the current product integration priority within this roadmap. Source:
+the owner's 2026-11-05 message reaffirming the normal CAD-free workflow. A separate
+dated clarification attachment was not available to this execution; no attachment
+reading or digest is claimed. The explicit message supplies the requirements here.
+No DOCX intake or missing-document inventory is repeated.
+
+Audited main: `022b466303c59b8c0adb02f935f9c2f065b0e2b5`, tree
+`b8f943b0d37b2179f71aac47aa2a1cee57df594f`. Relevant live Draft/open/unmerged
+heads: #103 `fc545b1584d679951fd28db0767cd71c790a7b06` (tree
+`dd399acd98c87d45845f6976eea7c24da81a4e7c`), #104
+`8ba282e49ecf3c7ac96ada100c2721fa28a5803f` (tree
+`b354cc4318e5b864ff5886710cce81a3f5f06a10`), #105
+`86d28805a469a495746f8a9cf5da344ffe0162e6` (tree
+`6b8d532a7291dd903114c2c53c1384cdbcc5c10f`). They are not changed here.
+Draft #96 (`19df53d080e1f74edea8f12aa84de79b3fc6ba17`) is a separate earlier
+roadmap reconciliation; its prose is not treated as merged implementation.
+
+### Required selections mapped to actual code
+
+Paths below are on audited main unless explicitly marked Draft. Functions/tests
+were read, not executed as a new numerical study. Widget ranges are input bounds,
+not proof of an aerodynamically or mechanically supported design envelope.
+
+| Requirement | Implemented source / current behavior | Specific remaining integration |
+| --- | --- | --- |
+| All five selectable profiles | [profile_catalog.py](../pyfoldable/core/profile_catalog.py)::`PROJECT_AIRFOIL_IDS`, `load_project_airfoil`; [dashboard](../apps/pyfoldable_dashboard.py)::`_render_design_geometry` supplies NACA0012, NACA2412, NACA23012, NACA4415, NACA63-412 and validates coordinate identities | Keep all five through generated geometry, provider lookup and saved results. Catalog coordinates do not supply matching polars. |
+| Dimensions and explicit chord/twist | Dashboard diameter/hub/blade-count/chord/twist controls → [design_draft.py](../pyfoldable/application/design_draft.py)::`build_design_draft`, `_build_model`; parametrically scales the existing source stations once; `_station_editor` also works without upload | Expose a versioned blade-family/template identity with its station law, root datum, units and supported bounds. Current UI has one canonical seed, not a family selector. Profile plus diameter must never invent chord/twist. |
+| Internally generated analysis geometry | Draft TOML is parsed back into `PropellerDesign`; preview uses those same stations. [parent_blade_generator.py](../pyfoldable/application/parent_blade_generator.py)::`generate_parent_blade_cuts` copies one immutable parent into two complementary cut reports | Connect family selection, parent/cut outputs and analysis request identity in the UI. Sparse station gaps are explicit; do not fabricate endpoints or reset distal chord/twist. |
+| Generic mixed-profile sections | [mixed_profile_parent_geometry.py](../pyfoldable/application/mixed_profile_parent_geometry.py)::`evaluate_mixed_profile_parent`, `render_mixed_profile_table`, local CLI are implemented; [implementation scope](generic_mixed_profile_geometry_implementation.md) | Service consumes explicit endpoint/scalar/model DTOs, not catalog selections. Fixed supported hinge literals/model/frame and undefined actual joint modifications remain. No general catalog adapter, mesh/solid or BEM path for blended sections; endpoint polars cannot stand in for a new blended section. Historical proposal-only wording does not negate this bounded implementation. |
+| Hub, hinge and folding | Draft exposes hub/hinge radii and preview angle; source TOML declares axis, offsets and stops. [folding_mechanism.py](../pyfoldable/application/folding_mechanism.py)::`audit_mechanism_geometry` and [geometry_search.py](../pyfoldable/application/geometry_search.py)::`prepare_geometry_search` provide bounded diagnostics/candidates | Complete explicit joint-template inputs and shared-parent candidate UI are missing. Current validation is `hub < hinge < tip`; it does not enforce longer proximal. For a declared blade-root datum `r_root` and tip `R`, require `h-r_root > R-h`; do not substitute shaft origin or an arbitrary first aerodynamic station. Historical candidate records remain historical. |
+| Candidate comparison | Geometry search rebinds candidate hinge geometry and caps its grid at25 evaluations; parent generator accepts exactly two cuts from the same parent | Add the owner-required input filter and common parent identity. This is a candidate table, not an optimum. Fully-open BEM without a joint-loss model cannot rank hinge locations by fabricated losses. Opposed blades keep the same parent geometry. |
+| Operating conditions | Dashboard supplies RPM, forward speed, rho, mu, temperature and pressure; [design_analysis.py](../pyfoldable/application/design_analysis.py)::`_load`, `_load_open` validates the first condition | Existing BEM path requires positive RPM, nonnegative forward speed, fully-open zero-offset geometry and one uniform profile. Folded preview and nominal station kinematics are not additional solved operating cases. |
+| Integrated real-provider polars | [xfoil.py](../pyfoldable/providers/xfoil.py), [polar_family_generation.py](../pyfoldable/core/polar_family_generation.py)::`PolarFamilyGenerationPlan`, [polar_config.py](../pyfoldable/core/polar_config.py)::`PolarFamilyRuntime` exist | Main UI `_render_active_polar_run` still requires uploaded polar JSON. Missing application-owned admission/materialization of matching retained provider results. Generic orchestration defaults to retries; it must not silently replace #104's reviewed one-attempt/no-retry capture policy. |
+| BEM and result attribution | [polar_upload.py](../pyfoldable/application/polar_upload.py)::`inspect_polar_bundle`, `prepare_polar_run`, `run_polar_run` → `run_design_analysis`; coordinate-bound family, bounds=`error`, complete retained request/settings/result and hashes | Feed the existing boundary internally, without asking the normal user to prepare a polar file. Nominal alpha/Re/Mach ranges do not prove actual BEM query coverage; reject coverage failures without partial totals. |
+| Profile result history | [Draft #103 service](https://github.com/Poyqraz/PyFoldable/blob/fc545b1584d679951fd28db0767cd71c790a7b06/pyfoldable/application/profile_bem_comparison.py)::`snapshot_success`, `snapshot_failure`, `add_record`, `comparison_document`; corresponding draft UI saves immutable per-profile records | Still unmerged, upload-driven and deliberately `BLOCKED_no_matching_real_provider_polar_bundle`. It accepts inert/caller-unqualified evidence classes; do not relabel these as validated experiments or remove its genuine-comparison block merely because wiring exists. |
+| Mechanical inputs and results | Dashboard `_render_bound_mechanism` → [mechanism_binding.py](../pyfoldable/application/mechanism_binding.py)::`bind_mechanism_draft` → [mechanism_transient.py](../pyfoldable/application/mechanism_transient.py)::`prepare_bound_mechanism_transient`, `run_bound_mechanism_transient`; explicit source-bound mass/drive JSON, no CAD requirement | Replace raw JSON entry with supported joint/material/mass/drive forms/templates and consistent identity handoff. Do not infer mass/inertia/strength from profile, diameter or air density. PY-05 prescribed drive and the separate CMM-2 screening service are not an already integrated, validated aero-mechanical UI. |
+| Optional external evidence | Current file widgets are station/polar/hardware/evidence inputs; normal parametric drafting needs no CAD. #105 asks for the solid actually meshed to replay an external ANSYS report | That external evidence request is not a product input gate. Internal geometry may support analysis without native CAD; solid/contact, FEA, measured validation, joint losses and forced-vibration evidence retain their own missing prerequisites. |
+
+Reading witnesses include existing tests for draft round-trip, idle UI edits,
+invalidated downloads, wrong-coordinate rejection, BEM coverage failure, immutable
+parent cuts and exact generic section placement:
+[draft](../tests/application/test_design_draft.py),
+[active UI](../tests/ui/test_active_design_polar_ui.py),
+[BEM](../tests/application/test_design_analysis.py),
+[parent cuts](../tests/application/test_parent_blade_generator.py),
+[generic sections](../tests/application/test_mixed_profile_parent_geometry.py),
+and [Draft #103 comparison witnesses](https://github.com/Poyqraz/PyFoldable/blob/fc545b1584d679951fd28db0767cd71c790a7b06/tests/application/test_profile_bem_comparison.py).
+These are inspected software witnesses, not a claim of a new test/study run here.
+
+### First bounded implementation slice: retained-provider data to active BEM/UI
+
+**Proposed, not implemented or authorized to execute by this audit.** The next
+deliverable is one reproducible numerical user path, rather than another status
+document: select a supported explicit parent template/profile/condition, resolve
+matching genuine provider records internally, explicitly run existing fully-open
+BEM, retain the result and its source chain. No CAD or manual polar JSON upload
+is required on that path. The existing manual upload remains an optional route.
+
+1. **Base and files.** Use a separately agreed integration base containing reviewed
+   #103 snapshot/UI code **and** #104's capture/request-binding boundary; the latter
+   module is absent from audited main and #103. Do not edit either current branch
+   or imply either is merged. Add a small
+   planned `pyfoldable/application/provider_design_analysis.py` with preparation
+   and run entry points; extend `_render_active_polar_run`/profile history in
+   `apps/pyfoldable_dashboard.py`. Reuse `design_draft`, catalog, `polar_upload`
+   and `design_analysis`, and #103 snapshot functions. No second BEM engine.
+2. **Explicit geometry inputs.** Start with the existing canonical station seed as
+   one clearly named/versioned template, retaining its source SHA and schema-example
+   status; do not advertise a validated blade family. Inputs include all stored
+   global station radii/chords/twists, selected catalog coordinate hash, diameter,
+   hub/root datum, blade count, zero-offset hinge/axis/stops, one or two bounded
+   hinge candidates and the explicit condition. Validate longer proximal before
+   any run. A single candidate uses the existing draft; two distinct candidates
+   can use `generate_parent_blade_cuts`, whose API requires exactly two cuts.
+   Cuts share one parent; generated input geometry is distinct from manufactured
+   geometry. Broader family/joint forms remain later integration.
+3. **Provider input and admission.** Resolve an application-owned retained capture
+   bundle by selected profile/coordinate identity and its exact declared request
+   plan, rather than accepting a provider name or a claimed cache hit. Verify the
+   returned result and retained canonical request against the launched request,
+   provider identity, full usable ledger and available raw capture receipts, using
+   the [#104 binding boundary](https://github.com/Poyqraz/PyFoldable/blob/8ba282e49ecf3c7ac96ada100c2721fa28a5803f/pyfoldable/application/polar_query_feasibility.py)::`_bind_returned_result`.
+   Retain executable/build observations separately;
+   hashes do not attest a process image. No inferred coefficients or unverified
+   partial family may enter BEM.
+4. **Concrete acquisition dependency.** The already prepared experiment remains
+   unchanged: NACA0012 then NACA2412, declared positive grids,37 descending angles,
+   at most8 cells, one90s attempt/cell, no retry/INIT/substitution/narrowing and stop
+   before the next failed-cell successor; zero BEM in that probe. Its existing
+   `result-XX.json` and `capture/cell-XX-PROFILE/` outputs are prospective inputs
+   to the admission service, not present results. Separate owner authorization and
+   independent review precede capture, then separate authorization precedes a
+   genuine BEM acceptance run. Do not add on-demand scheduling or widen that probe
+   to all five profiles in this slice. All five remain selectable/tested in the
+   software path; profiles/conditions without a separately declared matching
+   provider bundle show their specific missing coverage, with no substitution.
+5. **Outputs and behavior.** Use admitted
+   `PolarGenerationResult.to_polar_table(require_complete=True)` to materialize a complete internal
+   `active_design_polar_bundle` with the selected coordinate identity, then reuse
+   `prepare_polar_run`/`run_polar_run`. Keep provider-result/capture/plan references
+   in the new wrapper artifact, alongside template/parent/candidate/draft/polar/
+   condition/settings/source identities and runtime. Retain T/Q/shaft power and
+   radial/query audit only on actual BEM success; append an immutable #103 record.
+   Retain `station_span` and root/tip gaps; do not turn partial radial coverage
+   into a complete physical-blade load claim.
+   Preserve lower-layer unqualified classifications and the existing genuine-
+   comparison block; actual provider origin is a separate source fact. One
+   successful real-provider/BEM case is not a genuine two-profile comparison.
+6. **Failures.** Preparation is side-effect free. Missing template inputs, invalid
+   segment lengths, unsupported pose/offset/condition, profile/plan mismatch,
+   unreadable/incomplete captures or missing provider coverage block before BEM.
+   BEM coverage/nonconvergence fails without partial totals or the previous success
+   remaining active. Selection/input changes invalidate active output/downloads;
+   prior snapshots retain their original identities. No automatic provider launch,
+   retry, INIT, clamp, proxy, extrapolation or policy narrowing. Mechanical results
+   remain explicitly unavailable when their separate inputs are absent.
+
+### Acceptance evidence and stopping point
+
+- **Software integration:** planned `tests/application/test_provider_design_analysis.py`
+  and the existing active-profile UI tests must cover all five coordinate identities,
+  no-upload drafting, source-preserving template/candidate generation, longer-
+  proximal rejection, no implicit solve on edits, complete receipt admission,
+  stale/foreign/partial input rejection, BEM-not-called on admission failure, retained
+  settings/provenance and immutable success/failure exports. Use inert seams; label
+  their coefficients/results as software fixtures, never genuine comparison data.
+- **Working numerical user-flow milestone:** after separate authorization, retain
+  a complete attributable real-provider bundle and a successful existing BEM run
+  for a declared supported case, with matching input/request/result hashes, raw
+  capture references, actual query coverage and repeatable BEM replay from that
+  retained bundle in its recorded environment; this does not mean retrying the
+  provider probe. The UI must display that source-bound result without CAD or manual
+  polar upload. Preparation, mocks or an old Re200000 qualification cannot satisfy
+  this milestone. If provider/BEM fails, retain the failure and mark the numerical
+  milestone incomplete; do not invent a narrower successful case.
+- **Separate comparison/physics:** matched real results for distinct profiles,
+  controlled conditions/geometry/policies and independent review are still needed
+  for a genuine comparison. Joint loss/load transfer, clearance, material strength,
+  forced vibration, controlled deployment and optimum design are not supplied by
+  this first slice. Keep all five profiles, `qualified_winner=None` and
+  `physical_qualification=false`; no scientific gate is promoted.
+
+The 2026-11-05 XFOIL preflight archive remains unchanged (SHA-256
+`058a91997442d42df0859a373df1bbb00005fcd882c86616ef5707590f45331a`), unexecuted and
+under separate review. This documentation-only reconciliation runs no new
+provider/BEM/CFD/FEA/clearance/transient engineering study and does not merge a PR.
