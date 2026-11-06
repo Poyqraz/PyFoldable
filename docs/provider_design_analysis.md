@@ -88,6 +88,52 @@ exports remain immutable and keep report text/hash/request links. Same-coordinat
 repetitions do not become a distinct-profile comparison. Existing lower-layer
 `caller_supplied_unqualified` and inert labels are not promoted.
 
+### PR107 independent-review repair — 2026-11-06
+
+The application now assesses retained **profile, Mach and Reynolds header fields**
+as well as coefficient rows. The pure
+[header helper](../pyfoldable/application/retained_xfoil_header.py) records original
+header lines/tokens and each field's `missing`, `malformed`, `contradictory` or
+`compatible` interpretation. Present malformed/duplicate/contradictory fields reject
+before BEM, including explicit execution's fresh admission. Headerless records
+remain supported: absent fields stay unavailable with no invented value and supply
+no observed profile/Mach/Re identity. Ncrit/xtrf and other header text are retained
+raw, not interpreted by this bounded header check.
+
+The pinned MIT archive SHA-256 is
+`5c0250643f52ce0e75d7338ae2504ce7907f2d49a30f921826717b8ac12ebe40`.
+Its `Xfoil/src/iopol.f` (`POLWRIT`, lines515/560/684/692; member SHA-256
+`7ab33bdac69a0cc620a4d2de18f85e75f50846337443762ed82bfa7012356e7e`)
+writes the input NAME, Mach `F7.3` and Reynolds divided by1e6 as `F9.3`.
+Comparison first parses the checked adapter's `.12g` command token into binary64,
+then applies the writer's Re scaling. Exact rational half-quantum intervals derive
+from the three printed decimals: Mach half-width0.0005; Reynolds half-width500.
+Exact halfway ties admit either neighboring printed token. No arbitrary epsilon
+or ambient Decimal context changes these bins. Requested Mach
+`0.040507164718475736` / Re `26030.624179244653` are compatible with `0.041` /
+`0.026 e 6`. This is printed-precision consistency, not proof of coefficient origin.
+
+Optional returned metadata is reconciled when present: `returncode` must be an
+integer equal to the capture receipt; `polar_row_count` must be an integer equal
+to `len(rows)` from the reviewed parser (including valid unmatched rows, not the
+requested-angle count); `repanel` must be boolean and agree with reviewed option
+semantics (default true) and checked script `PANE`. Booleans are not integer exit
+codes/counts. Absent metadata remains absent. Returned documents and raw receipts
+stay separate from derived assessment records, including on rejection.
+
+Preparation first retains a canonical **attempted selection**, before any geometry
+or policy rejection. It includes actual draft/template identities, root declaration
+value/unit/meaning/kind/source, family, annulus setting and original policy UTF-8
+text/bytes/digest; malformed policy text is retained with parsed value unavailable.
+Its digest uses sorted-key compact JSON, `ensure_ascii=False`, finite numbers and
+UTF-8, without a trailing newline. No timestamp, counter or salt is added.
+Preflight snapshots expose `attempted_selection` / `attempted_selection_sha256`;
+the existing CSV `attempt_sha256` resolves to that same retained canonical object
+in the JSON record. Prepared/executed request, report and totals remain null.
+Selection-digest equality, including numeric type and signed zero, prevents
+relabeling a rejection. Successful reports retain the attempted selection separately
+from their prepared/executed request identities.
+
 ## Acceptance and remaining evidence
 
 [Application tests](../tests/application/test_provider_design_analysis.py) and

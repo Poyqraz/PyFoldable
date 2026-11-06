@@ -97,3 +97,50 @@ two-profile comparison and physical qualification. The latter remain unestablish
 `physical_qualification=false`, qualified winner remains null. Mechanical/joint/
 clearance/vibration/CFD/FEA/transient evidence is not supplied. Preserve #105 and
 the completed probe. Preserve unrelated CSV CRLF/LF working-copy differences.
+
+## PR107 three-finding repair delta — 2026-11-06
+
+Reviewed starting head `8c7df51f13bd59e9519aa6f0e18e0a41ba76c6d8`, tree
+`9ec04d5409a0575c2e3b9d14e2bff62f27cb7616`; integration base above unchanged.
+Final repair exact head/tree and ordinary CI are recorded in the same Draft PR's
+description. #103–106, provider source and historical captures are preserved.
+
+Reproduced before implementation: valid inert full-header control passed; foreign
+NACA2412 header, Mach0.900 and Re9.000e6 were admitted after updating the polar
+checksum, as were metadata returncode7, row_count1 and repanel=false. Explicit
+execution with changed records only reported generic stale-state rejection.
+Selected Ncrit7/8 and root80/81mm produced identical paired rejection records.
+Initial regression result was14 failing witnesses /1 passing valid control.
+
+The repair adds a pure header helper and changes application admission only.
+Supported header fields are profile/Mach/Re; malformed or contradictory fields
+reject on preparation and fresh explicit-execution admission. Missing fields
+remain unavailable, without becoming observations. The pinned POLWRIT source
+and exact rational printed-precision interpretation are linked in the existing
+contract. Actual0.041 /0.026e6 headers pass that independent check; the unchanged
+35/37 actual record still fails completeness before BEM. Known optional metadata
+is type/consistency checked against raw parser/receipt/reviewed option semantics.
+Raw returned metadata, capture receipts and derived observations remain separate.
+
+Attempted selections are retained before validation, including rejected root and
+original malformed policy text/bytes. Canonical selection digest is separate from
+prepared/executed identities and resolves through existing CSV attempt_sha256 to
+the JSON attempted_selection object. Preflight BEM/report/totals remain null.
+Exact signed-zero/type-sensitive digest comparison prevents later relabeling.
+No time/salt/counter is used. Existing saved history and profile restrictions stay.
+
+Tests are in `tests/application/test_provider_design_admission_repairs.py` plus
+one no-upload saved-root-rejection AppTest. Positive execution uses inert BEM only.
+Internal review's Decimal-context and Python numeric-equality findings were also
+reproduced RED, then fixed with exact Fraction bins and canonical digest comparison.
+Final focused run:186 passed, no skips, one external pytest-plugin deprecation
+warning;35 new application regressions and one new saved-history AppTest are
+included. The independent internal reviewer separately passed all35 new application
+tests and reopened/verified the pinned archive/member source hashes. Compile and
+whitespace checks passed; provider/driver/polar/snapshot/dashboard, actual negative
+fixture and original preflight/execution archives remain unchanged.
+Exact-tree internal review and exact-head ordinary CI are reported
+in the PR; internal review is not Astra-B approval. No real provider/BEM/banner,
+experiment retry, qualification workflow, registry population, persistence, policy
+change or merge is authorized/performed by this delta. Genuine comparison remains
+UNESTABLISHED; `physical_qualification=false`.

@@ -30,6 +30,7 @@ from .design_draft import DesignDraftArtifact
 from .polar_query_feasibility import _bind_returned_result
 from .polar_upload import PolarRunRequest, prepare_polar_run, run_polar_run
 from .profile_bem_comparison import _seal, snapshot_failure, snapshot_success
+from .retained_xfoil_header import assess_retained_xfoil_header
 
 
 def _json(value: object) -> str:
@@ -215,7 +216,7 @@ def _result(document: dict) -> PolarGenerationResult:
     return result
 
 
-def _capture(request: PolarGenerationRequest, provider: ProviderIdentity, result: PolarGenerationResult, cell: RetainedCell) -> dict:
+def _capture(request: PolarGenerationRequest, provider: ProviderIdentity, result: PolarGenerationResult, cell: RetainedCell, observations: dict) -> dict:
     files = dict(cell.capture_files)
     if len(files) != len(cell.capture_files) or sum(len(b) for b in files.values()) > 16 * 1024 * 1024:
         raise ValueError("Duplicate or oversized capture files")
@@ -223,6 +224,8 @@ def _capture(request: PolarGenerationRequest, provider: ProviderIdentity, result
     if set(files) != required:
         raise ValueError("Complete capture requires seven retained files")
     receipt = _document(files["capture.json"])
+    observations["retained_receipt"] = {"sha256": _sha(files["capture.json"]), "document": receipt}
+    observations["retained_files"] = [{"name": n, "sha256": _sha(b), "byte_count": len(b)} for n, b in sorted(files.items())]
     expected = xfoil._request_preimage(request, provider)
     if files["request_preimage.json"] != expected:
         raise ValueError("Capture canonical request does not match the declared request")
@@ -250,16 +253,41 @@ def _capture(request: PolarGenerationRequest, provider: ProviderIdentity, result
             raise ValueError("Capture raw byte receipt does not match retained bytes")
     if receipt.get("adapter_source_sha256") != _sha(Path(xfoil.__file__).read_bytes()):
         raise ValueError("Capture adapter source is not the reviewed implementation")
-    observations = receipt["executable_identity"]
-    if (not isinstance(observations, dict) or not isinstance(observations.get("prelaunch"), dict)
-            or not isinstance(observations.get("postlaunch"), dict)):
+    executable_observations = receipt["executable_identity"]
+    if (not isinstance(executable_observations, dict) or not isinstance(executable_observations.get("prelaunch"), dict)
+            or not isinstance(executable_observations.get("postlaunch"), dict)):
         raise ValueError("Capture executable file observations have invalid shapes")
-    before, after = observations["prelaunch"], observations["postlaunch"]
-    if (observations.get("matched") is not True or not isinstance(before.get("sha256"), str)
+    before, after = executable_observations["prelaunch"], executable_observations["postlaunch"]
+    if (executable_observations.get("matched") is not True or not isinstance(before.get("sha256"), str)
             or re.fullmatch(r"[0-9a-f]{64}", before["sha256"]) is None or before["sha256"] != after.get("sha256")
             or before.get("unavailable_reason") is not None or after.get("unavailable_reason") is not None):
         raise ValueError("Capture executable file observations are missing/changed")
-    parsed, _ = xfoil._parse_polar(files["polar.bin"].decode("utf-8"))
+    text = files["polar.bin"].decode("utf-8")
+    header = assess_retained_xfoil_header(text, request, script=files["script.txt"].decode("utf-8"), airfoil_input=files["airfoil_input.dat"].decode("utf-8"))
+    observations["polar_header"] = header
+    if not header["compatible"]:
+        raise ValueError("Capture polar header has malformed or contradictory profile/Mach/Re fields")
+    parsed, _ = xfoil._parse_polar(text)
+    observations["parsed_polar_row_count"] = len(parsed)
+    metadata_checks = {}
+    observations["known_returned_metadata"] = metadata_checks
+    repanel = xfoil._validated_options(request.options)["repanel"]
+    script_repanel = "PANE" in files["script.txt"].decode("utf-8").splitlines()
+    if repanel is not script_repanel:
+        raise ValueError("Capture script and reviewed option semantics disagree on repaneling")
+    for field, expected, kind, source in (
+        ("returncode", receipt["returncode"], int, "capture.returncode"),
+        ("polar_row_count", len(parsed), int, "reviewed_parser_valid_rows_including_unmatched_rows"),
+        ("repanel", repanel, bool, "reviewed_options_default_true_and_checked_script_PANE"),
+    ):
+        if field not in result.metadata:
+            metadata_checks[field] = {"status": "missing"}
+            continue
+        returned = result.metadata[field]
+        status = "malformed" if type(returned) is not kind else "consistent" if returned == expected else "contradictory"
+        metadata_checks[field] = {"status": status, "returned_value": returned, "source_value": expected, "source": source}
+    if any(check["status"] not in {"missing", "consistent"} for check in metadata_checks.values()):
+        raise ValueError("Capture evidence contradicts known returned metadata or its types")
     points, _ = xfoil._reconcile_rows(request, parsed)
     # Raw polar parsing is read-only arithmetic. It does not call XFOIL.
     if _json([p.__dict__ for p in points]) != _json([p.__dict__ for p in result.points]):
@@ -271,7 +299,7 @@ def _capture(request: PolarGenerationRequest, provider: ProviderIdentity, result
     if (receipt.get("solver_output_usable") is not ready or receipt.get("evidence_ready") is not ready
             or result.metadata.get("capture_evidence_ready") is not ready):
         raise ValueError("Capture readiness contradicts the raw point ledger")
-    return {"receipt": receipt, "files": [{"name": n, "sha256": _sha(b), "byte_count": len(b)} for n, b in sorted(files.items())]}
+    return {"receipt": receipt, "observations": observations, "files": [{"name": n, "sha256": _sha(b), "byte_count": len(b)} for n, b in sorted(files.items())]}
 
 
 @dataclass(frozen=True)
@@ -282,7 +310,51 @@ class PreparedProviderDesignAnalysis:
     request_sha256: str
 
 
+def attempted_provider_design_selection(selection: ProviderDesignSelection) -> dict:
+    """Content-only attempted inputs, captured before geometry/policy validation.
+
+    These are declarations/file observations, not prepared or executed requests.
+    Original malformed policy text/bytes are retained, never replaced by defaults.
+    """
+    policy_bytes = selection.provider_policy_json.encode("utf-8")
+    policy = {"original_text": selection.provider_policy_json, "utf8_sha256": _sha(policy_bytes),
+              "utf8_base64": base64.b64encode(policy_bytes).decode(), "parsed": None, "parse_status": "malformed"}
+    try:
+        policy["parsed"] = _document(policy_bytes)
+        policy["parse_status"] = "parsed"
+    except (ValueError, TypeError, RecursionError) as exc:
+        policy["parse_error"] = type(exc).__name__
+    root = selection.root
+    root_record = None if root is None else {f.name: getattr(root, f.name) for f in fields(root)}
+    if root_record is not None and isinstance(root.value, float) and not math.isfinite(root.value):
+        root_record["value"] = {"type": "float", "nonfinite_repr": repr(root.value)}
+    return {
+        "schema_version": 1, "artifact_class": "provider_design_attempted_selection",
+        "draft": {"filename": selection.draft.filename, "toml": selection.draft.toml,
+                  "declared_draft_sha256": selection.draft.draft_sha256,
+                  "observed_toml_sha256": _sha(selection.draft.toml.encode("utf-8")),
+                  "declared_source_sha256": selection.draft.source_sha256},
+        "template": {"template_id": selection.template.template_id, "source_identity": selection.template.source_identity,
+                     "observed_source_sha256": _sha(selection.template.source_bytes), "byte_count": len(selection.template.source_bytes)},
+        "root": root_record, "family_id": selection.family_id, "provider_policy": policy,
+        "annulus_count": selection.annulus_count,
+    }
+
+
 def prepare_provider_design_analysis(selection: ProviderDesignSelection, repository: ManagedProviderRepository) -> PreparedProviderDesignAnalysis:
+    attempted = attempted_provider_design_selection(selection)
+    attempted_sha = _sha(_json(attempted).encode("utf-8"))
+    identity = {"attempted_selection": attempted, "attempted_selection_sha256": attempted_sha}
+    try:
+        return _prepare_provider_design_analysis(selection, repository, identity)
+    except ProviderDesignPreparationError as exc:
+        exc.evidence_json = _json({**json.loads(exc.evidence_json), **identity})
+        raise
+    except (ValueError, TypeError, OSError) as exc:
+        raise ProviderDesignPreparationError("preparation_rejected", str(exc), identity) from exc
+
+
+def _prepare_provider_design_analysis(selection: ProviderDesignSelection, repository: ManagedProviderRepository, attempted_identity: dict) -> PreparedProviderDesignAnalysis:
     """No solve. Match one declared family; admit all cells or none."""
     geometry = _geometry(selection)
     matches = [f for f in repository.families if f.family_id == selection.family_id and f.requests and f.requests[0].airfoil.id == geometry["profile"]]
@@ -333,7 +405,8 @@ def prepare_provider_design_analysis(selection: ProviderDesignSelection, reposit
                 row["points"] = doc["points"]
                 if row["identity_mismatch"] is not None:
                     raise ProviderDesignPreparationError("request_binding", row["identity_mismatch"])
-                capture = _capture(request, family.provider, result, cell)
+                row["capture_observations"] = {}
+                capture = _capture(request, family.provider, result, cell, row["capture_observations"])
                 row["capture"] = capture
                 if not result.complete:
                     row["status"] = "partial"
@@ -351,7 +424,7 @@ def prepare_provider_design_analysis(selection: ProviderDesignSelection, reposit
                 errors.append((code, str(exc)))
         ledger.append(row)
     provenance = [{"name": n, "sha256": _sha(b), "byte_count": len(b), "base64": base64.b64encode(b).decode()} for n, b in family.provenance_files]
-    admission = {"schema_version": 1, "service_id": "pyfoldable.application.provider_design_analysis",
+    admission = {"schema_version": 1, "service_id": "pyfoldable.application.provider_design_analysis", **attempted_identity,
         "implementation_file_sha256": _sha(Path(__file__).read_bytes()),
         "family_id": family.family_id, "source_identity": family.source_identity,
         "evidence_class": family.evidence_class, "geometry": geometry, "provider_policy": selected_policy,
@@ -380,11 +453,19 @@ class ProviderDesignOutcome:
 
 def preparation_failure_record(selection: ProviderDesignSelection, error: ProviderDesignPreparationError) -> dict:
     evidence = json.loads(error.evidence_json)
+    current_attempted = attempted_provider_design_selection(selection)
+    attempted = evidence.get("attempted_selection", current_attempted)
+    attempted_sha = _sha(_json(attempted).encode("utf-8"))
+    if (evidence.get("attempted_selection_sha256", attempted_sha) != attempted_sha
+            or attempted_sha != _sha(_json(current_attempted).encode("utf-8"))):
+        raise ProviderDesignPreparationError("stale_active_state", "Cannot relabel a retained rejection as another attempted selection")
     evidence_class = evidence.get("evidence_class")
     if evidence_class not in {"inert_fixture", "caller_supplied_unqualified"}:
         evidence_class = "caller_supplied_unqualified"
     record = snapshot_failure(selection.draft, reason=str(error), evidence_class=evidence_class)
-    return _seal({**record, "provider_design_rejection": evidence})
+    return _seal({**record, "provider_design_rejection": evidence,
+                  "attempt_sha256": attempted_sha, "attempted_selection_sha256": attempted_sha,
+                  "attempted_selection": attempted})
 
 
 def run_provider_design_analysis(prepared: PreparedProviderDesignAnalysis, *, active_selection: ProviderDesignSelection, repository: ManagedProviderRepository) -> ProviderDesignOutcome:

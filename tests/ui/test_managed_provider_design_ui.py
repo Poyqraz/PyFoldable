@@ -101,3 +101,23 @@ def test_explicit_failure_keeps_request_and_null_totals_across_rerender(monkeypa
     app.run(timeout=30)
     assert calls == [1]
     assert any("INERT retained failure" in e.value for e in app.error)
+
+
+def test_distinct_root_rejections_survive_no_upload_saved_history(monkeypatch):
+    _, repository = scenario("NACA2412")
+    monkeypatch.setattr(service, "application_provider_repository", lambda: repository)
+    app = declare_root(workspace())
+    for root in ("80 mm", "81 mm"):
+        widget(app.text_input, "Kanat kökü r_root [değer birim]").set_value(root).run(timeout=30)
+        assert not app.exception
+        assert any("longer_proximal_required" in e.value for e in app.error)
+        widget(app.button, "İç kayıt ret kaydını karşılaştırmaya ekle").click().run(timeout=30)
+    records = app.session_state["py03_profile_comparison_records"]
+    assert len(records) == 2
+    assert [r["attempted_selection"]["root"]["value"] for r in records] == [80., 81.]
+    assert len({r["attempt_sha256"] for r in records}) == 2
+    assert all(r["analysis_request_sha256"] is r["report_sha256"] is r["thrust_n"] is None for r in records)
+    saved = json.dumps(records, sort_keys=True)
+    widget(app.selectbox, "Kesit modeli").set_value("NACA0012").run(timeout=30)
+    assert json.dumps(app.session_state["py03_profile_comparison_records"], sort_keys=True) == saved
+    assert all(u.value is None for u in app.file_uploader)

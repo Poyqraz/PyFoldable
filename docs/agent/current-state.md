@@ -627,3 +627,15 @@ in place and `physical_qualification=false`. No scientific gates or historic
 screening results change. #106's separate documentation root-datum correction is
 published at `f705d6b4c8dc528a0def94470798ae0ea2942db9`, tree
 `98a789415904e0302b52e4c6151a374eddcccbac`; it is not treated as merged.
+
+### 2026-11-06 PR107 independent-review repair delta
+
+Application admission now rejects contradictory/malformed supported polar headers
+and inconsistent present returncode/parsed-row-count/repanel metadata. Exact
+printed-precision bins preserve genuine rounded headers. Preflight rejection retains
+the actual attempted selection and canonical identity before validation; JSON/CSV
+references resolve without inventing executed requests or totals. See the
+[existing contract](../provider_design_analysis.md#pr107-independent-review-repair--2026-11-06).
+The reviewed provider/snapshot sources, negative fixture and original archives
+are unchanged. Registry/persistence scope is unchanged; no new study or scientific
+policy change. Genuine comparison UNESTABLISHED; `physical_qualification=false`.
