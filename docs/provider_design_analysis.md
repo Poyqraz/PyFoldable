@@ -266,7 +266,14 @@ checked before the fsynced manifest is linked atomically **last**. A nonblocking
 advisory directory lock serializes operator registrations; a competing writer
 receives `provider_store_busy`, with no retry or stale lock file. Use one store
 instance per caller. Pending files/unreferenced blobs are ignored; interruption
-before publication cannot expose a partial version. Orphan cleanup/backup/remote
+before the new manifest's atomic `os.link` publication cannot expose that new
+version. An exception **after** that link (directory `fsync` or temporary-file
+cleanup, for example) can coexist with a complete readable published storage
+snapshot; its polar observations may still be partial/unlaunched/unavailable.
+An unsuccessful directory `fsync` does not acknowledge crash durability; a
+successful read after the error is not proof of that durability. Inspect the
+exact immutable version after an error rather than assuming no publication or
+silently overwriting it. Orphan cleanup/backup/remote
 replication is not implemented. All request/cell slots must be declared; partial
 observations and explicit unknown slots are retainable, without an approval flag.
 The existing 64-cell, 2MiB result/preimage, 16MiB capture/cell, 64MiB retained
@@ -317,3 +324,15 @@ Provider records persist locally. **Comparison/user-result history remains
 session-scoped**; saved snapshots are immutable within the existing session/export
 contract, not a new durable user-history service. Genuine single-case BEM evidence
 and genuine distinct-profile comparison remain unestablished; `physical_qualification=false`.
+
+### Scoped independent approval and documentation clarification — 2026-11-07
+
+The owner relayed Astra-B's independent **APPROVE** for #108's bounded persistent
+store/application/UI implementation at HEAD
+`df9571542594c5f51206a4bce3cc5ff9bf107b63`, tree
+`1773d9bb2146efda7b90a284654410779b09b9eb`, base
+`8f2d38a826b6118ab97273dbd26ef6bbf43d23ae`. This is the original approval
+identity, not approval of this later documentation revision or numerical evidence.
+The publication wording above distinguishes pre-link failure, post-link visibility
+and durability acknowledgment; runtime behavior is unchanged. See the separate
+[single next acquisition decision](agent/handoffs/next-acquisition-decision-2026-11-07.md).

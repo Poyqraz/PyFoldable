@@ -22,7 +22,7 @@ No normal deployment data is installed by this increment.
 
 Schema1 manifests have stable content and family/version identities. No-overwrite
 blob publication precedes complete reconstruction/integrity/budget checks and the
-final atomic manifest link. Failed/interrupted registration exposes no new version;
+final atomic manifest link. Failure/interruption before that link exposes no new version;
 identical registration is idempotent, conflicting version bytes reject. Pending
 files/orphan blobs are ignored. Operator-provisioned parent, private POSIX local
 store, no database/service/backup/garbage collector. The existing resource budgets
@@ -137,3 +137,20 @@ assertions inspect the actual Markdown candidate/rejection table. Store/admissio
 provider/numerical policy and workflow code are unchanged by this follow-up.
 Final applicable tests, exact-head CI and independently rechecked tree are recorded
 in the same Draft PR; the failed run remains historical and is not reused as a pass.
+
+### Owner-relayed independent approval and publication nuance — 2026-11-07
+
+Astra-B independently APPROVED the bounded store/application/UI implementation at
+`df9571542594c5f51206a4bce3cc5ff9bf107b63`, tree
+`1773d9bb2146efda7b90a284654410779b09b9eb`, base
+`8f2d38a826b6118ab97273dbd26ef6bbf43d23ae`, as relayed by the owner. Earlier
+internal reviews above remain internal reviews. That approval is not transferred
+to a later documentation revision and is not genuine numerical acceptance.
+
+The no-new-version statement concerns failures **before the new manifest's
+atomic `os.link`**. `_publish_manifest` then fsyncs the directory and finally
+unlinks its temporary file. A post-link error can leave a complete readable
+published storage snapshot while registration raises; this is not a complete
+admitted polar family. Failed directory fsync acknowledges
+no crash durability. Visibility after an error does not prove that durability.
+This is a non-blocking documentation clarification; no runtime behavior changed.

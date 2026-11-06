@@ -1,0 +1,116 @@
+from dataclasses import asdict
+from datetime import datetime, timezone
+from pathlib import Path
+import hashlib, importlib.metadata, json, os, platform, re, subprocess, sys
+from pyfoldable.core.profile_catalog import load_project_airfoil
+from pyfoldable.core.providers import PolarGenerationRequest, ProviderIdentity, _canonical_value
+from pyfoldable.providers import xfoil
+from pyfoldable.application import provider_design_analysis as admission
+from pyfoldable.application.polar_query_feasibility import _bind_returned_result
+
+if sys.flags.optimize:
+    raise RuntimeError("Run without Python optimization; identity assertions are required")
+D, P, O = (Path(a).resolve() for a in sys.argv[1:4])
+expected_plan_sha = sys.argv[4]
+recipe_path = Path(__file__).resolve()
+sha = lambda b: hashlib.sha256(b).hexdigest()
+now = lambda: datetime.now(timezone.utc).isoformat()
+assert sha((D/'proposal.json').read_bytes()) == expected_plan_sha
+plan = json.loads((D/'proposal.json').read_bytes())
+assert sha(recipe_path.read_bytes()) == plan['operator_recipe_sha256']
+raw = (D/'request-preimage.json').read_bytes()
+q = json.loads(raw)
+identity = ProviderIdentity(**q['provider'])
+request = PolarGenerationRequest(load_project_airfoil(q['airfoil']['id']), tuple(q['alpha_rad']),
+    **{k: q[k] for k in ('reynolds','mach','n_crit','xtr_upper','xtr_lower','max_iterations','timeout_s','scenario_id','options')})
+assert raw == xfoil._request_preimage(request, identity)
+assert sha(raw) == plan['allowed_request']['request_sha256']
+assert (D/'script.txt').read_bytes() == xfoil._build_command_script(request, {'repanel': True}).encode()
+source = Path(xfoil.__file__).resolve().parents[2]
+for name, expected in plan['source_files_sha256'].items():
+    assert sha((source/name).read_bytes()) == expected, name
+binary, osmap = P/'bin/xfoil', P/'runtime/osmapDP.dat'
+assert sha(binary.read_bytes()) == plan['provider_build']['executable_sha256']
+assert sha(osmap.read_bytes()) == plan['provider_build']['osmap_sha256']
+assert platform.system() == 'Linux' and platform.machine() in ('x86_64','AMD64')
+O.mkdir(exist_ok=False)  # operator provisions parent; no overwrite/resume
+
+def emit(name, value):
+    with (O/name).open('x', encoding='utf-8') as f:
+        json.dump(_canonical_value(value), f, indent=2, sort_keys=True, allow_nan=False)
+        f.write('\n')
+        f.flush()
+        os.fsync(f.fileno())
+
+def pinned_executable_observations(receipt, expected):
+    observations = receipt['executable_identity']
+    actual = {stage: observations[stage]['sha256'] for stage in ('prelaunch','postlaunch')}
+    if any(value != expected for value in actual.values()):
+        raise ValueError('Captured executable file observations differ from the pinned binary')
+    return {'expected_sha256': expected, 'observed_file_sha256': actual,
+            'process_image_attestation': False}
+
+outcome = {'experiment_id': plan['experiment_id'], 'provider_api_calls': 0,
+           'status': 'PREFLIGHT', 'bem_calls': 0, 'physical_qualification': False}
+try:
+    dependencies = subprocess.run(['ldd', str(binary)], capture_output=True, timeout=10, check=False)
+    (O/'ldd.stdout.bin').write_bytes(dependencies.stdout)
+    (O/'ldd.stderr.bin').write_bytes(dependencies.stderr)
+    assert dependencies.returncode == 0 and b'not found' not in dependencies.stdout + dependencies.stderr
+    libraries = {}
+    for path in re.findall(rb'(/[^\s()]+)', dependencies.stdout):
+        p = Path(os.fsdecode(path))
+        if p.is_file(): libraries[str(p.resolve())] = sha(p.read_bytes())
+    emit('runtime.json', {'utc': now(), 'python': sys.version, 'executable': sys.executable,
+        'argv': sys.argv, 'cwd': str(Path.cwd()), 'platform': platform.platform(),
+        'python_executable_file_sha256': sha(Path(sys.executable).resolve().read_bytes()),
+        'recipe_file_sha256': sha(recipe_path.read_bytes()),
+        'environment_allowlist': {k: os.environ.get(k) for k in ('PATH','LD_LIBRARY_PATH','LD_PRELOAD','LD_AUDIT',
+            'PYTHONPATH','PYTHONOPTIMIZE','PYTHONDONTWRITEBYTECODE','PYTHONHASHSEED',
+            'OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS','GFORTRAN_UNBUFFERED_ALL')},
+        'dependencies': {n: importlib.metadata.version(n) for n in ('numpy','scipy')},
+        'resolved_library_file_sha256': libraries, 'OSMAP': str(osmap),
+        'runtime_drift_vs_historical_execution': 'Requires explicit comparison; not presumed identical'})
+    for name in ('proposal.json','request-preimage.json','script.txt','operator-recipe.py.txt','SHA256SUMS'):
+        (O/name).write_bytes((D/name).read_bytes())
+    for name, expected in plan['provider_build']['build_records_sha256'].items():
+        data = (P/name).read_bytes()
+        assert sha(data) == expected, name
+        (O/('retained-'+name.replace('/','_'))).write_bytes(data)
+    os.environ['OSMAP'] = str(osmap)
+    provider = xfoil.XfoilProvider(binary, backend_version='6.99')  # no banner/discovery
+    assert provider.identity == identity
+    emit('started.json', {'utc': now(), 'phase': 'provider_call_intent_not_process_attestation',
+        'experiment_id': plan['experiment_id'], 'request_sha256': request.cache_key(identity),
+        'max_provider_launches': 1, 'max_attempts': 1, 'timeout_s': 90, 'bem_calls': 0})
+    assert sha(binary.read_bytes()) == plan['provider_build']['executable_sha256']
+    outcome['provider_api_calls'] = 1  # intent; actual process disposition comes from capture
+    result = provider.generate(request, capture_dir=O/'capture')
+    returned = {'request': _canonical_value(result.request.cache_payload(result.provider)),
+        'provider': result.provider.as_mapping(), 'request_sha256': result.cache_key,
+        'complete': result.complete, 'elapsed_s': result.elapsed_s,
+        'points': [asdict(p) for p in result.points], 'warnings': list(result.warnings),
+        'metadata': _canonical_value(result.metadata)}
+    emit('result.json', returned)  # preserve returned records before assessment
+    binding = _bind_returned_result(request, result, identity)
+    emit('binding.json', binding)
+    assert binding['identity_mismatch'] is None
+    observations = {}
+    try:
+        cell = admission.read_retained_cell(O/'result.json', O/'capture')
+        admission._capture(request, identity, result, cell, observations)
+        receipt = json.loads((O/'capture'/'capture.json').read_bytes())
+        observations['proposal_pinned_executable_observations'] = pinned_executable_observations(
+            receipt, plan['provider_build']['executable_sha256'])
+    finally:
+        emit('capture-assessment.json', observations)
+    assert result.complete and len(result.points) == 37
+    assert result.metadata.get('capture_evidence_ready') is True
+    result.to_polar_table(require_complete=True)  # no BEM
+    outcome['status'] = 'ONE_COMPLETE_RETAINED_CELL; FAMILY_STILL_INCOMPLETE'
+except BaseException as error:
+    outcome.update(status='FAILED_OR_BLOCKED; STOP', error_type=type(error).__name__, reason=str(error))
+    raise
+finally:
+    outcome['finished_at_utc'] = now()
+    emit('outcome.json', outcome)  # if this fails preserve remaining bytes; never repeat
