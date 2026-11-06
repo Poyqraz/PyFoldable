@@ -15,7 +15,7 @@ from pyfoldable.application import design_analysis, provider_design_analysis as 
 from pyfoldable.application.profile_bem_comparison import add_record, comparison_document, comparison_csv
 from pyfoldable.providers import xfoil
 from pyfoldable.application.retained_xfoil_header import assess_retained_xfoil_header
-from tests.application.test_provider_design_analysis import scenario, encoded, install_inert_bem
+from test_provider_design_analysis import scenario, encoded, install_inert_bem
 
 
 @pytest.fixture(autouse=True)

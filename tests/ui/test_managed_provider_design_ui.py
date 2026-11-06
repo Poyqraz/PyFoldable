@@ -1,6 +1,7 @@
 """CAD/polar-upload-free UI wiring with inert records and an inert BEM seam."""
 from pathlib import Path
 import json
+import sys
 
 import pytest
 from streamlit.testing.v1 import AppTest
@@ -8,7 +9,9 @@ from streamlit.testing.v1 import AppTest
 from pyfoldable.application import provider_design_analysis as service, design_analysis
 from pyfoldable.core.profile_catalog import PROJECT_AIRFOIL_IDS
 from pyfoldable.providers.xfoil import XfoilProvider
-from tests.application.test_provider_design_analysis import scenario, install_inert_bem
+# Shared inert helpers are source-checkout test code, not an installed package.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "application"))
+from test_provider_design_analysis import scenario, install_inert_bem
 
 
 APP = Path(__file__).resolve().parents[2] / "apps/pyfoldable_dashboard.py"

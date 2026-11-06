@@ -144,3 +144,18 @@ in the PR; internal review is not Astra-B approval. No real provider/BEM/banner,
 experiment retry, qualification workflow, registry population, persistence, policy
 change or merge is authorized/performed by this delta. Genuine comparison remains
 UNESTABLISHED; `physical_qualification=false`.
+
+The first published repair head `403153aa80cd08ff5accb344c35fd664aa657a04`
+([Tests42261365251](https://github.com/Poyqraz/PyFoldable/actions/runs/42261365251))
+failed collection on both CI Python versions: the new application regression file
+assumed the repository's `tests` package was importable under the `pytest` console
+entry point. This was also reproduced locally after ordinary editable installation.
+The new file now imports its sibling fixture module through pytest's application
+test-directory path; the UI regression module explicitly locates that same trusted
+helper directory, including standalone runs. Production code, fixtures, workflows and scientific policy
+are unchanged by this test-only follow-up; final CI is recorded in the PR.
+After this fix, the same186 focused tests passed through the actual `pytest`
+console entry point; standalone UI collection also passed. The internal reviewer
+independently passed35 application regressions and the added UI history case
+through separate console invocations. Only the known external pytest-plugin
+deprecation warning appeared.
