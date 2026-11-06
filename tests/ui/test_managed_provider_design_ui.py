@@ -145,8 +145,8 @@ def test_configured_persistent_store_no_upload_execution_switching_and_corruptio
     assert not app.exception
     assert all(u.value is None for u in app.file_uploader)
     assert any("stored_version_required" in e.value for e in app.error)
-    assert any("incomplete_family" in d.value.to_string() for d in app.dataframe)
-    assert any("Tam hazırlık adayı" in d.value.to_string() for d in app.dataframe)
+    assert any("incomplete_family" in d.value for d in app.markdown)
+    assert any("Tam hazırlık adayı" in d.value for d in app.markdown)
     widget(app.selectbox, "Uygulama kayıt sürümü").set_value(bindings["NACA2412"].content_sha256).run(timeout=30)
     widget(app.button, "İç kayıt hazırlığını doğrula").click().run(timeout=30)
     calls = install_inert_bem(monkeypatch)

@@ -120,3 +120,20 @@ step. Inert software acceptance, genuine numerical evidence, experimental valida
 and physical qualification remain separate. Genuine comparison UNESTABLISHED;
 `physical_qualification=false`. No joint-loss, clearance, vibration, CFD, FEA,
 transient result, qualified design or geometry/hinge selection is supplied.
+
+### Ordinary CI follow-up
+
+First published head `209897c2565490c1adcce12187da286159997bee`, tree
+`abd85435b58f5b3a20df535a9202b28017e955b3`, ran ordinary
+[Tests42283089081](https://github.com/Poyqraz/PyFoldable/actions/runs/42283089081).
+The Python3.11 job failed the existing
+`test_dashboard_avoids_arrow_dependent_convenience_renderers` guard: the new version
+list used `st.dataframe`, contrary to the dashboard's existing Arrow-free rendering
+boundary. Its summary was1 failed,2093 passed,9 skipped,37 subtests passed. The
+same failure was reproduced locally before the correction.
+
+The list now reuses the existing `_render_markdown_table`; persistent AppTest
+assertions inspect the actual Markdown candidate/rejection table. Store/admission,
+provider/numerical policy and workflow code are unchanged by this follow-up.
+Final applicable tests, exact-head CI and independently rechecked tree are recorded
+in the same Draft PR; the failed run remains historical and is not reused as a pass.

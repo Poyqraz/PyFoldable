@@ -375,7 +375,7 @@ def _render_managed_provider_run(draft: DesignDraftArtifact) -> None:
                     status = f"Eksik/reddedildi: {exc}"
                 rows.append({"Aile": candidate.family_id, "Sürüm": candidate.stored_version.version_label,
                              "Kanıt sınıfı": candidate.evidence_class, "Durum": status, "İçerik SHA-256": version})
-            st.dataframe(rows, hide_index=True)
+            _render_markdown_table(rows)
             version = st.selectbox("Uygulama kayıt sürümü", (None, *versions), key=version_key,
                 format_func=lambda v: "Bir kayıt sürümü seçin" if v is None else f"{versions[v].family_id} · {versions[v].stored_version.version_label} · {v[:12]}")
             if version is None:
