@@ -783,12 +783,26 @@ is required on that path. The existing manual upload remains an optional route.
    one clearly named/versioned template, retaining its source SHA and schema-example
    status; do not advertise a validated blade family. Inputs include all stored
    global station radii/chords/twists, selected catalog coordinate hash, diameter,
-   hub/root datum, blade count, zero-offset hinge/axis/stops, one or two bounded
+   hub radius and separately declared blade-root datum, blade count, zero-offset hinge/axis/stops, one or two bounded
    hinge candidates and the explicit condition. Validate longer proximal before
    any run. A single candidate uses the existing draft; two distinct candidates
    can use `generate_parent_blade_cuts`, whose API requires exactly two cuts.
    Cuts share one parent; generated input geometry is distinct from manufactured
    geometry. Broader family/joint forms remain later integration.
+
+   **2026-11-06 root-datum finding closure (prospective requirement).** Keep
+   `hub_radius`, physical/model blade-root datum `r_root`, and the first retained
+   aerodynamic station as three separate quantities. Retain `r_root`'s declared
+   numeric value, explicit unit, physical/model meaning and source or declaration
+   identity with the template/parent/candidate request and exports. An explicitly
+   labeled study assumption is acceptable; it is not measured geometry. Neither
+   the canonical 18 mm hub nor its 25 mm first aerodynamic station declares
+   `r_root`. Do not silently derive it from either value. Missing root declaration
+   **blocks preparation** of this proposed hinge-candidate workflow. For exposed
+   segments require `h - r_root > R - h`, equivalently
+   `h > (R + r_root)/2`. The shaft-origin comparison `h > R/2` is a separate
+   comparison, not a replacement. These requirements do not revise historical
+   screening results, choose a hinge or require CAD upload.
 3. **Provider input and admission.** Resolve an application-owned retained capture
    bundle by selected profile/coordinate identity and its exact declared request
    plan, rather than accepting a provider name or a claimed cache hit. Verify the

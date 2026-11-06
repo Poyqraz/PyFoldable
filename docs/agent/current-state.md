@@ -595,3 +595,18 @@ Draft #104 `8ba282e49ecf3c7ac96ada100c2721fa28a5803f` and #105
 package remains unchanged for independent review and unexecuted. This audit changes
 documentation only: no engineering study, scientific-gate change, optimum or
 physical qualification; `physical_qualification=false`.
+
+## 2026-11-06 prospective root-datum requirement — PR #106 correction
+
+The proposed CAD-free hinge-candidate preparation must distinguish `hub_radius`,
+the blade-root datum `r_root`, and the first retained aerodynamic station. Retain
+the root's value, explicit unit, physical/model meaning and source or declaration
+identity; an explicitly labeled study assumption is acceptable. The canonical
+18 mm hub and 25 mm first aerodynamic station do not declare the root. Missing
+root declaration blocks preparation; neither value may silently supply it.
+Exposed segments require `h - r_root > R - h`, equivalently
+`h > (R + r_root)/2`. The separate shaft-origin comparison is `h > R/2`.
+This documentation-only correction selects no hinge, changes no historical
+screening result, introduces no CAD prerequisite and implements no new filter.
+The existing [roadmap requirement](../validation_and_development_roadmap.md#first-bounded-implementation-slice-retained-provider-data-to-active-bemui)
+owns the prospective input/export contract. Historical dated sections remain intact.
