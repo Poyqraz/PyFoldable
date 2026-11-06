@@ -324,7 +324,7 @@ def _render_managed_provider_run(draft: DesignDraftArtifact) -> None:
         st.session_state.pop(managed_analysis.ACTIVE_REQUEST, None)
         st.session_state.pop(managed_analysis.ACTIVE_OUTCOME, None)
         return
-    st.caption("CAD veya polar dosyası gerekmez. Yalnız uygulamaya kaydedilmiş tam ve eşleşen kanıt kullanılır; otomatik sağlayıcı çağrısı yoktur.")
+    st.caption("CAD veya polar dosyası gerekmez. Uygulama deposuna kayıt, bilimsel kabul değildir; otomatik sağlayıcı çağrısı yoktur. Sağlayıcı kayıtları kalıcıdır; karşılaştırma geçmişi yalnız bu oturumdadır.")
     root_text = st.text_input("Kanat kökü r_root [değer birim]", key="provider_design_root")
     root_meaning = st.text_input("Kökün fiziksel/model anlamı", key="provider_design_root_meaning")
     root_source = st.text_input("Kök beyanı veya kaynak kimliği", key="provider_design_root_source")
@@ -341,14 +341,50 @@ def _render_managed_provider_run(draft: DesignDraftArtifact) -> None:
         value, unit = root_text.strip().split(maxsplit=1)
         root = managed_analysis.RootDatum(float(value), unit, root_meaning, root_source,
             "study_assumption" if root_kind == "Çalışma varsayımı" else "declared_geometry")
+        source = load_dashboard_snapshot(REPO_ROOT).design_path
+        template = managed_analysis.TemplateDeclaration("workspace-station-seed-v1", source.read_bytes(), f"repository:{source.relative_to(REPO_ROOT)}; unqualified schema seed")
+        def selection_for(family):
+            return managed_analysis.ProviderDesignSelection(draft, template, root, family.family_id,
+                managed_analysis._json(managed_analysis.request_policy(family.requests[0], family.provider)), int(annuli),
+                family.stored_version.content_sha256 if family.stored_version is not None else None)
+
+        # An explicit immutable version is required. Never pick a replacement
+        # after a profile switch or removal; saved history is intentionally kept.
+        version_key = "provider_design_stored_version"
+        if st.session_state.get("provider_design_stored_profile") != profile:
+            st.session_state[version_key] = None
+            st.session_state["provider_design_stored_profile"] = profile
+            st.session_state.pop(managed_analysis.ACTIVE_REQUEST, None)
+            st.session_state.pop(managed_analysis.ACTIVE_OUTCOME, None)
+        versions = {f.stored_version.content_sha256: f for f in families if f.stored_version is not None}
+        previous = st.session_state.get(version_key)
+        if previous is not None and previous not in versions:
+            st.session_state[version_key] = None
+            st.session_state.pop(managed_analysis.ACTIVE_REQUEST, None)
+            st.session_state.pop(managed_analysis.ACTIVE_OUTCOME, None)
+            st.error("selected_version_unavailable: Seçilen sürüm artık mevcut değil; başka sürüm otomatik seçilmedi.")
         if not families:
             raise managed_analysis.ProviderDesignPreparationError("missing_applicable_family", f"{profile} için kayıtlı eşleşen sağlayıcı ailesi yok.")
-        family_id = st.selectbox("Uygulama polar ailesi", tuple(f.family_id for f in families), key="provider_design_family")
-        family = next(f for f in families if f.family_id == family_id)
-        source = load_dashboard_snapshot(REPO_ROOT).design_path
-        selection = managed_analysis.ProviderDesignSelection(draft,
-            managed_analysis.TemplateDeclaration("workspace-station-seed-v1", source.read_bytes(), f"repository:{source.relative_to(REPO_ROOT)}; unqualified schema seed"),
-            root, family_id, managed_analysis._json(managed_analysis.request_policy(family.requests[0], family.provider)), int(annuli))
+        if versions:
+            rows = []
+            for version, candidate in versions.items():
+                try:
+                    managed_analysis.prepare_provider_design_analysis(selection_for(candidate), repository)
+                    status = "Tam hazırlık adayı; fiziksel doğrulama değil"
+                except (ValueError, OSError) as exc:
+                    status = f"Eksik/reddedildi: {exc}"
+                rows.append({"Aile": candidate.family_id, "Sürüm": candidate.stored_version.version_label,
+                             "Kanıt sınıfı": candidate.evidence_class, "Durum": status, "İçerik SHA-256": version})
+            _render_markdown_table(rows)
+            version = st.selectbox("Uygulama kayıt sürümü", (None, *versions), key=version_key,
+                format_func=lambda v: "Bir kayıt sürümü seçin" if v is None else f"{versions[v].family_id} · {versions[v].stored_version.version_label} · {v[:12]}")
+            if version is None:
+                raise managed_analysis.ProviderDesignPreparationError("stored_version_required", "Hazırlık için açıkça bir kayıt sürümü seçin.")
+            family = versions[version]
+        else:
+            family_id = st.selectbox("Uygulama polar ailesi", tuple(f.family_id for f in families), key="provider_design_family")
+            family = next(f for f in families if f.family_id == family_id)
+        selection = selection_for(family)
         prepared = managed_analysis.prepare_provider_design_analysis(selection, repository)
     except (ValueError, OSError) as exc:
         st.session_state.pop(managed_analysis.ACTIVE_REQUEST, None)
@@ -359,6 +395,7 @@ def _render_managed_provider_run(draft: DesignDraftArtifact) -> None:
                 _append_comparison_record(managed_analysis.preparation_failure_record(selection, exc))
         return
     if st.session_state.get(managed_analysis.ACTIVE_REQUEST) != prepared.request_sha256:
+        st.session_state.pop(managed_analysis.ACTIVE_REQUEST, None)
         st.session_state.pop(managed_analysis.ACTIVE_OUTCOME, None)
     st.caption(f"{family.evidence_class} · {len(family.requests)} tam hücre · yalnız tam açık station_span taraması · physical_qualification=false")
     if st.button("İç kayıt hazırlığını doğrula"):
