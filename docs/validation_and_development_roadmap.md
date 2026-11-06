@@ -770,3 +770,38 @@ the launched cell and the declared provider, including the retained capture
 request. An unreadable polar is not treated as missing evidence or as a successful
 capture. Executable hashes remain file observations, not build provenance. The
 genuine probe remains unexecuted. `physical_qualification=false`.
+
+## 2026-11-06 bounded provider-to-design software integration
+
+The earlier proposal/blocked-acquisition sections remain history. A separate
+integration branch containing pinned Draft #103 and #104 now implements
+[application-managed retained-record admission](provider_design_analysis.md), an
+internal polar bundle, the existing explicit fully-open BEM boundary and immutable
+snapshot/export services. A small dashboard opt-in connects the current catalog
+draft and explicit root/template/condition declarations without CAD or polar upload.
+All five profiles remain selectable; missing applicable data blocks preparation.
+It does not introduce an acquisition scheduler or new numerical policy.
+
+The root declaration retains value, unit, physical/model meaning and source or
+declaration identity, including an explicit study-assumption label when applicable.
+`hub_radius`, `r_root` and the first retained aerodynamic station are separate.
+Missing root blocks preparation; neither the 18 mm hub nor 25 mm station supplies
+it. Require `h-r_root > R-h`, equivalently `h > (R+r_root)/2`; `h > R/2` remains
+the separate shaft-origin comparison. One current hinge/shared parent is checked;
+no historical screen is rewritten, candidate is selected or CAD prerequisite added.
+
+Software acceptance uses inert positive provider records and an inert BEM seam.
+The once-executed 2026-11-06 actual partial probe is a negative admission test:
+35/37 usable rows, +32°/−38° unavailable, seven successors not launched. It produces
+no complete admitted family and cannot reach BEM. Original packages are unchanged.
+There is no new provider experiment, point repair or genuine BEM study.
+
+Remaining milestone work is concrete: trusted deployment registration/persistence
+of retained records (the shipped registry is empty), separately available complete
+attributable provider data for a declared case, then separately authorized genuine
+single-case BEM acceptance. This is distinct from a controlled genuine two-profile
+comparison with independent review. Family selection beyond the current seed,
+bounded multi-hinge UI, joint/material/mass generation and integrated mechanics
+remain missing. No optimum, joint loss, clearance, vibration, physical validation
+or qualification is inferred. Genuine comparison **UNESTABLISHED**;
+`physical_qualification=false`. No PR is merged by this update.
