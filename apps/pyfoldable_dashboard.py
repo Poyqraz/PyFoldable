@@ -46,6 +46,7 @@ from pyfoldable.application.polar_upload import (
 from pyfoldable.application.profile_bem_comparison import (
     comparison_csv, comparison_document, snapshot_failure, snapshot_success,
 )
+from pyfoldable.application import provider_design_analysis as managed_analysis
 from pyfoldable.application.active_design_search import prepare_active_search, run_active_search
 from pyfoldable.application.geometry_search import prepare_geometry_search, run_geometry_search
 from pyfoldable.application.hardware_contract import MAX_HARDWARE_BYTES
@@ -316,7 +317,72 @@ def _render_active_search(base: PolarRunRequest) -> None:
         file_name=result.filename, mime="application/json")
 
 
+def _render_managed_provider_run(draft: DesignDraftArtifact) -> None:
+    """Small no-upload route; empty or partial operator records fail closed."""
+    enabled = st.checkbox("Uygulama kayıtlarıyla BEM hazırlığı", key="provider_design_enabled")
+    if not enabled:
+        st.session_state.pop(managed_analysis.ACTIVE_REQUEST, None)
+        st.session_state.pop(managed_analysis.ACTIVE_OUTCOME, None)
+        return
+    st.caption("CAD veya polar dosyası gerekmez. Yalnız uygulamaya kaydedilmiş tam ve eşleşen kanıt kullanılır; otomatik sağlayıcı çağrısı yoktur.")
+    root_text = st.text_input("Kanat kökü r_root [değer birim]", key="provider_design_root")
+    root_meaning = st.text_input("Kökün fiziksel/model anlamı", key="provider_design_root_meaning")
+    root_source = st.text_input("Kök beyanı veya kaynak kimliği", key="provider_design_root_source")
+    root_kind = st.selectbox("Kök beyanı türü", ("Çalışma varsayımı", "Beyan edilen geometri"), key="provider_design_root_kind")
+    annuli = st.number_input("İç kayıt BEM annulus sayısı", min_value=4, max_value=80, value=40, step=4)
+    selection = None
+    try:
+        design, _ = managed_analysis.analysis._load_open(draft)
+        profile = design.blade.stations[0].airfoil_id
+        repository = managed_analysis.application_provider_repository()
+        families = [f for f in repository.families if f.requests and f.requests[0].airfoil.id == profile]
+        if not root_text.strip() or not root_meaning.strip() or not root_source.strip():
+            raise managed_analysis.ProviderDesignPreparationError("missing_root_declaration", "r_root değeri/birimi, anlamı ve kaynak kimliği zorunludur; göbek veya ilk istasyondan türetilmez.")
+        value, unit = root_text.strip().split(maxsplit=1)
+        root = managed_analysis.RootDatum(float(value), unit, root_meaning, root_source,
+            "study_assumption" if root_kind == "Çalışma varsayımı" else "declared_geometry")
+        if not families:
+            raise managed_analysis.ProviderDesignPreparationError("missing_applicable_family", f"{profile} için kayıtlı eşleşen sağlayıcı ailesi yok.")
+        family_id = st.selectbox("Uygulama polar ailesi", tuple(f.family_id for f in families), key="provider_design_family")
+        family = next(f for f in families if f.family_id == family_id)
+        source = load_dashboard_snapshot(REPO_ROOT).design_path
+        selection = managed_analysis.ProviderDesignSelection(draft,
+            managed_analysis.TemplateDeclaration("workspace-station-seed-v1", source.read_bytes(), f"repository:{source.relative_to(REPO_ROOT)}; unqualified schema seed"),
+            root, family_id, managed_analysis._json(managed_analysis.request_policy(family.requests[0], family.provider)), int(annuli))
+        prepared = managed_analysis.prepare_provider_design_analysis(selection, repository)
+    except (ValueError, OSError) as exc:
+        st.session_state.pop(managed_analysis.ACTIVE_REQUEST, None)
+        st.session_state.pop(managed_analysis.ACTIVE_OUTCOME, None)
+        st.error(f"İç kayıt hazırlığı engellendi: {exc}")
+        if selection is not None and isinstance(exc, managed_analysis.ProviderDesignPreparationError):
+            if st.button("İç kayıt ret kaydını karşılaştırmaya ekle"):
+                _append_comparison_record(managed_analysis.preparation_failure_record(selection, exc))
+        return
+    if st.session_state.get(managed_analysis.ACTIVE_REQUEST) != prepared.request_sha256:
+        st.session_state.pop(managed_analysis.ACTIVE_OUTCOME, None)
+    st.caption(f"{family.evidence_class} · {len(family.requests)} tam hücre · yalnız tam açık station_span taraması · physical_qualification=false")
+    if st.button("İç kayıt hazırlığını doğrula"):
+        managed_analysis.prepare_active_provider_design(st.session_state, selection, repository)
+    if st.button("İç kayıtlarla BEM çalıştır", disabled=st.session_state.get(managed_analysis.ACTIVE_REQUEST) != prepared.request_sha256):
+        try:
+            managed_analysis.run_active_provider_design(st.session_state, selection, repository)
+        except (ValueError, OSError) as exc:
+            st.error(f"İç kayıt çalıştırması engellendi: {exc}")
+    outcome = st.session_state.get(managed_analysis.ACTIVE_OUTCOME)
+    if isinstance(outcome, managed_analysis.ProviderDesignOutcome):
+        if outcome.artifact is None:
+            st.error(f"İç kayıt BEM başarısızlığı: {outcome.record['failure_reason']}")
+        else:
+            rotor = json.loads(outcome.artifact.report_json)["rotor"]
+            st.caption(f"İç kayıt sonucu: T={rotor['thrust_n']:.6g} N; Q={rotor['torque_nm']:.6g} N·m; Pşaft={rotor['shaft_power_w']:.6g} W")
+            st.download_button("İç kayıt BEM raporunu indir", outcome.artifact.report_json, file_name=outcome.artifact.filename, mime="application/json")
+        st.download_button("İç kayıt deneme kaydını indir", outcome.record_json, file_name="provider_design_attempt.json", mime="application/json")
+        if st.button("İç kayıt sonucunu karşılaştırmaya ekle"):
+            _append_comparison_record(outcome.record)
+
+
 def _render_active_polar_run(draft: DesignDraftArtifact) -> None:
+    _render_managed_provider_run(draft)
     st.subheader("Aktif tasarım · Polar yükleme ve BEM")
     st.warning(
         "Bu hesap yalnız tam açık taslağın tarama analizidir. Yüklenen polarlar "
@@ -342,7 +408,7 @@ def _render_active_polar_run(draft: DesignDraftArtifact) -> None:
     request = None
     if uploaded is None:
         _clear_polar_result()
-        st.info("Aktif taslağı çalıştırmak için koordinat kimliği eşleşen polar JSON yükleyin.")
+        st.info("İsteğe bağlı dosya yolunda çalıştırmak için koordinat kimliği eşleşen polar JSON yükleyin.")
     elif uploaded.size > MAX_POLAR_UPLOAD_BYTES:
         _clear_polar_result()
         st.error("Polar reddedildi: dosya 2 MiB sınırını aşıyor.")
@@ -672,6 +738,8 @@ def _render_geometry_search(draft: DesignDraftArtifact) -> None:
 
 def _clear_geometry_dependents() -> None:
     _clear_polar_result()
+    st.session_state.pop(managed_analysis.ACTIVE_REQUEST, None)
+    st.session_state.pop(managed_analysis.ACTIVE_OUTCOME, None)
     _clear_geometry_search()
     _clear_surface_clearance()
     for key in ("py05_bound_result", "py05_bound_request", TRANSIENT_RESULT_KEY,

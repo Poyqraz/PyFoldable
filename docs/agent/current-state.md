@@ -595,3 +595,35 @@ unreadable polar file is a read-failure receipt with unavailable coefficients,
 written before temporary-directory cleanup. Before/after executable hashes remain
 file observations. The genuine probe remains unexecuted.
 `physical_qualification=false`. Genuine comparison remains UNESTABLISHED.
+
+## 2026-11-06 retained-provider application integration — separate Draft
+
+This branch integrates pinned unmerged #103 `fc545b1584d679951fd28db0767cd71c790a7b06`
+and #104 `8ba282e49ecf3c7ac96ada100c2721fa28a5803f`; it is not main. Their source
+branches and PR #105 are unchanged. The [application contract](../provider_design_analysis.md)
+records the implemented admission → internal polar bundle → existing explicit
+fully-open BEM → immutable snapshot boundary and small no-upload UI route.
+
+All five catalog profiles remain selectable. Actual coordinate/request/capture
+bytes, complete point/family coverage, declared policy and retained provenance are
+checked; a claimed success/hash is insufficient. Template source bytes and explicit
+root value/unit/meaning/source declaration are bound to the request. Hub radius,
+root datum and first aerodynamic station remain separate; missing root blocks
+preparation and exposed proximal must exceed distal. Existing chord/twist/global
+parent geometry is retained. No CAD upload, profile substitution, provider fallback
+or automatic solve is introduced. The default application registry is empty;
+deployment registration/persistence and complete matching genuine data remain
+missing. A family-catalog selector, candidate grid and mechanical integration are
+not supplied by this bounded slice.
+
+The earlier unexecuted-probe statements are historical. The one owner-authorized
+probe finished on 2026-11-06: cell00 partial, 35/37 usable rows, +32° and −38°
+unavailable, seven later cells not launched, zero BEM. Its retained bytes are used
+only as a negative admission witness; no points/run/package are repaired or repeated.
+Positive application/UI acceptance uses inert records and an inert BEM seam.
+Genuine single-case BEM success is not established by this increment; genuine
+two-profile comparison remains **UNESTABLISHED**, existing comparison block stays
+in place and `physical_qualification=false`. No scientific gates or historic
+screening results change. #106's separate documentation root-datum correction is
+published at `f705d6b4c8dc528a0def94470798ae0ea2942db9`, tree
+`98a789415904e0302b52e4c6151a374eddcccbac`; it is not treated as merged.
