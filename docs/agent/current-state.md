@@ -667,3 +667,28 @@ coordinate-distinct two-profile comparison. Existing template/hinge/mechanical
 integration gaps remain. No experiment, missing-point repair, genuine BEM, geometry
 selection or gate change occurred. Genuine comparison **UNESTABLISHED**;
 `physical_qualification=false`.
+
+### 2026-11-07 scoped #108 approval and next numerical decision
+
+The owner relayed Astra-B's independent APPROVE for bounded store/application/UI
+at #108 `df9571542594c5f51206a4bce3cc5ff9bf107b63`, tree
+`1773d9bb2146efda7b90a284654410779b09b9eb`, base
+`8f2d38a826b6118ab97273dbd26ef6bbf43d23ae`. This approval remains attached to
+that implementation, not the separate documentation follow-up or numerical evidence.
+The store contract now scopes no-new-version claims to pre-manifest-link errors;
+a post-link failure may leave complete readable storage while failed directory
+fsync acknowledges no durability. Runtime is unchanged.
+
+The [single preferred next decision](handoffs/next-acquisition-decision-2026-11-07.md)
+is a new one-cell ITER80→160 control at the same NACA0012 Mach/Re corner, same37
+angles including +32°/−38°, order, binary and other settings. Exact canonical
+payload/script/future four-cell plan are retained; no execution is authorized.
+The raw−38° stagnation makes the extra budget uncertain. Success would supply one
+new cell, not a complete declared family or physical applicability. No historical
+point is deleted/filled and the seven unlaunched cells stay historical.
+
+A complete new matching family, explicit root declaration and separately authorized
+genuine BEM are still required. Two genuine-origin matching snapshots also do not
+automatically close the existing comparison status gate. All five profiles and
+the no-upload route remain;250mm and APC13-inch stay separate. Genuine single-case
+and two-profile acceptance UNESTABLISHED; `physical_qualification=false`.

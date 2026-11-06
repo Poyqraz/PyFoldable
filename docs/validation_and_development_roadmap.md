@@ -827,3 +827,25 @@ izinli tek vaka BEM; ardından kontrollü iki farklı profilin gerçek karşıla
 Aday menteşe/şablon kataloğu ve mekanik entegrasyon açık kalır. Yeni sağlayıcı
 çağrısı, BEM çalışması, nokta onarımı veya bilimsel politika değişikliği yapılmadı.
 Genuine comparison **UNESTABLISHED**; `physical_qualification=false`.
+
+### 2026-11-07 inceleme kapanışı ve tek sonraki sayısal karar
+
+Sahibin ilettiği Astra-B APPROVE, #108'in yalnız kalıcı depo/uygulama/UI kapsamına,
+`df9571542594c5f51206a4bce3cc5ff9bf107b63` / ağaç
+`1773d9bb2146efda7b90a284654410779b09b9eb` revizyonuna aittir. Ayrı dokümantasyon
+revizyonu, atomik manifest bağlantısından önceki hatalar ile bağlantı sonrası
+okunabilirlik ve fsync dayanıklılık onayını ayırır; çalışma davranışını değiştirmez.
+
+[Tek önerilen sonraki deney](agent/handoffs/next-acquisition-decision-2026-11-07.md),
+aynı250mm/7100rpm bazının ilk NACA0012 hücresinde yalnız XFOIL iterasyon sınırını
+80'den160'a çıkaran, aynı37açı/sıra/ikiliyi koruyan bir çağrılık yeni kontroldür.
+Bu hazırlık yürütme izni değildir. +32° ve−38° korunur; eski35/37 sonuç tam sayılmaz.
+−38° izindeki durgunluk nedeniyle başarı vaat edilmez. Başarı yalnız yeni bir
+hücre sağlar; önceden beyan edilen dört hücrelik aile daraltılmaz. Sağlayıcının
+fiziksel geçerliliği yalnız yakınsamayla kurulmaz.
+
+Sonraki adımlar ayrı izinli kalan hücreler, operatörün yeni değişmez kaydı, açık
+kök beyanı, taze kabul/hazırlık ve açık gerçek BEM'dir. İkinci farklı profil aynı
+kontrollerle ayrıca ele alınır; mevcut karşılaştırma kabul kapısı otomatik yükselmez.
+Yeni depo/UI veya mühendislik çalışması yoktur. Gerçek tek vaka/iki profil kabulü
+UNESTABLISHED; `physical_qualification=false`. Hiçbir PR birleştirilmedi.
