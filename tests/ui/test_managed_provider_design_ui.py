@@ -8,6 +8,7 @@ from streamlit.testing.v1 import AppTest
 
 from pyfoldable.application import provider_design_analysis as service, design_analysis
 from pyfoldable.core.profile_catalog import PROJECT_AIRFOIL_IDS
+from pyfoldable.providers import xfoil
 from pyfoldable.providers.xfoil import XfoilProvider
 # Shared inert helpers are source-checkout test code, not an installed package.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "application"))
@@ -42,6 +43,7 @@ def no_implicit_provider_or_bem(monkeypatch):
     def forbidden(*a, **k):
         pytest.fail("UI invoked a provider or a non-inert BEM solver")
     monkeypatch.setattr(XfoilProvider, "generate", forbidden)
+    monkeypatch.setattr(xfoil, "_discover_backend_version", forbidden)
     monkeypatch.setattr(design_analysis, "solve_bem_rotor", forbidden)
 
 
@@ -124,3 +126,77 @@ def test_distinct_root_rejections_survive_no_upload_saved_history(monkeypatch):
     widget(app.selectbox, "Kesit modeli").set_value("NACA0012").run(timeout=30)
     assert json.dumps(app.session_state["py03_profile_comparison_records"], sort_keys=True) == saved
     assert all(u.value is None for u in app.file_uploader)
+
+
+def test_configured_persistent_store_no_upload_execution_switching_and_corruption(tmp_path, monkeypatch):
+    from pyfoldable.application.provider_record_store import ProviderRecordStore, STORE_ENVIRONMENT_VARIABLE
+    from dataclasses import replace
+    import hashlib
+    root = tmp_path / "isolated-inert-store"
+    bindings = {}
+    with ProviderRecordStore(root) as store:
+        for profile in PROJECT_AIRFOIL_IDS:
+            _, repo = scenario(profile)
+            bindings[profile] = store.register_family(repo.families[0], version_label="INERT-positive")
+        _, repo = scenario("NACA2412")
+        store.register_family(replace(repo.families[0], cells=(None,) * 4), version_label="INERT-incomplete")
+    monkeypatch.setenv(STORE_ENVIRONMENT_VARIABLE, str(root))
+    app = declare_root(workspace())  # actual configured loader, no repository patch
+    assert not app.exception
+    assert all(u.value is None for u in app.file_uploader)
+    assert any("stored_version_required" in e.value for e in app.error)
+    assert any("incomplete_family" in d.value.to_string() for d in app.dataframe)
+    assert any("Tam hazırlık adayı" in d.value.to_string() for d in app.dataframe)
+    widget(app.selectbox, "Uygulama kayıt sürümü").set_value(bindings["NACA2412"].content_sha256).run(timeout=30)
+    widget(app.button, "İç kayıt hazırlığını doğrula").click().run(timeout=30)
+    calls = install_inert_bem(monkeypatch)
+    widget(app.button, "İç kayıtlarla BEM çalıştır").click().run(timeout=30)
+    assert not app.exception and len(calls) == 1
+    widget(app.button, "İç kayıt sonucunu karşılaştırmaya ekle").click().run(timeout=30)
+    saved = json.dumps(app.session_state["py03_profile_comparison_records"], sort_keys=True)
+    for profile in PROJECT_AIRFOIL_IDS:
+        widget(app.selectbox, "Kesit modeli").set_value(profile).run(timeout=30)
+        assert not app.exception
+        if profile != "NACA2412":
+            assert widget(app.selectbox, "Uygulama kayıt sürümü").value is None
+        assert json.dumps(app.session_state["py03_profile_comparison_records"], sort_keys=True) == saved
+    widget(app.selectbox, "Kesit modeli").set_value("NACA2412").run(timeout=30)
+    widget(app.selectbox, "Uygulama kayıt sürümü").set_value(bindings["NACA2412"].content_sha256).run(timeout=30)
+    widget(app.button, "İç kayıt hazırlığını doğrula").click().run(timeout=30)
+    _, repo = scenario("NACA2412")
+    blob = root / "blobs" / hashlib.sha256(repo.families[0].cells[0].result_json).hexdigest()
+    blob.write_bytes(b"INERT corrupted bytes")
+    app.run(timeout=30)
+    assert not app.exception
+    assert any("provider_store_bytes_changed" in e.value for e in app.error)
+    assert service.ACTIVE_REQUEST not in app.session_state
+    assert service.ACTIVE_OUTCOME not in app.session_state
+    assert not any(d.label == "İç kayıt BEM raporunu indir" for d in app.get("download_button"))
+    assert len(calls) == 1
+    assert json.dumps(app.session_state["py03_profile_comparison_records"], sort_keys=True) == saved
+
+
+def test_removed_selected_version_does_not_select_another_version(tmp_path, monkeypatch):
+    from pyfoldable.application.provider_record_store import ProviderRecordStore, STORE_ENVIRONMENT_VARIABLE
+    root = tmp_path / "isolated-inert-store"
+    _, repo = scenario("NACA2412")
+    with ProviderRecordStore(root) as store:
+        first = store.register_family(repo.families[0], version_label="INERT-v1")
+        second = store.register_family(repo.families[0], version_label="INERT-v2")
+    monkeypatch.setenv(STORE_ENVIRONMENT_VARIABLE, str(root))
+    app = declare_root(workspace())
+    widget(app.selectbox, "Uygulama kayıt sürümü").set_value(first.content_sha256).run(timeout=30)
+    widget(app.button, "İç kayıt hazırlığını doğrula").click().run(timeout=30)
+    widget(app.selectbox, "Uygulama kayıt sürümü").set_value(second.content_sha256).run(timeout=30)
+    assert service.ACTIVE_REQUEST not in app.session_state
+    assert service.ACTIVE_OUTCOME not in app.session_state
+    assert widget(app.button, "İç kayıtlarla BEM çalıştır").disabled
+    widget(app.selectbox, "Uygulama kayıt sürümü").set_value(first.content_sha256).run(timeout=30)
+    widget(app.button, "İç kayıt hazırlığını doğrula").click().run(timeout=30)
+    (root / "records" / (first.registration_key + ".json")).unlink()
+    app.run(timeout=30)
+    assert not app.exception
+    assert any("selected_version_unavailable" in e.value for e in app.error)
+    assert widget(app.selectbox, "Uygulama kayıt sürümü").value is None
+    assert service.ACTIVE_REQUEST not in app.session_state
+    assert not any(b.label == "İç kayıtlarla BEM çalıştır" for b in app.button)

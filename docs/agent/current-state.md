@@ -639,3 +639,31 @@ references resolve without inventing executed requests or totals. See the
 The reviewed provider/snapshot sources, negative fixture and original archives
 are unchanged. Registry/persistence scope is unchanged; no new study or scientific
 policy change. Genuine comparison UNESTABLISHED; `physical_qualification=false`.
+
+### 2026-11-06 local provider-record persistence — separate stacked Draft
+
+The next bounded increment is stacked on reviewed #107
+`8f2d38a826b6118ab97273dbd26ef6bbf43d23ae`, tree
+`08feaa83ac120f783f3f59cafecbbd9a20a06118`; it does not merge/modify #103–107.
+The [existing application contract](../provider_design_analysis.md#persistent-operator-store--2026-11-06-stacked-increment)
+now specifies an operator-only immutable local record store and configured runtime
+loader behind the existing no-upload route. Earlier empty-registry statements are
+historical. No normal production data is installed by this increment.
+
+Registration retains independent ordered plans, exact preimages and original
+result/capture/provenance bytes, including partial, source-bound unlaunched and
+unknown-status slots. It is storage, not admission. Runtime still uses the reviewed
+complete-family admission. Explicit version binding and fresh disk verification
+block stale runs after corruption/removal; there is no profile/version fallback.
+All five profiles remain selectable. Inert close/reopen/load/prepare/execute and
+persistent actual-partial rejection are software evidence only. Provider records
+persist; comparison history remains session-scoped. Operator setup and limits are
+in the contract; the English [review handoff](handoffs/provider-record-store-2026-11-06.md)
+records the bounded delta.
+
+Remaining integration work includes complete matching attributable provider data,
+separately authorized genuine single-case BEM, then a controlled genuine
+coordinate-distinct two-profile comparison. Existing template/hinge/mechanical
+integration gaps remain. No experiment, missing-point repair, genuine BEM, geometry
+selection or gate change occurred. Genuine comparison **UNESTABLISHED**;
+`physical_qualification=false`.

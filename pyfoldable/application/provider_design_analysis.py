@@ -89,6 +89,7 @@ class ProviderDesignSelection:
     family_id: str
     provider_policy_json: str
     annulus_count: int
+    stored_version_sha256: str | None = None
 
 
 @dataclass(frozen=True)
@@ -105,6 +106,15 @@ class UnlaunchedCell:
 
 
 @dataclass(frozen=True)
+class StoredProviderVersion:
+    root: str
+    registration_key: str
+    version_label: str
+    content_sha256: str
+    manifest_sha256: str
+
+
+@dataclass(frozen=True)
 class ManagedProviderFamily:
     family_id: str
     provider: ProviderIdentity
@@ -113,6 +123,7 @@ class ManagedProviderFamily:
     evidence_class: str                        # inert_fixture or caller_supplied_unqualified
     source_identity: str
     provenance_files: tuple[tuple[str, bytes], ...]
+    stored_version: StoredProviderVersion | None = None
 
 
 @dataclass(frozen=True)
@@ -121,13 +132,9 @@ class ManagedProviderRepository:
 
 
 def application_provider_repository() -> ManagedProviderRepository:
-    """Deployment integration hook. No bundled success or automatic acquisition.
-
-    An operator must register source-bound records using the types above. The
-    completed partial probe cannot populate a complete family. Users never need
-    to author polar JSON; no environment-driven solver discovery is performed.
-    """
-    return ManagedProviderRepository()
+    """Load configured operator records; integrity is separate from admission."""
+    from .provider_record_store import load_configured_provider_repository
+    return load_configured_provider_repository()
 
 
 def read_retained_cell(result_path: Path, capture_directory: Path) -> RetainedCell:
@@ -338,6 +345,7 @@ def attempted_provider_design_selection(selection: ProviderDesignSelection) -> d
                      "observed_source_sha256": _sha(selection.template.source_bytes), "byte_count": len(selection.template.source_bytes)},
         "root": root_record, "family_id": selection.family_id, "provider_policy": policy,
         "annulus_count": selection.annulus_count,
+        **({"stored_version_sha256": selection.stored_version_sha256} if selection.stored_version_sha256 is not None else {}),
     }
 
 
@@ -358,9 +366,18 @@ def _prepare_provider_design_analysis(selection: ProviderDesignSelection, reposi
     """No solve. Match one declared family; admit all cells or none."""
     geometry = _geometry(selection)
     matches = [f for f in repository.families if f.family_id == selection.family_id and f.requests and f.requests[0].airfoil.id == geometry["profile"]]
+    if any(f.stored_version is not None for f in matches) and selection.stored_version_sha256 is None:
+        raise ProviderDesignPreparationError("stored_version_required", "Select an explicit stored version; no latest-version substitution")
+    if selection.stored_version_sha256 is not None:
+        matches = [f for f in matches if f.stored_version is not None and f.stored_version.content_sha256 == selection.stored_version_sha256]
     if len(matches) != 1:
         raise ProviderDesignPreparationError("missing_applicable_family", f"No unique application-managed family for {geometry['profile']} / {selection.family_id}")
     family = matches[0]
+    if family.stored_version is not None:
+        from .provider_record_store import ProviderRecordStore
+        # A caller's cached repository is not authority for bytes still on disk.
+        with ProviderRecordStore(family.stored_version.root) as store:
+            family = store.load_version(family.stored_version.registration_key, expected=family.stored_version)
     family_context = {"family_id": family.family_id, "evidence_class": family.evidence_class, "source_identity": family.source_identity}
     if family.evidence_class not in {"inert_fixture", "caller_supplied_unqualified"} or not family.source_identity.strip() or not family.provenance_files:
         raise ProviderDesignPreparationError("missing_provenance", "Retained source identity, provenance bytes and unqualified evidence class are required", family_context)
@@ -428,6 +445,7 @@ def _prepare_provider_design_analysis(selection: ProviderDesignSelection, reposi
         "implementation_file_sha256": _sha(Path(__file__).read_bytes()),
         "family_id": family.family_id, "source_identity": family.source_identity,
         "evidence_class": family.evidence_class, "geometry": geometry, "provider_policy": selected_policy,
+        **({"stored_version": {f.name: getattr(family.stored_version, f.name) for f in fields(family.stored_version)}} if family.stored_version is not None else {}),
         "cells": ledger, "provenance": provenance, "complete_family_admitted": not errors,
         "physical_qualification": False, "genuine_comparison_status": "UNESTABLISHED",
         "identity_limits": "Retained bytes and executable file observations are not process-image/build attestation or experimental validation"}
@@ -519,6 +537,11 @@ def run_active_provider_design(state: MutableMapping, selection: ProviderDesignS
     prepared = prepare_active_provider_design(state, selection, repository)
     if previous != prepared.request_sha256:
         raise ProviderDesignPreparationError("stale_active_state", "Active inputs are stale; prepare before explicit execution")
-    outcome = run_provider_design_analysis(prepared, active_selection=selection, repository=repository)
+    try:
+        outcome = run_provider_design_analysis(prepared, active_selection=selection, repository=repository)
+    except (ValueError, OSError):
+        state.pop(ACTIVE_REQUEST, None)
+        state.pop(ACTIVE_OUTCOME, None)
+        raise
     state[ACTIVE_OUTCOME] = outcome
     return outcome

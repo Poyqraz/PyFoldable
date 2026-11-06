@@ -154,3 +154,166 @@ comparison remains **UNESTABLISHED**, existing comparison block remains in place
 and `physical_qualification=false`. No provider experiment, genuine BEM study,
 scheduler, automatic optimization, joint losses, clearance, vibration, FEA, CFD
 or transient calculation is added or run. No historical result is repaired.
+
+## Persistent operator store — 2026-11-06 stacked increment
+
+The earlier empty deployment hook is replaced by
+[provider_record_store.py](../pyfoldable/application/provider_record_store.py).
+This increment is stacked on reviewed #107 `8f2d38a826b6118ab97273dbd26ef6bbf43d23ae`
+(tree `08feaa83ac120f783f3f59cafecbbd9a20a06118`), not merged main. Original
+#103–107 branches and the integration base are unchanged. No data is installed in
+a production registry by this increment. The old empty-registry descriptions above
+and in historical handoffs describe the preceding revision.
+
+### Operator setup and the single registration entry point
+
+Run the application and registration under an account with access to a private,
+persistent **local POSIX filesystem** directory. No database, scheduler, automatic
+acquisition or user-result persistence service is added. Configure its absolute
+path before starting Streamlit. Provision its parent directory first; registration
+creates the private store directory, while runtime loading never creates it:
+
+```bash
+export PYFOLDABLE_PROVIDER_STORE=/srv/pyfoldable/provider-records
+python -m streamlit run apps/pyfoldable_dashboard.py
+```
+
+The operator entry point is `ProviderRecordStore.register_family(family,
+version_label=...)`. Supply an independently declared ordered plan, not a plan
+inferred from returned success records. The following operator-only example uses
+a separately retained JSON plan whose `requests` entries explicitly contain
+`profile`, `alpha_rad`, `reynolds`, `mach`, `n_crit`, `xtr_upper`, `xtr_lower`,
+`max_iterations`, `timeout_s`, `scenario_id`, and `options`. Its `cells` list has
+one slot per planned request: `returned` with result/capture locations,
+`not_launched` with source-bound reason/identity, or `unavailable` when launch
+status is unknown. These paths are operator inputs, never normal-user UI inputs.
+
+```python
+import json
+from pathlib import Path
+from pyfoldable.core.profile_catalog import load_project_airfoil
+from pyfoldable.core.providers import PolarGenerationRequest, ProviderIdentity
+from pyfoldable.application.provider_design_analysis import (
+    ManagedProviderFamily, UnlaunchedCell, read_retained_cell,
+)
+from pyfoldable.application.provider_record_store import ProviderRecordStore
+
+plan_path = Path('/operator-evidence/independent-family-plan.json')
+original_plan = plan_path.read_bytes()
+plan = json.loads(original_plan)
+provider = ProviderIdentity(**plan['provider'])
+requests = tuple(PolarGenerationRequest(
+    airfoil=load_project_airfoil(row['profile']),
+    alpha_rad=tuple(row['alpha_rad']),
+    **{key: row[key] for key in (
+        'reynolds', 'mach', 'n_crit', 'xtr_upper', 'xtr_lower',
+        'max_iterations', 'timeout_s', 'scenario_id', 'options')},
+) for row in plan['requests'])
+
+def retained_cell(row):
+    if row['status'] == 'returned':
+        return read_retained_cell(Path(row['result_path']), Path(row['capture_directory']))
+    if row['status'] == 'not_launched':
+        return UnlaunchedCell(row['reason'], row['source_identity'])
+    if row['status'] == 'unavailable':
+        return None  # no assertion about whether a process ran
+    raise ValueError('Unknown declared cell status')
+
+family = ManagedProviderFamily(
+    family_id=plan['family_id'], provider=provider, requests=requests,
+    cells=tuple(retained_cell(row) for row in plan['cells']),
+    evidence_class=plan['evidence_class'], source_identity=plan['source_identity'],
+    provenance_files=(('independent-family-plan.json', original_plan),
+                      ('build-and-source-record.json', Path('/operator-evidence/build-and-source-record.json').read_bytes())),
+)
+with ProviderRecordStore('/srv/pyfoldable/provider-records') as store:
+    binding = store.register_family(family, version_label='operator-declared-v1')
+print(binding)
+```
+
+Use one coordinate-bound profile per application family; retain a multi-profile
+experiment's original ordered requests in separate profile families without
+editing requests or classifying unknown launch status as unlaunched. Attach the
+original plan and relevant build/source/execution provenance bytes. The plan's
+`evidence_class` retains `caller_supplied_unqualified` for actual unqualified data
+or `inert_fixture` for explicitly isolated software fixtures. Never install inert
+fixtures as normal deployment data. Registration does not supply physically
+validated coefficients or admit a complete family.
+
+### Storage, identity and failure semantics
+
+Schema1 canonical UTF-8 manifests live in `records/<registration-key>.json`.
+Original results, capture files, provenance and exact canonical request preimages
+live in `blobs/<sha256>`. Logical capture/provenance names are labels, not paths.
+References contain only lowercase SHA-256 and byte count; runtime derives their
+location inside the configured store. Regular-file, no-follow, bounded reads reject
+symlinks/path references and unavailable or changed bytes. This is local content
+integrity, not authenticity, process-image attestation or protection from an
+operator controlling the entire application/account.
+
+The registration key hashes canonical `{family_id, version_label}`. Content identity
+hashes the manifest's complete `content` (including version label, ordered plan,
+source/evidence class and original-byte references). The manifest has its own byte
+hash. No timestamps/salts/counters affect these identities. Re-registering identical
+bytes under the same label is idempotent; conflicting bytes raise
+`provider_store_version_conflict`. New versions require a new explicit label;
+there is no implicit latest version or overwrite. Saved reports retain content,
+manifest, registration and source identities even after files disappear.
+
+Fsynced blobs are published without overwrite, then complete storage reconstruction
+and the projected whole-repository read budget (including manifest bytes) are
+checked before the fsynced manifest is linked atomically **last**. A nonblocking
+advisory directory lock serializes operator registrations; a competing writer
+receives `provider_store_busy`, with no retry or stale lock file. Use one store
+instance per caller. Pending files/unreferenced blobs are ignored; interruption
+before publication cannot expose a partial version. Orphan cleanup/backup/remote
+replication is not implemented. All request/cell slots must be declared; partial
+observations and explicit unknown slots are retainable, without an approval flag.
+The existing 64-cell, 2MiB result/preimage, 16MiB capture/cell, 64MiB retained
+result+capture/family and 4MiB provenance/family budgets remain. Storage additionally
+bounds manifests to2MiB, versions/store to64, provenance files/family to64, capture
+files/cell to7 and a repository read to128MiB. These are software resource limits,
+not a new numerical acceptance policy.
+
+Unset configuration, missing store, malformed manifest, changed/missing blob,
+retention budget and absent applicable family produce specific diagnostics; no
+hidden provider or BEM call follows. One malformed/corrupt stored version makes
+repository loading fail closed, rather than silently omitting it. Runtime loading
+reconstructs the typed repository, not a persisted accepted boolean. The reviewed
+admission path still checks coordinates, exact declared requests/provider/policy,
+script/input/receipts/parsed points and complete family coverage.
+
+### UI binding and demonstrated scope
+
+The existing no-upload route uses the configured loader. After explicit root
+inputs, it lists candidate versions and their current preparation status using
+the same admission service. Complete candidates, incomplete/rejected records and
+missing applicable data remain distinct. Users explicitly select a stored version,
+confirm preparation and execute. No user CAD, polar JSON, manifest or path field
+is added. Five catalog profiles remain selectable; changing profiles resets the
+version selection and active output without changing saved snapshots.
+
+Selections bind content identity separately from prepared/executed identities.
+Preparation and explicit execution reopen the selected manifest/blobs and compare
+the original binding even when a caller supplies a cached repository. Changed,
+removed or corrupted selected records invalidate active preparation/result and
+block a stale solve. An added version never replaces a selected version. UI removal
+clears the selection and reports `selected_version_unavailable`. These checks are
+file observations, not a transactional lock against a hostile concurrent writer.
+
+[Store tests](../tests/application/test_provider_record_store.py) demonstrate actual
+serialization → close/reopen → configured application load → preparation → explicit
+**inert** BEM for all five profiles. No loader monkeypatch supplies those families.
+Persistent AppTests exercise the same configured loader, explicit version choice,
+profile switching, corruption/removal invalidation and saved attribution. They
+block genuine provider/banner/BEM entry points. The original actual negative
+fixture separately round-trips byte-for-byte:35/37, +32°/−38° unavailable, seven
+source-bound unlaunched cells. Separate unknown-status slots remain unknown.
+It admits no complete applicable family and reaches no BEM. The original execution
+archive SHA-256 remains
+`e779bb00158571541a10419ecccb011fc1c8a5ea32cad40a59e005c59f9082e9`.
+
+Provider records persist locally. **Comparison/user-result history remains
+session-scoped**; saved snapshots are immutable within the existing session/export
+contract, not a new durable user-history service. Genuine single-case BEM evidence
+and genuine distinct-profile comparison remain unestablished; `physical_qualification=false`.

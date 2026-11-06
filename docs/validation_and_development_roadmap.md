@@ -805,3 +805,25 @@ bounded multi-hinge UI, joint/material/mass generation and integrated mechanics
 remain missing. No optimum, joint loss, clearance, vibration, physical validation
 or qualification is inferred. Genuine comparison **UNESTABLISHED**;
 `physical_qualification=false`. No PR is merged by this update.
+
+### 2026-11-06 kalıcı sağlayıcı kaydı — #107 üzerine ayrı taslak
+
+Önceki bölümün boş dağıtım kaydı/süreklilik açığı bu ayrı yazılım diliminde
+kapatılır: [mevcut uygulama sözleşmesi](provider_design_analysis.md#persistent-operator-store--2026-11-06-stacked-increment)
+operatörün değişmez sürümlü yerel kaydını ve mevcut dosyasız UI'ye bağlı yapılandırılmış
+yükleyiciyi tanımlar. Taban, incelenmiş #107 `8f2d38a826b6118ab97273dbd26ef6bbf43d23ae`;
+#103–107 veya main birleşmiş/değişmiş sayılmaz. Üretim verisi kurulmadı.
+
+Kayıt, bağımsız istek planı ve özgün baytların saklanmasıdır; tam aile kabulü veya
+fiziksel onay değildir. Hazırlık/yürütme mevcut kabul yolunu yeniden kullanır,
+seçilen sürümü diskten doğrular ve eksik/bozuk/değişmiş kayıtta durur. Beş profil,
+açık hazırlık/çalıştırma ve eş-koordinat karşılaştırma kısıtları korunur. Kullanıcı
+CAD/polar/manifest/dosya yolu sağlamaz. Sağlayıcı kayıtları kalıcı; karşılaştırma
+geçmişi oturumluktur. İnert olumlu yol ve özgün 35/37 kısmi kaydın tekrar açıldıktan
+sonra reddi, gerçek sayısal sonuç değildir.
+
+Sonraki kanıt gereksinimi değişmedi: uygun tam gerçek sağlayıcı ailesi ve ayrı
+izinli tek vaka BEM; ardından kontrollü iki farklı profilin gerçek karşılaştırması.
+Aday menteşe/şablon kataloğu ve mekanik entegrasyon açık kalır. Yeni sağlayıcı
+çağrısı, BEM çalışması, nokta onarımı veya bilimsel politika değişikliği yapılmadı.
+Genuine comparison **UNESTABLISHED**; `physical_qualification=false`.
