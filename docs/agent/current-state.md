@@ -1,5 +1,10 @@
 # Current state and repository reality report
 
+**2026-11-05 CAD-free user-flow reconciliation:** see the
+[current capability map and first implementation slice](../validation_and_development_roadmap.md#2026-11-05-cad-free-user-flow--code-audit-and-next-slice).
+Earlier dated snapshots below remain history; a proposal label there does not
+override the bounded generic geometry code now present on main.
+
 **Audited 2026-09-17. Code baseline:**
 `ca81d2d2b19622d65453e269d7bfcb48e70aec32` (merged GEOM-04 PR #63).
 This is a dated snapshot, not a claim that the branch never advances. Recheck git
@@ -542,3 +547,66 @@ model choices/pending evidence. No surface/solver execution, freeze or strength
 acceptance; external CAD/STEP remains optional. 13-inch and 250 mm scenarios stay
 separate. PR #81/#84/#91 and C2V-09 unchanged; `physical_qualification=false`,
 ADR-009 unaccepted, unknown clearance/physical gates preserved.
+
+## 2026-11-05 owner requirement and CAD-free numerical user flow
+
+Verified main `022b466303c59b8c0adb02f935f9c2f065b0e2b5`, tree
+`b8f943b0d37b2179f71aac47aa2a1cee57df594f`. The owner's dated clarification
+reaffirms the existing CAD-independent primary workflow: select catalog profile,
+explicit parametric parent family/dimensions/chord/twist/hub/joint inputs and
+conditions; generate analysis geometry internally. CAD/STEP is optional reference,
+manufacturing export or external validation. PR #105's request for the solid
+actually meshed in an external ANSYS run is not an application prerequisite.
+
+Code inspection, without a solver run, establishes:
+
+- All five coordinate-bound catalog profiles are already on main. The UI builds
+  a draft from one canonical station seed or explicit edited stations, including
+  profile coordinates, dimensions, chord/twist, hub, hinge and atmosphere. There
+  is no CAD-upload prerequisite. A selectable family catalog beyond that seed
+  and a complete joint-template form are missing integrations.
+- `parent_blade_generator.generate_parent_blade_cuts` is implemented on main.
+  So is the bounded generic `mixed_profile_parent_geometry` section service/CLI
+  merged through PR #95. Its caller-input endpoint/scalar/certified-placement
+  scope is distinct from the still-proposed selected-asset/model path, full
+  solids, arbitrary hinges and qualified joint geometry. Neither is connected
+  as a general catalog-to-family UI generator.
+- Main's active BEM UI still requires polar JSON. Core provider/family services
+  exist, but automatic internal admission of matching retained real-provider
+  results into that UI is missing. Draft #103 adds immutable per-profile records,
+  not real-provider acquisition or a genuine comparison. It remains Draft at
+  `fc545b1584d679951fd28db0767cd71c790a7b06` (tree
+  `dd399acd98c87d45845f6976eea7c24da81a4e7c`).
+- Bounded hinge screening exists, but a shared product-level longer-proximal
+  candidate filter is missing. Candidate cuts must share the original parent
+  global radius/chord/twist/profile geometry; this does not mean unequal opposed
+  blades. Mechanical binding already accepts explicit mass/drive inputs without
+  CAD; generating defensible mass/joint parameters and unified aero-mechanical
+  execution remain separate integrations.
+
+The existing roadmap now owns the concrete gap map and next software slice:
+retained-provider result admission → internal polar bundle → existing fully-open
+BEM → immutable UI result. No new provider scheduling/coverage policy is invented;
+genuine acceptance needs separately authorized, complete matching provider evidence
+and a successful BEM result, not another preparation-only milestone.
+
+Draft #104 `8ba282e49ecf3c7ac96ada100c2721fa28a5803f` and #105
+`86d28805a469a495746f8a9cf5da344ffe0162e6` are unchanged. The XFOIL preflight
+package remains unchanged for independent review and unexecuted. This audit changes
+documentation only: no engineering study, scientific-gate change, optimum or
+physical qualification; `physical_qualification=false`.
+
+## 2026-11-06 prospective root-datum requirement — PR #106 correction
+
+The proposed CAD-free hinge-candidate preparation must distinguish `hub_radius`,
+the blade-root datum `r_root`, and the first retained aerodynamic station. Retain
+the root's value, explicit unit, physical/model meaning and source or declaration
+identity; an explicitly labeled study assumption is acceptable. The canonical
+18 mm hub and 25 mm first aerodynamic station do not declare the root. Missing
+root declaration blocks preparation; neither value may silently supply it.
+Exposed segments require `h - r_root > R - h`, equivalently
+`h > (R + r_root)/2`. The separate shaft-origin comparison is `h > R/2`.
+This documentation-only correction selects no hinge, changes no historical
+screening result, introduces no CAD prerequisite and implements no new filter.
+The existing [roadmap requirement](../validation_and_development_roadmap.md#first-bounded-implementation-slice-retained-provider-data-to-active-bemui)
+owns the prospective input/export contract. Historical dated sections remain intact.
