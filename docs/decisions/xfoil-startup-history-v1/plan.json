@@ -1,0 +1,308 @@
+{
+  "base": {
+    "head": "ccf91375221a9a31c51bf83b5c579858f9a23927",
+    "pr": 110,
+    "tree": "10336a520f5a19e06fb31255ce3ebbcab77d4836"
+  },
+  "baseline": {
+    "catalog_profile_ids": [
+      "NACA0012",
+      "NACA2412",
+      "NACA23012",
+      "NACA4415",
+      "NACA63-412"
+    ],
+    "declaration_file": "reports/retained_pins/two_profile_bem_screening/declaration.json",
+    "declaration_file_sha256": "feaa6ac2a39147605cfb23b1fd9a516ca95ca1a96a25080bc14eb65e766d5d5c",
+    "geometry": {
+      "blade_count": 2,
+      "diameter_m": 0.25,
+      "fully_open_zero_offset": true,
+      "hinge": {
+        "axial_offset_m": 0.0,
+        "axis_azimuth_rad": 0.0,
+        "axis_elevation_rad": 1.5707963267948966,
+        "deployed_angle_rad": 0.0,
+        "radius_m": 0.1,
+        "stop_angle_rad": 0.0,
+        "stowed_angle_rad": -3.141592653589793,
+        "tangential_offset_m": 0.0
+      },
+      "hub_radius_m": 0.018000000000000002,
+      "preview_fold_angle_rad": 0.0,
+      "stations": [
+        {
+          "chord_m": 0.028,
+          "r_over_R": 0.2,
+          "radius_m": 0.025,
+          "twist_rad": 0.5410520681182421
+        },
+        {
+          "chord_m": 0.026000000000000002,
+          "r_over_R": 0.4,
+          "radius_m": 0.05,
+          "twist_rad": 0.4188790204786392
+        },
+        {
+          "chord_m": 0.023,
+          "r_over_R": 0.6,
+          "radius_m": 0.075,
+          "twist_rad": 0.29670597283903605
+        },
+        {
+          "chord_m": 0.017,
+          "r_over_R": 0.8,
+          "radius_m": 0.1,
+          "twist_rad": 0.17453292519943295
+        },
+        {
+          "chord_m": 0.008,
+          "r_over_R": 0.98,
+          "radius_m": 0.1225,
+          "twist_rad": 0.08726646259971647
+        }
+      ]
+    },
+    "geometry_sha256": "9f28067fdd4a59b25da36d5d2e916e5804927232cd629c572e17880990644902",
+    "operating_condition": {
+      "air_density_kg_m3": 1.225,
+      "angular_speed_rad_s": 743.5102613495843,
+      "dynamic_viscosity_pa_s": 1.81e-05,
+      "forward_speed_m_s": 0.0,
+      "id": "hover_7100_rpm",
+      "pressure_pa": 101325.0,
+      "temperature_k": 288.15
+    },
+    "operating_condition_sha256": "875469fb9e0b3383ec262bc31617be0707611c5e45e2e33a5588bad80a4392d1",
+    "policy_sha256": "f5a59ab1b9d487e0fa8478558f66d0b54e55c2670097d33134acb8abc39da8ae",
+    "profiles": {
+      "NACA0012": {
+        "coordinate_sha256": "ab62d56cc86a591da4f83c1980ea5b07743c4e47bdb0eb63a8e166e190a96d42",
+        "draft_sha256": "d993635db17360f767cff4f26226b3f238de9cd3fb7657c8180247366f2b4d4f"
+      },
+      "NACA2412": {
+        "coordinate_sha256": "3f84aba0f9234ed6e9fe4eedebe88ae8701a19ae181d70e21a02b0704916999a",
+        "draft_sha256": "c3200882dbe6c1f0771bb89772ea8becb4ee143dc6929c4f9346fe55da4371ae"
+      }
+    },
+    "root_declaration": null,
+    "root_status": "NOT_DECLARED_BY_HISTORICAL_BASELINE; future application preparation blocked until explicit value/unit/meaning/kind/source supplied; never infer from hub or first station",
+    "solver_policy": {
+      "annulus_count": 40,
+      "annulus_settings": {
+        "angle_tolerance_rad": 1e-10,
+        "bracket_samples": 128,
+        "include_root_loss": false,
+        "include_tip_loss": true,
+        "loading_branch": "positive_only",
+        "max_iterations": 100,
+        "minimum_tip_loss_factor": 1e-06,
+        "relative_residual_tolerance": 1e-10,
+        "residual_tolerance_m2_s": 1e-08,
+        "rotational_augmentation": {
+          "kind": "disabled",
+          "lift_curve_slope_per_rad": null,
+          "maximum_absolute_alpha_rad": 0.7853981633974483,
+          "maximum_chord_over_radius": 0.75,
+          "model_id": "disabled",
+          "source": null,
+          "zero_lift_angle_rad": null
+        }
+      },
+      "bounds": "error",
+      "forward_speed_m_s": 0.0,
+      "radial_domain": "station_span",
+      "rotational_augmentation_kind": "disabled",
+      "solved_pose": "fully_open_zero_offset"
+    },
+    "source_design_sha256": "a3852e5d14f433528fa9ad63bae26dd076b5136eacf4a7860ef76971eec2afdc"
+  },
+  "continue_only_after": "13 usable finite points, exact request/provider/capture/executable and own invocation binding, acknowledged evidence persistence",
+  "domain": "Diagnostic 0..+12 and 0..-12 only. Does not replace baseline -40..+32, cover the conditional first BEM query, or authorize stitching/extrapolation/symmetry substitution.",
+  "experiment_id": "xfoil_naca0012_startup_history_repeatability_v1",
+  "failure": "Stop all later invocations on incomplete output, timeout, exception, discrepancy or persistence failure; no replacement attempts.",
+  "historical_archive_sha256": {
+    "iter160": "78de64539024d9b146400618f70dbdc3469e8b0be882f83553427aa6cd22c7e6",
+    "iter80": "e779bb00158571541a10419ecccb011fc1c8a5ea32cad40a59e005c59f9082e9",
+    "preflight": "058a91997442d42df0859a373df1bbb00005fcd882c86616ef5707590f45331a"
+  },
+  "infrastructure_source_sha256": "f6616e73cd76f1484606f7eaceebb1de42b7686fc802d0b69f328482c10fefdc",
+  "inherited_plan_sha256": "0e082cea4e485f664d259f669cd75f5f17615550553d984de4b41a854569d342",
+  "initialization": "Each call uses the reviewed adapter's fresh isolated subprocess. Pre-spawn directory must contain only the exact airfoil.dat; no inherited solution/default file.",
+  "invocations": [
+    {
+      "alpha_degrees": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "experiment_id": "xfoil_naca0012_startup_history_repeatability_v1",
+      "index": 0,
+      "invocation_sha256": "4e0d0db9140ccd2ab5f1dee23fc1e8029f0e4a153e13d0e92636e2251b750131",
+      "label": "P1",
+      "request_file": "P-request-preimage.json",
+      "request_sha256": "8de8e44c0210d352784486e1276d1a946f2fee0a1f24efdbf0df8266a935db4b",
+      "script_file": "P-script.txt",
+      "script_sha256": "eefa0c79bec03004ca7c91e987377ba5c5381fe2e9ec585155d0620ab065e694"
+    },
+    {
+      "alpha_degrees": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "experiment_id": "xfoil_naca0012_startup_history_repeatability_v1",
+      "index": 1,
+      "invocation_sha256": "6b866e802f2cdc134defad52ce550c08eb8cb4406279f6080005e8baa98de368",
+      "label": "P2",
+      "request_file": "P-request-preimage.json",
+      "request_sha256": "8de8e44c0210d352784486e1276d1a946f2fee0a1f24efdbf0df8266a935db4b",
+      "script_file": "P-script.txt",
+      "script_sha256": "eefa0c79bec03004ca7c91e987377ba5c5381fe2e9ec585155d0620ab065e694"
+    },
+    {
+      "alpha_degrees": [
+        0,
+        -1,
+        -2,
+        -3,
+        -4,
+        -5,
+        -6,
+        -7,
+        -8,
+        -9,
+        -10,
+        -11,
+        -12
+      ],
+      "experiment_id": "xfoil_naca0012_startup_history_repeatability_v1",
+      "index": 2,
+      "invocation_sha256": "7a9dc37a260f61de1d761b7513d6e4a3f61edc1dc19d2e451286022df6e949e9",
+      "label": "N1",
+      "request_file": "N-request-preimage.json",
+      "request_sha256": "e4525d94f17e78f7d3e8164455d65a9f4edb954e774ec3e97b9e4d4d6b780984",
+      "script_file": "N-script.txt",
+      "script_sha256": "c1d090f40d9008080b3cf50ce90d79b3dbe7b53394058cbcbb062904ec33c5fd"
+    },
+    {
+      "alpha_degrees": [
+        0,
+        -1,
+        -2,
+        -3,
+        -4,
+        -5,
+        -6,
+        -7,
+        -8,
+        -9,
+        -10,
+        -11,
+        -12
+      ],
+      "experiment_id": "xfoil_naca0012_startup_history_repeatability_v1",
+      "index": 3,
+      "invocation_sha256": "dffe10c4579b4d90cfd7d6d2e19c11929dbfab2d50651e5dfb2e4958a54f6c44",
+      "label": "N2",
+      "request_file": "N-request-preimage.json",
+      "request_sha256": "e4525d94f17e78f7d3e8164455d65a9f4edb954e774ec3e97b9e4d4d6b780984",
+      "script_file": "N-script.txt",
+      "script_sha256": "c1d090f40d9008080b3cf50ce90d79b3dbe7b53394058cbcbb062904ec33c5fd"
+    }
+  ],
+  "limits": {
+    "attempts_per_invocation": 1,
+    "bem_calls": 0,
+    "provider_launches_max": 4,
+    "retries": 0,
+    "timeout_s": 90.0
+  },
+  "mach": 0.040507164718475736,
+  "one_degree_archive_sha256": "7cc5d67d9f265e10d27e203fb630e99c56ff4eb9d231b959fde5664fd1ab75e1",
+  "operator_source_sha256": "be1c1722dfcac4db34ed1e013cb4704546bd5d8aaed4c169e0069844ddaea310",
+  "physical_qualification": false,
+  "provider": {
+    "adapter_version": "2",
+    "backend_name": "XFOIL",
+    "backend_version": "6.99",
+    "name": "xfoil-subprocess"
+  },
+  "provider_build": {
+    "build_records_sha256": {
+      "build/build-configuration.diff": "c659314cb8cf857ed54eb33a1c10503896d87ab8f8d4e679e3834dd381e37ad0",
+      "build/build-record.json": "e93f1cbbf36cc6d120b96db76140284e3c52c3d237f06cc2b2e332f838fdf4a7",
+      "build/build.log": "d63f76f3b0fc50b3dc81601a94096bb07a978108ffd6823caf9313c8dfb71dd1",
+      "build/build_xfoil.sh": "e7985964d3654f94312f55920e2574381992a7f3b53446bcaf6143ab08b8fbfe",
+      "build/runtime-library-identities.json": "a8ff0a365a63af0aea4066b42fc0078147ad5c93281cf94245c61cb1c092042a"
+    },
+    "compiler": "GNU Fortran (Debian14.2.0-19)14.2.0; observed retained build",
+    "executable_sha256": "2b952bd21705d4d4147aa6b3e7db14f833a91dd9e1c9279261203f1cef1432ce",
+    "fortran_flags": "-O2 -fdefault-real-8 -fallow-argument-mismatch",
+    "new_build_or_substitution_allowed": false,
+    "osmap_sha256": "2f6b3c63461d71da9b6cb9ca1340d77cff0cfbe767679d15b5b8556b45d948c4",
+    "preflight_archive_sha256": "058a91997442d42df0859a373df1bbb00005fcd882c86616ef5707590f45331a",
+    "process_image_attestation": false,
+    "source_archive_sha256": "5c0250643f52ce0e75d7338ae2504ce7907f2d49a30f921826717b8ac12ebe40",
+    "source_patches": [],
+    "source_url": "https://web.mit.edu/drela/Public/web/xfoil/xfoil6.99.tgz"
+  },
+  "provider_policy": {
+    "max_iterations": 160,
+    "n_crit": 9.0,
+    "options": {
+      "repanel": true
+    },
+    "provider": {
+      "adapter_version": "2",
+      "backend_name": "XFOIL",
+      "backend_version": "6.99",
+      "name": "xfoil-subprocess"
+    },
+    "timeout_s": 90.0,
+    "xtr_lower": 1.0,
+    "xtr_upper": 1.0
+  },
+  "provider_policy_sha256": "e5879a01d671e50604537455ba0bd3a619d47e8bc2ff3eedac5a1779256925a4",
+  "replicates": "P1/P2 have identical scientific request preimages; N1/N2 likewise. Invocation labels are not request fields.",
+  "reynolds": 26030.624179244653,
+  "scenario_id": "baseline_250mm_7100rpm_iter160_startup_history_v1",
+  "schema_version": 1,
+  "source_files_sha256": {
+    "pyfoldable/application/design_analysis.py": "c25205656ffca2a660119347f259ffe28c0f16f010f2ad0bca386354db7060e2",
+    "pyfoldable/application/polar_query_feasibility.py": "a6af0f2d6eada356ede8ca050a70c2b51558ca16b313a8df8d5a69b36f533b7a",
+    "pyfoldable/application/polar_upload.py": "c1078e59f541b92be0ff75704cd7f09ebef6cdec8b0476dfb382f7f36ff68534",
+    "pyfoldable/application/provider_design_analysis.py": "9db615dbad9d8769af1cac2adf2627985666637eff84a8056ac02f580773a254",
+    "pyfoldable/application/retained_xfoil_header.py": "0fbfc482528b79b2d1778786462f06da6e514ae6e4ebea4f456d9c0fdfd6931d",
+    "pyfoldable/core/airfoil.py": "3079f8cafe962556064efe74f7b9c22ceaae59bfaa5f063bb8a7ab1d2905b196",
+    "pyfoldable/core/bem.py": "4ca509127e6eedb5f124bfd12ba5192c1fc2a2de87219c7a15d0e373e5d1119a",
+    "pyfoldable/core/bem_rotor.py": "7df94790f8e23ca749bc2bcb741e0afbf4e93a6881f1b9b0253b4e278b326fc3",
+    "pyfoldable/core/models.py": "fec0b429c5201a7e7565205df756d00d344a5d5dd94703b7775d4b74ce17b853",
+    "pyfoldable/core/polar.py": "839fdb78e3ec57452d743c6bb2a997c4c2635a320bf0c181fb5efa6fc66c731d",
+    "pyfoldable/core/profile_catalog.py": "81d35184b36b26a1f53a70e3f15d07831404f0297b7fa2811ed93a34a136021c",
+    "pyfoldable/core/providers.py": "29b398f75c9fcf0002e35628970dc67263cec9127b6bc2cad8c5800b3b6754b1",
+    "pyfoldable/data/airfoils/NACA0012.dat": "d38fe158fae271d9b8b80aafd94356fba9bbf2adedbf872a642eda4c714f88a6",
+    "pyfoldable/data/airfoils/NACA2412.dat": "598edb7d31e3dc039e993a1cdd6ad3412796e9c762ed5a1bbb41e1e928c8e5ef",
+    "pyfoldable/providers/xfoil.py": "b5a6e12c550cae3d24cba7a86d9656461c20fc2ed7aa8008c3917dd60b6c0410"
+  }
+}
