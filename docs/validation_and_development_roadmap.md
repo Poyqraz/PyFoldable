@@ -870,3 +870,24 @@ nokta onarımı, kayıt birleştirme, üretim kaydı ve BEM çağrısı yapılma
 taze kabul ve açık BEM çalıştırması hâlâ gerekli. Beş profil ve CAD/polar
 yüklemesiz akış korunuyor; APC 13 inç vaka ayrı. Gerçek tek vaka ve iki profil
 karşılaştırması **UNESTABLISHED**; `physical_qualification=false`.
+
+### 2026-11-07 başlangıç/geçmiş tanısı — P1 sonrası durdu
+
+Ayrı [dört çağrı tavanlı tanı](agent/handoffs/xfoil-startup-history-2026-11-07.md)
+aynı NACA0012, ikili, düşük Mach/Re köşesi, ITER160 ve 90 s sınırını korudu.
+İlk 0°…+12° artan tarama 12/13 kullanılabilir nokta verdi; +6° eksik kaldı.
+Tüm P1 betiği tamamlandıktan sonra tamlık kuralı durdurdu. P2/N1/N2
+NOT_LAUNCHED; bir gerçek süreç, sıfır tekrar ve sıfır BEM.
+
++6° kapsam kaybı ve ortak +8° katsayı değişimleri başlangıç/izlenen açı
+geçmişine duyarlılığın sürdüğünü gösteriyor; bütün nedenler izole edilmedi.
+Hiçbir tekrar çifti oluşmadığı için protokol içi uyum/uyuşmazlık değerlendirilemedi.
+Dar tanı aralığı ana −40°…+32° aileyi veya koşullu ilk BEM sorgusunu karşılamaz.
+Eski 35/37, 36/37 ve 68/73 kayıtlar değişmedi; nokta onarımı, simetriyle
+katsayı üretimi veya kayıt birleştirme yok. Ham kanıt ve karşılaştırmalar saklandı.
+
+Sonraki gerçek BEM için uygun tam veri, kaynaklı açık kök beyanı, taze kabul
+ve açık yürütme hâlâ gerekli. Yeni depo/UI veya üretim ailesi kurulmadı.
+Beş profil, CAD/polar yüklemesiz amaç, uzun proksimal segment koşulu ve ayrı
+APC 13 inç senaryosu korunur. Gerçek tek vaka ve iki profil karşılaştırması
+**UNESTABLISHED**; `physical_qualification=false`. Birleştirme yapılmadı.

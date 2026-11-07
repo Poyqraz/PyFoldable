@@ -1,0 +1,209 @@
+{
+  "exact_comparison_method": "float.hex for each returned coefficient, exact retained requested radians, and separate raw-file byte equality.",
+  "experiment_id": "xfoil_naca0012_startup_history_repeatability_v1",
+  "historical_comparison_row_count": 81,
+  "history_categories": {
+    "N1": {
+      "iter160": {},
+      "iter80": {},
+      "one_degree": {}
+    },
+    "N2": {
+      "iter160": {},
+      "iter80": {},
+      "one_degree": {}
+    },
+    "P1": {
+      "iter160": {
+        "larger_than_one_displayed_increment": 6,
+        "later_unavailable": 3,
+        "unchanged": 12
+      },
+      "iter80": {
+        "larger_than_one_displayed_increment": 6,
+        "later_unavailable": 3,
+        "unchanged": 12
+      },
+      "one_degree": {
+        "larger_than_one_displayed_increment": 12,
+        "later_unavailable": 3,
+        "one_displayed_increment": 3,
+        "unchanged": 21
+      }
+    },
+    "P2": {
+      "iter160": {},
+      "iter80": {},
+      "one_degree": {}
+    }
+  },
+  "key_angles": {
+    "-10": {
+      "N1": {
+        "coefficients": null,
+        "status": "NOT_LAUNCHED"
+      },
+      "N2": {
+        "coefficients": null,
+        "status": "NOT_LAUNCHED"
+      },
+      "iter160": {
+        "cd": "0.11601",
+        "cl": "-0.4131",
+        "cm": "0.0181"
+      },
+      "iter80": {
+        "cd": "0.11601",
+        "cl": "-0.4131",
+        "cm": "0.0181"
+      },
+      "one_degree": {
+        "cd": "0.11601",
+        "cl": "-0.4131",
+        "cm": "0.0181"
+      }
+    },
+    "-6": {
+      "N1": {
+        "coefficients": null,
+        "status": "NOT_LAUNCHED"
+      },
+      "N2": {
+        "coefficients": null,
+        "status": "NOT_LAUNCHED"
+      },
+      "iter160": {
+        "cd": "0.04920",
+        "cl": "-0.6416",
+        "cm": "0.0134"
+      },
+      "iter80": {
+        "cd": "0.04920",
+        "cl": "-0.6416",
+        "cm": "0.0134"
+      },
+      "one_degree": {
+        "cd": "0.04920",
+        "cl": "-0.6416",
+        "cm": "0.0134"
+      }
+    },
+    "-8": {
+      "N1": {
+        "coefficients": null,
+        "status": "NOT_LAUNCHED"
+      },
+      "N2": {
+        "coefficients": null,
+        "status": "NOT_LAUNCHED"
+      },
+      "iter160": {
+        "cd": "0.07908",
+        "cl": "-0.5698",
+        "cm": "-0.0008"
+      },
+      "iter80": {
+        "cd": "0.07556",
+        "cl": "-0.6279",
+        "cm": "-0.0037"
+      },
+      "one_degree": {
+        "cd": "0.07838",
+        "cl": "-0.5811",
+        "cm": "-0.0015"
+      }
+    },
+    "10": {
+      "P1": {
+        "cd": "0.11930",
+        "cl": "0.3505",
+        "cm": "-0.0123"
+      },
+      "P2": {
+        "coefficients": null,
+        "status": "NOT_LAUNCHED"
+      },
+      "iter160": {
+        "cd": "0.11602",
+        "cl": "0.4140",
+        "cm": "-0.0182"
+      },
+      "iter80": {
+        "cd": "0.11602",
+        "cl": "0.4140",
+        "cm": "-0.0182"
+      },
+      "one_degree": {
+        "cd": "0.11929",
+        "cl": "0.3505",
+        "cm": "-0.0123"
+      }
+    },
+    "6": {
+      "P1": null,
+      "P2": {
+        "coefficients": null,
+        "status": "NOT_LAUNCHED"
+      },
+      "iter160": {
+        "cd": "0.04919",
+        "cl": "0.6416",
+        "cm": "-0.0134"
+      },
+      "iter80": {
+        "cd": "0.04919",
+        "cl": "0.6416",
+        "cm": "-0.0134"
+      },
+      "one_degree": {
+        "cd": "0.04835",
+        "cl": "0.5261",
+        "cm": "-0.0113"
+      }
+    },
+    "8": {
+      "P1": {
+        "cd": "0.07907",
+        "cl": "0.5703",
+        "cm": "0.0008"
+      },
+      "P2": {
+        "coefficients": null,
+        "status": "NOT_LAUNCHED"
+      },
+      "iter160": {
+        "cd": "0.07753",
+        "cl": "0.5951",
+        "cm": "0.0023"
+      },
+      "iter80": {
+        "cd": "0.07753",
+        "cl": "0.5951",
+        "cm": "0.0023"
+      },
+      "one_degree": {
+        "cd": "0.08229",
+        "cl": "0.4484",
+        "cm": "-0.0007"
+      }
+    }
+  },
+  "limits": "Only these observations; no universal reproducibility, isolation of all causal variables, BEM family acceptance, symmetry substitution or stitching.",
+  "printed_comparison_method": "Decimal subtraction of raw printed CL/CD/CM. One common last-place increment is descriptive, not an acceptance tolerance.",
+  "replicates": {
+    "N1/N2": {
+      "invocation_status": {
+        "N1": "NOT_LAUNCHED",
+        "N2": "NOT_LAUNCHED"
+      },
+      "status": "PAIR_UNAVAILABLE"
+    },
+    "P1/P2": {
+      "invocation_status": {
+        "P1": "FAILED",
+        "P2": "NOT_LAUNCHED"
+      },
+      "status": "PAIR_UNAVAILABLE"
+    }
+  }
+}

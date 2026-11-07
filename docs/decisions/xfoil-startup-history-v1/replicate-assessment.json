@@ -1,0 +1,16 @@
+{
+  "N1/N2": {
+    "invocation_status": {
+      "N1": "NOT_LAUNCHED",
+      "N2": "NOT_LAUNCHED"
+    },
+    "status": "PAIR_UNAVAILABLE"
+  },
+  "P1/P2": {
+    "invocation_status": {
+      "P1": "FAILED",
+      "P2": "NOT_LAUNCHED"
+    },
+    "status": "PAIR_UNAVAILABLE"
+  }
+}

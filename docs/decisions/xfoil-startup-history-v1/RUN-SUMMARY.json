@@ -1,0 +1,302 @@
+{
+  "actual_native_process_outcomes": {
+    "completed": 1,
+    "remaining_invocations_not_launched": 3,
+    "timeout": 0
+  },
+  "bem_calls": 0,
+  "capture": {
+    "assessment_sha256": "249caf128c4b818ed90baa1444163a2dc8ce50b7507f0aad63c4ffc40f68c42f",
+    "executable_identity": {
+      "limits": "SHA-256 of the executable file immediately before and after this subprocess call. This does not prove the process image, the declared source archive, or the compiler flags.",
+      "matched": true,
+      "postlaunch": {
+        "path": "/workspace/scratch/c24949ad6a4e/xfoil-preflight-2026-11-05/package/bin/xfoil",
+        "sha256": "2b952bd21705d4d4147aa6b3e7db14f833a91dd9e1c9279261203f1cef1432ce",
+        "unavailable_reason": null
+      },
+      "prelaunch": {
+        "path": "/workspace/scratch/c24949ad6a4e/xfoil-preflight-2026-11-05/package/bin/xfoil",
+        "sha256": "2b952bd21705d4d4147aa6b3e7db14f833a91dd9e1c9279261203f1cef1432ce",
+        "unavailable_reason": null
+      }
+    },
+    "known_returned_metadata": {
+      "polar_row_count": {
+        "returned_value": 12,
+        "source": "reviewed_parser_valid_rows_including_unmatched_rows",
+        "source_value": 12,
+        "status": "consistent"
+      },
+      "repanel": {
+        "returned_value": true,
+        "source": "reviewed_options_default_true_and_checked_script_PANE",
+        "source_value": true,
+        "status": "consistent"
+      },
+      "returncode": {
+        "returned_value": 0,
+        "source": "capture.returncode",
+        "source_value": 0,
+        "status": "consistent"
+      }
+    },
+    "printed_failure_trace": [
+      {
+        "line_one_based": 2104,
+        "preceding_three_lines": [
+          " 160   rms: 0.4845E+00   max: -.3648E+01   T at   53  1   RLX: 0.137",
+          "       a =  6.000      CL =  1.0921",
+          "      Cm = -0.1755     CD =  0.01768   =>   CDf =  0.00900    CDp =  0.00868"
+        ],
+        "text": " VISCAL:  Convergence failed"
+      }
+    ],
+    "raw_byte_receipts": {
+      "polar_file": {
+        "byte_count": 1458,
+        "sha256": "d72c0e8bf979c5570cc827bd85f8ef18c2d0ef6fdde8d8d47680b853daa209aa",
+        "status": "present"
+      },
+      "stderr": {
+        "byte_count": 82,
+        "sha256": "2e3f2acf892f7cf131f8e30a65909726ec274c5e93c83aad9c993cc4e51b86a3",
+        "status": "present"
+      },
+      "stdout": {
+        "byte_count": 122180,
+        "sha256": "7ea55db25aec7650e041014ccee0a08b1b3f661902c02d436a3e0e08d697542c",
+        "status": "present"
+      }
+    },
+    "receipt_sha256": "4cfe9ad8486de4bbee8f10fe7421a8bcd9c28fd6d053ad5665f662379aa943ca",
+    "result_sha256": "fbb61aabaff5debd749b4b195a6c5d4f24ee68b0857cf1142df8a14afbaac6a0",
+    "trace_limit": "Intermediate printed CL/CD/CM at the failed angle are not saved usable coefficients. Point confidence and iteration metadata remain unavailable."
+  },
+  "comparison_file_sha256": {
+    "comparison-summary.json": "c5d19f62d10688ebd3108a5b5c049056c7c26bfd26bd8b443ac27638e4e1978b",
+    "diagnostic-points.csv": "bd05da3c0130d17da669d5d152bfc91d69d18ae803f7d177f956717ed7a2e723",
+    "history-comparison.csv": "885f3a46819d9884fc38d6c61dba01b811eb8c5ae60c6cd293fcbff78003b534",
+    "replicate-assessment.json": "2ba00cde0afeefed229ef3b0427593b25fc7ed35a44c9a59e96cea58cccec8ad"
+  },
+  "conclusion": {
+    "baseline_family": "UNESTABLISHED; diagnostic domain does not satisfy -40..+32 coverage or conditional first BEM query",
+    "genuine_single_case_bem": "UNESTABLISHED",
+    "genuine_two_profile_comparison": "UNESTABLISHED",
+    "startup_history_sensitivity": "REMAINS: +6 absent here but present in all three historical sweeps; shared +8 coefficients change beyond displayed resolution. Startup/traversal history changed together; all possible causes were not isolated.",
+    "within_protocol_replicate_agreement_or_disagreement": "UNASSESSED: neither replicate pair was reached; no replacement launch is authorized by a partial P1."
+  },
+  "evidence_class": "caller_supplied_unqualified",
+  "execution_source": {
+    "caller_sha256": "be1c1722dfcac4db34ed1e013cb4704546bd5d8aaed4c169e0069844ddaea310",
+    "local_commit": "b7aecd4306a9a6beaaf892f5db9ed8e21106a254",
+    "published_same_tree_commit": "6c816e5aa77d279d19b2370140b16df25b74ebe2",
+    "tree": "d09094e1c23694d24371f399c6e4d04877489824"
+  },
+  "experiment_id": "xfoil_naca0012_startup_history_repeatability_v1",
+  "finished_at_utc": "2026-11-07T13:45:49.460586+00:00",
+  "fresh_process_evidence": {
+    "airfoil_input_sha256": "1741afe9178e573592a91de9d64cb087ba3cd203f1e929ef60d1a737774dc529",
+    "interpretation": "Registered pre-spawn observation, independently bound to this call and its capture. Fresh reviewed adapter subprocess; no cached result or inherited working-directory solution/default files. Not process-image attestation or isolation of every causal variable.",
+    "only_expected_airfoil_present": true,
+    "pre_spawn_event_sha256": "101f8c6a913dde57b13f2e08e06c22be334ca0723102a261c5adcc194da1655b",
+    "registration_sha256": "e4ad4159c1282041fc790ed365f6a3e7a7400377b7ac4e283564e3b2681248c0",
+    "registration_verified": true
+  },
+  "historical_archive_sha256": {
+    "iter160": "78de64539024d9b146400618f70dbdc3469e8b0be882f83553427aa6cd22c7e6",
+    "iter80": "e779bb00158571541a10419ecccb011fc1c8a5ea32cad40a59e005c59f9082e9",
+    "one_degree": "7cc5d67d9f265e10d27e203fb630e99c56ff4eb9d231b959fde5664fd1ab75e1",
+    "preflight": "058a91997442d42df0859a373df1bbb00005fcd882c86616ef5707590f45331a"
+  },
+  "invocation": {
+    "launcher_returncode": 1,
+    "utc_end": "2026-11-07T13:45:49.546408+00:00",
+    "utc_start": "2026-11-07T13:45:48.397848+00:00"
+  },
+  "invocation_file_sha256": "8ff535743077016838c820ba283dfaf0de376c0c250316db2452a8a2a4cf8b40",
+  "invocations": [
+    {
+      "alpha_degrees": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "attempts": 1,
+      "capture_binding_passed": true,
+      "elapsed_s": 0.39232360599999083,
+      "error_type": "ValueError",
+      "experiment_id": "xfoil_naca0012_startup_history_repeatability_v1",
+      "failure_stage": "completeness",
+      "finished_at_utc": "2026-11-07T13:45:49.460484+00:00",
+      "index": 0,
+      "invocation_sha256": "4e0d0db9140ccd2ab5f1dee23fc1e8029f0e4a153e13d0e92636e2251b750131",
+      "label": "P1",
+      "process_observation": {
+        "process_status": "completed",
+        "returncode": 0
+      },
+      "reason": "12/13 usable; unavailable: [6]",
+      "request_file": "P-request-preimage.json",
+      "request_sha256": "8de8e44c0210d352784486e1276d1a946f2fee0a1f24efdbf0df8266a935db4b",
+      "script_file": "P-script.txt",
+      "script_sha256": "eefa0c79bec03004ca7c91e987377ba5c5381fe2e9ec585155d0620ab065e694",
+      "status": "FAILED",
+      "unavailable_angles_deg": [
+        6
+      ],
+      "usable_points": 12
+    },
+    {
+      "alpha_degrees": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "attempts": 0,
+      "experiment_id": "xfoil_naca0012_startup_history_repeatability_v1",
+      "index": 1,
+      "invocation_sha256": "6b866e802f2cdc134defad52ce550c08eb8cb4406279f6080005e8baa98de368",
+      "label": "P2",
+      "process_observation": null,
+      "reason": "Stopped at P1; no attempt",
+      "request_file": "P-request-preimage.json",
+      "request_sha256": "8de8e44c0210d352784486e1276d1a946f2fee0a1f24efdbf0df8266a935db4b",
+      "script_file": "P-script.txt",
+      "script_sha256": "eefa0c79bec03004ca7c91e987377ba5c5381fe2e9ec585155d0620ab065e694",
+      "status": "NOT_LAUNCHED",
+      "unavailable_angles_deg": null,
+      "usable_points": null
+    },
+    {
+      "alpha_degrees": [
+        0,
+        -1,
+        -2,
+        -3,
+        -4,
+        -5,
+        -6,
+        -7,
+        -8,
+        -9,
+        -10,
+        -11,
+        -12
+      ],
+      "attempts": 0,
+      "experiment_id": "xfoil_naca0012_startup_history_repeatability_v1",
+      "index": 2,
+      "invocation_sha256": "7a9dc37a260f61de1d761b7513d6e4a3f61edc1dc19d2e451286022df6e949e9",
+      "label": "N1",
+      "process_observation": null,
+      "reason": "Stopped at P1; no attempt",
+      "request_file": "N-request-preimage.json",
+      "request_sha256": "e4525d94f17e78f7d3e8164455d65a9f4edb954e774ec3e97b9e4d4d6b780984",
+      "script_file": "N-script.txt",
+      "script_sha256": "c1d090f40d9008080b3cf50ce90d79b3dbe7b53394058cbcbb062904ec33c5fd",
+      "status": "NOT_LAUNCHED",
+      "unavailable_angles_deg": null,
+      "usable_points": null
+    },
+    {
+      "alpha_degrees": [
+        0,
+        -1,
+        -2,
+        -3,
+        -4,
+        -5,
+        -6,
+        -7,
+        -8,
+        -9,
+        -10,
+        -11,
+        -12
+      ],
+      "attempts": 0,
+      "experiment_id": "xfoil_naca0012_startup_history_repeatability_v1",
+      "index": 3,
+      "invocation_sha256": "dffe10c4579b4d90cfd7d6d2e19c11929dbfab2d50651e5dfb2e4958a54f6c44",
+      "label": "N2",
+      "process_observation": null,
+      "reason": "Stopped at P1; no attempt",
+      "request_file": "N-request-preimage.json",
+      "request_sha256": "e4525d94f17e78f7d3e8164455d65a9f4edb954e774ec3e97b9e4d4d6b780984",
+      "script_file": "N-script.txt",
+      "script_sha256": "c1d090f40d9008080b3cf50ce90d79b3dbe7b53394058cbcbb062904ec33c5fd",
+      "status": "NOT_LAUNCHED",
+      "unavailable_angles_deg": null,
+      "usable_points": null
+    }
+  ],
+  "physical_qualification": false,
+  "plan_sha256": "1321b28508a34ebfab7cd97acdae695dbe3b4a8f594e168fb0c62e566c29b153",
+  "provider_api_attempts": 1,
+  "retries": 0,
+  "reviews": {
+    "astra_b": "PENDING_OWNER_RELAY",
+    "independent_prelaunch_automated": "22 inert checks passed on retained source; two evidence-integrity findings repaired before launch",
+    "postrun_additional_automated": "UNAVAILABLE: separate reviewer reached usage limit; do not claim independent postrun approval"
+  },
+  "runtime": {
+    "dependencies": {
+      "numpy": "2.3.5",
+      "scipy": "1.17.0"
+    },
+    "osmap_sha256": "2f6b3c63461d71da9b6cb9ca1340d77cff0cfbe767679d15b5b8556b45d948c4",
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+    "python_executable_file_sha256": "fa67443527ed9647f760d807e2a38f26340757123e643c4639cf273ed15d5ea7",
+    "resolved_library_file_sha256": {
+      "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2": "c8438e4fde1934e61c88311633f00949ff645d5c04cdb8671fa3d78164d2f307",
+      "/usr/lib/x86_64-linux-gnu/libX11.so.6.4.0": "b03e563b316b8b53c7988f0ee91d6656cc425538e00947a8b14482d179e80099",
+      "/usr/lib/x86_64-linux-gnu/libXau.so.6.0.0": "4275ec5b14bec21770c44447b3a52977e211c7ba08745008f3a1783878e091bb",
+      "/usr/lib/x86_64-linux-gnu/libXdmcp.so.6.0.0": "761409b24c818719f8c8a2a64a61c8ac6a3067f3d8882485dca64a98d7500040",
+      "/usr/lib/x86_64-linux-gnu/libc.so.6": "9792e3cbb541c8f44c7acf5f14f4022ea62998ecc787d326bed4d8b6547dfd92",
+      "/usr/lib/x86_64-linux-gnu/libgcc_s.so.1": "30c61ab012a4241bed033725a09b61f5fdd3bb7df95ee852d0b096520524c7af",
+      "/usr/lib/x86_64-linux-gnu/libgfortran.so.5.0.0": "d1c716d10039872bb5481b921d2142577c7873cad4d8d9f09028231aa7e42127",
+      "/usr/lib/x86_64-linux-gnu/libm.so.6": "6d567d53e895273ca14a1f9dc164fc6c8d39aed2f60aa46a733c2784228915f3",
+      "/usr/lib/x86_64-linux-gnu/libmvec.so.1": "cd2f99df70ed0fa44f79bd6322396180d19eaa1fb527b1b6e2aec9cdfc034d9d",
+      "/usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0": "a1cde2cec9b7b8b38e4cca450c55c63651efb80a2458d76964b56b763043f533"
+    }
+  },
+  "runtime_one_degree_comparison": {
+    "archive_sha256": "7cc5d67d9f265e10d27e203fb630e99c56ff4eb9d231b959fde5664fd1ab75e1",
+    "environment_differences": {
+      "PYTHONPATH": {
+        "current": "/workspace/scratch/c24949ad6a4e/xfoil-startup-history-20261107",
+        "previous": "/workspace/scratch/c24949ad6a4e/xfoil-one-degree-continuation-20261107"
+      }
+    },
+    "identity_differences": {}
+  },
+  "schema_version": 1,
+  "status": "STOPPED",
+  "stop": {
+    "label": "P1",
+    "reason": "12/13 usable; unavailable: [6]",
+    "stage": "completeness"
+  }
+}

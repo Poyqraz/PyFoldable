@@ -719,3 +719,27 @@ explicit source-bound blade-root declaration. The five selectable profiles,
 CAD/polar-upload-free workflow and separate APC 13-inch scenario remain.
 Genuine single-case BEM and two-profile comparison **UNESTABLISHED**;
 `physical_qualification=false`.
+
+### 2026-11-07 startup/history diagnostic — P1 stopped, no replicate pair
+
+The separately frozen [finite diagnostic](handoffs/xfoil-startup-history-2026-11-07.md)
+kept the pinned binary, NACA0012, low Mach/Re corner, ITER160 and 90 s cap.
+P1 requested retained 0°…+12° radians in ascending order and returned 12/13;
++6° is unavailable. Native exit 0 and valid capture binding did not meet
+completeness. P2, N1 and N2 are explicitly NOT_LAUNCHED; one actual process,
+zero retries and zero BEM. The caller completed the whole P1 script before
+stopping subsequent launches.
+
+Shared +8° coefficients and +6° coverage differ from earlier sweeps, so
+startup/traversal-history sensitivity remains in these observations. Neither
+replicate pair exists: within-protocol agreement/disagreement is UNASSESSED.
+The narrower diagnostic does not replace the −40°…+32° family, cover the
+conditional first BEM query, or authorize stitching/symmetry substitution.
+Historical 35/37, 36/37 and 68/73 archives remain unchanged. Full raw evidence,
+52 requested slots and 81 historical coefficient comparisons are retained.
+
+No complete family, production registration, new UI/store or root selection.
+All five profiles, CAD/polar-upload-free intent, source-bound root requirement,
+longer-proximal intent and separate 250 mm/APC 13-inch scenarios are preserved.
+Genuine single-case BEM and two-profile comparison **UNESTABLISHED**;
+`physical_qualification=false`.
