@@ -1,0 +1,245 @@
+{
+  "all_shared_angle_count": 37,
+  "comparison_counts_by_coefficient": {
+    "iter160_vs_iter80": {
+      "cd": {
+        "both_unavailable": 1,
+        "earlier_unavailable": 1,
+        "larger_than_one_displayed_increment": 1,
+        "one_displayed_increment": 1,
+        "unchanged": 33
+      },
+      "cl": {
+        "both_unavailable": 1,
+        "earlier_unavailable": 1,
+        "larger_than_one_displayed_increment": 1,
+        "unchanged": 34
+      },
+      "cm": {
+        "both_unavailable": 1,
+        "earlier_unavailable": 1,
+        "larger_than_one_displayed_increment": 1,
+        "unchanged": 34
+      }
+    },
+    "one_degree_vs_iter160": {
+      "cd": {
+        "both_unavailable": 1,
+        "larger_than_one_displayed_increment": 5,
+        "later_unavailable": 1,
+        "one_displayed_increment": 8,
+        "unchanged": 22
+      },
+      "cl": {
+        "both_unavailable": 1,
+        "larger_than_one_displayed_increment": 4,
+        "later_unavailable": 1,
+        "unchanged": 31
+      },
+      "cm": {
+        "both_unavailable": 1,
+        "larger_than_one_displayed_increment": 4,
+        "later_unavailable": 1,
+        "unchanged": 31
+      }
+    },
+    "one_degree_vs_iter80": {
+      "cd": {
+        "both_unavailable": 1,
+        "earlier_unavailable": 1,
+        "larger_than_one_displayed_increment": 5,
+        "later_unavailable": 1,
+        "one_displayed_increment": 9,
+        "unchanged": 20
+      },
+      "cl": {
+        "both_unavailable": 1,
+        "earlier_unavailable": 1,
+        "larger_than_one_displayed_increment": 4,
+        "later_unavailable": 1,
+        "unchanged": 30
+      },
+      "cm": {
+        "both_unavailable": 1,
+        "earlier_unavailable": 1,
+        "larger_than_one_displayed_increment": 4,
+        "later_unavailable": 1,
+        "unchanged": 30
+      }
+    }
+  },
+  "key_angle_tokens": {
+    "-36": {
+      "iter160": {
+        "cd": "0.38372",
+        "cl": "-1.1466",
+        "cm": "0.1772"
+      },
+      "iter80": {
+        "cd": "0.38372",
+        "cl": "-1.1466",
+        "cm": "0.1772"
+      },
+      "one_degree": {
+        "cd": "0.38373",
+        "cl": "-1.1466",
+        "cm": "0.1772"
+      }
+    },
+    "-37": {
+      "iter160": "NOT_REQUESTED",
+      "iter80": "NOT_REQUESTED",
+      "one_degree": {
+        "cd": "0.38854",
+        "cl": "-1.1619",
+        "cm": "0.1869"
+      }
+    },
+    "-38": {
+      "iter160": null,
+      "iter80": null,
+      "one_degree": null
+    },
+    "-39": {
+      "iter160": "NOT_REQUESTED",
+      "iter80": "NOT_REQUESTED",
+      "one_degree": null
+    },
+    "-40": {
+      "iter160": {
+        "cd": "0.48435",
+        "cl": "-0.7740",
+        "cm": "0.1578"
+      },
+      "iter80": {
+        "cd": "0.48435",
+        "cl": "-0.7740",
+        "cm": "0.1578"
+      },
+      "one_degree": null
+    },
+    "-8": {
+      "iter160": {
+        "cd": "0.07908",
+        "cl": "-0.5698",
+        "cm": "-0.0008"
+      },
+      "iter80": {
+        "cd": "0.07556",
+        "cl": "-0.6279",
+        "cm": "-0.0037"
+      },
+      "one_degree": {
+        "cd": "0.07838",
+        "cl": "-0.5811",
+        "cm": "-0.0015"
+      }
+    },
+    "30": {
+      "iter160": {
+        "cd": "0.34560",
+        "cl": "0.7050",
+        "cm": "-0.0930"
+      },
+      "iter80": {
+        "cd": "0.34561",
+        "cl": "0.7050",
+        "cm": "-0.0930"
+      },
+      "one_degree": {
+        "cd": "0.34560",
+        "cl": "0.7050",
+        "cm": "-0.0930"
+      }
+    },
+    "32": {
+      "iter160": {
+        "cd": "0.37300",
+        "cl": "0.7272",
+        "cm": "-0.1061"
+      },
+      "iter80": null,
+      "one_degree": {
+        "cd": "0.37300",
+        "cl": "0.7272",
+        "cm": "-0.1061"
+      }
+    }
+  },
+  "largest_absolute_deltas_by_coefficient": {
+    "iter160_vs_iter80": {
+      "cd": [
+        -8,
+        "0.00352"
+      ],
+      "cl": [
+        -8,
+        "0.0581"
+      ],
+      "cm": [
+        -8,
+        "0.0029"
+      ]
+    },
+    "one_degree_vs_iter160": {
+      "cd": [
+        8,
+        "0.00476"
+      ],
+      "cl": [
+        8,
+        "-0.1467"
+      ],
+      "cm": [
+        10,
+        "0.0059"
+      ]
+    },
+    "one_degree_vs_iter80": {
+      "cd": [
+        8,
+        "0.00476"
+      ],
+      "cl": [
+        8,
+        "-0.1467"
+      ],
+      "cm": [
+        10,
+        "0.0059"
+      ]
+    }
+  },
+  "method": "Exact Decimal comparison of retained XFOIL printed CL/CD/CM tokens, matched by bit-identical original radians. One displayed increment is descriptive only, not an acceptance tolerance. Null means no retained usable coefficient.",
+  "request_sha256": {
+    "iter160": "bf1af202aeec9030456de270cfa3e8753bdb587e564843e076d61a6a824706b7",
+    "iter80": "f9a61a085929079339424b7c340184beea1aac7bbf4a915ce261afb8dba9cdca",
+    "one_degree": "06f7dfd67659efb8bfb7b1a6538891900d834dfdd10b3b550466ac8b30a8dc26"
+  },
+  "requested_points": {
+    "iter160": 37,
+    "iter80": 37,
+    "one_degree": 73
+  },
+  "unavailable_degrees": {
+    "iter160": [
+      -38
+    ],
+    "iter80": [
+      32,
+      -38
+    ],
+    "one_degree": [
+      29,
+      -25,
+      -38,
+      -39,
+      -40
+    ]
+  },
+  "usable_points": {
+    "iter160": 36,
+    "iter80": 35,
+    "one_degree": 68
+  }
+}

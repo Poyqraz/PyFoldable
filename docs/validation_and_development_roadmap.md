@@ -849,3 +849,24 @@ kök beyanı, taze kabul/hazırlık ve açık gerçek BEM'dir. İkinci farklı p
 kontrollerle ayrıca ele alınır; mevcut karşılaştırma kabul kapısı otomatik yükselmez.
 Yeni depo/UI veya mühendislik çalışması yoktur. Gerçek tek vaka/iki profil kabulü
 UNESTABLISHED; `physical_qualification=false`. Hiçbir PR birleştirilmedi.
+
+### 2026-11-07 NACA0012 1° devam deneyi — ilk hücrede durdu
+
+Önceki ITER160 kontrolü 36/37 kullanılabilir nokta verdi; −38° eksik kaldı
+ve ITER80'e göre +30° ile −8° katsayıları değişti. Ayrı kimlikli
+[yetkili 1° deneyinde](agent/handoffs/xfoil-one-degree-continuation-2026-11-07.md)
+250 mm / 7100 RPM bazı, aynı dört Mach/Re köşesi, ikili, ITER160 ve 90 s
+sınırı korundu. Kayıtlı 37 radyan düğümüne yalnız 36 ara açı eklendi.
+
+İlk hücrede bağlama kontrolleri geçti, ancak yalnız 68/73 nokta kullanılabildi.
++29°, −25°, −38°, −39° ve −40° eksik; kalan üç hücre NOT_LAUNCHED. −38°
+eksik kaldı ve önceki iki kayıtta kullanılabilen −40° bu koşuda kayboldu.
+[37 ortak açının karşılaştırması](decisions/xfoil-one-degree-continuation-v1/cell00-shared-comparison.csv)
+çözüm sırasına duyarlılığı gösterir. Bu dikdörtgen deney, ilişkili olası BEM
+sorgu görüntüsünün ya da fiziksel geçerliliğin kanıtı değildir. Tekrar,
+nokta onarımı, kayıt birleştirme, üretim kaydı ve BEM çağrısı yapılmadı.
+
+İlk gerçek tek vaka sonucu için uygun tam aile, kaynağı belirtilmiş açık kök beyanı,
+taze kabul ve açık BEM çalıştırması hâlâ gerekli. Beş profil ve CAD/polar
+yüklemesiz akış korunuyor; APC 13 inç vaka ayrı. Gerçek tek vaka ve iki profil
+karşılaştırması **UNESTABLISHED**; `physical_qualification=false`.

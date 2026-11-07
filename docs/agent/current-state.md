@@ -692,3 +692,30 @@ genuine BEM are still required. Two genuine-origin matching snapshots also do no
 automatically close the existing comparison status gate. All five profiles and
 the no-upload route remain;250mm and APC13-inch stay separate. Genuine single-case
 and two-profile acceptance UNESTABLISHED; `physical_qualification=false`.
+
+### 2026-11-07 NACA0012 one-degree continuation — executed, stopped
+
+The earlier decision above is historical. Its separately retained ITER160
+control returned 36/37 usable points, with −38° unavailable and +30°/−8°
+coefficient changes relative to ITER80. The next owner-authorized
+[one-degree experiment](handoffs/xfoil-one-degree-continuation-2026-11-07.md)
+was frozen separately on #109 with 73 descending angles and all 37 original
+radians intact. It kept the 250 mm / 7100 RPM baseline, the same Mach/Re
+rectangle, executable, cold initialization, ITER160 and 90 s limit.
+
+Cell00 returned 68/73 usable points. +29°, −25°, −38°, −39° and −40° are
+unavailable; the three later cells were explicitly NOT_LAUNCHED. Native
+exit 0 and valid binding did not meet completeness. The −38° late residual
+remained stagnant at printed precision; −40°, previously usable, was lost.
+The [retained comparison](../decisions/xfoil-one-degree-continuation-v1/cell00-shared-comparison.csv)
+records all shared Cl/Cd/Cm values and solution-path differences. No
+retry, point stitching, production registration or BEM occurred.
+
+No complete applicable family is established. The padded rectangular
+requests, correlated potential query image and conditional initial queries
+remain distinct; actual genuine BEM queries are unavailable. A future
+single-case run still needs suitable full data, fresh admission and an
+explicit source-bound blade-root declaration. The five selectable profiles,
+CAD/polar-upload-free workflow and separate APC 13-inch scenario remain.
+Genuine single-case BEM and two-profile comparison **UNESTABLISHED**;
+`physical_qualification=false`.
