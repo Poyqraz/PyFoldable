@@ -1,0 +1,406 @@
+{
+  "adapter_source_sha256": "b5a6e12c550cae3d24cba7a86d9656461c20fc2ed7aa8008c3917dd60b6c0410",
+  "admitted_family": false,
+  "bem_calls": 0,
+  "cell00_capture": {
+    "assessment_sha256": "94357e99f9b7af05de672058c85f1204d3e908466d2a8769ca8ebe334835bf3f",
+    "binding_sha256": "b418fe6ce6317b73470f8e69a2b38f246b6c969e9543156e4961a36ec5b04301",
+    "compatible_header_tokens": {
+      "mach": "0.041",
+      "profile": "_PyFoldable_NACA0012",
+      "reynolds": "0.026 e 6"
+    },
+    "evidence_ready": false,
+    "failed_trace_events": [
+      {
+        "angle_deg": 29,
+        "last_five_printed_iteration_rms_max": [
+          [
+            "156",
+            "0.9699E-02",
+            "0.2439E-01"
+          ],
+          [
+            "157",
+            "0.9699E-02",
+            "0.2439E-01"
+          ],
+          [
+            "158",
+            "0.9699E-02",
+            "0.2439E-01"
+          ],
+          [
+            "159",
+            "0.9699E-02",
+            "0.2439E-01"
+          ],
+          [
+            "160",
+            "0.9699E-02",
+            "0.2439E-01"
+          ]
+        ],
+        "line_one_based": 2693
+      },
+      {
+        "angle_deg": -25,
+        "last_five_printed_iteration_rms_max": [
+          [
+            "156",
+            "0.1404E-01",
+            "0.2563E+00"
+          ],
+          [
+            "157",
+            "0.1287E-01",
+            "-.2351E+00"
+          ],
+          [
+            "158",
+            "0.1404E-01",
+            "0.2563E+00"
+          ],
+          [
+            "159",
+            "0.1287E-01",
+            "-.2351E+00"
+          ],
+          [
+            "160",
+            "0.1404E-01",
+            "0.2563E+00"
+          ]
+        ],
+        "line_one_based": 10080
+      },
+      {
+        "angle_deg": -38,
+        "last_five_printed_iteration_rms_max": [
+          [
+            "156",
+            "0.2767E-01",
+            "0.8838E-01"
+          ],
+          [
+            "157",
+            "0.2767E-01",
+            "0.8838E-01"
+          ],
+          [
+            "158",
+            "0.2767E-01",
+            "0.8838E-01"
+          ],
+          [
+            "159",
+            "0.2767E-01",
+            "0.8838E-01"
+          ],
+          [
+            "160",
+            "0.2767E-01",
+            "0.8838E-01"
+          ]
+        ],
+        "line_one_based": 12118
+      },
+      {
+        "angle_deg": -39,
+        "last_five_printed_iteration_rms_max": [
+          [
+            "156",
+            "0.2568E-03",
+            "-.6985E-02"
+          ],
+          [
+            "157",
+            "0.2568E-03",
+            "-.6985E-02"
+          ],
+          [
+            "158",
+            "0.2568E-03",
+            "-.6985E-02"
+          ],
+          [
+            "159",
+            "0.2568E-03",
+            "-.6985E-02"
+          ],
+          [
+            "160",
+            "0.2568E-03",
+            "-.6985E-02"
+          ]
+        ],
+        "line_one_based": 13404
+      },
+      {
+        "angle_deg": -40,
+        "last_five_printed_iteration_rms_max": [
+          [
+            "156",
+            "0.9999E-03",
+            "-.2720E-01"
+          ],
+          [
+            "157",
+            "0.9999E-03",
+            "-.2720E-01"
+          ],
+          [
+            "158",
+            "0.9999E-03",
+            "-.2720E-01"
+          ],
+          [
+            "159",
+            "0.9999E-03",
+            "-.2720E-01"
+          ],
+          [
+            "160",
+            "0.9999E-03",
+            "-.2720E-01"
+          ]
+        ],
+        "line_one_based": 14691
+      }
+    ],
+    "historical_iter160_failed_trace_events": [
+      {
+        "angle_deg": -38,
+        "last_five_printed_iteration_rms_max": [
+          [
+            "156",
+            "0.2767E-01",
+            "0.8838E-01"
+          ],
+          [
+            "157",
+            "0.2767E-01",
+            "0.8838E-01"
+          ],
+          [
+            "158",
+            "0.2767E-01",
+            "0.8838E-01"
+          ],
+          [
+            "159",
+            "0.2767E-01",
+            "0.8838E-01"
+          ],
+          [
+            "160",
+            "0.2767E-01",
+            "0.8838E-01"
+          ]
+        ],
+        "line_one_based": 5679
+      }
+    ],
+    "missing_per_angle_confidence_and_iteration_counts": true,
+    "parsed_valid_rows": 68,
+    "raw_streams_and_polar": {
+      "polar_file": {
+        "byte_count": 6106,
+        "sha256": "6ee502483f752422783b3acf1d00b42d6325169bd5c4e48a1204510fc032c9a6",
+        "status": "present"
+      },
+      "stderr": {
+        "byte_count": 82,
+        "sha256": "2e3f2acf892f7cf131f8e30a65909726ec274c5e93c83aad9c993cc4e51b86a3",
+        "status": "present"
+      },
+      "stdout": {
+        "byte_count": 605015,
+        "sha256": "ab6eb6a0b293978748c6d5b5150a6c3e9d107807aea0d5fb490f844838898f03",
+        "status": "present"
+      }
+    },
+    "receipt_sha256": "4d2b3f986c56640f35e975726ed98cd8af8949eac38a6bc8772f15a9528f9d64",
+    "result_sha256": "78602bb63d76efc3103b8a052f2693ddcbd601c03068dd27144840b1d5113393",
+    "returned_metadata_verified": {
+      "polar_row_count": {
+        "returned_value": 68,
+        "source": "reviewed_parser_valid_rows_including_unmatched_rows",
+        "source_value": 68,
+        "status": "consistent"
+      },
+      "repanel": {
+        "returned_value": true,
+        "source": "reviewed_options_default_true_and_checked_script_PANE",
+        "source_value": true,
+        "status": "consistent"
+      },
+      "returncode": {
+        "returned_value": 0,
+        "source": "capture.returncode",
+        "source_value": 0,
+        "status": "consistent"
+      }
+    },
+    "trace_limits": "Printed failure lines and iteration residuals are diagnostics, not usable polar rows, confidence values or qualified results."
+  },
+  "cells": [
+    {
+      "angle_count": 73,
+      "attempts": 1,
+      "capture_binding_passed": true,
+      "elapsed_s": 5.338234175999787,
+      "error_type": "ValueError",
+      "failure_stage": "completeness",
+      "finished_at_utc": "2026-11-07T07:30:50.749888+00:00",
+      "index": 0,
+      "mach": 0.040507164718475736,
+      "process_observation": {
+        "process_status": "completed",
+        "returncode": 0
+      },
+      "profile": "NACA0012",
+      "reason": "68/73 usable points; unavailable angles: [29, -25, -38, -39, -40]",
+      "request_file": "cell-00-request-preimage.json",
+      "request_sha256": "06f7dfd67659efb8bfb7b1a6538891900d834dfdd10b3b550466ac8b30a8dc26",
+      "reynolds": 26030.624179244653,
+      "script_file": "cell-00-script.txt",
+      "script_sha256": "23afb06763a6f91a1d9b155d34f7e0cb8f2fc01c4de1f343177964b509231823",
+      "status": "FAILED",
+      "unavailable_angles_deg": [
+        29,
+        -25,
+        -38,
+        -39,
+        -40
+      ],
+      "usable_points": 68
+    },
+    {
+      "angle_count": 73,
+      "attempts": 0,
+      "index": 1,
+      "mach": 0.040507164718475736,
+      "process_observation": null,
+      "profile": "NACA0012",
+      "reason": "Stopped at cell 00; no later attempt",
+      "request_file": "cell-01-request-preimage.json",
+      "request_sha256": "462f2815378afdf237727e5c291d835f11030f46f44d8088c61270fa97e8d9fe",
+      "reynolds": 88107.31488200535,
+      "script_file": "cell-01-script.txt",
+      "script_sha256": "192bc17fa6cb48c0ee9798c36ecf47194d1c2edc8d337f18c3c48f53d734d5d2",
+      "status": "NOT_LAUNCHED",
+      "unavailable_angles_deg": null,
+      "usable_points": null
+    },
+    {
+      "angle_count": 73,
+      "attempts": 0,
+      "index": 2,
+      "mach": 0.2649894145852458,
+      "process_observation": null,
+      "profile": "NACA0012",
+      "reason": "Stopped at cell 00; no later attempt",
+      "request_file": "cell-02-request-preimage.json",
+      "request_sha256": "ae09ec3733c2905f3c40f262f2b3b33b4b520ea3c9fcfc93dfa4264182d906c0",
+      "reynolds": 26030.624179244653,
+      "script_file": "cell-02-script.txt",
+      "script_sha256": "488787ee75161d8ed253701a5068e6a76b99dc8ac0d15765ccfc6f190cf65a50",
+      "status": "NOT_LAUNCHED",
+      "unavailable_angles_deg": null,
+      "usable_points": null
+    },
+    {
+      "angle_count": 73,
+      "attempts": 0,
+      "index": 3,
+      "mach": 0.2649894145852458,
+      "process_observation": null,
+      "profile": "NACA0012",
+      "reason": "Stopped at cell 00; no later attempt",
+      "request_file": "cell-03-request-preimage.json",
+      "request_sha256": "347a8f25c7b6372ff59b9fc0bf6c59c19e695068905d91cd445699de34d5b656",
+      "reynolds": 88107.31488200535,
+      "script_file": "cell-03-script.txt",
+      "script_sha256": "b480e1400f9187f4bd5a5927b3b047dce70bd96fc28d0de89c34e6ea04aeceab",
+      "status": "NOT_LAUNCHED",
+      "unavailable_angles_deg": null,
+      "usable_points": null
+    }
+  ],
+  "comparison_csv_sha256": "1f5f8807d1c6eae8cdaf424cb132bb0708c2a4956971df9ee45074811b26db8f",
+  "comparison_summary_sha256": "6bb378637cf49ea86dddf89530681128a57cdfe694defb33a558953353791b1c",
+  "evidence_class": "caller_supplied_unqualified",
+  "executable_file_sha256": "2b952bd21705d4d4147aa6b3e7db14f833a91dd9e1c9279261203f1cef1432ce",
+  "execution_runtime": {
+    "dependencies": {
+      "numpy": "2.3.5",
+      "scipy": "1.17.0"
+    },
+    "osmap_sha256": "2f6b3c63461d71da9b6cb9ca1340d77cff0cfbe767679d15b5b8556b45d948c4",
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+    "python_executable_file_sha256": "fa67443527ed9647f760d807e2a38f26340757123e643c4639cf273ed15d5ea7",
+    "resolved_library_file_sha256": {
+      "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2": "c8438e4fde1934e61c88311633f00949ff645d5c04cdb8671fa3d78164d2f307",
+      "/usr/lib/x86_64-linux-gnu/libX11.so.6.4.0": "b03e563b316b8b53c7988f0ee91d6656cc425538e00947a8b14482d179e80099",
+      "/usr/lib/x86_64-linux-gnu/libXau.so.6.0.0": "4275ec5b14bec21770c44447b3a52977e211c7ba08745008f3a1783878e091bb",
+      "/usr/lib/x86_64-linux-gnu/libXdmcp.so.6.0.0": "761409b24c818719f8c8a2a64a61c8ac6a3067f3d8882485dca64a98d7500040",
+      "/usr/lib/x86_64-linux-gnu/libc.so.6": "9792e3cbb541c8f44c7acf5f14f4022ea62998ecc787d326bed4d8b6547dfd92",
+      "/usr/lib/x86_64-linux-gnu/libgcc_s.so.1": "30c61ab012a4241bed033725a09b61f5fdd3bb7df95ee852d0b096520524c7af",
+      "/usr/lib/x86_64-linux-gnu/libgfortran.so.5.0.0": "d1c716d10039872bb5481b921d2142577c7873cad4d8d9f09028231aa7e42127",
+      "/usr/lib/x86_64-linux-gnu/libm.so.6": "6d567d53e895273ca14a1f9dc164fc6c8d39aed2f60aa46a733c2784228915f3",
+      "/usr/lib/x86_64-linux-gnu/libmvec.so.1": "cd2f99df70ed0fa44f79bd6322396180d19eaa1fb527b1b6e2aec9cdfc034d9d",
+      "/usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0": "a1cde2cec9b7b8b38e4cca450c55c63651efb80a2458d76964b56b763043f533"
+    }
+  },
+  "execution_source": {
+    "local_commit": "622ad1bcb8fd78eb47018f83a5f3827749a8c05d",
+    "published_same_tree_commit": "1c6e03863d4adb7e0b9d16f7c00663ca749a3008",
+    "tree": "97fd628561a0f9e4f75f2bbfd1c8abf2a21d4d6a"
+  },
+  "experiment_id": "xfoil_naca0012_one_degree_continuation_v1",
+  "finished_at_utc": "2026-11-07T07:30:50.751978+00:00",
+  "genuine_single_case_bem": "UNESTABLISHED",
+  "genuine_two_profile_comparison": "UNESTABLISHED",
+  "invocation": {
+    "launcher_returncode": 1,
+    "utc_end": "2026-11-07T07:30:50.957127+00:00",
+    "utc_start": "2026-11-07T07:30:43.775869+00:00"
+  },
+  "invocation_sha256": "9ee0c313b553c3e8a1944cc99fc97af7bc10c5a6ce83b5a7ccb8095beb61411a",
+  "native_timeout": false,
+  "observed_native_subprocess_launches": 1,
+  "physical_qualification": false,
+  "pinned_archives_sha256": {
+    "iter160": "78de64539024d9b146400618f70dbdc3469e8b0be882f83553427aa6cd22c7e6",
+    "iter80": "e779bb00158571541a10419ecccb011fc1c8a5ea32cad40a59e005c59f9082e9",
+    "preflight": "058a91997442d42df0859a373df1bbb00005fcd882c86616ef5707590f45331a"
+  },
+  "plan_sha256": "0e082cea4e485f664d259f669cd75f5f17615550553d984de4b41a854569d342",
+  "provider_api_attempts": 1,
+  "registry_publication": false,
+  "retries": 0,
+  "returned_points_sha256": "04196a74a4b58f3c46b461b1fbd9ae5e2fb9cfb1442e0478e2772e3292b4ae52",
+  "runtime_comparison": {
+    "differences": {
+      "iter160": [
+        "PYTHONPATH"
+      ],
+      "iter80": [
+        "PYTHONDONTWRITEBYTECODE",
+        "PYTHONPATH"
+      ]
+    },
+    "full_comparison_in_archive": "run/runtime.json",
+    "process_image_attestation": false,
+    "same_measured_python_numpy_scipy_platform_and_native_library_hashes_as_both_histories": true
+  },
+  "schema_version": 1,
+  "status": "STOPPED",
+  "stop": {
+    "cell_index": 0,
+    "reason": "68/73 usable points; unavailable angles: [29, -25, -38, -39, -40]",
+    "stage": "completeness"
+  }
+}
