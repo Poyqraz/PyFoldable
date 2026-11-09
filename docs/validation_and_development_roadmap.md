@@ -827,3 +827,27 @@ izinli tek vaka BEM; ardından kontrollü iki farklı profilin gerçek karşıla
 Aday menteşe/şablon kataloğu ve mekanik entegrasyon açık kalır. Yeni sağlayıcı
 çağrısı, BEM çalışması, nokta onarımı veya bilimsel politika değişikliği yapılmadı.
 Genuine comparison **UNESTABLISHED**; `physical_qualification=false`.
+
+### 2026-11-09 altıncı profil gereksinimi — NACA4412 yazılım entegrasyonu
+
+Sahibin talebiyle NACA4412, incelenmiş #108 üzerine ayrı taslakta mevcut beş
+profilin sonuna eklendi; varsayılan NACA2412 ve önceki profil sırası korunur.
+[PDAS kaynaklı koordinat sözleşmesi](py02_profile_coordinate_identity.md#2026-11-09--sixth-selectable-profile-naca4412)
+açık firar kenarını ve kaynak hassasiyetini korur. Tarihsel UIUC NACA4412
+uç-nokta kaydı ayrı kalır; APC12/NACA4415 eşlemesi yapılmaz.
+
+Mevcut dosya yüklemesiz seçim, iç taslak/önizleme, kalıcı sağlayıcı kaydı kabulü,
+açık BEM eylemi ve değişmez JSON/CSV sonuç ilişkisi altı profili destekler.
+Katalog manifesti değiştiği için yeni taslak kimliği değişir; eski koordinat,
+sağlayıcı isteği, depo sürümü ve kaydedilmiş sonuçlar yeniden yazılmaz.
+Tarihsel tanı kendi doğrulanmış eski manifestiyle aynı raporu yeniden üretir.
+Geçmiş beş-profil açıklamaları tarihsel bağlamlarında korunmuştur.
+
+Bu tamamlanma yazılım kapsamındadır: olumlu testler inerttir; NACA4412 için uygun
+gerçek polar ailesi yoktur. Eksik veri açık hazırlık hatası verir; seçim/rerender
+çözücü başlatmaz. Gerçek 35/37 negatif kanıt ve önceki deneyler değiştirilmedi.
+Sonraki sayısal gereksinim uygun tam veri, kaynaklı kök/geometri beyanı, taze kabul
+ve açık gerçek BEM; ardından kontrollü farklı-profil karşılaştırmasıdır.
+CAD/polar yüklemesiz ürün amacı, uzun proksimal koşulu ve ortak ana geometri
+korunur. Gerçek tek vaka ve iki profil kabulü **UNESTABLISHED**;
+`physical_qualification=false`. Birleştirme veya yeni mühendislik deneyi yoktur.

@@ -19,7 +19,7 @@ from pyfoldable.visualization.propeller_25d import PreviewBladeStation, Propelle
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "configs/designs/TIP_HINGED_250_CANONICAL.toml"
-EXPECTED = ("NACA0012", "NACA2412", "NACA23012", "NACA4415", "NACA63-412")
+EXPECTED = ("NACA0012", "NACA2412", "NACA23012", "NACA4415", "NACA63-412", "NACA4412")
 
 
 def _draft(airfoil, **changes):
@@ -51,10 +51,10 @@ def _family(airfoil, digest):
     ) for re in (100, 1e7) for ma in (0, 1)))
 
 
-def test_exact_five_project_profiles():
+def test_exact_six_project_profiles():
     assert PROJECT_AIRFOIL_IDS == EXPECTED
     with pytest.raises(ValueError, match="catalog"):
-        load_project_airfoil("NACA4412")
+        load_project_airfoil("APC12")
 
 
 @pytest.mark.parametrize("profile", EXPECTED)

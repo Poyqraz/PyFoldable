@@ -94,3 +94,66 @@ covered all five selections and controlled catalog failure.
 Next: **PY-03**, explicit validated polar-bundle upload and active-draft BEM UI.
 Do not silently generate polars, reuse the 254 mm benchmark as the 250 mm draft,
 or relax bounds to obtain an output.
+
+## 2026-11-09 — sixth selectable profile: NACA4412
+
+The owner requires **NACA4412 appended as the sixth entry**. The original order
+NACA0012, NACA2412, NACA23012, NACA4415, NACA63-412 and default NACA2412 remain.
+Earlier five-profile statements above describe their dated implementation.
+
+The new asset uses Ralph Carmichael's PDAS [four/five-digit tables](https://www.pdas.com/sections45.html),
+**“NACA Section 4412” first/common-x table**, not the adjacent “NACA 4412” table
+whose upper/lower abscissae differ. Retrieved/transcribed 2026-11-08. The
+[26-row transcription](declarations/pdas_naca4412_common_x_20261108.csv) preserves
+all four printed percentage-chord columns at four decimal places. Divide by 100
+using exact decimal arithmetic and emit six decimal places in two Lednicer
+blocks, as for NACA2412/NACA4415. The existing parser combines the common LE
+into 51 upper-TE→LE→lower-TE coordinates. No smoothing, fitting, resampling,
+TE closing or generic NACA regeneration occurs. At x/c=1 the upper/lower
+ordinates are +0.001295 and −0.001248: open gap 0.002543 chord is retained.
+
+- Bundled DAT byte SHA-256: `fda8c1de8cc295c4cf7b5164d8e200d763db899701043c905657c8c87be8e30c`.
+- Canonical coordinate SHA-256: `54c4b6e87914cd036e3a7674c043ebd670596b064b014623aaaf6fadfbfc1fee`.
+- These identify the transcription and parsed shape respectively, not the HTML
+  page, aerodynamic coefficients or a manufactured blade. Third-party factual
+  numeric-subset attribution and license scope remain in
+  [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
+- This PDAS asset is separate from the historical UIUC NACA4412 selected endpoint
+  in the mixed-profile study. No endpoint asset/declaration is replaced or
+  relicensed. NACA4412 is not an APC12 or NACA4415 alias.
+
+The catalog loader, internal draft, exact-coordinate preview, configured retained
+provider store and existing explicit preparation/run/snapshot/export services
+now accept all six IDs. The normal application route needs no CAD, polar JSON,
+manifest or path supplied by the user. Selection/rerender only changes geometry
+and preparation status. Matching coordinate-bound complete provider evidence,
+source-bound template/root declarations and numerical policy remain mandatory.
+No applicable genuine NACA4412 family is established or installed. An absent
+family produces `missing_applicable_family`; it does not substitute coefficients
+or run a provider/BEM. Software positive cases use labeled inert records and an
+inert BEM seam; no genuine numerical acceptance follows.
+
+### Catalog metadata compatibility
+
+Original catalog SHA-256 `cab021803ad8832d82cac8954ff6a3548731b9c1aff4a9d6c4642f7bb4d4a0a0`
+becomes `18951dba6dc59215c1b196f33637265d9ae01332244809a82d6592bcd077dcd0`.
+The original five asset bytes, identities and manifest rows are unchanged.
+Newly constructed drafts include the new manifest digest in airfoil metadata,
+so even an old profile obtains a new **draft** identity. Provider canonical
+preimages bind coordinates/ID/numerical request, not catalog metadata, so old
+matching request identities and stored versions remain unchanged and admissible
+under fresh checks. Old snapshots retain their original draft/report/provenance.
+Application preparation identities also bind current implementation bytes and
+store location; they are freshly computed, never migrated or forced to equal
+old prepared identities. Changed selections/preparations invalidate active results.
+
+The historical PR97 query diagnostic originally reconstructed drafts from the
+live catalog, which no longer reproduced its pinned draft hashes after this
+addition. Its replay now explicitly verifies the byte-exact
+[original catalog snapshot](declarations/project_airfoil_catalog_20260901.json),
+verifies the current selected asset's source/table/raw and coordinate identities
+against it, and uses the historical manifest metadata only within that replay.
+All original draft/coordinate/design/policy checks remain. Its report and
+`five_profile_workflow_unchanged` historical declaration remain byte-identical;
+the current UI and ordinary application admission continue using six entries.
+Tampered historical manifests or changed assets block replay, not relax it.

@@ -40,6 +40,14 @@
       "source_table": "NACA Section 63-412, first/common-x table, 26 rows; percent chord divided by 100",
       "source_sha256": "89446c03b3725d25482c7e5cf56ec95b8c47873a5e5e7094a148d26aa3b1c03c",
       "airfoil_coordinate_sha256": "f001973703830e0db98893169ebcdaf848deb3b3d175e7781cebb44a254327c2"
+    },
+    {
+      "id": "NACA4412",
+      "filename": "NACA4412.dat",
+      "source": "https://www.pdas.com/sections45.html",
+      "source_table": "NACA Section 4412, first/common-x table, 26 rows; percent chord divided by 100",
+      "source_sha256": "fda8c1de8cc295c4cf7b5164d8e200d763db899701043c905657c8c87be8e30c",
+      "airfoil_coordinate_sha256": "54c4b6e87914cd036e3a7674c043ebd670596b064b014623aaaf6fadfbfc1fee"
     }
   ]
 }

@@ -76,7 +76,7 @@ future imported coordinate file remains subject to its own source terms even whe
 PyFoldable parser normalizes it.
 
 `pyfoldable/data/airfoils/NACA0012.dat` is a byte-identical copy of that first-party
-analytic realization. The bundled NACA2412, NACA23012, NACA4415 and NACA63-412 DAT
+analytic realization. The bundled NACA2412, NACA23012, NACA4415, NACA63-412 and NACA4412 DAT
 files contain factual numeric coordinate subsets transcribed from Ralph Carmichael's
 PDAS recomputed NACA section tables (first/common-x table, percent chord converted
 to unit chord). Their source links and content identities are in `catalog.json`.

@@ -11,6 +11,7 @@ import hashlib
 import json
 import math
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -31,7 +32,7 @@ from pyfoldable.core.bem_rotor import (
     solve_bem_rotor,
 )
 from pyfoldable.core.polar import PolarInterpolationError, PolarQueryResult
-from pyfoldable.core.profile_catalog import PROJECT_AIRFOIL_IDS, load_project_airfoil
+from pyfoldable.core.profile_catalog import load_project_airfoil
 from pyfoldable.core.providers import (
     PolarGenerationRequest,
     PolarGenerationResult,
@@ -61,6 +62,8 @@ REAL_CAPTURE_FILES = (
     "comparison.json",
     "second_capture_manifest.json",
 )
+HISTORICAL_CATALOG = "docs/declarations/project_airfoil_catalog_20260901.json"
+HISTORICAL_CATALOG_SHA256 = "cab021803ad8832d82cac8954ff6a3548731b9c1aff4a9d6c4642f7bb4d4a0a0"
 ANNULUS_COUNT = 40
 ALPHA_STEP_RAD = math.radians(2.0)
 SYNTHETIC_SOURCE = "synthetic feasibility trace; not a provider polar"
@@ -521,7 +524,7 @@ def _experiment(
         "executed_by_this_diagnostic": False,
         "bem_calls": 0,
         "profiles": list(MATCHED_PAIR),
-        "five_profile_workflow_unchanged": True,
+        "five_profile_workflow_unchanged": True,  # historical declaration, not the current UI catalog,
         "provider": {
             "name": "xfoil-subprocess",
             "adapter_version": "2",
@@ -602,10 +605,36 @@ def _experiment(
     }
 
 
+def _historical_catalog(repository_root: Path) -> dict:
+    """Exact historical metadata for PR97 replay, never current UI admission."""
+    payload = (repository_root / HISTORICAL_CATALOG).read_bytes()
+    if _sha_bytes(payload) != HISTORICAL_CATALOG_SHA256:
+        raise PolarQueryFeasibilityError("Historical catalog snapshot hash does not match.")
+    return json.loads(payload)
+
+
+def _historical_airfoil(airfoil_id: str, catalog: dict) -> AirfoilDefinition:
+    """Keep the original metadata only after current asset bytes/shape agree.
+
+    An appended catalog entry changes new drafts. Replaying the old diagnostic
+    must use its actual old catalog, not relabel current drafts as old evidence.
+    The existing pinned draft/coordinate checks below still apply independently.
+    """
+    row = next(row for row in catalog["profiles"] if row["id"] == airfoil_id)
+    foil = load_project_airfoil(airfoil_id)
+    if (foil.source != row["source"]
+            or foil.metadata["source_table"] != row["source_table"]
+            or foil.metadata["source_sha256"] != row["source_sha256"]
+            or airfoil_coordinate_sha256(foil) != row["airfoil_coordinate_sha256"]):
+        raise PolarQueryFeasibilityError("Current asset differs from the historical catalog; cannot replay.")
+    return replace(foil, metadata={**foil.metadata, "catalog_sha256": HISTORICAL_CATALOG_SHA256})
+
+
 def build_polar_query_feasibility(repository_root: str | Path) -> dict[str, Any]:
-    """Build the diagnostic from the canonical design and the retained PR #97 pins."""
+    """Replay the historical five-profile diagnostic with its exact PR #97 inputs."""
     root = Path(repository_root)
     pins = _load_pins(root)
+    historical_catalog = _historical_catalog(root)
     declaration = pins["declaration.json"]
     failures = {"NACA0012": pins["NACA0012.json"], "NACA2412": pins["NACA2412.json"]}
     source = root / SOURCE_DESIGN
@@ -615,7 +644,7 @@ def build_polar_query_feasibility(repository_root: str | Path) -> dict[str, Any]
     bindings = {}
     designs = {}
     for airfoil_id in MATCHED_PAIR:
-        foil = load_project_airfoil(airfoil_id)
+        foil = _historical_airfoil(airfoil_id, historical_catalog)
         draft = build_design_draft(source, _inputs(airfoil_id), airfoil_definition=foil)
         design, angle = _load(draft)
         if abs(angle) > 1.0e-12:
@@ -677,7 +706,7 @@ def build_polar_query_feasibility(repository_root: str | Path) -> dict[str, Any]
         "baseline": {
             "source_design_sha256": source_sha,
             "profiles": bindings,
-            "catalog_profile_ids": list(PROJECT_AIRFOIL_IDS),
+            "catalog_profile_ids": [row["id"] for row in historical_catalog["profiles"]],
             "solver_policy": policy,
             "policy_sha256": _sha_text(policy),
         },

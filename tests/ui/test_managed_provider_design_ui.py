@@ -47,7 +47,7 @@ def no_implicit_provider_or_bem(monkeypatch):
     monkeypatch.setattr(design_analysis, "solve_bem_rotor", forbidden)
 
 
-def test_five_profiles_and_missing_root_or_data_do_not_launch(monkeypatch):
+def test_all_catalog_profiles_and_missing_root_or_data_do_not_launch(monkeypatch):
     monkeypatch.setattr(service, "application_provider_repository", lambda: service.ManagedProviderRepository())
     app = workspace()
     assert any("missing_root_declaration" in e.value for e in app.error)
@@ -200,3 +200,88 @@ def test_removed_selected_version_does_not_select_another_version(tmp_path, monk
     assert widget(app.selectbox, "Uygulama kayıt sürümü").value is None
     assert service.ACTIVE_REQUEST not in app.session_state
     assert not any(b.label == "İç kayıtlarla BEM çalıştır" for b in app.button)
+
+
+@pytest.mark.parametrize("failure", [False, True], ids=["inert-success", "inert-failure"])
+def test_naca4412_saved_attribution_and_round_trip_switch_invalidation(tmp_path, monkeypatch, failure):
+    from pyfoldable.application.provider_record_store import ProviderRecordStore, STORE_ENVIRONMENT_VARIABLE
+    from pyfoldable.application.profile_bem_comparison import comparison_document, comparison_csv
+    from pyfoldable.core.airfoil import airfoil_coordinate_sha256
+    from pyfoldable.core.profile_catalog import load_project_airfoil
+    import csv
+    import io
+
+    root = tmp_path / "INERT-sixth-profile-store"
+    bindings = {}
+    with ProviderRecordStore(root) as store:
+        for profile in ("NACA4412", "NACA0012"):
+            _, repo = scenario(profile)
+            bindings[profile] = store.register_family(repo.families[0], version_label="INERT-no-solver-v1")
+    monkeypatch.setenv(STORE_ENVIRONMENT_VARIABLE, str(root))
+    app = declare_root(workspace())
+    assert widget(app.selectbox, "Kesit modeli").value == "NACA2412"  # unchanged default
+    assert len(widget(app.selectbox, "Kesit modeli").options) == 6
+    widget(app.selectbox, "Kesit modeli").set_value("NACA4412").run(timeout=30)
+    assert not app.exception
+    assert any("Profil seçimi geometriyi belirler" in c.value for c in app.caption)
+    assert all(u.value is None for u in app.file_uploader)
+    widget(app.selectbox, "Uygulama kayıt sürümü").set_value(bindings["NACA4412"].content_sha256).run(timeout=30)
+    assert widget(app.button, "İç kayıtlarla BEM çalıştır").disabled
+    widget(app.button, "İç kayıt hazırlığını doğrula").click().run(timeout=30)
+    calls = install_inert_bem(monkeypatch)
+    if failure:
+        def inert_failure(*a, **k):
+            calls.append("INERT failure seam; no solve")
+            raise design_analysis.DesignAnalysisError("INERT NACA4412 solver seam failure")
+        monkeypatch.setattr(design_analysis, "solve_bem_rotor", inert_failure)
+    widget(app.button, "İç kayıtlarla BEM çalıştır").click().run(timeout=30)
+    assert not app.exception and len(calls) == 1
+    outcome = app.session_state[service.ACTIVE_OUTCOME]
+    record = outcome.record
+    assert record["airfoil_id"] == "NACA4412"
+    assert record["airfoil_coordinate_sha256"] == airfoil_coordinate_sha256(load_project_airfoil("NACA4412"))
+    assert record["evidence_class"] == "inert_fixture"
+    assert record["physical_qualification"] is False
+    if failure:
+        assert outcome.artifact is None and record["thrust_n"] is None
+        assert record["torque_nm"] is record["shaft_power_w"] is None
+    else:
+        report = json.loads(outcome.artifact.report_json)
+        assert report["request"]["provider_design_admission"]["geometry"]["profile"] == "NACA4412"
+        assert "INERT BEM seam" in outcome.artifact.report_json
+    widget(app.button, "İç kayıt sonucunu karşılaştırmaya ekle").click().run(timeout=30)
+    saved = json.dumps(app.session_state["py03_profile_comparison_records"], sort_keys=True)
+    app.run(timeout=30)
+    assert len(calls) == 1
+    for profile in ("NACA0012", "NACA4412"):
+        widget(app.selectbox, "Kesit modeli").set_value(profile).run(timeout=30)
+        assert not app.exception
+        assert service.ACTIVE_REQUEST not in app.session_state
+        assert service.ACTIVE_OUTCOME not in app.session_state
+        assert widget(app.selectbox, "Uygulama kayıt sürümü").value is None
+        assert not any(d.label == "İç kayıt BEM raporunu indir" for d in app.get("download_button"))
+        assert json.dumps(app.session_state["py03_profile_comparison_records"], sort_keys=True) == saved
+    document = comparison_document(json.loads(saved), evidence_class="inert_fixture")
+    exported = next(csv.DictReader(io.StringIO(comparison_csv(document))))
+    assert exported["record_sha256"] == record["record_sha256"]
+    assert exported["airfoil_coordinate_sha256"] == record["airfoil_coordinate_sha256"]
+    assert exported["airfoil_id"] == "NACA4412"
+    assert document["software_controlled_comparison"] is False  # only one coordinate identity
+    assert document["performance_comparison"] is False and len(calls) == 1
+
+
+def test_empty_configured_store_naca4412_has_specific_rejection_and_no_result(tmp_path, monkeypatch):
+    from pyfoldable.application.provider_record_store import ProviderRecordStore, STORE_ENVIRONMENT_VARIABLE
+    root = tmp_path / "empty-deployment-store"
+    (root / "records").mkdir(parents=True)
+    (root / "blobs").mkdir()
+    monkeypatch.setenv(STORE_ENVIRONMENT_VARIABLE, str(root))
+    app = declare_root(workspace())
+    widget(app.selectbox, "Kesit modeli").set_value("NACA4412").run(timeout=30)
+    assert not app.exception
+    assert any("missing_applicable_family" in e.value and "NACA4412" in e.value for e in app.error)
+    assert not any(b.label == "İç kayıtlarla BEM çalıştır" for b in app.button)
+    assert service.ACTIVE_REQUEST not in app.session_state
+    assert service.ACTIVE_OUTCOME not in app.session_state
+    assert not any(d.label == "İç kayıt BEM raporunu indir" for d in app.get("download_button"))
+    assert all(u.value is None for u in app.file_uploader)

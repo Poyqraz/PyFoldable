@@ -104,7 +104,7 @@ def test_geometry_preparation_rejects_stopped_rotor_without_stale_download():
     assert not any(item.label == "Analiz hazırlığını JSON indir" for item in app.get("download_button"))
 
 
-@pytest.mark.parametrize("profile", ["NACA0012", "NACA2412", "NACA23012", "NACA4415", "NACA63-412"])
+@pytest.mark.parametrize("profile", ["NACA0012", "NACA2412", "NACA23012", "NACA4415", "NACA63-412", "NACA4412"])
 def test_geometry_uses_project_coordinates_for_every_profile(profile, monkeypatch):
     import pyfoldable.visualization.propeller_25d as preview
     from pyfoldable.core.profile_catalog import PROJECT_AIRFOIL_IDS, load_project_airfoil

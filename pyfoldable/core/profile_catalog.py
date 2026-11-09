@@ -11,7 +11,7 @@ from .airfoil import airfoil_coordinate_sha256, parse_airfoil_coordinates, valid
 from .models import AirfoilDefinition
 
 
-PROJECT_AIRFOIL_IDS = ("NACA0012", "NACA2412", "NACA23012", "NACA4415", "NACA63-412")
+PROJECT_AIRFOIL_IDS = ("NACA0012", "NACA2412", "NACA23012", "NACA4415", "NACA63-412", "NACA4412")
 _ASSETS = files("pyfoldable").joinpath("data", "airfoils")
 
 
