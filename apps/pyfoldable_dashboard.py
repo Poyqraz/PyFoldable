@@ -187,7 +187,7 @@ def _render_profile_comparison(
         "Hover itki verimi sıralama ölçütü olarak kullanılmaz."
     )
     st.warning(
-        "Gerçek provider karşılaştırması BLOCKED. Depoda beş katalog profili için "
+        "Gerçek provider karşılaştırması BLOCKED. Depoda katalog profilleri için "
         "eşleşmiş gerçek polar demeti yoktur. Bu tablo yazılım akışını ve yüklenen "
         "tabloları kaydeder; physical_qualification=false."
     )
@@ -1175,6 +1175,10 @@ def _render_design_geometry() -> None:
         "Kesit modeli",
         PROJECT_AIRFOIL_IDS,
         index=PROJECT_AIRFOIL_IDS.index("NACA2412"),
+    )
+    model_columns[0].caption(
+        "Profil seçimi geometriyi belirler; sayısal analiz için aynı koordinatlara bağlı "
+        "tam ve uygun sağlayıcı kaydı ayrıca gerekir. Seçim bir çözüm başlatmaz."
     )
     chord_scale = _geometry_control(model_columns[1].slider,
         "Chord ölçeği",

@@ -667,3 +667,32 @@ coordinate-distinct two-profile comparison. Existing template/hinge/mechanical
 integration gaps remain. No experiment, missing-point repair, genuine BEM, geometry
 selection or gate change occurred. Genuine comparison **UNESTABLISHED**;
 `physical_qualification=false`.
+
+### 2026-11-09 owner requirement — NACA4412 as sixth catalog profile
+
+A separate branch from reviewed #108 `df9571542594c5f51206a4bce3cc5ff9bf107b63`
+adds NACA4412 after the original five IDs; default NACA2412 is unchanged.
+The [coordinate contract](../py02_profile_coordinate_identity.md#2026-11-09--sixth-selectable-profile-naca4412)
+records the PDAS first/common-x transcription, open TE, separate byte/coordinate
+hashes and distinction from the historical UIUC mixed-profile endpoint.
+
+The existing no-upload catalog→draft/preview→stored-provider admission→explicit
+BEM boundary→immutable snapshot/export route now supports all six profiles.
+Selectable geometry does not imply available coefficients. No applicable genuine
+NACA4412 family is established; missing/foreign/incomplete data block preparation.
+Positive demonstrations use inert records and an inert BEM seam. Profile switching
+invalidates active state while saved attribution stays unchanged.
+
+The catalog digest changes new drafts; old coordinate identities, canonical
+provider requests, stored versions and snapshots remain intact. Historical PR97
+replay explicitly uses its checked original catalog metadata, retaining all old
+hash gates and archived reports. Genuine 35/37 evidence stays unchanged/incomplete;
+seven cells remain NOT_LAUNCHED. No new provider/BEM/CFD study or production family.
+The NACA0012 two-state CFD package and #111 branch/evidence are unchanged.
+
+Source-bound root declarations, shared parent planform/chord/twist, longer-proximal
+intent and separate 250 mm/APC 13-inch scenarios remain. Genuine single-case BEM
+and two-profile comparison **UNESTABLISHED**; `physical_qualification=false`.
+The next numerical deliverable remains method/data feasibility followed by complete
+applicable evidence, fresh admission and explicit genuine BEM; this software
+addition does not establish it. No merge.

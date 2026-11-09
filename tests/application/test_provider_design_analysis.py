@@ -132,7 +132,7 @@ def install_inert_bem(monkeypatch):
 
 
 @pytest.mark.parametrize("profile", PROJECT_AIRFOIL_IDS)
-def test_five_profiles_prepare_and_explicitly_run_without_uploads(profile, monkeypatch):
+def test_all_catalog_profiles_prepare_and_explicitly_run_without_uploads(profile, monkeypatch):
     selection, repo = scenario(profile)
     prepared = app.prepare_provider_design_analysis(selection, repo)
     assert prepared.polar_run.payload

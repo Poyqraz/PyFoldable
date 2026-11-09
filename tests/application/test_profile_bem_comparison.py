@@ -64,24 +64,24 @@ def _success(airfoil_id: str = "NACA2412", **changes):
     return snapshot_success(artifact, evidence_class="inert_fixture")
 
 
-def test_five_catalog_profiles_keep_distinct_geometry_and_one_planform() -> None:
-    assert PROJECT_AIRFOIL_IDS == ("NACA0012", "NACA2412", "NACA23012", "NACA4415", "NACA63-412")
+def test_six_catalog_profiles_keep_distinct_geometry_and_one_planform() -> None:
+    assert PROJECT_AIRFOIL_IDS == ("NACA0012", "NACA2412", "NACA23012", "NACA4415", "NACA63-412", "NACA4412")
     identities = [identities_for_draft(_draft(airfoil_id), annulus_count=4) for airfoil_id in PROJECT_AIRFOIL_IDS]
     coordinates = {row["airfoil_coordinate_sha256"] for row in identities}
     drafts = {row["draft_sha256"] for row in identities}
     geometries = {row["geometry_sha256"] for row in identities}
     planforms = {row["planform_sha256"] for row in identities}
     conditions = {row["condition_sha256"] for row in identities}
-    assert len(coordinates) == 5
-    assert len(drafts) == 5
-    assert len(geometries) == 5
+    assert len(coordinates) == 6
+    assert len(drafts) == 6
+    assert len(geometries) == 6
     assert planforms == {identities[0]["planform_sha256"]}
     assert conditions == {identities[0]["condition_sha256"]}
     assert all(row["physical_qualification"] is False for row in identities)
     snapshots = [_success(airfoil_id) for airfoil_id in PROJECT_AIRFOIL_IDS]
     assert [row["airfoil_id"] for row in snapshots] == list(PROJECT_AIRFOIL_IDS)
-    assert len({row["record_sha256"] for row in snapshots}) == 5
-    assert len({row["geometry_sha256"] for row in snapshots}) == 5
+    assert len({row["record_sha256"] for row in snapshots}) == 6
+    assert len({row["geometry_sha256"] for row in snapshots}) == 6
     assert {row["planform_sha256"] for row in snapshots} == planforms
     assert all(row["status"] == "success" and row["evidence_class"] == "inert_fixture" for row in snapshots)
 

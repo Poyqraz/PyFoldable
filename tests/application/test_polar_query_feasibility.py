@@ -53,7 +53,8 @@ def test_query_map_separates_first_query_potential_domain_and_rectangle() -> Non
     assert report["baseline"]["solver_policy"]["bounds"] == "error"
     assert report["baseline"]["solver_policy"]["annulus_settings"]["include_tip_loss"] is True
     assert report["baseline"]["solver_policy"]["annulus_settings"]["max_iterations"] == 100
-    assert report["baseline"]["catalog_profile_ids"] == list(PROJECT_AIRFOIL_IDS)
+    assert report["baseline"]["catalog_profile_ids"] == list(PROJECT_AIRFOIL_IDS[:-1])
+    assert PROJECT_AIRFOIL_IDS[-1] == "NACA4412"  # current catalog; replay retains its original five
 
 
 def test_synthetic_traces_keep_positive_first_query_and_withhold_totals() -> None:
@@ -146,3 +147,22 @@ def test_recommended_experiment_is_one_unexecuted_probe() -> None:
     assert "+30.65875 deg" in text
     assert experiment["experiment_id"] in text
     assert "physical_qualification: false" in text
+
+
+def test_historical_replay_rejects_changed_manifest_or_asset(tmp_path, monkeypatch):
+    from dataclasses import replace
+    import pytest
+    from pyfoldable.application import polar_query_feasibility as module
+    from pyfoldable.core.profile_catalog import load_project_airfoil
+
+    path = tmp_path / module.HISTORICAL_CATALOG
+    path.parent.mkdir(parents=True)
+    path.write_bytes((ROOT / module.HISTORICAL_CATALOG).read_bytes() + b" ")
+    with pytest.raises(module.PolarQueryFeasibilityError, match="snapshot hash"):
+        module._historical_catalog(tmp_path)
+    historical = module._historical_catalog(ROOT)
+    foil = load_project_airfoil("NACA0012")
+    wrong = replace(foil, coordinates=tuple((x, y * 1.01) for x, y in foil.coordinates))
+    monkeypatch.setattr(module, "load_project_airfoil", lambda profile: wrong)
+    with pytest.raises(module.PolarQueryFeasibilityError, match="Current asset differs"):
+        module._historical_airfoil("NACA0012", historical)

@@ -317,3 +317,25 @@ Provider records persist locally. **Comparison/user-result history remains
 session-scoped**; saved snapshots are immutable within the existing session/export
 contract, not a new durable user-history service. Genuine single-case BEM evidence
 and genuine distinct-profile comparison remain unestablished; `physical_qualification=false`.
+
+## 2026-11-09 — NACA4412 catalog append compatibility
+
+NACA4412 is now the sixth selectable project profile under the
+[coordinate contract](py02_profile_coordinate_identity.md#2026-11-09--sixth-selectable-profile-naca4412).
+This is geometry/software availability, not numerical-data readiness. All
+existing root, longer-proximal, exact request/capture, complete-family, policy,
+stored-version, explicit-execution and distinct-coordinate comparison gates
+apply unchanged. No accepted production family is added.
+
+Appending the manifest changes new draft metadata/identity for all six profiles,
+while original five coordinate bytes and provider request preimages remain
+unchanged. Existing persistent records and saved snapshots are not rewritten.
+The pre-append PR108 inert compatibility fixture proves old record bytes and
+JSON/CSV attribution survive reopening, and fresh admission can use that old
+matching family with the current draft. Old active preparations cannot be
+silently reused. A missing family gives a specific UI diagnostic with no active
+result or run action; when an explicit attempted family selection reaches the
+application boundary, its rejection snapshot retains attribution and null totals.
+No undeclared family or policy is fabricated just to create a UI rejection record.
+Normal users still do not supply CAD/polar/manifest/path files. Comparison history
+remains session-scoped; this increment adds no persistence layer or acquisition.

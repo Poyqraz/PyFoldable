@@ -159,7 +159,7 @@ def _geometry(selection: ProviderDesignSelection) -> dict:
     design, _ = analysis._load_open(selection.draft)
     ids = {s.airfoil_id for s in design.blade.stations}
     if len(ids) != 1 or next(iter(ids)) not in PROJECT_AIRFOIL_IDS:
-        raise ProviderDesignPreparationError("catalog_profile_required", "Select one of the five catalog profiles")
+        raise ProviderDesignPreparationError("catalog_profile_required", "Select a project catalog profile")
     profile = next(iter(ids))
     foil = next(f for f in design.airfoils if f.id == profile)
     coordinate = airfoil_coordinate_sha256(foil)
