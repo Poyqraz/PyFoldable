@@ -147,7 +147,7 @@ def _family(active, root):
     return family, repo, None, prepared.request_sha256
 
 
-def _render_result(row):
+def _render_result(row, *, key_prefix="research_active"):
     aero = row["aerodynamics"]
     if aero["status"] == "success":
         a, b, c = st.columns(3)
@@ -163,7 +163,7 @@ def _render_result(row):
                                                "thrust_n", "torque_nm", "dthrust_n_per_m", "dtorque_nm_per_m"), hide_index=True)
             st.json(aero["polar_query_envelope"], expanded=False)
         st.download_button("Radyal yükleri CSV indir", research.records_csv(radial),
-                           f"{aero['airfoil_id']}_radial.csv", "text/csv", key="research_radial_csv")
+                           f"{aero['airfoil_id']}_radial.csv", "text/csv", key=key_prefix + "_radial_csv")
     else:
         st.warning(f"BEM sonucu yok: {aero['failure_reason']}")
     mech = row["mechanism"]
@@ -179,7 +179,7 @@ def _render_result(row):
     else:
         st.warning(f"Mekanizma durumu: {mech['reason']}")
     st.download_button("Tam sonucu JSON indir", research.saved_result_json(row),
-                       "pyfoldable_research_result.json", "application/json", key="research_active_json")
+                       "pyfoldable_research_result.json", "application/json", key=key_prefix + "_json")
 
 
 def _save(row, *, imported=False):
@@ -231,6 +231,9 @@ def _history():
                            "research_comparison.csv", "text/csv")
     saved = st.selectbox("Arşivden indirilecek sonuç", tuple(records),
         format_func=lambda k: f"{records[k][0]['aerodynamics']['airfoil_id']} · {k[:12]}")
+    with st.expander("Arşivdeki kaydın ayrıntıları"):
+        st.caption("Değişmez kayıt görüntüleniyor; hesap yeniden çalıştırılmıyor.")
+        _render_result(records[saved][0], key_prefix="research_saved_detail")
     st.download_button("Arşivdeki sonucu JSON indir", research.saved_result_json(records[saved][0]),
                        "pyfoldable_saved_result.json", "application/json", key="research_saved_json")
 

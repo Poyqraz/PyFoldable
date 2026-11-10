@@ -50,6 +50,13 @@ def test_all_six_no_upload_run_switch_save_and_restore(tmp_path, monkeypatch):
     assert at.session_state["research_saved_results"][0][0] == saved
     restored = research.read_saved_result(saved.encode())
     assert restored["aerodynamics"]["airfoil_id"] == "NACA0012"
+    # A cold session can inspect the full recovered result without execution.
+    cold = app()
+    cold.session_state["research_saved_results"] = ((saved, True),)
+    cold.run()
+    assert not cold.exception and len(calls) == 6
+    assert any(m.label == "İtki [N]" and m.value == "1.25" for m in cold.metric)
+    assert any(d.key == "research_saved_detail_radial_csv" for d in cold.get("download_button"))
     at.number_input(key="research_axial_800_rpm").set_value(2500.).run()
     assert "research_active" not in at.session_state and len(calls) == 6
 
