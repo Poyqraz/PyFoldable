@@ -188,6 +188,13 @@ def selection_for(active: ResearchDesign, family):
 
 
 def prepare_aero(active, family, repository):
+    first_station = active.design.blade.stations[0].r_over_R * active.design.blade.radius_m
+    if active.root is not None and active.root.value / 1000 > first_station:
+        raise managed.ProviderDesignPreparationError(
+            "aerodynamic_station_before_physical_root",
+            "The declared physical blade root lies outside the first retained station; "
+            "the template span must be declared consistently, without trimming or extrapolation.",
+        )
     if family is None:
         raise managed.ProviderDesignPreparationError("missing_applicable_family", "Choose a matching stored family version.")
     if family.stored_version is None:

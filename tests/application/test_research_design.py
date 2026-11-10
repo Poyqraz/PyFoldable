@@ -142,3 +142,16 @@ def test_partial_mechanical_selection_is_retained_and_root_is_never_inferred(tmp
     assert row["mechanism"]["status"] == "missing_inputs"
     assert row["mechanism"]["inputs"]["mass_g"] == 12 and row["mechanism"]["inputs"]["cg_from_hinge_mm"] is None
     assert release.read_saved_result(release.saved_result_json(row).encode()) == row
+
+
+def test_physical_root_cannot_leave_retained_aerodynamic_stations_inside_empty_span(tmp_path, monkeypatch):
+    from research_inert_support import store, bem
+    store(tmp_path, monkeypatch, ("NACA2412",))
+    calls = bem(monkeypatch)
+    active = release.build_research_design(ROOT, replace(release.defaults(ROOT), root_mm=150.))
+    repo = managed.application_provider_repository()
+    row = release.run_research(active, repo.families[0], repo, None)
+    assert row["geometry"]["status"] == "computed"
+    assert row["aerodynamics"]["status"] == "failure" and not calls
+    assert "aerodynamic_station_before_physical_root" in row["aerodynamics"]["failure_reason"]
+    assert row["aerodynamics"]["thrust_n"] is None

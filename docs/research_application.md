@@ -69,6 +69,8 @@ The axial_800 template explicitly permits either length ordering. The separate
 historical project_250 template retains **proximal longer**:
 h−r_root>R−h,equivalently h>(R+r_root)/2. Shaft-origin h>R/2 is distinct.
 The250mm root is not filled silently. Historical requirements/screens are preserved.
+The declared physical root cannot be outboard of the first retained aerodynamic
+station. Such a conflicting span blocks preparation; it is not trimmed or extrapolated.
 
 Legacy centerline minima assume a hypothetical full−180°fold. Those fields are
 labelled; the new result separately reports the envelope at the declared lower
