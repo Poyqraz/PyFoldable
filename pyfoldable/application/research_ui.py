@@ -31,6 +31,9 @@ def _geometry(active):
                f"{1000*result['first_aerodynamic_station_m']:.2f} mm · "
                f"merkez çizgisi hedef payı {1000*audit['current_requirement_margin_m']:.2f} mm. "
                "Bu ölçüler yüzey açıklığı veya çarpışmasız hareket kanıtı değildir.")
+    st.caption(f"Beyan edilen {i.stow_limit_deg:g}° alt sınırdaki merkez çizgisi zarfı: "
+               f"{1000*result['declared_stow_limit_centerline_envelope_m']:.2f} mm. "
+               "Eski denetimin tam katlanma minimumları varsayımsal −180° hareket içindir.")
     if active.length_order_policy == "proximal_longer" and result["proximal_longer"] is not True:
         st.warning("250 mm proje şablonu: beyan edilen kökten menteşeye olan parça daha uzun olmalı.")
     with st.expander("Profil, planform ve katlı yüzey önizlemesi", expanded=True):
@@ -79,32 +82,46 @@ def _mechanics():
             transition = cols[1].number_input("Düzenleme hızı [rad/s]", .001, 100., .1)
         if None in (mass, cg, inertia) or not source.strip():
             st.info("Kütle, CG, atalet ve kaynak beyanı eksik. Geometri ve BEM bağımsız çalışabilir.")
-            return None
         return research.MechanismInputs(mass, cg, inertia, source, start, duration, velocity,
                                         spring, rest, damping, torque, friction, coulomb, transition)
 
 
-def _family(active):
+def _family(active, root):
     try:
         repo = managed.application_provider_repository()
     except (ValueError, OSError) as exc:
         st.warning(f"Polar deposu: {exc}")
         return None, managed.ManagedProviderRepository(), str(exc), None
     families = {f.stored_version.content_sha256: f for f in repo.families if f.stored_version and f.requests}
+    initial = research.initial_query_ranges(active)
     with st.expander("Altı profil için polar veri durumu", expanded=True):
         rows = []
         for profile in PROJECT_AIRFOIL_IDS:
             matched = [f for f in families.values() if f.requests[0].airfoil.id == profile]
             if not matched:
-                rows.append({"Profil": profile, "Kayıt": "Eşleşen veri yok", "Re": None, "Mach": None, "α [°]": None})
+                rows.append({"Profil": profile, "Kayıt": "Eşleşen veri yok", "Re": None, "Mach": None, "α [°]": None,
+                             "İlk sorgu aralığı": "Veri yok"})
             for f in matched:
                 re = [r.reynolds for r in f.requests]
                 ma = [r.mach for r in f.requests]
                 alpha = [math.degrees(a) for r in f.requests for a in r.alpha_rad]
-                rows.append({"Profil": profile, "Kayıt": f.stored_version.version_label + " · kayıtlı, kabul çalışmada denetlenir",
+                try:
+                    candidate = active if profile == active.inputs.profile else research.build_research_design(
+                        root, replace(active.inputs, profile=profile))
+                    research.prepare_aero(candidate, f, repo)
+                    admission_status = "Tam kayıt adayı · bilimsel doğrulama değil"
+                except (ValueError, OSError) as exc:
+                    admission_status = f"Eksik / reddedildi: {exc}"
+                rows.append({"Profil": profile, "Kayıt": f.stored_version.version_label + " · " + admission_status,
                              "Re": f"{min(re):g}…{max(re):g}", "Mach": f"{min(ma):g}…{max(ma):g}",
-                             "α [°]": f"{min(alpha):g}…{max(alpha):g}"})
+                             "α [°]": f"{min(alpha):g}…{max(alpha):g}",
+                             "İlk sorgu aralığı": "Izgara içinde; tam yol garanti değil"
+                             if research.declared_grid_covers_initial(f, initial) else "Izgara dışında"})
         st.dataframe(rows, hide_index=True)
+        st.caption(f"Bu girdilerin koşullu ilk annulus sorguları: α "
+                   f"{math.degrees(initial[0][0]):.2f}…{math.degrees(initial[0][1]):.2f}°; "
+                   f"Re {initial[1][0]:.0f}…{initial[1][1]:.0f}; "
+                   f"Mach {initial[2][0]:.3f}…{initial[2][1]:.3f}. Henüz çözücü gözlemi değildir.")
     profile = active.inputs.profile
     candidates = {k: f for k, f in families.items() if f.requests[0].airfoil.id == profile}
     key = f"research_version_{profile}"
@@ -269,7 +286,7 @@ def render_research(root: Path):
         st.error(f"Tasarım hazırlanamadı: {exc}")
         _history()
         return
-    family, repository, reason, prepared_identity = _family(active)
+    family, repository, reason, prepared_identity = _family(active, root)
     mechanics = _mechanics()
     view_id = (active.identity, mechanics, prepared_identity,
                None if family is None else family.stored_version.content_sha256, reason)

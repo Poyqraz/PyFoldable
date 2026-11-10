@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "numerical_status": "TWO_MATCHED_REFERENCE_RUNS_OBSERVED_PENDING_ASTRA_B_REVIEW",
+  "software_execution_revision": "ff7c20f2bd0870cfbb8b2b17fe03a694f358d1f0",
+  "software_execution_tree": "4d6f0211601b4128f7ab607227711f5bb646adcf",
+  "frozen_plan_sha256": "8505fa362136496d83340123a3f65045caffdcf94843e7e27d427a192090cab2",
+  "provider_calls": 12,
+  "provider_failures": 0,
+  "usable_points": 96,
+  "requested_points": 96,
+  "genuine_BEM_calls": 2,
+  "BEM_failures": 0,
+  "numerical_model": "existing QPROP-style fully-open station-span BEM with XFOIL6.99 section grid, tip loss on, augmentation/root loss off, bounds=error",
+  "case": "Independent800mm/2400RPM/14m_s axial research layout; not250mm/7100RPM schema example, APC13in or330mm housing",
+  "reference_agreement": "NOT_ASSESSED",
+  "joint_loss_model": "NOT_MODELED",
+  "physical_qualification": false,
+  "results": [
+    {
+      "airfoil_id": "NACA0012",
+      "airfoil_coordinate_sha256": "ab62d56cc86a591da4f83c1980ea5b07743c4e47bdb0eb63a8e166e190a96d42",
+      "thrust_n": 33.421707752866034,
+      "torque_nm": 2.4880853705679464,
+      "shaft_power_w": 625.3240577344399,
+      "inner_radius_m": 0.144,
+      "outer_radius_m": 0.388,
+      "report_sha256": "aec567ec77a89a340d3e77bb8a2d64ebaa8969a58c6fda7f55b8a6944f352c3b",
+      "draft_sha256": "99a6bfdfd497c92616334485051e06f5b078dbfe09a0cb683ed454a8459ee5eb",
+      "polar_query_envelope": {
+        "alpha_rad_max": 0.09027901365156543,
+        "alpha_rad_min": 0.04285853187436792,
+        "clamped_dimensions": [],
+        "interpolated_dimensions": [
+          "alpha_rad",
+          "mach",
+          "reynolds"
+        ],
+        "mach_max": 0.2872712049572462,
+        "mach_min": 0.11603214097026263,
+        "query_count": 616,
+        "reynolds_max": 293126.07728599507,
+        "reynolds_min": 186043.34793422464,
+        "sources": [
+          "xfoil-subprocess:6.99"
+        ]
+      },
+      "result_sha256": "2a64d319e24d48c8350d64ec26dc848e7ce86bc9a50500e93a270cce8d647398",
+      "source_snapshot": "first-application-result.json"
+    },
+    {
+      "airfoil_id": "NACA2412",
+      "airfoil_coordinate_sha256": "3f84aba0f9234ed6e9fe4eedebe88ae8701a19ae181d70e21a02b0704916999a",
+      "thrust_n": 43.647174413635845,
+      "torque_nm": 3.277371908165304,
+      "shaft_power_w": 823.6934007818944,
+      "inner_radius_m": 0.144,
+      "outer_radius_m": 0.388,
+      "report_sha256": "9c208b5f712ee44c831e654fb2c6b5cbc056ad7d8c64e9f8e6eb93e282b24dab",
+      "draft_sha256": "73570550782253ca8d418c1442f6da4ff3b6b10aeab8ef7d8589a29caa65cdb0",
+      "polar_query_envelope": {
+        "alpha_rad_max": 0.09027901365156543,
+        "alpha_rad_min": 0.026134835704791998,
+        "clamped_dimensions": [],
+        "interpolated_dimensions": [
+          "alpha_rad",
+          "mach",
+          "reynolds"
+        ],
+        "mach_max": 0.2872712049572462,
+        "mach_min": 0.1159803819301294,
+        "query_count": 690,
+        "reynolds_max": 293126.07728599507,
+        "reynolds_min": 185960.3586432254,
+        "sources": [
+          "xfoil-subprocess:6.99"
+        ]
+      },
+      "result_sha256": "e95161382e7293f8fb39e8135d9b756c2d42c20391426b23b4053836d1c16c4b",
+      "source_snapshot": "second-application-result.json"
+    }
+  ],
+  "notes": [
+    "SameRPM and inflow, not equal shaft power. No optimum or all-six numerical readiness claim.",
+    "12new cold XFOIL processes, one30s attempt/cell. No stitching, retries, INIT or numerical fallback.",
+    "First AppTest wrapper path error occurred before any BEM/provider call; corrected absolute app path, retained original failure log.",
+    "Final release adds archive/guard/UX hardening; kernel, adapter, frozen numerical protocol and obtained records unchanged."
+  ]
+}

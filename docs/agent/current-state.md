@@ -696,3 +696,36 @@ and two-profile comparison **UNESTABLISHED**; `physical_qualification=false`.
 The next numerical deliverable remains method/data feasibility followed by complete
 applicable evidence, fresh admission and explicit genuine BEM; this software
 addition does not establish it. No merge.
+
+
+### 2026-11-11 — integrated research release candidate
+
+Owner priority is now the no-upload end-to-end research application. A single
+screen at apps/pyfoldable_research.py selects six catalog profiles, declares
+root/hub/hinge and chord/twist geometry, applies conditions, explicitly runs
+independent geometry/open BEM/optional PY-05 modules, compares and exports.
+Provider records are durable; user-result recovery is checked export/import.
+Session history itself remains session-scoped. Missing mechanics does not erase
+independent geometry or aerodynamic predictions. No joint-loss model is implied.
+
+A new explicitly declared axial800mm/2400RPM/14m_s research reference produced
+the first two matched real retained-provider/application BEM results:
+NACA0012 33.421707752866034N,2.4880853705679464N·m,625.3240577344399W;
+NACA2412 43.647174413635845N,3.277371908165304N·m,823.6934007818944W.
+Twelve cold XFOIL calls yielded96/96requested points; two explicit Streamlit
+BEM actions used616and690covered trial queries, no clamps/retries or failures.
+These are observed unqualified numerical predictions pending Astra-B release
+review, not physical/reference agreement or a qualified winner.
+
+The new axial template explicitly allows either length order. The named historical
+project250 template retains proximal-longer; no root is inferred from hub/first
+station. Historic text and250mm/7100RPM,APC13in and330mm housing scenarios survive.
+That250mm case and four other profiles' real numerical readiness remain unresolved.
+Complete retained data are bundled for the two reference profiles only.
+
+See [operator/owner walkthrough and model scope](../research_application.md)
+and reports/research_release_20261111/observed-results.json. Software delivery,
+genuine numerical execution,reference agreement,joint loss and qualification
+are separate statuses. Reference agreement NOT_ASSESSED; joint loss NOT_MODELED;
+physical_qualification=false. A0 maintenance/MorphoCopter are separate.
+No CFD/FEA/optimization or merge; no change to BEM equations/bounds/admission.

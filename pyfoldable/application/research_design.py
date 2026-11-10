@@ -14,6 +14,7 @@ from pathlib import Path
 
 from pyfoldable.core import load_design_config
 from pyfoldable.core.airfoil import airfoil_coordinate_sha256
+from pyfoldable.core.bem_rotor import _interpolate_station
 from pyfoldable.core.profile_catalog import PROJECT_AIRFOIL_IDS, load_project_airfoil
 from pyfoldable.dynamics.mechanism_contracts import DryFriction
 from pyfoldable.dynamics.mechanism_transient import DriveHistory
@@ -84,9 +85,9 @@ class ResearchDesign:
 @dataclass(frozen=True)
 class MechanismInputs:
     """One equivalent CG mass with explicit intrinsic inertia, linear drive ramp."""
-    mass_g: float
-    cg_from_hinge_mm: float
-    intrinsic_inertia_kg_m2: float
+    mass_g: float | None
+    cg_from_hinge_mm: float | None
+    intrinsic_inertia_kg_m2: float | None
     source: str
     start_rpm: float
     duration_s: float
@@ -159,6 +160,10 @@ def geometry_result(active: ResearchDesign):
         i.fold_deg, i.stowed_target_mm / 1000,
     ), tuple(s.r_over_R for s in d.blade.stations))
     proximal, distal = active.exposed_lengths_m
+    stow_tip_radius = math.hypot(
+        d.hinge.radius_m + distal * math.cos(math.radians(i.stow_limit_deg)),
+        distal * math.sin(math.radians(i.stow_limit_deg)),
+    )
     return {"status": "computed", "scope": "planar_centerline_only_no_surface_clearance",
             "length_order_policy": active.length_order_policy,
             "declared_root": None if active.root is None else asdict(active.root),
@@ -166,6 +171,9 @@ def geometry_result(active: ResearchDesign):
             "proximal_m": proximal, "distal_m": distal,
             "proximal_longer": None if proximal is None else proximal > distal,
             "shaft_origin_proximal_longer": d.hinge.radius_m > d.blade.radius_m / 2,
+            "declared_stow_limit_deg": i.stow_limit_deg,
+            "declared_stow_limit_centerline_envelope_m": 2 * max(d.hinge.radius_m, stow_tip_radius),
+            "legacy_audit_full_stow_fields_scope": "Hypothetical 0 to -180 degrees, not the adjustable declared travel limit.",
             "centerline": asdict(audit)}
 
 
@@ -187,10 +195,39 @@ def prepare_aero(active, family, repository):
     return managed.prepare_provider_design_analysis(selection_for(active, family), repository)
 
 
+def initial_query_ranges(active):
+    """Conditional no-induction queries at the selected station-span midpoints."""
+    b, c = active.design.blade, active.design.operating_conditions[0]
+    start = b.stations[0].r_over_R * b.radius_m
+    end = b.stations[-1].r_over_R * b.radius_m
+    count = active.inputs.annulus_count
+    sound = math.sqrt(1.4 * 287.05 * c.temperature_k)
+    rows = []
+    for index in range(count):
+        radius = start + (index + .5) * (end - start) / count
+        station, _ = _interpolate_station(b, radius)
+        u, v = c.forward_speed_m_s, c.angular_speed_rad_s * radius
+        speed = math.hypot(u, v)
+        rows.append((station.twist_rad - math.atan2(u, v),
+                     c.air_density_kg_m3 * speed * station.chord_m / c.dynamic_viscosity_pa_s,
+                     speed / sound))
+    return tuple((min(col), max(col)) for col in zip(*rows))
+
+
+def declared_grid_covers_initial(family, initial):
+    """A readiness hint for the declared grid, not admission or proof of trial coverage."""
+    grid = (tuple(set.intersection(*(set(r.alpha_rad) for r in family.requests))),
+            tuple(r.reynolds for r in family.requests), tuple(r.mach for r in family.requests))
+    return all(values and min(values) <= lo <= hi <= max(values)
+               for values, (lo, hi) in zip(grid, initial))
+
+
 def mechanism_result(active, inputs: MechanismInputs | None):
     scope = "one_planar_rigid_tip_prescribed_rpm_first_contact_no_aero_feedback"
     if inputs is None:
-        return {"status": "missing_inputs", "scope": scope}
+        return {"status": "missing_inputs", "scope": scope, "requested": False}
+    if None in (inputs.mass_g, inputs.cg_from_hinge_mm, inputs.intrinsic_inertia_kg_m2) or not inputs.source.strip():
+        return {"status": "missing_inputs", "scope": scope, "requested": True, "inputs": asdict(inputs)}
     try:
         if (active.root is None or not active.root.meaning.strip() or not active.root.source_identity.strip()
                 or active.length_order_policy == "proximal_longer"
@@ -211,7 +248,7 @@ def mechanism_result(active, inputs: MechanismInputs | None):
             drive=drive, mechanical_source=inputs.source, dry_friction=friction)
         prepared = prepare_bound_mechanism_transient(binding)
         result = run_bound_mechanism_transient(binding, expected_request_sha256=prepared.request_sha256)
-    except (ValueError, ArithmeticError, OSError, RuntimeError) as exc:
+    except (ValueError, TypeError, ArithmeticError, OSError, RuntimeError) as exc:
         return {"status": "blocked_or_failed", "scope": scope, "inputs": asdict(inputs), "reason": str(exc)}
     return {"status": "computed", "scope": scope, "inputs": asdict(inputs),
             "report_sha256": result.report_sha256, "report_text": result.report_json}
@@ -247,8 +284,7 @@ def read_saved_result(raw):
     """Recover only a read-only snapshot; never a prepared/active solve."""
     if not isinstance(raw, bytes) or not 0 < len(raw) <= MAX_SAVED_RESULT_BYTES:
         raise ValueError("Saved result exceeds the 6 MiB limit.")
-    # Reuse the strict retained-document parser for smaller objects; the larger
-    # envelope has the same unique-key/finite-data discipline.
+    # This larger envelope uses the same unique-key/finite-data discipline.
     def unique(pairs):
         result = {}
         for key, value in pairs:
@@ -269,26 +305,39 @@ def read_saved_result(raw):
         if row["draft_sha256"] != hashlib.sha256(row["draft_toml"].encode()).hexdigest():
             raise ValueError("Saved draft checksum mismatch.")
         snapshot = add_record((), row["aerodynamics"])[0]
-        if snapshot["physical_qualification"] is not False:
-            raise ValueError("Unsupported aerodynamic qualification state.")
+        if snapshot["physical_qualification"] is not False or snapshot["draft_sha256"] != row["draft_sha256"]:
+            raise ValueError("Saved aerodynamic snapshot does not belong to the same unqualified draft.")
+        if (not isinstance(row["inputs"], dict) or not isinstance(row["geometry"], dict)
+                or not isinstance(row["mechanism"], dict) or snapshot["airfoil_id"] not in PROJECT_AIRFOIL_IDS
+                or snapshot["airfoil_id"] != row["inputs"].get("profile")):
+            raise ValueError("Saved result input/geometry/profile shape is inconsistent.")
         report = snapshot["report_text"]
         if snapshot["status"] == "success":
             if hashlib.sha256(report.encode()).hexdigest() != snapshot["report_sha256"]:
                 raise ValueError("Saved report checksum mismatch.")
             doc = json.loads(report, object_pairs_hook=unique)
             if (doc["request"]["draft_sha256"] != row["draft_sha256"]
-                    or doc["physical_qualification"] is not False):
+                    or doc["physical_qualification"] is not False
+                    or design_analysis._sha(design_analysis._json(doc["request"])) != doc["request_sha256"]):
                 raise ValueError("Saved report does not belong to the same unqualified draft.")
             reconstructed = design_analysis.DesignAnalysisArtifact(
                 doc["request_sha256"], snapshot["report_sha256"], report, "research.json")
             if managed.snapshot_success(reconstructed, evidence_class=snapshot["evidence_class"]) != snapshot:
                 raise ValueError("Saved snapshot contradicts the retained BEM report.")
             radial_rows(row)  # require readable radial payload before adding to history
+            _provider_contract(snapshot)  # validate nested admission shape before comparing
         elif report is not None or any(snapshot[k] is not None for k in ("thrust_n", "torque_nm", "shaft_power_w")):
             raise ValueError("Failure snapshots cannot contain report or totals.")
-        if row["mechanism"].get("report_text") is not None and hashlib.sha256(
-            row["mechanism"]["report_text"].encode()).hexdigest() != row["mechanism"]["report_sha256"]:
-            raise ValueError("Saved mechanism report checksum mismatch.")
+        mech = row["mechanism"]
+        if mech.get("status") not in {"computed", "missing_inputs", "blocked_or_failed"}:
+            raise ValueError("Unrecognized mechanism status.")
+        if mech["status"] == "computed":
+            if hashlib.sha256(mech["report_text"].encode()).hexdigest() != mech["report_sha256"]:
+                raise ValueError("Saved mechanism report checksum mismatch.")
+            mech_doc = json.loads(mech["report_text"], object_pairs_hook=unique)
+            binding = mech_doc["request"]["provenance"]["references"][0]["binding"]
+            if binding["draft_sha256"] != row["draft_sha256"] or mech_doc["physical_qualification"] is not False:
+                raise ValueError("Saved mechanism report is not bound to this draft.")
         return row
     except (KeyError, TypeError, AttributeError, OverflowError, RecursionError) as exc:
         raise ValueError("Malformed saved research result.") from exc
@@ -336,6 +385,7 @@ def _provider_contract(snapshot):
     if len(builds) != 1:
         return None
     return {"provider_policy": admission["provider_policy"], "builds": sorted(builds),
+            "bem_implementation": report["request"]["implementation"],
             "grid": [{k: c["returned_document"]["request"][k] for k in ("alpha_rad", "mach", "reynolds", "scenario_id")}
                      for c in cells],
             "root": admission["geometry"]["root"], "template": admission["geometry"]["template"],

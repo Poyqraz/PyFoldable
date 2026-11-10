@@ -233,6 +233,25 @@ def install(root, profile, store_root):
         return store.register_family(family, version_label=VERSION)
 
 
+def require_first_application(root, plan):
+    from dataclasses import replace
+    from pyfoldable.application import research_design as research
+    first = research.read_saved_result((root / "first-application-result.json").read_bytes())
+    active = research.build_research_design(ROOT, replace(research.defaults(ROOT), profile=PROFILES[0]))
+    snapshot = first["aerodynamics"]
+    if (first["inputs"] != asdict(active.inputs) or first["draft_sha256"] != active.draft.draft_sha256
+            or snapshot["status"] != "success" or snapshot["airfoil_id"] != PROFILES[0]):
+        raise ValueError("First application result is not the frozen NACA0012 reference success")
+    report = json.loads(snapshot["report_text"])
+    context = report["request"]["provider_design_admission"]
+    provenance = {x["name"]: x for x in context["provenance"]}
+    if (report["rotor"]["settings"] != plan["bem_settings"] or report["rotor"]["polar_bounds"] != "error"
+            or context["complete_family_admitted"] is not True
+            or provenance["plan.json"]["sha256"] != sha((root / "plan.json").read_bytes())):
+        raise ValueError("First application result is not bound to the frozen family/BEM policy")
+    return first
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("freeze", "capture", "install"))
@@ -254,8 +273,8 @@ def main():
         if args.profile is None or args.preflight is None:
             parser.error("capture requires --profile and --preflight")
         plan = require_plan(root)
-        if args.profile == PROFILES[1] and not (root / "first-application-result.json").is_file():
-            parser.error("Retain the first successful application result before phase two")
+        if args.profile == PROFILES[1]:
+            require_first_application(root, plan)
         exe, osmap, runtime = observed_runtime(args.preflight.resolve(), plan)
         folder = root / args.profile
         folder.mkdir(exist_ok=False)

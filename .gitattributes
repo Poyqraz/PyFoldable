@@ -7,3 +7,6 @@
 *.yaml text eol=lf
 *.yml text eol=lf
 *.dat text eol=lf
+
+# Immutable provider evidence must not undergo checkout/clean newline conversion.
+data/research_reference/axial_800_store/** -text

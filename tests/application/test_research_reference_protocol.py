@@ -38,3 +38,21 @@ def test_stop_before_next_call_and_retain_failure(tmp_path):
     assert [r["status"] for r in rows] == ["STOPPED"] + ["NOT_LAUNCHED"] * 5
     assert json.loads((tmp_path / "outcome.json").read_bytes())["provider_calls"] == 1
     assert (tmp_path / "capture-00/inert-raw.bin").read_bytes() == b"INERT FAILURE"
+
+
+def test_phase_two_rejects_empty_or_unrelated_first_result(tmp_path):
+    import pytest
+    from dataclasses import replace
+    from pyfoldable.application import research_design as research
+    from pyfoldable.application import provider_design_analysis as managed
+    plan, _ = ref.make_plan()
+    ref.write(tmp_path / "plan.json", plan)
+    first = tmp_path / "first-application-result.json"
+    first.write_text("{}")
+    with pytest.raises(ValueError):
+        ref.require_first_application(tmp_path, plan)
+    active = research.build_research_design(ref.ROOT, replace(research.defaults(ref.ROOT), profile="NACA0012"))
+    failed = research.run_research(active, None, managed.ManagedProviderRepository(), None)
+    first.write_text(research.saved_result_json(failed))
+    with pytest.raises(ValueError, match="not the frozen"):
+        ref.require_first_application(tmp_path, plan)

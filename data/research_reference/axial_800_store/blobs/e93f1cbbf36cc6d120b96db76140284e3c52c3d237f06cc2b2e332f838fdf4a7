@@ -1,0 +1,20 @@
+{
+  "actual_build_script": "build/build_xfoil.sh",
+  "backend_version_basis": "Pinned XFOIL 6.99 source and explicit reviewed provider identity; no runtime banner was observed",
+  "build_configuration_diff": "build/build-configuration.diff",
+  "build_log": "build/build.log",
+  "c_flags": "Inherited Makefiles: plotlib -m64 -O2 -DUNDERSCORE -I/usr/X11/include; getosfile.c -O -DUNDERSCORE; see actual build log",
+  "compiler": "GNU Fortran (Debian 14.2.0-19) 14.2.0",
+  "compiler_family_requirement": "gfortran; no exact version pinned by inherited recipe",
+  "fortran_flags": "-O2 -fdefault-real-8 -fallow-argument-mismatch",
+  "historical_run_compiler": "GNU Fortran 13.3.0 on ubuntu-24.04; this local build is not declared identical",
+  "inherited_recipe": ".github/workflows/polar-real-qualification.yml at 8ba282e49ecf3c7ac96ada100c2721fa28a5803f",
+  "kind": "observed-local-build-not-process-image-attestation",
+  "local_provisioning": "Unprivileged extraction of Debian packages instead of sudo apt install; private include/compiler/library search paths retained in build script",
+  "process_image_attestation": false,
+  "solver_startup_or_aerodynamic_build_check": "NOT RUN (including QUIT/banner); only compiler/build tools and static ELF/loader dependency inspection",
+  "source_archive": "build/xfoil6.99.tgz",
+  "source_archive_sha256": "5c0250643f52ce0e75d7338ae2504ce7907f2d49a30f921826717b8ac12ebe40",
+  "source_patches_applied": [],
+  "source_url": "https://web.mit.edu/drela/Public/web/xfoil/xfoil6.99.tgz"
+}
