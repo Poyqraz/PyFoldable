@@ -7,7 +7,8 @@ from pyfoldable.application.provider_record_store import ProviderRecordStore
 from pyfoldable.core.providers import ProviderIdentity
 from pyfoldable.core.profile_catalog import load_project_airfoil
 from pyfoldable.providers import xfoil
-from examples.research_reference_data import make_plan, request_grid
+from research_reference_loader import ref
+make_plan, request_grid = ref.make_plan, ref.request_grid
 from test_provider_design_analysis import inert_cell
 
 

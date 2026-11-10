@@ -2,7 +2,7 @@
 import json
 from types import SimpleNamespace
 
-from examples import research_reference_data as ref
+from research_reference_loader import ref
 from pyfoldable.core.providers import ProviderIdentity
 
 
