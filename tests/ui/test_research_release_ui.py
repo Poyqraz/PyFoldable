@@ -56,7 +56,7 @@ def test_all_six_no_upload_run_switch_save_and_restore(tmp_path, monkeypatch):
     cold.run()
     assert not cold.exception and len(calls) == 6
     assert any(m.label == "İtki [N]" and m.value == "1.25" for m in cold.metric)
-    assert any(d.key == "research_saved_detail_radial_csv" for d in cold.get("download_button"))
+    assert any(d.label == "Radyal yükleri CSV indir" for d in cold.get("download_button"))
     at.number_input(key="research_axial_800_rpm").set_value(2500.).run()
     assert "research_active" not in at.session_state and len(calls) == 6
 
