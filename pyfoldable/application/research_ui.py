@@ -231,7 +231,9 @@ def _history():
                            "research_comparison.csv", "text/csv")
     saved = st.selectbox("Arşivden indirilecek sonuç", tuple(records),
         format_func=lambda k: f"{records[k][0]['aerodynamics']['airfoil_id']} · {k[:12]}")
-    with st.expander("Arşivdeki kaydın ayrıntıları"):
+    # Streamlit1.40 rejects nested expanders; the result has its own sections.
+    with st.container(border=True):
+        st.subheader("Arşivdeki kaydın ayrıntıları")
         st.caption("Değişmez kayıt görüntüleniyor; hesap yeniden çalıştırılmıyor.")
         _render_result(records[saved][0], key_prefix="research_saved_detail")
     st.download_button("Arşivdeki sonucu JSON indir", research.saved_result_json(records[saved][0]),
