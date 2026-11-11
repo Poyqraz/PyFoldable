@@ -112,8 +112,11 @@ Repeated arithmetic allows four ULPs (units in the last place), including
 conversion through the draft's display units. The time-step check uses four
 ULPs at timestamp scale because it subtracts recorded times. Polar coefficients
 allow 32 ULPs at unit scale or the coefficient magnitude, whichever is larger,
-to cover rounding in log-Reynolds interpolation and blends near zero. Domain
-bounds stay strict. These allowances concern stored floating-point arithmetic;
+to cover rounding in log-Reynolds interpolation and blends near zero. Only
+mechanism effective energy additionally propagates four cosine ULPs through
+`m * r_h * c_g * omega**2` before `1 - cos(theta)`; cancellation near the open
+pose can otherwise reject a last-bit libm difference. The energy equation and
+all other channel checks are unchanged. Domain bounds stay strict. These allowances concern stored floating-point arithmetic;
 they are neither solver acceptance thresholds nor physical uncertainty.
 
 New exports retain the template TOML to independently check chord and twist

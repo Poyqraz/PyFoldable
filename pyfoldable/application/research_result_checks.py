@@ -70,11 +70,11 @@ def _finite(value):
     return value
 
 
-def _close(value, expected, field):
+def _close(value, expected, field, *, absolute_roundoff=0.):
     # Repeat the original operations on JSON-round-tripped doubles. This is
     # arithmetic rounding allowance, never a fit or a physical error tolerance.
     a, b = _finite(value), _finite(expected)
-    _require(abs(a-b) <= 4 * max(math.ulp(a), math.ulp(b)), f"{field} contradicts retained values")
+    _require(abs(a-b) <= absolute_roundoff + 4 * max(math.ulp(a), math.ulp(b)), f"{field} contradicts retained values")
 
 
 def _policy(doc, blade, condition, family):
@@ -364,7 +364,13 @@ def check_mechanism_history(result, request):
             retained_drive = tuple(sample[k] for k in ("omega_rad_s", "omega_dot_rad_s2", "applied_torque_nm"))
             retained_torques = tuple(sample[k] for k in _TORQUE_FIELDS)
             for field, value in _sample_output(params, theta, velocity, retained_drive, retained_torques).items():
-                _close(sample[field], value, f"sample {i} {field}")
+                roundoff = 0.
+                if field == "effective_energy_j":
+                    # 1-cos(theta) amplifies libm last-bit differences near zero;
+                    # propagate the cosine allowance before that subtraction.
+                    scale = params.mass_kg * params.hinge_radius_m * params.cg_distance_m * retained_drive[0]**2
+                    roundoff = scale * (4 * math.ulp(math.cos(theta)))
+                _close(sample[field], value, f"sample {i} {field}", absolute_roundoff=roundoff)
         for field, values in _accumulated_output(times, result).items():
             for i, value in enumerate(values):
                 _close(result[field][i], value, f"sample {i} {field}")

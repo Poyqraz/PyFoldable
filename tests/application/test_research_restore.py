@@ -406,3 +406,26 @@ def test_mechanism_output_uses_right_side_at_knot_but_incoming_side_at_terminal_
         outgoing if contact_at_knot else incoming)
     with pytest.raises(ValueError, match="omega_dot_rad_s2"):
         check_mechanism_history(result, request)
+
+
+@pytest.mark.parametrize("theta", (0., 1.e-5, -1.e-5))
+def test_mechanism_energy_allows_only_cosine_roundoff_near_open(monkeypatch, theta):
+    example = mech.build_literature_modal_example()
+    params = replace(example.transient.parameters, hinge_radius_m=.27,
+                     spring_stiffness_nm_rad=0., viscous_damping_nm_s_rad=0.)
+    request = replace(example.transient, parameters=params, initial_angle_rad=theta,
+                      drive=DriveHistory((0., .002), (2400., 2400.), (0., 0.)))
+    history = inert_history(request, (0., .001, .002), (theta,)*3, (0.,)*3, (0,))
+    monkeypatch.setattr(mech, "solve_mechanism_transient", lambda _: history)
+    result = json.loads(mech.run_mechanism_transient(replace(example, transient=request)).report_json)["result"]
+    check_mechanism_history(result, request)
+    coefficient = params.mass_kg * params.hinge_radius_m * params.cg_distance_m * result["omega_rad_s"][1]**2
+    cosine = math.cos(theta)
+    # A neighboring libm result changes 1-cos(theta) by many energy ULPs.
+    energy = coefficient * (1 - math.nextafter(cosine, -math.inf))
+    result["effective_energy_j"][1] = result["samples"][1]["effective_energy_j"] = energy
+    check_mechanism_history(result, request)
+    result["effective_energy_j"][1] = result["samples"][1]["effective_energy_j"] = (
+        energy + 16 * coefficient * math.ulp(cosine))
+    with pytest.raises(ValueError, match="effective_energy_j"):
+        check_mechanism_history(result, request)

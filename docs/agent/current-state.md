@@ -775,3 +775,13 @@ existing equations and report quadrature. An ordinary drive knot uses the
 outgoing segment; contact uses the segment that reached the stop. The
 original 800 mm results and approved action styling are unchanged. Restore
 does not consult the current provider store or solve a trajectory.
+
+The follow-up bounds effective-energy roundoff at the cosine term before
+near-open subtraction; it does not loosen other channels or change the model.
+Six fully resealed contradictions accepted by 9ab4a685 (differential thrust,
+torque, ramp derivative, applied torque, spring torque and accumulated viscous
+loss) now reject. The two original 800 mm UI exports still restore/re-export
+byte-identically and reproduce the original comparison with current defaults
+set to 7100 RPM, no provider store and zero provider/BEM/ODE calls. See
+[the restoration handoff](handoffs/pr113-correspondence-20261111.md) for evidence
+and the remaining external Astra-B review; no DUST integration or merge.
