@@ -90,6 +90,7 @@ class ProviderDesignSelection:
     provider_policy_json: str
     annulus_count: int
     stored_version_sha256: str | None = None
+    length_order_policy: str = "proximal_longer"
 
 
 @dataclass(frozen=True)
@@ -178,7 +179,11 @@ def _geometry(selection: ProviderDesignSelection) -> dict:
         raise ProviderDesignPreparationError("invalid_root_declaration", "Root value/unit/meaning/source and labeled declaration kind are required")
     r_root = normalize_quantity(f"{root.value} {root.unit}", "length", field="r_root").si_value
     radius, hinge = design.blade.radius_m, design.hinge.radius_m
-    if not 0 <= r_root < hinge < radius or not hinge - r_root > radius - hinge:
+    if selection.length_order_policy not in {"proximal_longer", "either_order"}:
+        raise ProviderDesignPreparationError("invalid_length_order_policy", "Declare the template length-order requirement")
+    if not 0 <= r_root < hinge < radius:
+        raise ProviderDesignPreparationError("invalid_root_declaration", "Require 0 <= r_root < hinge < tip")
+    if selection.length_order_policy == "proximal_longer" and not hinge - r_root > radius - hinge:
         raise ProviderDesignPreparationError("longer_proximal_required", "Require h-r_root > R-h, equivalently h > (R+r_root)/2")
     return {
         "profile": profile, "coordinate_sha256": coordinate,
@@ -190,6 +195,7 @@ def _geometry(selection: ProviderDesignSelection) -> dict:
         "tip_radius_m": radius, "hinge_radius_m": hinge,
         "proximal_exposed_m": hinge - r_root, "distal_exposed_m": radius - hinge,
         "shaft_origin_longer": hinge > radius / 2,
+        **({"length_order_policy": selection.length_order_policy} if selection.length_order_policy != "proximal_longer" else {}),
         "parent_stations": [{"r_over_R": s.r_over_R, "chord_m": s.chord_m, "twist_rad": s.twist_rad, "airfoil_id": s.airfoil_id} for s in design.blade.stations],
         "condition": analysis._request(selection.draft, design)["operating_condition"],
         "scope": "single_declared_hinge_shared_parent_station_span_no_joint_loss_model",
@@ -345,6 +351,7 @@ def attempted_provider_design_selection(selection: ProviderDesignSelection) -> d
                      "observed_source_sha256": _sha(selection.template.source_bytes), "byte_count": len(selection.template.source_bytes)},
         "root": root_record, "family_id": selection.family_id, "provider_policy": policy,
         "annulus_count": selection.annulus_count,
+        **({"length_order_policy": selection.length_order_policy} if selection.length_order_policy != "proximal_longer" else {}),
         **({"stored_version_sha256": selection.stored_version_sha256} if selection.stored_version_sha256 is not None else {}),
     }
 

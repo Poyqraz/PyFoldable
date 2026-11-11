@@ -1,5 +1,26 @@
 # PyFoldable
 
+## Araştırma uygulaması: tek ekran ve gerçek sayısal referans
+
+Linux/POSIX kaynak kurulumu için:
+
+    python -m pip install -e ".[ui,plot]"
+    python -m streamlit run apps/pyfoldable_research.py
+
+Altı profil, açık kök/göbek beyanı, şablonlu kord/burulma, katlanma önizlemesi,
+RPM/giriş hızı, açık BEM eylemi, radyal sonuçlar ve JSON/CSV karşılaştırması aynı
+ekrandadır. Kullanıcı CAD veya polar dosyası hazırlamaz. İki profilin gerçek
+XFOIL kayıtları sürümlü yerel depoda paketlidir; diğer dört profilin seçilebilir
+olması sayısal verilerinin hazır olduğu anlamına gelmez. Sonuçlar dışa
+aktarılıp yeniden açılabilir; sunucu sonuç geçmişi oturum kapsamındadır.
+
+[İşletim ve kapsam](docs/research_application.md). Bu referans 800 mm / 2400 RPM /
+14 m/s ileri akış araştırma durumudur. Tarihsel 250 mm / 7100 RPM örneğini veya
+APC 13 inç kıyasını çözmüş sayılmaz. Deneysel uyum ve fiziksel yeterlilik iddiası
+yoktur; eklem kaybı modellenmemiştir. Eski gösterge paneli aşağıdaki gelişmiş
+iş akışları için korunur.
+
+
 ![Tests](https://github.com/Poyqraz/PyFoldable/actions/workflows/tests.yml/badge.svg)
 
 **Uçtan eklemli katlanabilir pervane için sayısal analiz ve mühendislik raporlama paketi**

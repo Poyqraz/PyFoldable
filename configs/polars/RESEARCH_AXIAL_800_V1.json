@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "scenario_id": "research_axial_800_attached_xfoil_v1",
+  "template": "configs/designs/RESEARCH_AXIAL_800_V1.toml",
+  "root": {
+    "value": 100.0,
+    "unit": "mm",
+    "meaning": "Declared physical blade start of this study layout; independent of the 90 mm hub radius and 144 mm first aerodynamic station",
+    "source_identity": "RESEARCH_AXIAL_800_V1 dimensional declaration",
+    "declaration_kind": "study_assumption"
+  },
+  "length_order_policy": "either_order",
+  "profiles_in_order": ["NACA0012", "NACA2412"],
+  "reynolds": [165000.0, 245000.0, 330000.0],
+  "mach": [0.1, 0.31],
+  "alpha_deg_in_order": [-6, -4, -2, 0, 2, 4, 6, 8],
+  "n_crit": 9.0,
+  "xtr_upper": 1.0,
+  "xtr_lower": 1.0,
+  "max_iterations": 160,
+  "timeout_s": 30.0,
+  "options": {"repanel": true},
+  "provider": {"name":"xfoil-subprocess","adapter_version":"2","backend_name":"XFOIL","backend_version":"6.99"},
+  "executable_sha256": "2b952bd21705d4d4147aa6b3e7db14f833a91dd9e1c9279261203f1cef1432ce",
+  "osmap_sha256": "2f6b3c63461d71da9b6cb9ca1340d77cff0cfbe767679d15b5b8556b45d948c4",
+  "preflight_archive_sha256": "058a91997442d42df0859a373df1bbb00005fcd882c86616ef5707590f45331a",
+  "build_record_sha256": "e93f1cbbf36cc6d120b96db76140284e3c52c3d237f06cc2b2e332f838fdf4a7",
+  "bem": {"annulus_count": 40, "bounds": "error", "radial_domain": "station_span"},
+  "budget": {
+    "max_provider_calls": 12,
+    "max_attempts_per_cell": 1,
+    "max_reference_bem_calls": 2,
+    "cell_order": "Mach ascending, then Reynolds ascending; cold process per cell, ALFA ascending",
+    "stop": "Stop after any incomplete, timeout, execution, provenance or persistence failure. Do not start NACA2412 until NACA0012 has one successful explicit application BEM. No retry or fallback."
+  },
+  "scope": "Independent moderate-Re axial-flow research design; near-attached section grid, no reference agreement or qualification. The 250 mm / 7100 RPM and APC 13-inch cases are unchanged.",
+  "physical_qualification": false
+}

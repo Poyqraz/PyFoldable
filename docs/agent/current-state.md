@@ -696,3 +696,92 @@ and two-profile comparison **UNESTABLISHED**; `physical_qualification=false`.
 The next numerical deliverable remains method/data feasibility followed by complete
 applicable evidence, fresh admission and explicit genuine BEM; this software
 addition does not establish it. No merge.
+
+
+### 2026-11-11 — integrated research release candidate
+
+Owner priority is now the no-upload end-to-end research application. A single
+screen at apps/pyfoldable_research.py selects six catalog profiles, declares
+root/hub/hinge and chord/twist geometry, applies conditions, explicitly runs
+independent geometry/open BEM/optional PY-05 modules, compares and exports.
+Provider records are durable; user-result recovery is checked export/import.
+Session history itself remains session-scoped. Missing mechanics does not erase
+independent geometry or aerodynamic predictions. No joint-loss model is implied.
+
+A new explicitly declared axial800mm/2400RPM/14m_s research reference produced
+the first two matched real retained-provider/application BEM results:
+NACA0012 33.421707752866034N,2.4880853705679464N·m,625.3240577344399W;
+NACA2412 43.647174413635845N,3.277371908165304N·m,823.6934007818944W.
+Twelve cold XFOIL calls yielded96/96requested points; two explicit Streamlit
+BEM actions used616and690covered trial queries, no clamps/retries or failures.
+These are observed unqualified numerical predictions pending Astra-B release
+review, not physical/reference agreement or a qualified winner.
+
+The new axial template explicitly allows either length order. The named historical
+project250 template retains proximal-longer; no root is inferred from hub/first
+station. Historic text and250mm/7100RPM,APC13in and330mm housing scenarios survive.
+That250mm case and four other profiles' real numerical readiness remain unresolved.
+Complete retained data are bundled for the two reference profiles only.
+
+See [operator/owner walkthrough and model scope](../research_application.md)
+and reports/research_release_20261111/observed-results.json. Software delivery,
+genuine numerical execution,reference agreement,joint loss and qualification
+are separate statuses. Reference agreement NOT_ASSESSED; joint loss NOT_MODELED;
+physical_qualification=false. A0 maintenance/MorphoCopter are separate.
+No CFD/FEA/optimization or merge; no change to BEM equations/bounds/admission.
+
+### 2026-11-11 — PR #113 WSL usability and saved-result correspondence
+
+The normal research app has four views: Tasarım, Analiz, Sonuçlar and
+Karşılaştırma / kayıtlar. Each retains the current design context. The
+declared root is distinct from the hub and station span; a second input
+mode derives hinge and diameter from entered segment lengths. Plan,
+profile and 3D views share the actual source geometry; the preview does
+not produce folded aerodynamics or fill missing spans.
+
+Analysis displays the selected store version and model domain. It can
+preselect the only ready matching version on first use. It requires
+explicit selection among multiple versions and never replaces a lost
+selection. Unready controls do not create solver-failure records. An
+explicit solve reads and admits the selected version again. PY-05 remains
+an independent action with explicit mechanical declarations.
+
+Restore verifies the saved outer inputs, draft, derived geometry, provider
+selection/request/cells, and any computed mechanism request and initial pose
+before insertion. The two original 800 mm records retain their data and
+recover without solving. Earlier v1 records without source template bytes
+cannot independently prove the input scale declarations. New exports retain
+those bytes. Hashes provide content correspondence, not authentication.
+See [research application](../research_application.md). The 800 mm
+numerical scope, unavailable 250 mm case and qualification status are unchanged.
+
+### 2026-11-11 — PR #113 release closure
+
+Saved v1 results also check the retained BEM v5 annuli, convergence, polar
+query summaries and load arithmetic before entering history. PY-05 v2
+histories check each recorded RPM against the retained drive, with a
+consistent completed or first-contact termination. Import and comparison
+still use the original result contents without executing either solver or
+consulting the current provider store. The enabled BEM action has explicit
+text contrast and keyboard focus in both supported themes. The retained
+800 mm numerical results and their scientific scope are unchanged.
+
+### 2026-11-11 — PR #113 retained load and drive correspondence
+
+Restore now checks section differential loads before accepting integrated
+loads, and verifies PY-05 drive derivative, applied moment, derived sample
+channels and accumulated work/dissipation. Shared pure helpers preserve the
+existing equations and report quadrature. An ordinary drive knot uses the
+outgoing segment; contact uses the segment that reached the stop. The
+original 800 mm results and approved action styling are unchanged. Restore
+does not consult the current provider store or solve a trajectory.
+
+The follow-up bounds effective-energy roundoff at the cosine term before
+near-open subtraction; it does not loosen other channels or change the model.
+Six fully resealed contradictions accepted by 9ab4a685 (differential thrust,
+torque, ramp derivative, applied torque, spring torque and accumulated viscous
+loss) now reject. The two original 800 mm UI exports still restore/re-export
+byte-identically and reproduce the original comparison with current defaults
+set to 7100 RPM, no provider store and zero provider/BEM/ODE calls. See
+[the restoration handoff](handoffs/pr113-correspondence-20261111.md) for evidence
+and the remaining external Astra-B review; no DUST integration or merge.

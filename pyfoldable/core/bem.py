@@ -389,6 +389,14 @@ def _residual_limit(state: _AnnulusState, settings: BEMAnnulusSettings) -> float
     )
 
 
+def _section_differential_loads(blade_count, density, speed, chord, radius, phi, cl, cd):
+    """Project the existing effective section coefficients onto rotor loads."""
+    dynamic_force = blade_count * 0.5 * density * speed**2 * chord
+    thrust = dynamic_force * (cl * math.cos(phi) - cd * math.sin(phi))
+    torque = dynamic_force * (cl * math.sin(phi) + cd * math.cos(phi)) * radius
+    return thrust, torque
+
+
 def solve_bem_annulus(
     blade: BladeGeometry,
     station: BladeStation,
@@ -620,21 +628,10 @@ def solve_bem_annulus(
     else:
         loading_regime = "zero"
 
-    dynamic_force = (
-        blade.blade_count
-        * 0.5
-        * condition.air_density_kg_m3
-        * solution.relative_speed**2
-        * station.chord_m
+    differential_thrust, differential_torque = _section_differential_loads(
+        blade.blade_count, condition.air_density_kg_m3, solution.relative_speed,
+        station.chord_m, radius, solution.phi, solution.augmentation.cl, solution.augmentation.cd,
     )
-    differential_thrust = dynamic_force * (
-        solution.augmentation.cl * math.cos(solution.phi)
-        - solution.augmentation.cd * math.sin(solution.phi)
-    )
-    differential_torque = dynamic_force * (
-        solution.augmentation.cl * math.sin(solution.phi)
-        + solution.augmentation.cd * math.cos(solution.phi)
-    ) * radius
 
     return BEMAnnulusResult(
         schema_version=BEM_ANNULUS_SCHEMA_VERSION,

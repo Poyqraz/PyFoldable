@@ -46,6 +46,8 @@ class DesignDraftInputs:
     dynamic_viscosity: QuantityInput
     temperature: QuantityInput
     pressure: QuantityInput
+    stowed_angle: QuantityInput | None = None
+    stowed_envelope_requirement: QuantityInput | None = None
 
 
 @dataclass(frozen=True)
@@ -144,8 +146,11 @@ def _build_model(
     )
     if source.hinge is None:
         raise ValueError("The source design must define hinge geometry.")
+    stowed_angle = source.hinge.stowed_angle_rad if inputs.stowed_angle is None else _normalized(
+        inputs.stowed_angle, "angle", "draft.stowed_angle"
+    )
     if not (
-        source.hinge.stowed_angle_rad
+        stowed_angle
         <= preview_fold_angle_rad
         <= source.hinge.deployed_angle_rad
     ):
@@ -193,7 +198,7 @@ def _build_model(
         blade_count=inputs.blade_count,
         stations=stations,
     )
-    hinge = replace(source.hinge, radius_m=hinge_radius_m)
+    hinge = replace(source.hinge, radius_m=hinge_radius_m, stowed_angle_rad=stowed_angle)
     condition = replace(
         source.operating_conditions[0],
         angular_speed_rad_s=_normalized(
@@ -258,6 +263,11 @@ def _build_model(
             "station_tip_gap_m": station_audit.tip_gap_m,
             "station_geometry_semantics": "Supplied geometry; source hashes do not authenticate measurements or qualify physics",
         })
+    if inputs.stowed_envelope_requirement is not None:
+        envelope = _normalized(inputs.stowed_envelope_requirement, "length", "draft.stowed_envelope_requirement")
+        if envelope <= 0:
+            raise ValueError("Stowed centerline target diameter must be positive.")
+        metadata["stowed_envelope_requirement"] = f"{envelope:.17g} m"
     return replace(
         source,
         id=f"{source.id}_DRAFT",

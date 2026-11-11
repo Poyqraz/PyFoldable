@@ -1,0 +1,130 @@
+{
+  "adapter_source_sha256": "b5a6e12c550cae3d24cba7a86d9656461c20fc2ed7aa8008c3917dd60b6c0410",
+  "airfoil_input_sha256": "3f86d43b26144fd8b1835fd24a2b94bae162360058c13c619bf5d49642090759",
+  "artifact_class": "xfoil_subprocess_capture",
+  "capture_receipt_written": true,
+  "coordinate_sha256": "3f84aba0f9234ed6e9fe4eedebe88ae8701a19ae181d70e21a02b0704916999a",
+  "declared_build_policy": {
+    "fortran_flags": "-O2 -fdefault-real-8 -fallow-argument-mismatch",
+    "role": "Declared build requirement only. A capture does not rebuild XFOIL and does not prove that the executable was produced from this archive or these flags.",
+    "source_archive_sha256": "5c0250643f52ce0e75d7338ae2504ce7907f2d49a30f921826717b8ac12ebe40",
+    "source_url": "https://web.mit.edu/drela/Public/web/xfoil/xfoil6.99.tgz",
+    "ubuntu_dfsg_package_allowed": false,
+    "verified_against_this_executable": false
+  },
+  "evidence_ready": true,
+  "executable_identity": {
+    "limits": "SHA-256 of the executable file immediately before and after this subprocess call. This does not prove the process image, the declared source archive, or the compiler flags.",
+    "matched": true,
+    "postlaunch": {
+      "path": "/workspace/scratch/c24949ad6a4e/xfoil-preflight-2026-11-05/package/bin/xfoil",
+      "sha256": "2b952bd21705d4d4147aa6b3e7db14f833a91dd9e1c9279261203f1cef1432ce",
+      "unavailable_reason": null
+    },
+    "prelaunch": {
+      "path": "/workspace/scratch/c24949ad6a4e/xfoil-preflight-2026-11-05/package/bin/xfoil",
+      "sha256": "2b952bd21705d4d4147aa6b3e7db14f833a91dd9e1c9279261203f1cef1432ce",
+      "unavailable_reason": null
+    }
+  },
+  "points": [
+    {
+      "alpha_rad": -0.10471975511965978,
+      "cd": 0.01481,
+      "cl": -0.5012,
+      "cm": -0.0414,
+      "message": "",
+      "status": "converged"
+    },
+    {
+      "alpha_rad": -0.06981317007977318,
+      "cd": 0.01134,
+      "cl": -0.2082,
+      "cm": -0.0563,
+      "message": "",
+      "status": "converged"
+    },
+    {
+      "alpha_rad": -0.03490658503988659,
+      "cd": 0.00859,
+      "cl": 0.0284,
+      "cm": -0.0577,
+      "message": "",
+      "status": "converged"
+    },
+    {
+      "alpha_rad": 0.0,
+      "cd": 0.00746,
+      "cl": 0.2336,
+      "cm": -0.0492,
+      "message": "",
+      "status": "converged"
+    },
+    {
+      "alpha_rad": 0.03490658503988659,
+      "cd": 0.00828,
+      "cl": 0.5203,
+      "cm": -0.0611,
+      "message": "",
+      "status": "converged"
+    },
+    {
+      "alpha_rad": 0.06981317007977318,
+      "cd": 0.0095,
+      "cl": 0.71,
+      "cm": -0.0538,
+      "message": "",
+      "status": "converged"
+    },
+    {
+      "alpha_rad": 0.10471975511965978,
+      "cd": 0.01156,
+      "cl": 0.8973,
+      "cm": -0.0464,
+      "message": "",
+      "status": "converged"
+    },
+    {
+      "alpha_rad": 0.13962634015954636,
+      "cd": 0.01647,
+      "cl": 1.0603,
+      "cm": -0.0369,
+      "message": "",
+      "status": "converged"
+    }
+  ],
+  "polar_decoding_status": "decoded",
+  "polar_file": {
+    "byte_count": 1126,
+    "sha256": "0c8fa3eafb061a3450b2330a118e09a494314574035995959606832b0785bdf1",
+    "status": "present"
+  },
+  "polar_parsed": true,
+  "polar_read_error": null,
+  "polar_read_status": "present",
+  "process_status": "completed",
+  "provider_identity": {
+    "adapter_version": "2",
+    "backend_name": "XFOIL",
+    "backend_version": "6.99",
+    "name": "xfoil-subprocess"
+  },
+  "pyfoldable_version": "0.3.0",
+  "request_cache_key": "f74ffc10c3d9d092dca252617a7a03ab1ff7561d7ede294544f3a768658655aa",
+  "request_preimage_sha256": "f74ffc10c3d9d092dca252617a7a03ab1ff7561d7ede294544f3a768658655aa",
+  "returncode": 0,
+  "schema_version": 1,
+  "script_sha256": "fe5cd78d60eb9e5a737799ca81edda51f78cdd352385f57be1eb6b9ea61a0eae",
+  "solver_output_usable": true,
+  "stderr": {
+    "byte_count": 82,
+    "sha256": "2e3f2acf892f7cf131f8e30a65909726ec274c5e93c83aad9c993cc4e51b86a3",
+    "status": "present"
+  },
+  "stdout": {
+    "byte_count": 46253,
+    "sha256": "cd173769b95d17d99ed0847879cfde9bdf97335a1be793f66497fbba3e1efb99",
+    "status": "present"
+  },
+  "stream_text_is_not_raw_bytes": true
+}

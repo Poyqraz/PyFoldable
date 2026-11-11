@@ -115,3 +115,15 @@ partial-grid, strict runtime configuration, and fail-closed section-consumption 
 PR-05E's capture, reproducibility, physical-review, promotion, and real-provider
 regression boundaries are complete. The deterministic contract fixtures remain separate
 and cannot substitute for the promoted physical baseline.
+
+## 2026-11-11 — research workspace usability follow-up
+
+PR #113's [research workspace](research_application.md) groups design,
+readiness, explicit independent analyses, results and saved comparison.
+The two bundled 800 mm profile records remain the numerical reference
+cases. Historical research exports are read-only on restore; contradictory
+conditions, geometry and computed mechanism attribution are rejected
+before history insertion. Physical qualification remains false; reference
+agreement and joint-loss modeling are open. Clevis–tang fit/load-path
+assessment remains separate and needs retained sections and explicit joint
+dimensions.
