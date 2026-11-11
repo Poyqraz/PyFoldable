@@ -266,6 +266,35 @@ Evidence: `pyfoldable/application/cmm2_coupled_transient_service.py`,
 `tests/application/test_cmm2_coupled_transient_service.py`,
 [CMM-2 source-bound production binding](../cmm2_source_bound_production_binding.md).
 
+## ADR-010 — Optional external DUST–MBDyn–preCICE dynamic route
+
+**Status: proposed — implemented on `feature/dust-mbdyn-precice-coupling`, not
+independently reviewed.** (ADR-009 stays reserved for CMM-2 PR-C.)
+
+Decision: add an optional dynamic aero-mechanical route that runs pinned external
+solvers (DUST 3b1d2e61 with preCICE 2.5.0, MBDyn develop 55c86cc6 through DUST's
+socket adapter route) as separate processes under a detached supervisor, bound to the
+same `ResearchDesign` and retained-provider admission as the fully deployed BEM. The
+application never imports solver bindings; without the operator toolchain manifest the
+route reports "not installed" and nothing else changes. Structural model: prescribed
+constant shaft speed, rigid proximal and distal segments, ideal in-plane revolute fold
+hinge with a declared spring/damper/penalty-stop law, optional release latch.
+Aerodynamics: DUST lifting line with C81 tables written from the admitted cells without
+modification; every accepted window is audited against the admitted envelope (DUST
+aborts outside α/Mach but extrapolates in Re). Coupling: preCICE serial-implicit with
+Aitken; unconverged, uncovered, failed, cancelled or timed-out runs keep only a labelled
+valid prefix and can never become completed results. Records are restored by
+regenerating case, table and decks and re-deriving channels from retained exchanged
+loads and node states, without solvers.
+
+Not covered: spin-up from rest, fully folded start, torque-driven shaft, friction,
+joint loss, CFD fields, structural stress or strength, contact beyond the declared
+penalty law, physical validation. `physical_qualification` stays false.
+
+Evidence: [coupled dynamic analysis](../coupled_dynamic_analysis.md), `pyfoldable/coupled/`,
+`pyfoldable/application/coupled_*.py`, `tests/coupled/`, `tests/ui/test_coupled_ui.py`,
+[handoff](../agent/handoffs/coupled-dust-mbdyn-precice-20261112.md).
+
 ## Future records
 
 An unproven architectural interpretation must say **inferred — requires

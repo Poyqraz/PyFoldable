@@ -238,3 +238,11 @@ version. Prepare freshly; no stale active reuse.
 
 No full CFD/FEA/vibration qualification is made a prerequisite to presenting
 honestly scoped research predictions. A0 and MorphoCopter remain separate.
+
+## Optional dynamic aero-mechanical analysis
+
+When an operator has installed the pinned DUST–MBDyn–preCICE toolchain, **Analiz** shows
+*Dinamik aero-mekanik analiz* below the mechanism section and **Sonuçlar** offers
+*Dinamik bağlaşık*. It uses the same design, profile and stored polar version as the BEM
+above; without the toolchain it only explains that it is not installed. Inputs, model,
+coverage limits and verification: [coupled dynamic analysis](coupled_dynamic_analysis.md).

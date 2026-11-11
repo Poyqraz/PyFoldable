@@ -137,6 +137,21 @@ promotion, calibration or experimental validation. Earlier dated acceptance
 records remain historical provenance. Contract:
 [CMM-2 Radau remediation contract](../cmm2_radau_remediation_contract.md).
 
+**2026-11-12 optional DUST–MBDyn–preCICE dynamic route (proposed, unreviewed).** Branch
+`feature/dust-mbdyn-precice-coupling` from PR #113 revision `5d9a5175`. The research
+workspace gains an optional coupled analysis: pinned DUST 3b1d2e61 + preCICE 2.5.0 +
+MBDyn develop 55c86cc6 run as external processes under a detached supervisor, bound to
+the same design and retained-provider admission as the fully deployed BEM (unchanged).
+Prescribed constant shaft speed, rigid proximal/distal segments, ideal in-plane fold
+hinge with declared spring/damper/penalty-stop law; every accepted window is audited
+against the admitted polar envelope; failed, unconverged, uncovered, cancelled or
+timed-out runs keep only a labelled valid prefix. Genuine coupled runs with hinge
+release, stop contact and rebound were executed (run ledger in the
+[handoff](handoffs/coupled-dust-mbdyn-precice-20261112.md)). The retained 800 mm table
+supports only small releases; spin-up and folded starts are not covered. ADR-010 is
+proposed, not accepted. `physical_qualification` remains false. Design and limits:
+[coupled dynamic analysis](../coupled_dynamic_analysis.md).
+
 ## Reality summary
 
 The project is a Python scientific library plus one Streamlit engineering app,

@@ -471,7 +471,7 @@ def _bem_run_button(ready):
         return st.button("BEM’i çalıştır", type="primary", key="research_run", disabled=not ready)
 
 
-def _analysis(active, repository, store_error):
+def _analysis(active, repository, store_error, root=None):
     st.subheader("Analiz")
     if active is None:
         st.info("Önce Tasarım’da geçerli bir geometri hazırlayın.")
@@ -502,6 +502,10 @@ def _analysis(active, repository, store_error):
         with st.spinner("Mekanizma hesabı çalışıyor…"):
             row = research.run_mechanics_only(active, options)
         _show_run(row, ("mechanics", active.identity, options))
+    if root is not None:
+        st.divider()
+        from . import coupled_ui
+        coupled_ui.render_analysis(active, family, readiness.status, repository, root)
 
 
 def _invalidate(active, repository):
@@ -520,6 +524,15 @@ def _invalidate(active, repository):
             st.session_state.pop(_ACTIVE, None)
     elif st.session_state.get("_research_mechanics") != selected:
         st.session_state.pop(_ACTIVE, None)
+
+
+def _invalidate_coupled(active, repository):
+    from . import coupled_ui
+    family = None
+    if active is not None:
+        key = st.session_state.get("_research_selected_versions", {}).get(active.inputs.profile)
+        family = _families(repository, active.inputs.profile, active.coordinate_sha256).get(key)
+    coupled_ui.invalidate(active, family)
 
 
 _RADIAL_COLUMNS = {
@@ -626,12 +639,21 @@ def _results(row, *, archived=False, imported=False):
         st.json(row, expanded=False)
 
 
+def _artifact_class(raw):
+    """Peek only at the declared class; the selected reader performs all validation."""
+    try:
+        doc = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        return None
+    return doc.get("artifact_class") if isinstance(doc, dict) else None
+
+
 def _retained():
     return {row["result_sha256"]: (row, imported) for row, imported in
             ((json.loads(raw), imported) for raw, imported in st.session_state.get(_HISTORY, ()))}
 
 
-def _history():
+def _history(root=None):
     st.subheader("Karşılaştırma / kayıtlar")
     st.caption("Oturum kapanınca bu liste saklanmaz. Sonuç JSON’unu indirin; daha sonra buradan açabilirsiniz.")
     restore_error = None
@@ -639,8 +661,13 @@ def _history():
         st.caption("Uygulamanın dışa aktardığı sonuç dosyası. İçerik tutarlılığı denetlenir, hesap başlatılmaz.")
         uploaded = st.file_uploader("Sonuç JSON dosyası", type=("json",), key="research_restore")
         if st.button("Sonucu oturuma ekle", disabled=uploaded is None) and uploaded is not None:
+            raw = uploaded.getvalue()
             try:
-                status = _save(research.read_saved_result(uploaded.getvalue()), imported=True)
+                if _artifact_class(raw) == "pyfoldable_coupled_result":
+                    from . import coupled_ui
+                    status = coupled_ui.import_bytes(raw)
+                else:
+                    status = _save(research.read_saved_result(raw), imported=True)
             except (ValueError, OSError) as exc:
                 message = getattr(exc, "user_message",
                                   "Dosya eksik veya saklanan tasarım ve çalışma girdileriyle tutarsız.")
@@ -654,6 +681,8 @@ def _history():
     if restore_error:
         with st.expander("İçe aktarma teknik ayrıntısı"):
             st.text(restore_error)
+    from . import coupled_ui
+    coupled_ui.render_history(root)
     records = _retained()
     if not records:
         st.info("Henüz kayıt yok. Analiz çalıştırabilir veya önceki bir sonucu açabilirsiniz.")
@@ -752,10 +781,23 @@ def render_research(root: Path):
                f"{_fmt(inputs.rpm, 0)} RPM · {_fmt(inputs.inflow_m_s, 2)} m/s · "
                + ("geometri hazır" if active is not None else "girdileri kontrol edin"))
     _invalidate(active, repository)
+    _invalidate_coupled(active, repository)
     if page == "Analiz":
-        _analysis(active, repository, store_error)
+        _analysis(active, repository, store_error, root)
         _invalidate(active, repository)  # A version or mechanical input could have changed in this render.
+        _invalidate_coupled(active, repository)
     elif page == "Sonuçlar":
+        from . import coupled_ui
+        kinds = ("BEM / mekanizma", "Dinamik bağlaşık")
+        kind = (st.radio("Sonuç türü", kinds, horizontal=True, key="research_results_kind")
+                if coupled_ui.retained() else kinds[0])
+        if kind == kinds[1]:
+            row = coupled_ui.active_result()
+            if row is None:
+                st.info("Etkin dinamik sonuç yok. Analiz’den başlatın veya kayıtlardan açın.")
+            else:
+                coupled_ui.render_result(row, imported=coupled_ui.retained()[row["result_sha256"]][1])
+            return
         archive_key = st.session_state.get("_research_result_view")
         record = _retained().get(archive_key) if archive_key is not None else None
         current = st.session_state.get(_ACTIVE)
@@ -764,4 +806,4 @@ def render_research(root: Path):
         else:
             _results(None if current is None else json.loads(current[1]))
     elif page == "Karşılaştırma / kayıtlar":
-        _history()
+        _history(root)
