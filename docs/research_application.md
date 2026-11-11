@@ -49,6 +49,24 @@ result/download. Saved JSON strings stay immutable. In-memory history is limited
 to12results and session-scoped; durable recovery is export/import, not a new
 database or hidden autosave. Provider records persist across restarts.
 
+## Saved result correspondence
+
+Restore reads retained content, without consulting the current store, rebuilding
+with today's defaults or invoking a solver. It checks outer dimensions and
+conditions against the retained draft; the root, template identity and annulus
+count against the retained selection; derived geometry against that declared
+pose and root; and successful/failed BEM records against their corresponding
+request or attempted selection. Computed mechanism reports must correspond to
+the retained mass/CG/inertia, drive, friction, stops and initial state. A
+contradictory or malformed record is rejected before it can enter history.
+
+New exports retain the template TOML to independently check chord and twist
+scales. Older v1 exports did not retain those source bytes, so their scales
+remain historical input declarations; the retained station geometry is checked
+where repeated in the request. Their older geometry summary and optional
+mechanism status are supported. Checksums identify content; they are not
+authentication, solver replay or validation of the underlying measurements.
+
 ## Supported inputs and independent outputs
 
 Six coordinate-bound profiles remain selectable:NACA0012,NACA2412,NACA23012,
