@@ -754,3 +754,14 @@ cannot independently prove the input scale declarations. New exports retain
 those bytes. Hashes provide content correspondence, not authentication.
 See [research application](../research_application.md). The 800 mm
 numerical scope, unavailable 250 mm case and qualification status are unchanged.
+
+### 2026-11-11 — PR #113 release closure
+
+Saved v1 results also check the retained BEM v5 annuli, convergence, polar
+query summaries and load arithmetic before entering history. PY-05 v2
+histories check each recorded RPM against the retained drive, with a
+consistent completed or first-contact termination. Import and comparison
+still use the original result contents without executing either solver or
+consulting the current provider store. The enabled BEM action has explicit
+text contrast and keyboard focus in both supported themes. The retained
+800 mm numerical results and their scientific scope are unchanged.

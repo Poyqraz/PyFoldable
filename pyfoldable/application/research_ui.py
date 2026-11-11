@@ -446,6 +446,31 @@ def _show_run(row, token):
     st.rerun()
 
 
+def _bem_run_button(ready):
+    # The documented st.container(key=...) CSS scope exists in Streamlit 1.40.
+    # Theme palettes can change; limit the contrast override to this enabled action.
+    st.html("""
+        <style>
+        .st-key-research_bem_action button:enabled {
+            color: #fff;
+            background-color: #0b6170;
+            border-color: #0b6170;
+        }
+        .st-key-research_bem_action button:enabled:is(:hover, :focus-visible) {
+            color: #fff;
+            background-color: #084d59;
+            border-color: #084d59;
+        }
+        .st-key-research_bem_action button:enabled:focus-visible {
+            outline: 3px solid #08778a;
+            outline-offset: 3px;
+        }
+        </style>
+    """)
+    with st.container(key="research_bem_action"):
+        return st.button("BEM’i çalıştır", type="primary", key="research_run", disabled=not ready)
+
+
 def _analysis(active, repository, store_error):
     st.subheader("Analiz")
     if active is None:
@@ -456,7 +481,7 @@ def _analysis(active, repository, store_error):
         st.markdown("**Aerodinamik · ideal tam açık BEM**")
         family, readiness = _readiness(active, repository, store_error)
         ready = family is not None and readiness.status == "ready"
-        clicked = st.button("BEM’i çalıştır", type="primary", key="research_run", disabled=not ready)
+        clicked = _bem_run_button(ready)
     with scope:
         _analysis_scope(active, family, readiness)
     if clicked and ready:
@@ -617,7 +642,9 @@ def _history():
             try:
                 status = _save(research.read_saved_result(uploaded.getvalue()), imported=True)
             except (ValueError, OSError) as exc:
-                st.error("Sonuç dosyası açılamadı. Dosyanın eksiksiz, tutarlı bir PyFoldable sonuç JSON’u olduğunu kontrol edin.")
+                message = getattr(exc, "user_message",
+                                  "Dosya eksik veya saklanan tasarım ve çalışma girdileriyle tutarsız.")
+                st.error(f"Sonuç dosyası açılamadı. {message} Kayıt geçmişe eklenmedi.")
                 restore_error = str(exc)
             else:
                 if status == "full":
