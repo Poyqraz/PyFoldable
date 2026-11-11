@@ -272,25 +272,42 @@ def mechanism_result(active, inputs: MechanismInputs | None):
             "report_sha256": result.report_sha256, "report_text": result.report_json}
 
 
-def run_research(active, family, repository, mechanics, *, unavailable_reason=None):
+def run_research(active, family, repository, mechanics, *, unavailable_reason=None,
+                 expected_preparation_sha256=None):
     """Explicit action. One fresh admitted BEM invocation at most."""
-    geometry = geometry_result(active)
     selection = selection_for(active, family)
     try:
         if unavailable_reason:
             raise managed.ProviderDesignPreparationError("provider_store_unavailable", unavailable_reason)
         prepared = prepare_aero(active, family, repository)
+        if expected_preparation_sha256 is not None and prepared.request_sha256 != expected_preparation_sha256:
+            raise managed.ProviderDesignPreparationError("stale_active_state", "Selected preparation changed before execution.")
         outcome = managed.run_provider_design_analysis(prepared, active_selection=selection, repository=repository)
         aerodynamic = outcome.record
     except managed.ProviderDesignPreparationError as exc:
         aerodynamic = managed.preparation_failure_record(selection, exc)
     except (ValueError, OSError) as exc:
         aerodynamic = managed.preparation_failure_record(selection, managed.ProviderDesignPreparationError("admission_failed", str(exc)))
+    return _research_result(active, aerodynamic, mechanics)
+
+
+def run_mechanics_only(active, mechanics):
+    """Explicit independent mechanism action: there is no attempted BEM request."""
+    if mechanics is None:
+        raise ValueError("An independent mechanism run needs an explicit selection.")
+    attempted = managed.attempted_provider_design_selection(selection_for(active, None))
+    return _research_result(active, None, mechanics, mechanism_only_selection={
+        "attempted_selection": attempted, "attempted_selection_sha256": _digest(attempted),
+    })
+
+
+def _research_result(active, aerodynamic, mechanics, **details):
     body = {"schema_version": 1, "artifact_class": "pyfoldable_research_result",
             "input_sha256": active.identity, "inputs": asdict(active.inputs),
             "draft_toml": active.draft.toml, "draft_sha256": active.draft.draft_sha256,
             "template_toml": active.template.source_bytes.decode("utf-8"),
-            "geometry": geometry, "aerodynamics": aerodynamic, "mechanism": mechanism_result(active, mechanics),
+            "geometry": geometry_result(active), "aerodynamics": aerodynamic,
+            "mechanism": mechanism_result(active, mechanics), **details,
             "reference_agreement": "NOT_ASSESSED", "joint_loss_model": "NOT_MODELED", "physical_qualification": False}
     return json.loads(managed._json({**body, "result_sha256": _digest(body)}))
 
@@ -412,8 +429,9 @@ def _restore_design(row, snapshot, context):
             if key not in row["geometry"]:
                 expected_geometry.pop(key)
     _require_match(row["geometry"], expected_geometry, "derived geometry")
-    _require_match(snapshot["airfoil_id"], inputs.profile, "snapshot profile")
-    _require_match(snapshot["airfoil_coordinate_sha256"], coordinate, "snapshot coordinates")
+    if snapshot is not None:
+        _require_match(snapshot["airfoil_id"], inputs.profile, "snapshot profile")
+        _require_match(snapshot["airfoil_coordinate_sha256"], coordinate, "snapshot coordinates")
     return active, attempted
 
 
@@ -635,6 +653,14 @@ def read_saved_result(raw):
                 or row.get("physical_qualification") is not False or row["reference_agreement"] != "NOT_ASSESSED"
                 or row["joint_loss_model"] != "NOT_MODELED"):
             raise ValueError("Unsupported saved result version or scope.")
+        if row["aerodynamics"] is None:
+            active, attempted = _restore_design(row, None, row["mechanism_only_selection"])
+            _require_match(attempted["family_id"], "not_selected", "mechanism-only family")
+            if (row["mechanism"].get("requested") is False or "inputs" not in row["mechanism"]
+                    or "stored_version_sha256" in attempted):
+                raise ValueError("A mechanism-only result needs mechanical inputs and no selected BEM version.")
+            _check_mechanism(row["mechanism"], active, unique)
+            return row
         snapshot = add_record((), row["aerodynamics"])[0]
         if snapshot["physical_qualification"] is not False or snapshot["draft_sha256"] != row["draft_sha256"]:
             raise ValueError("Saved aerodynamic snapshot does not belong to the same unqualified draft.")
@@ -667,7 +693,7 @@ def read_saved_result(raw):
 
 
 def radial_rows(result):
-    record = result["aerodynamics"]
+    record = result["aerodynamics"] or {}
     rows = []
     for element in record.get("radial_elements") or ():
         sol = element["solution"]

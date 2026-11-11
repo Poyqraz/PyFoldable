@@ -21,33 +21,55 @@ filesystem APIs; native Windows operation is not claimed.
 
 ## Actual owner walkthrough
 
-1. Select the800mm axial research template and NACA0012.
-2. Inspect diameter800mm,hub90mm,declared physical root100mm,hinge270mm,
-   proximal170mm/distal130mm,chord/twist table,2400RPM,14m/s inflow. The root
-   is an explicit study declaration, not inferred from hub or first station.
-3. Select the retained NACA0012 version. Check its alpha/Re/Mach domain and
-   conditional initial-query hint. Selection/rerender launches no solver.
-4. Click **Analizi çalıştır**. Inspect thrust,shaft torque/power,radial loads,
-   alpha/Re/Mach,actual trial coverage and radial span. The retained execution
-   produced33.421707752866034N,2.4880853705679464N·m,625.3240577344399W
-   over144–388mm; all616queries were inside bounds.
-5. Download the full result JSON and radial CSV. Change only profile to NACA2412,
-   select its stored version and explicitly run. The retained second run produced
-   43.647174413635845N,3.277371908165304N·m,823.6934007818944W;
-   all690queries were covered, over the same radial span.
-6. Select both saved records for comparison: distinct coordinates,shared parent
-   planform/pose/conditions,executed BEM policy/implementation,provider policy/grid,
-   observed executable hash,root and template are checked. This is equalRPM/inflow,
-   not equal shaft power. No qualified winner is selected.
-7. Export comparison JSON/CSV. Each run is individually recoverable through
-   **Önceki uygulama sonucunu aç** using its downloaded result JSON. Restore is
-   read-only, checks content/report/draft consistency and never runs a solver.
-   Imported content is labelled; hashes establish consistency, not authenticity.
+1. On **Tasarım**, select the 800 mm axial reference and NACA0012. The
+   defaults are 90 mm hub radius, 100 mm declared physical root, 270 mm
+   hinge position, 2400 RPM and 14 m/s inflow. The first aerodynamic
+   station is at 144 mm. Plan, section and rotatable 3D views use the
+   retained geometry at equal scales. WebGL is needed for the 3D view.
+2. Choose **Açık çap ve menteşe** to enter diameter/hinge directly, or
+   **Parça uzunlukları** to enter lengths. The latter derives
+   `h = r_root + L_proximal` and `D = 2(h + L_distal)`. Changing entry
+   mode starts from the last consistent geometry. The named 250 mm
+   template still requires proximal longer; the 800 mm template allows
+   either order. No root is inferred from the hub or station.
+3. Open **Analiz**. The sole matching version may be preselected when
+   current admission and the conditional initial-query check pass.
+   When several versions are available, choose explicitly. A removed or
+   rejected selection is not replaced. Missing data, an unselected
+   version, an out-of-grid initial query and an admission rejection
+   have separate messages. None triggers BEM or creates a failed
+   attempt. The initial check cannot predict convergence or trial coverage.
+4. Click **BEM’i çalıştır**. The selected record is freshly loaded and
+   admitted before one explicit BEM call; there is no provider launch.
+   **Sonuçlar** shows thrust, shaft torque/power, the executed conditions
+   and station span. Inspect element totals, loads per radius, or α/Re/Mach
+   and their table. The original retained 800 mm runs produced
+   33.421707752866034 N / 2.4880853705679464 N·m / 625.3240577344399 W
+   (NACA0012) and 43.647174413635845 N / 3.277371908165304 N·m /
+   823.6934007818944 W (NACA2412). Both modeled 144–388 mm and covered
+   616 and 690 trial queries respectively.
+5. Download the result JSON for durable recovery and radial CSV for
+   further analysis. Return to **Tasarım**, change only profile, then
+   explicitly run NACA2412 in **Analiz**. The current design and entered
+   controls persist during navigation. Changes invalidate the active result;
+   saved records retain their original attribution.
+6. On **Karşılaştırma / kayıtlar**, choose two successful BEM records.
+   Different coordinate identities and matched declared inputs, polars and
+   BEM policy are checked. This pair is at equal RPM and inflow, with
+   different shaft powers. Comparison JSON/CSV retains full precision.
+   There is no qualified winner. Failed attempts remain inspectable
+   separately and never enter the comparison picker.
+7. Use **Kaydı Sonuçlar’da aç** to inspect one archive record in the same
+   results view. **Önceki sonuç JSON’unu aç** restores a downloaded result
+   without solver calls. The 12-record session history is temporary;
+   the JSON download is the durable record. The polar store survives restart.
 
-Design,mechanics,selected-version or retained-record changes invalidate the active
-result/download. Saved JSON strings stay immutable. In-memory history is limited
-to12results and session-scoped; durable recovery is export/import, not a new
-database or hidden autosave. Provider records persist across restarts.
+The optional **Mekanizma** controls in Analiz remain off until opened. After
+explicit valid declarations, **Mekanizmayı çalıştır** executes only the
+bound PY-05 model, even if BEM is unavailable. A mechanics-only record has
+no aerodynamic request or totals and is excluded from BEM comparison.
+The fold preview is also the optional mechanism initial angle; it does not
+change BEM's fully deployed pose.
 
 ## Saved result correspondence
 

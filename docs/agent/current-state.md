@@ -729,3 +729,28 @@ genuine numerical execution,reference agreement,joint loss and qualification
 are separate statuses. Reference agreement NOT_ASSESSED; joint loss NOT_MODELED;
 physical_qualification=false. A0 maintenance/MorphoCopter are separate.
 No CFD/FEA/optimization or merge; no change to BEM equations/bounds/admission.
+
+### 2026-11-11 — PR #113 WSL usability and saved-result correspondence
+
+The normal research app has four views: Tasarım, Analiz, Sonuçlar and
+Karşılaştırma / kayıtlar. Each retains the current design context. The
+declared root is distinct from the hub and station span; a second input
+mode derives hinge and diameter from entered segment lengths. Plan,
+profile and 3D views share the actual source geometry; the preview does
+not produce folded aerodynamics or fill missing spans.
+
+Analysis displays the selected store version and model domain. It can
+preselect the only ready matching version on first use. It requires
+explicit selection among multiple versions and never replaces a lost
+selection. Unready controls do not create solver-failure records. An
+explicit solve reads and admits the selected version again. PY-05 remains
+an independent action with explicit mechanical declarations.
+
+Restore verifies the saved outer inputs, draft, derived geometry, provider
+selection/request/cells, and any computed mechanism request and initial pose
+before insertion. The two original 800 mm records retain their data and
+recover without solving. Earlier v1 records without source template bytes
+cannot independently prove the input scale declarations. New exports retain
+those bytes. Hashes provide content correspondence, not authentication.
+See [research application](../research_application.md). The 800 mm
+numerical scope, unavailable 250 mm case and qualification status are unchanged.
