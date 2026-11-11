@@ -9,7 +9,7 @@ import pytest
 from pyfoldable.application import mechanism_transient as mech
 from pyfoldable.application import provider_design_analysis as managed
 from pyfoldable.application import research_design as research
-from research_inert_support import bem, store
+from research_inert_support import bem, mechanism, store
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -86,26 +86,12 @@ def test_restore_rejects_resealed_derived_geometry_and_failure_attribution(case)
 
 def test_restore_binds_mechanics_to_inputs_and_initial_pose(case, monkeypatch):
     active, _, calls = case
-    options = research.MechanismInputs(10., 40., .000001, "INERT assumed CG", 0., .5, .1,
+    options = research.MechanismInputs(10., 40., .000001, "INERT assumed CG", 1200., .5, .1,
                                        .01, -10., .001, .002, "none", 0., 0.)
-    def inert(binding, *, expected_request_sha256):
-        q = mech._request_document(mech._bound_request(binding))
-        initial = q["transient"]
-        # No time evolution from a solver; preserve a bounded request and initial sample.
-        sample = {"time_s": 0., "angle_rad": initial["initial_angle_rad"],
-                  "angular_velocity_rad_s": initial["initial_angular_velocity_rad_s"],
-                  "rpm": 0., "centrifugal_torque_nm": 0., "euler_torque_nm": 0., "dry_friction_torque_nm": 0.}
-        doc = {"schema_version": 2, "artifact_class": "mechanism_transient_report",
-               "physical_qualification": False, "request": q,
-               "request_sha256": mech._sha(mech._json(q)),
-               "result": {"status": "completed", "samples": [sample]}}
-        assert doc["request_sha256"] == expected_request_sha256
-        payload = mech._json(doc) + "\n"
-        return mech.MechanismTransientArtifact(expected_request_sha256, mech._sha(payload), payload, "INERT.json")
-    monkeypatch.setattr(research, "run_bound_mechanism_transient", inert)
+    runs = mechanism(monkeypatch)
     row = research.run_research(active, None, managed.ManagedProviderRepository(), options)
-    assert row["mechanism"]["status"] == "computed"
-    monkeypatch.setattr(research, "run_bound_mechanism_transient", lambda *a, **k: pytest.fail("Restore reran mechanism"))
+    assert row["mechanism"]["status"] == "computed" and len(runs) == 1
+    monkeypatch.setattr(mech, "solve_mechanism_transient", lambda *a: pytest.fail("Restore reran mechanism"))
     assert research.read_saved_result(encode(row)) == row
     other = deepcopy(row)
     other["mechanism"]["inputs"]["mass_g"] = 11.
@@ -211,3 +197,100 @@ def test_restore_rejects_resealed_total_in_conflict_with_retained_radial_loads(c
     row["aerodynamics"] = managed.snapshot_success(a, evidence_class="inert_fixture")
     with pytest.raises(ValueError, match="thrust total contradicts"):
         research.read_saved_result(encode(row))
+
+
+
+def _reseal_report(row, doc):
+    payload = research.design_analysis._json(doc) + "\n"
+    artifact = research.design_analysis.DesignAnalysisArtifact(
+        doc["request_sha256"], research.hashlib.sha256(payload.encode()).hexdigest(), payload, "INERT.json")
+    row["aerodynamics"] = managed.snapshot_success(artifact, evidence_class=row["aerodynamics"]["evidence_class"])
+    return encode(row)
+
+
+def reseal_rotor(row, mutate):
+    doc = json.loads(row["aerodynamics"]["report_text"])
+    mutate(doc["rotor"])
+    # Regenerate the output hash and all snapshot copies before the outer checksum.
+    return _reseal_report(row, doc)
+
+
+def out_of_domain_mach(rotor):
+    solution = rotor["elements"][0]["solution"]
+    solution["mach"] = solution["polar_query_envelope"]["mach_max"] = .9
+    rotor["polar_query_envelope"]["mach_max"] = .9
+
+
+@pytest.mark.parametrize("mutation,diagnostic", [
+    (lambda rotor: rotor["elements"][0]["solution"].update(radius_m=.9), "midpoint radius"),
+    (lambda rotor: rotor["elements"][0]["solution"].update(chord_m=.75), "chord"),
+    (lambda rotor: rotor["elements"][0]["solution"].update(converged=False), "convergence"),
+    (out_of_domain_mach, "retained polar domain"),
+    (lambda rotor: rotor["elements"][0].update(width_m=.01), "width"),
+    (lambda rotor: rotor["elements"][0]["solution"].update(differential_thrust_n_m=42.), "annular thrust"),
+    (lambda rotor: rotor["polar_query_envelope"].update(mach_min=.1), "aggregate query envelope"),
+    (lambda rotor: rotor["elements"][0]["solution"]["polar_query_envelope"].update(mach_min=.3), "query bounds"),
+    (lambda rotor: rotor["elements"][0]["solution"].update(mach=.25), "one query|final query"),
+    (lambda rotor: rotor["elements"][0]["solution"]["polar_query_envelope"].update(query_count=10000), "query count"),
+    (lambda rotor: rotor["elements"][0]["solution"]["polar_query_envelope"].update(mach_max=.3), "one query"),
+])
+def test_restore_rejects_resealed_radial_witnesses(case, mutation, diagnostic):
+    _, row, calls = case
+    first = row["aerodynamics"]["radial_elements"][0]["solution"]
+    assert first["radius_m"] == .14705 and first["chord_m"] == .06961875000000001
+    assert research.read_saved_result(encode(row)) == row
+    with pytest.raises(ValueError, match=diagnostic):
+        research.read_saved_result(reseal_rotor(row, mutation))
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("contact", (False, True))
+def test_restore_checks_every_rpm_and_termination_of_mechanism_only_record(case, monkeypatch, contact):
+    active, _, calls = case
+    options = research.MechanismInputs(10., 40., .000001, "INERT assumed CG", 1200., .5, .1,
+                                       .01, -10., .001, .002, "none", 0., 0.)
+    runs = mechanism(monkeypatch, contact=contact)
+    row = research.run_mechanics_only(active, options)
+    assert row["aerodynamics"] is None and len(runs) == 1
+    monkeypatch.setattr(mech, "solve_mechanism_transient", lambda *a: pytest.fail("Restore reran mechanism"))
+    original = encode(row)
+    assert research.read_saved_result(original) == row
+
+    def reseal(mutate):
+        copy = json.loads(original)
+        report = json.loads(copy["mechanism"]["report_text"])
+        result = report["result"]
+        mutate(result)
+        copy["mechanism"]["report_text"] = mech._json(report) + "\n"
+        copy["mechanism"]["report_sha256"] = mech._sha(copy["mechanism"]["report_text"])
+        return encode(copy)
+
+    def forge_ramp(result):
+        i = len(result["samples"])//2
+        assert 1200 < result["rpm"][i] < 2400
+        result["rpm"][i] = result["samples"][i]["rpm"] = 9999.
+        omega = 9999. * research.normalize_quantity("1 rpm", "angular_speed", field="rpm").si_value
+        result["omega_rad_s"][i] = result["samples"][i]["omega_rad_s"] = omega
+
+    with pytest.raises(ValueError, match="RPM.*drive"):
+        research.read_saved_result(reseal(forge_ramp))
+    # A valid stop contact can end the drive early; a completed report must reach its end.
+    with pytest.raises(ValueError, match="termination"):
+        research.read_saved_result(reseal(lambda result: result.update(
+            status="completed" if contact else "stop_contact")))
+    assert len(calls) == 1
+
+
+def test_restore_rejects_resealed_prepared_request_with_different_condition(case):
+    _, row, _ = case
+    report = json.loads(row["aerodynamics"]["report_text"])
+    q = report["request"]
+    ui = q["ui_request"]
+    ui["analysis_request"]["operating_condition"]["angular_speed_rad_s"] = 7100 * (2 * research.math.pi / 60)
+    q["ui_request_sha256"] = research.design_analysis._sha(research.design_analysis._json(ui))
+    q["provider_design_request_sha256"] = research._digest({
+        "admission": q["provider_design_admission"], "polar_run_sha256": q["ui_request_sha256"]})
+    report["request_sha256"] = research.design_analysis._sha(research.design_analysis._json(q))
+    raw = _reseal_report(row, report)
+    with pytest.raises(ValueError, match="prepared analysis request contradicts"):
+        research.read_saved_result(raw)

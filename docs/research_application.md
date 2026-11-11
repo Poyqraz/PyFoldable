@@ -2,11 +2,16 @@
 
 ## Start
 
-Source-checkout release, Linux/POSIX (including compatible WSL2):
+Source-checkout release, Linux/POSIX (including compatible WSL2). From the
+checkout, reuse its existing Python environment:
 
-    python -m venv venv
-    ./venv/bin/python -m pip install -e ".[ui,plot]"
-    ./venv/bin/python -m streamlit run apps/pyfoldable_research.py
+    # If the working environment is already active:
+    python -m streamlit run apps/pyfoldable_research.py
+
+Otherwise call `./.venv/bin/python` or `./venv/bin/python` in place of
+`python`, using the directory actually present. Stop the old Streamlit
+process before restarting. For a first install only, create an environment
+with `python -m venv .venv` and install `".[ui,plot]"` with its Python.
 
 This is the normal research entry point. The older dashboard remains an archive/
 advanced workspace, separate from this walkthrough. The wheel alone does not
@@ -77,17 +82,41 @@ Restore reads retained content, without consulting the current store, rebuilding
 with today's defaults or invoking a solver. It checks outer dimensions and
 conditions against the retained draft; the root, template identity and annulus
 count against the retained selection; derived geometry against that declared
-pose and root; and successful/failed BEM records against their corresponding
-request or attempted selection. Computed mechanism reports must correspond to
-the retained mass/CG/inertia, drive, friction, stops and initial state. A
-contradictory or malformed record is rejected before it can enter history.
+pose and root; and prepared and executed requests against each other and their
+retained polar data. Failed BEM records remain bound to the attempted selection.
+
+For saved schema v1 with a BEM v5 report, restore checks the ordered midpoint
+annuli and station interpolation, convergence and retained policy, finite
+outputs, and the ordered element/rotor query envelopes. Each final query must
+be in its element envelope and retained polar domain. A pure lookup checks its
+polar values and source fields. The rotor envelope must combine the element
+envelopes. Differential loads must give the recorded annular loads after
+multiplying by width; the loads must sum to the recorded totals, and shaft
+power must equal torque times the executed shaft speed.
+
+Computed PY-05 v2 reports must match the retained mass/CG/inertia, drive,
+friction, stops and initial pose. Every sample time and RPM/shaft speed must
+match the retained time window and drive interpolation. Completed histories
+reach the declared end; a stop-contact history ends at its recorded stop and
+time. A contradictory or malformed file is left unchanged and rejected before
+it can enter history or comparison.
+
+Repeated arithmetic allows four ULPs (units in the last place), including
+conversion through the draft's display units. The time-step check uses four
+ULPs at timestamp scale because it subtracts recorded times. Polar coefficients
+allow 32 ULPs at unit scale or the coefficient magnitude, whichever is larger,
+to cover rounding in log-Reynolds interpolation and blends near zero. Domain
+bounds stay strict. These allowances concern stored floating-point arithmetic;
+they are neither solver acceptance thresholds nor physical uncertainty.
 
 New exports retain the template TOML to independently check chord and twist
 scales. Older v1 exports did not retain those source bytes, so their scales
 remain historical input declarations; the retained station geometry is checked
 where repeated in the request. Their older geometry summary and optional
-mechanism status are supported. Checksums identify content; they are not
-authentication, solver replay or validation of the underlying measurements.
+mechanism status are supported. Checksums identify content, not its author or
+origin. The saved envelopes summarize trial queries without retaining their
+sequence. Restore does not recreate that sequence, integrate the mechanism,
+or validate the underlying measurements.
 
 ## Supported inputs and independent outputs
 

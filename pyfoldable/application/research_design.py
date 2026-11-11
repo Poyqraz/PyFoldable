@@ -29,6 +29,7 @@ from .mechanism_binding import RadialMassSample, TipMassDistribution, bind_mecha
 from .mechanism_transient import prepare_bound_mechanism_transient, run_bound_mechanism_transient
 from .polar_upload import inspect_polar_bundle
 from .profile_bem_comparison import add_record, assess_comparison, snapshot_failure
+from .research_result_checks import check_bem_report, check_mechanism_history
 from ..core.models import PropellerDesign
 
 TEMPLATES = {
@@ -464,8 +465,9 @@ def _check_admission(admission, attempted, active, snapshot, *, request=None):
     _require_match(snapshot["prepared_policy"]["annulus_count"], active.inputs.annulus_count, "prepared annulus count")
     if admission["complete_family_admitted"] is not True or admission["physical_qualification"] is not False:
         raise ValueError("Saved executed request needs a complete, unqualified admission.")
-    _check_cell_family(admission, snapshot, active, request)
+    bundle = _check_cell_family(admission, snapshot, active, request)
     if request is not None:
+        _check_executed_polar_request(request, bundle, admission["bem_policy"])
         _require_match(request["provider_design_request_sha256"],
                        _digest({"admission": admission, "polar_run_sha256": request["ui_request_sha256"]}),
                        "admission request digest")
@@ -474,6 +476,30 @@ def _check_admission(admission, attempted, active, snapshot, *, request=None):
         _require_match(request["condition_index"], 0, "executed condition index")
         _require_match(request["operating_condition"], condition, "executed operating condition")
         _require_match(snapshot["annulus_count"], active.inputs.annulus_count, "executed annulus count")
+    return bundle
+
+
+def _check_executed_polar_request(request, bundle, admitted_settings):
+    """Join the two request layers from their retained preimages, not today's code identity."""
+    ui = request["ui_request"]
+    upload = request["polar_upload"]
+    execution_only = {"bem_rotor_schema_version", "policy", "polar_families", "polar_evidence_status"}
+    wrappers = {"analysis_request_sha256", "ui_request_sha256", "ui_request", "polar_upload",
+                "provider_design_request_sha256", "provider_design_admission"}
+    executed = {key: value for key, value in request.items() if key not in wrappers}
+    prepared = {key: value for key, value in executed.items() if key not in execution_only}
+    _require_match(ui["analysis_request"], prepared, "prepared analysis request")
+    _require_match(request["ui_request_sha256"], design_analysis._sha(design_analysis._json(ui)), "prepared request digest")
+    _require_match(request["analysis_request_sha256"], design_analysis._sha(design_analysis._json(executed)),
+                   "executed analysis request digest")
+    _require_match(ui["settings"], admitted_settings, "admitted and prepared settings")
+    _require_match(ui["upload_contract_version"], 1, "prepared upload contract version")
+    _require_match(upload["schema_version"], 1, "executed upload contract version")
+    _require_match(ui["source_sha256"], bundle.source_sha256, "prepared polar source digest")
+    normalized = design_analysis._sha(bundle.normalized_json)
+    _require_match(ui["normalized_sha256"], normalized, "prepared normalized polar digest")
+    _require_match(upload["normalized_sha256"], normalized, "executed normalized polar digest")
+    _require_match(upload["identity_scope"], "caller_declared_content_not_authenticated_evidence", "polar identity scope")
 
 
 def _check_cell_family(admission, snapshot, active, request):
@@ -518,34 +544,7 @@ def _check_cell_family(admission, snapshot, active, request):
         _require_match(upload["source_sha256"], bundle.source_sha256, "retained polar upload digest")
         sorted_tables = sorted(tables, key=lambda t: (t["mach"], t["reynolds"]))
         _require_match(request["polar_families"], {profile: sorted_tables}, "executed polar family")
-
-
-def _check_radial_output(row, snapshot, active):
-    b = active.design.blade
-    for name in ("thrust_n", "torque_nm", "shaft_power_w"):
-        _number(snapshot[name])
-    for name, station in (("inner_radius_m", b.stations[0]), ("outer_radius_m", b.stations[-1])):
-        _require_si(_number(snapshot[name]), station.r_over_R*b.radius_m, name)
-    count = snapshot["polar_query_envelope"]["query_count"]
-    minimum = 0 if snapshot["evidence_class"] == "inert_fixture" else 1
-    if type(count) is not int or count < minimum:
-        raise ValueError("Invalid saved polar query count.")
-    radial = radial_rows(row)
-    if len(radial) != active.inputs.annulus_count:
-        raise ValueError("Saved radial coverage contradicts the executed annulus count.")
-    for index, item in enumerate(radial):
-        _require_match(item["element"], index, "radial element index")
-        for name in ("radius_m", "r_over_R", "inner_radius_m", "outer_radius_m", "chord_m", "twist_rad",
-                     "alpha_deg", "reynolds", "mach", "cl", "cd", "thrust_n", "torque_nm",
-                     "dthrust_n_per_m", "dtorque_nm_per_m"):
-            _number(item[name])
-    _require_si(snapshot["thrust_n"], math.fsum(item["thrust_n"] for item in radial), "thrust total")
-    _require_si(snapshot["torque_nm"], math.fsum(item["torque_nm"] for item in radial), "torque total")
-    omega = active.design.operating_conditions[0].angular_speed_rad_s
-    _require_si(snapshot["shaft_power_w"], omega * snapshot["torque_nm"], "shaft power")
-    counts = [e["solution"]["polar_query_envelope"]["query_count"] for e in snapshot["radial_elements"]]
-    if any(type(v) is not int or v < minimum for v in counts) or sum(counts) != count:
-        raise ValueError("Saved rotor query count contradicts the retained element counts.")
+    return bundle
 
 
 def _check_failure(snapshot, active, attempted):
@@ -590,7 +589,9 @@ def _check_mechanism(mech, active, unique):
     if mech.get("requested") is False or hashlib.sha256(mech["report_text"].encode()).hexdigest() != mech["report_sha256"]:
         raise ValueError("Saved mechanism report checksum or status mismatch.")
     doc = json.loads(mech["report_text"], object_pairs_hook=unique)
-    if (doc["schema_version"] != 2 or doc["artifact_class"] != "mechanism_transient_report"
+    if (type(doc["schema_version"]) is not int or doc["schema_version"] != 2
+            or doc["artifact_class"] != "mechanism_transient_report"
+            or doc["qualification"] != "unqualified_mechanism_screening_only"
             or doc["physical_qualification"] is not False):
         raise ValueError("Unsupported saved mechanism report.")
     request = doc["request"]
@@ -610,23 +611,7 @@ def _check_mechanism(mech, active, unique):
                   "contact_policy", "geometry_gate", "physical_qualification", "prototype_measurement"):
         _require_match(observed_binding[field], expected_binding[field], f"mechanism {field}")
     _require_match(retained, expected_binding["transient"], "mechanism executed inputs and pose")
-    result = doc["result"]
-    samples = result["samples"]
-    if not isinstance(samples, list) or not samples or not isinstance(result["status"], str):
-        raise ValueError("Saved mechanism lacks a retained sample history.")
-    first = samples[0]
-    for field, value in (("time_s", 0.), ("angle_rad", retained["initial_angle_rad"]),
-                         ("angular_velocity_rad_s", retained["initial_angular_velocity_rad_s"]),
-                         ("rpm", options.start_rpm)):
-        _require_si(_number(first[field]), value, f"mechanism initial {field}")
-    previous = -math.inf
-    for sample in samples:
-        time = _number(sample["time_s"])
-        if not previous < time <= options.duration_s:
-            raise ValueError("Saved mechanism sample times contradict the declared ramp.")
-        for field in ("angle_rad", "rpm", "centrifugal_torque_nm", "euler_torque_nm", "dry_friction_torque_nm"):
-            _number(sample[field])
-        previous = time
+    check_mechanism_history(doc["result"], binding.request)
 
 
 def read_saved_result(raw):
@@ -649,7 +634,8 @@ def read_saved_result(raw):
         body = {key: val for key, val in row.items() if key != "result_sha256"}
         if row.get("result_sha256") != _digest(body):
             raise ValueError("Saved result checksum mismatch.")
-        if (row.get("schema_version") != 1 or row.get("artifact_class") != "pyfoldable_research_result"
+        if (type(row.get("schema_version")) is not int or row["schema_version"] != 1
+                or row.get("artifact_class") != "pyfoldable_research_result"
                 or row.get("physical_qualification") is not False or row["reference_agreement"] != "NOT_ASSESSED"
                 or row["joint_loss_model"] != "NOT_MODELED"):
             raise ValueError("Unsupported saved result version or scope.")
@@ -679,8 +665,8 @@ def read_saved_result(raw):
                 raise ValueError("Saved snapshot contradicts the retained BEM report.")
             context = request["provider_design_admission"]
             active, attempted = _restore_design(row, snapshot, context)
-            _check_admission(context, attempted, active, snapshot, request=request)
-            _check_radial_output(row, snapshot, active)
+            bundle = _check_admission(context, attempted, active, snapshot, request=request)
+            check_bem_report(doc, active.design.blade, active.design.operating_conditions[0], bundle.to_family())
             _provider_contract(snapshot)
         else:
             context = snapshot if snapshot["failure_stage"] == "preflight_rejection" else snapshot["provider_design_admission"]
