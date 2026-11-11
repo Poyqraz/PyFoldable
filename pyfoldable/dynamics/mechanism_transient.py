@@ -202,6 +202,83 @@ def _integral(times: list[float], values: list[float]) -> list[float]:
     return result
 
 
+_TORQUE_FIELDS = ("applied_torque_nm", "spring_torque_nm", "damping_torque_nm",
+                  "dry_friction_torque_nm", "centrifugal_torque_nm", "euler_torque_nm")
+
+
+def _drive_at(drive, knots, t, index):
+    """Evaluate the prescribed drive within a specified elapsed-time segment."""
+    t0, t1 = knots[index:index + 2]
+    fraction = min(1.0, max(0.0, (t - t0) / (t1 - t0)))
+    rpm = drive.rpm[index] + fraction * (drive.rpm[index + 1] - drive.rpm[index])
+    torque = drive.applied_hinge_torque_nm[index] + fraction * (
+        drive.applied_hinge_torque_nm[index + 1] - drive.applied_hinge_torque_nm[index])
+    alpha = (drive.rpm[index + 1] - drive.rpm[index]) * RPM_TO_RAD_S / (t1 - t0)
+    return _number("RPM", rpm * RPM_TO_RAD_S), _number("angular acceleration", alpha), _number("applied torque", torque)
+
+
+def _output_segment(knots, t, *, contact_segment=None):
+    # At a regular knot use the segment to its right. A terminal contact uses
+    # the segment that produced it, including contact on that segment's end.
+    if contact_segment is not None:
+        return contact_segment
+    return min(len(knots) - 2, max(0, bisect_right(knots, t) - 1))
+
+
+def _hinge_torques(p, theta, velocity, drive_state):
+    omega, alpha, applied = drive_state
+    try:
+        spring = -p.spring_stiffness_nm_rad * (theta - p.rest_angle_rad)
+        damping = -p.viscous_damping_nm_s_rad * velocity
+        friction = (0.0 if p.dry_friction.mode == "none" else
+                    -p.dry_friction.coulomb_torque_nm * math.tanh(velocity / p.dry_friction.transition_velocity_rad_s))
+        centrifugal = -p.mass_kg * p.hinge_radius_m * p.cg_distance_m * omega**2 * math.sin(theta)
+        euler = -(p.hinge_inertia_kg_m2 + p.mass_kg * p.hinge_radius_m * p.cg_distance_m * math.cos(theta)) * alpha
+    except (ArithmeticError, ValueError) as exc:
+        raise RuntimeError("Transient torque evaluation overflowed numerically.") from exc
+    return tuple(_number("torque", value) for value in (applied, spring, damping, friction, centrifugal, euler))
+
+
+def _hinge_acceleration(p, torques):
+    applied, spring, damping, friction, centrifugal, euler = torques
+    return (applied + spring + damping + friction + centrifugal + euler) / p.hinge_inertia_kg_m2
+
+
+def _sample_output(p, theta, velocity, drive_state, torques):
+    """Instantaneous report channels from one retained angle and velocity."""
+    omega, alpha, applied = drive_state
+    _, _, damping, friction, _, _ = torques
+    acceleration = _hinge_acceleration(p, torques)
+    try:
+        energy = (0.5 * p.hinge_inertia_kg_m2 * velocity**2
+                  + 0.5 * p.spring_stiffness_nm_rad * (theta - p.rest_angle_rad)**2
+                  + p.mass_kg * p.hinge_radius_m * p.cg_distance_m * omega**2 * (1 - math.cos(theta)))
+        applied_power, damping_power, friction_power = applied * velocity, -damping * velocity, -friction * velocity
+    except (ArithmeticError, ValueError) as exc:
+        raise RuntimeError("Transient output evaluation overflowed numerically.") from exc
+    values = dict(zip(_TORQUE_FIELDS, torques))
+    values.update(
+        rpm=omega / RPM_TO_RAD_S, omega_rad_s=omega, omega_dot_rad_s2=alpha,
+        angular_acceleration_rad_s2=acceleration, effective_energy_j=energy,
+        applied_power_w=applied_power, damping_power_w=max(0.0, damping_power),
+        dry_friction_power_w=max(0.0, friction_power),
+        total_dissipation_power_w=max(0.0, damping_power + friction_power),
+    )
+    return {key: _number(key, value) for key, value in values.items()}
+
+
+def _accumulated_output(times, output):
+    applied_work = _integral(times, output["applied_power_w"])
+    viscous_loss = _integral(times, output["damping_power_w"])
+    friction_loss = _integral(times, output["dry_friction_power_w"])
+    return {
+        "applied_work_j": applied_work,
+        "viscous_dissipated_energy_j": viscous_loss,
+        "dry_friction_dissipated_energy_j": friction_loss,
+        "total_dissipated_energy_j": [_number("total dissipation", a + b) for a, b in zip(viscous_loss, friction_loss)],
+    }
+
+
 def _first_contact(dense, start, end, y0, y1, parameters, controls):
     """Reconstruct RK45's quartic with five nodes and audit every monotone interval."""
     width = end - start
@@ -326,35 +403,14 @@ def sample_mechanism_transient(
     class _BudgetExceeded(RuntimeError):
         pass
 
-    def drive_at(t, index):
-        t0, t1 = knots[index:index + 2]
-        fraction = min(1.0, max(0.0, (t - t0) / (t1 - t0)))
-        rpm = d.rpm[index] + fraction * (d.rpm[index + 1] - d.rpm[index])
-        torque = d.applied_hinge_torque_nm[index] + fraction * (d.applied_hinge_torque_nm[index + 1] - d.applied_hinge_torque_nm[index])
-        alpha = (d.rpm[index + 1] - d.rpm[index]) * RPM_TO_RAD_S / (t1 - t0)
-        return _number("RPM", rpm * RPM_TO_RAD_S), _number("angular acceleration", alpha), _number("applied torque", torque)
-
-    def torques(t, theta, velocity, index):
-        omega, alpha, applied = drive_at(t, index)
-        try:
-            spring = -p.spring_stiffness_nm_rad * (theta - p.rest_angle_rad)
-            damping = -p.viscous_damping_nm_s_rad * velocity
-            friction = (0.0 if p.dry_friction.mode == "none" else
-                        -p.dry_friction.coulomb_torque_nm * math.tanh(velocity / p.dry_friction.transition_velocity_rad_s))
-            centrifugal = -p.mass_kg * p.hinge_radius_m * p.cg_distance_m * omega**2 * math.sin(theta)
-            euler = -(p.hinge_inertia_kg_m2 + p.mass_kg * p.hinge_radius_m * p.cg_distance_m * math.cos(theta)) * alpha
-        except (ArithmeticError, ValueError) as exc:
-            raise RuntimeError("Transient torque evaluation overflowed numerically.") from exc
-        return tuple(_number("torque", value) for value in (applied, spring, damping, friction, centrifugal, euler, omega))
-
     def rhs(t, y, index):
         nonlocal evaluations
         evaluations += 1
         if evaluations > 8 * c.max_samples:
             raise _BudgetExceeded("Transient evaluation budget exceeded.")
         theta, velocity = _number("state angle", y[0]), _number("state velocity", y[1])
-        applied, spring, damping, friction, centrifugal, euler, _ = torques(t, theta, velocity, index)
-        acceleration = _number("acceleration", (applied + spring + damping + friction + centrifugal + euler) / p.hinge_inertia_kg_m2)
+        torques = _hinge_torques(p, theta, velocity, _drive_at(d, knots, t, index))
+        acceleration = _number("acceleration", _hinge_acceleration(p, torques))
         return velocity, acceleration
 
     for index, (start, end) in enumerate(zip(knots, knots[1:])):
@@ -410,43 +466,22 @@ def sample_mechanism_transient(
             break
 
     absolute_times = [_number("output time", origin + value) for value in times]
-    output = {name: [] for name in ("rpm", "omega", "alpha", "applied", "spring", "damping", "friction", "centrifugal", "euler", "acceleration", "energy", "applied_power", "damping_power", "friction_power", "total_power")}
+    output = {}
     for sample_index, (t, (theta, velocity)) in enumerate(zip(times, states)):
-        index = min(len(knots) - 2, max(0, bisect_right(knots, t) - 1))
-        if contact and sample_index == len(times) - 1 and contact_segment is not None:
-            index = contact_segment
-        applied, spring, damping, friction, centrifugal, euler, omega = torques(t, theta, velocity, index)
-        alpha = (d.rpm[index + 1] - d.rpm[index]) * RPM_TO_RAD_S / (knots[index + 1] - knots[index])
-        acceleration = _number("output acceleration", (applied + spring + damping + friction + centrifugal + euler) / p.hinge_inertia_kg_m2)
-        try:
-            energy = (0.5 * p.hinge_inertia_kg_m2 * velocity**2
-                      + 0.5 * p.spring_stiffness_nm_rad * (theta - p.rest_angle_rad)**2
-                      + p.mass_kg * p.hinge_radius_m * p.cg_distance_m * omega**2 * (1 - math.cos(theta)))
-            applied_power, damping_power, friction_power = applied * velocity, -damping * velocity, -friction * velocity
-        except (ArithmeticError, ValueError) as exc:
-            raise RuntimeError("Transient output evaluation overflowed numerically.") from exc
-        for name, value in (("rpm", omega / RPM_TO_RAD_S), ("omega", omega), ("alpha", alpha),
-                            ("applied", applied), ("spring", spring), ("damping", damping),
-                            ("friction", friction), ("centrifugal", centrifugal), ("euler", euler),
-                            ("acceleration", acceleration), ("energy", energy),
-                            ("applied_power", applied_power), ("damping_power", max(0.0, damping_power)),
-                            ("friction_power", max(0.0, friction_power)),
-                            ("total_power", max(0.0, damping_power + friction_power))):
-            output[name].append(_number(name, value))
+        index = _output_segment(knots, t, contact_segment=contact_segment if sample_index == len(times) - 1 else None)
+        drive_state = _drive_at(d, knots, t, index)
+        torques = _hinge_torques(p, theta, velocity, drive_state)
+        for name, value in _sample_output(p, theta, velocity, drive_state, torques).items():
+            output.setdefault(name, []).append(value)
 
-    applied_work = _integral(absolute_times, output["applied_power"])
-    viscous_loss = _integral(absolute_times, output["damping_power"])
-    friction_loss = _integral(absolute_times, output["friction_power"])
-    total_loss = [_number("total dissipation", a + b) for a, b in zip(viscous_loss, friction_loss)]
+    output.update(_accumulated_output(absolute_times, output))
     result = TransientResult(
-        "stop_contact" if contact else "completed",
-        "Integration terminated at first stop contact." if contact else "Drive history completed without stop contact.",
-        tuple(absolute_times), tuple(x[0] for x in states), tuple(x[1] for x in states),
-        tuple(output["acceleration"]), tuple(output["rpm"]), tuple(output["omega"]),
-        tuple(output["alpha"]), tuple(output["applied"]), tuple(output["spring"]),
-        tuple(output["damping"]), tuple(output["friction"]), tuple(output["centrifugal"]),
-        tuple(output["euler"]), tuple(output["energy"]), tuple(output["applied_power"]),
-        tuple(output["damping_power"]), tuple(output["friction_power"]), tuple(output["total_power"]),
-        tuple(applied_work), tuple(viscous_loss), tuple(friction_loss), tuple(total_loss),
-        tuple(segment_starts), contact)
+        status="stop_contact" if contact else "completed",
+        message=("Integration terminated at first stop contact." if contact
+                 else "Drive history completed without stop contact."),
+        time_s=tuple(absolute_times), angle_rad=tuple(x[0] for x in states),
+        angular_velocity_rad_s=tuple(x[1] for x in states),
+        segment_start_indices=tuple(segment_starts), contact=contact,
+        **{name: tuple(values) for name, values in output.items()},
+    )
     return TransientSamples(result, tuple(observed_times), tuple(observed_angles))

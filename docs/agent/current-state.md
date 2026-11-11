@@ -765,3 +765,13 @@ still use the original result contents without executing either solver or
 consulting the current provider store. The enabled BEM action has explicit
 text contrast and keyboard focus in both supported themes. The retained
 800 mm numerical results and their scientific scope are unchanged.
+
+### 2026-11-11 — PR #113 retained load and drive correspondence
+
+Restore now checks section differential loads before accepting integrated
+loads, and verifies PY-05 drive derivative, applied moment, derived sample
+channels and accumulated work/dissipation. Shared pure helpers preserve the
+existing equations and report quadrature. An ordinary drive knot uses the
+outgoing segment; contact uses the segment that reached the stop. The
+original 800 mm results and approved action styling are unchanged. Restore
+does not consult the current provider store or solve a trajectory.

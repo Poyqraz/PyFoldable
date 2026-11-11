@@ -3,16 +3,20 @@
 These are read-only checks of reported values. Only deterministic arithmetic
 and the retained final polar lookups are replayed, never a solver or a trace.
 """
-from bisect import bisect_left, bisect_right
+from bisect import bisect_left
 from contextlib import contextmanager
 import math
 
 from pyfoldable.core.bem import (
     BEMAnnulusSettings, BEMPolarQueryEnvelope, _AIR_GAMMA, _AIR_GAS_CONSTANT_J_KG_K,
+    _section_differential_loads,
 )
 from pyfoldable.core.bem_rotor import _interpolate_station, _radial_limits
 from pyfoldable.core.rotational_augmentation import RotationalAugmentationModel
-from pyfoldable.dynamics.mechanism_transient import RPM_TO_RAD_S
+from pyfoldable.dynamics.mechanism_transient import (
+    RPM_TO_RAD_S, _TORQUE_FIELDS, _accumulated_output, _drive_at,
+    _hinge_torques, _output_segment, _sample_output,
+)
 
 _MESSAGES = {
     "policy": "BEM raporunun sürümü, hesap ayarları veya çalışma koşulu saklanan istekle uyuşmuyor.",
@@ -20,7 +24,7 @@ _MESSAGES = {
     "convergence": "BEM elemanlarının yakınsama durumu veya sayısal sınırları tutarsız.",
     "queries": "Polar sorgu kapsamı veya son sorgu, saklanan polar verileriyle uyuşmuyor.",
     "loads": "Radyal yükler, toplam yükler veya şaft gücü birbiriyle uyuşmuyor.",
-    "mechanism": "Mekanizmanın örnek zamanları, devir rampası veya durma kaydı saklanan istekle uyuşmuyor.",
+    "mechanism": "Mekanizmanın sürüşü, yükleri, örnek zamanları veya durma kaydı saklanan istekle uyuşmuyor.",
 }
 _AXES = ("alpha_rad", "reynolds", "mach")
 _ANNULUS_NUMBERS = (
@@ -52,7 +56,7 @@ class SavedResultSemanticError(ValueError):
 def _checking(group):
     try:
         yield
-    except (KeyError, TypeError, ValueError, ArithmeticError, AttributeError) as exc:
+    except (KeyError, TypeError, ValueError, ArithmeticError, AttributeError, RuntimeError) as exc:
         raise SavedResultSemanticError(group, str(exc)) from exc
 
 
@@ -208,6 +212,7 @@ def _final_query(solution, envelope, condition, family, controls):
                      f"rotational augmentation {key} contradicts its retained policy")
     _close(solution["cl"], correction.cl, "annulus lift coefficient")
     _close(solution["cd"], correction.cd, "annulus drag coefficient")
+    return correction
 
 
 def check_bem_report(doc, blade, condition, family):
@@ -251,11 +256,17 @@ def check_bem_report(doc, blade, condition, family):
             _annulus_status(s, controls, condition, family, rotor["settings"]["annulus_settings"])
         with _checking("queries"):
             env = _envelope(s["polar_query_envelope"], domain, sources)
-            _final_query(s, env, condition, family, controls)
+            correction = _final_query(s, env, condition, family, controls)
             envelopes.append(env)
         with _checking("loads"):
             _close(e["thrust_n"], s["differential_thrust_n_m"] * width, f"annular thrust {i}")
             _close(e["torque_nm"], s["differential_torque_nm_m"] * width, f"annular torque {i}")
+            thrust, torque = _section_differential_loads(
+                blade.blade_count, condition.air_density_kg_m3, s["relative_speed_m_s"],
+                s["chord_m"], s["radius_m"], s["inflow_angle_rad"], correction.cl, correction.cd,
+            )
+            _close(s["differential_thrust_n_m"], thrust, f"differential thrust {i}")
+            _close(s["differential_torque_nm_m"], torque, f"differential torque {i}")
     with _checking("queries"):
         combined = _envelope(rotor["polar_query_envelope"], domain, sources)
         _require(combined == BEMPolarQueryEnvelope.combine(tuple(envelopes)), "aggregate query envelope contradicts its annuli")
@@ -284,7 +295,7 @@ def check_bem_report(doc, blade, condition, family):
 
 
 def check_mechanism_history(result, request):
-    """Validate drive/sample/terminal-event correspondence without integrating."""
+    """Check reported samples and output quadrature without solving the ODE."""
     with _checking("mechanism"):
         samples, times = result["samples"], result["time_s"]
         drive, params = request.drive, request.parameters
@@ -305,11 +316,6 @@ def check_mechanism_history(result, request):
                 _require(time-previous <= step+tolerance, "sample time gap exceeds the retained maximum step")
             for key in _MECHANISM_CHANNELS:
                 _require(_finite(sample[key]) == _finite(result[key][i]), f"sample {i} {key} differs from its retained column")
-            j = min(len(drive.time_s)-2, bisect_right(drive.time_s, time)-1)
-            fraction = (time-drive.time_s[j])/(drive.time_s[j+1]-drive.time_s[j])
-            rpm = drive.rpm[j] + fraction*(drive.rpm[j+1]-drive.rpm[j])
-            _close(sample["rpm"], rpm, f"sample {i} RPM from the drive")
-            _close(sample["omega_rad_s"], rpm*RPM_TO_RAD_S, f"sample {i} shaft speed from the drive")
             previous = time
         _close(times[0], drive.time_s[0], "mechanism initial time")
         _close(samples[0]["angle_rad"], request.initial_angle_rad, "mechanism initial angle")
@@ -330,9 +336,35 @@ def check_mechanism_history(result, request):
             interior_angles = result["angle_rad"][:-1]
         _require(all(params.lower_stop_rad < angle < params.upper_stop_rad for angle in interior_angles),
                  "a sample lies at or outside a stop before terminal contact")
-        knots = tuple(t for t in drive.time_s[:-1] if t < times[-1])
+        visited_knots = tuple(t for t in drive.time_s[:-1] if t < times[-1])
         indices = result["segment_start_indices"]
-        expected = [bisect_left(times, t) for t in knots]
+        expected = [bisect_left(times, t) for t in visited_knots]
         _require(isinstance(indices, list) and all(type(i) is int for i in indices)
-                 and indices == expected and all(times[i] == t for i, t in zip(expected, knots)),
+                 and indices == expected and all(times[i] == t for i, t in zip(expected, visited_knots)),
                  "segment starts contradict the retained drive knots")
+        origin = drive.time_s[0]
+        knots = tuple(t-origin for t in drive.time_s)
+        for i, sample in enumerate(samples):
+            t = times[i]-origin
+            # The last visited segment remains authoritative at terminal contact
+            # even when the contact timestamp is exactly the next drive knot.
+            contact_segment = len(indices)-1 if terminal is not None and i == len(samples)-1 else None
+            index = _output_segment(knots, t, contact_segment=contact_segment)
+            drive_state = _drive_at(drive, knots, t, index)
+            omega, alpha, applied = drive_state
+            _close(sample["rpm"], omega/RPM_TO_RAD_S, f"sample {i} RPM from the drive")
+            _close(sample["omega_rad_s"], omega, f"sample {i} shaft speed from the drive")
+            _close(sample["omega_dot_rad_s2"], alpha, f"sample {i} omega_dot_rad_s2 from the drive")
+            _close(sample["applied_torque_nm"], applied, f"sample {i} applied_torque_nm from the drive")
+            theta, velocity = sample["angle_rad"], sample["angular_velocity_rad_s"]
+            for field, value in zip(_TORQUE_FIELDS, _hinge_torques(params, theta, velocity, drive_state)):
+                _close(sample[field], value, f"sample {i} {field}")
+            # Downstream arithmetic uses the checked retained primitives; tiny
+            # cross-platform differences do not grow through cancellation.
+            retained_drive = tuple(sample[k] for k in ("omega_rad_s", "omega_dot_rad_s2", "applied_torque_nm"))
+            retained_torques = tuple(sample[k] for k in _TORQUE_FIELDS)
+            for field, value in _sample_output(params, theta, velocity, retained_drive, retained_torques).items():
+                _close(sample[field], value, f"sample {i} {field}")
+        for field, values in _accumulated_output(times, result).items():
+            for i, value in enumerate(values):
+                _close(result[field][i], value, f"sample {i} {field}")

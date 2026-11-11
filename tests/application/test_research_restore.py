@@ -2,6 +2,7 @@
 from copy import deepcopy
 from dataclasses import replace
 import json
+import math
 from pathlib import Path
 
 import pytest
@@ -9,7 +10,10 @@ import pytest
 from pyfoldable.application import mechanism_transient as mech
 from pyfoldable.application import provider_design_analysis as managed
 from pyfoldable.application import research_design as research
-from research_inert_support import bem, mechanism, store
+from pyfoldable.application.research_result_checks import check_mechanism_history
+from pyfoldable.dynamics.mechanism_contracts import DryFriction
+from pyfoldable.dynamics.mechanism_transient import DriveHistory, RPM_TO_RAD_S, StopContact
+from research_inert_support import bem, inert_history, mechanism, store
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -294,3 +298,111 @@ def test_restore_rejects_resealed_prepared_request_with_different_condition(case
     raw = _reseal_report(row, report)
     with pytest.raises(ValueError, match="prepared analysis request contradicts"):
         research.read_saved_result(raw)
+
+
+@pytest.mark.parametrize("field", ("thrust", "torque"))
+def test_restore_checks_resealed_differential_load_with_consistent_totals(case, field):
+    active, row, _ = case
+    condition = active.design.operating_conditions[0]
+    blade = active.design.blade
+
+    def forge(rotor):
+        first = rotor["elements"][0]
+        differential, element_load = (("differential_thrust_n_m", "thrust_n") if field == "thrust"
+                                      else ("differential_torque_nm_m", "torque_nm"))
+        first["solution"][differential] += 40.
+        first[element_load] = first["solution"][differential] * first["width_m"]
+        thrust, torque = (math.fsum(e[k] for e in rotor["elements"]) for k in ("thrust_n", "torque_nm"))
+        power = torque * condition.angular_speed_rad_s
+        n = condition.angular_speed_rad_s / (2 * math.pi)
+        d, rho = blade.diameter_m, condition.air_density_kg_m3
+        force_scale = rho * n**2 * d**4
+        rotor.update(thrust_n=thrust, torque_nm=torque, shaft_power_w=power,
+                     thrust_coefficient=thrust/force_scale, torque_coefficient=torque/(force_scale*d),
+                     power_coefficient=power/(rho*n**3*d**5),
+                     propulsive_efficiency=condition.forward_speed_m_s*thrust/power)
+
+    raw = reseal_rotor(row, forge)
+    with pytest.raises(ValueError, match=f"differential {field}"):
+        research.read_saved_result(raw)
+
+
+@pytest.mark.parametrize("field", ("omega_dot_rad_s2", "applied_torque_nm",
+                                   "spring_torque_nm", "viscous_dissipated_energy_j"))
+def test_restore_checks_resealed_mechanism_drive_dynamics_and_quadrature(case, monkeypatch, field):
+    active, _, _ = case
+    options = research.MechanismInputs(10., 40., .000001, "INERT assumed CG", 1200., .5, .1,
+                                       .01, -10., .001, .002, "none", 0., 0.)
+    mechanism(monkeypatch)
+    row = research.run_mechanics_only(active, options)
+    assert research.read_saved_result(encode(row)) == row
+    doc = json.loads(row["mechanism"]["report_text"])
+    data = doc["result"]
+    params = doc["request"]["transient"]["parameters"]
+    i = len(data["samples"])//2
+    sample = data["samples"][i]
+
+    def set_sample(index, key, value):
+        data["samples"][index][key] = data[key][index] = value
+
+    if field == "omega_dot_rad_s2":
+        set_sample(i, field, 0.)
+        set_sample(i, "euler_torque_nm", 0.)
+    elif field == "applied_torque_nm":
+        set_sample(i, field, sample[field]+.04)
+        set_sample(i, "applied_power_w", sample[field]*sample["angular_velocity_rad_s"])
+        work = 0.
+        for j, time in enumerate(data["time_s"]):
+            if j:
+                work += .5*(data["applied_power_w"][j-1]+data["applied_power_w"][j])*(time-data["time_s"][j-1])
+            set_sample(j, "applied_work_j", work)
+    elif field == "spring_torque_nm":
+        set_sample(i, field, sample[field]+.04)
+    else:
+        for j in range(i, len(data["samples"])):
+            set_sample(j, field, data[field][j]+.01)
+            set_sample(j, "total_dissipated_energy_j", data[field][j]+data["dry_friction_dissipated_energy_j"][j])
+    if field != "viscous_dissipated_energy_j":
+        terms = ("applied_torque_nm", "spring_torque_nm", "damping_torque_nm",
+                 "dry_friction_torque_nm", "centrifugal_torque_nm", "euler_torque_nm")
+        set_sample(i, "angular_acceleration_rad_s2", sum(sample[k] for k in terms)/params["hinge_inertia_kg_m2"])
+    row["mechanism"]["report_text"] = mech._json(doc) + "\n"
+    row["mechanism"]["report_sha256"] = mech._sha(row["mechanism"]["report_text"])
+    raw = encode(row)
+    monkeypatch.setattr(mech, "solve_mechanism_transient", lambda *a: pytest.fail("Restore reran mechanism"))
+    with pytest.raises(ValueError, match=field):
+        research.read_saved_result(raw)
+
+
+@pytest.mark.parametrize("contact_at_knot", (False, True))
+def test_mechanism_output_uses_right_side_at_knot_but_incoming_side_at_terminal_contact(
+        monkeypatch, contact_at_knot):
+    example = mech.build_literature_modal_example()
+    origin, step = .125, 1/1024
+    knot = origin + 2*step
+    drive = DriveHistory((origin, knot, origin+4*step), (1200., 2400., 1800.), (.1, .2, .4))
+    params = replace(example.transient.parameters, hinge_radius_m=.27, dry_friction=DryFriction(
+        "regularized_coulomb", .01, .1, "inert fixture"))
+    request = replace(example.transient, parameters=params, drive=drive, initial_angular_velocity_rad_s=.1)
+    times = tuple(origin+i*step for i in range(3 if contact_at_knot else 5))
+    angles = (request.initial_angle_rad,)*len(times)
+    starts = (0,) if contact_at_knot else (0, 2)
+    velocities = (.1,)*len(times)
+    contact = None
+    if contact_at_knot:
+        angles = (*angles[:-1], request.parameters.upper_stop_rad)
+        contact = StopContact("upper", knot, angles[-1], velocities[-1])
+    history = inert_history(request, times, angles, velocities, starts, contact)
+    monkeypatch.setattr(mech, "solve_mechanism_transient", lambda _: history)
+    report = mech.run_mechanism_transient(replace(example, transient=request))
+    result = json.loads(report.report_json)["result"]
+    incoming = 1200. * RPM_TO_RAD_S / (2*step)
+    outgoing = -600. * RPM_TO_RAD_S / (2*step)
+    assert result["omega_dot_rad_s2"][2] == (incoming if contact_at_knot else outgoing)
+    assert result["applied_torque_nm"][2] == .2
+    assert result["dry_friction_dissipated_energy_j"][-1] > 0.
+    check_mechanism_history(result, request)
+    result["omega_dot_rad_s2"][2] = result["samples"][2]["omega_dot_rad_s2"] = (
+        outgoing if contact_at_knot else incoming)
+    with pytest.raises(ValueError, match="omega_dot_rad_s2"):
+        check_mechanism_history(result, request)

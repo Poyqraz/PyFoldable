@@ -90,16 +90,23 @@ annuli and station interpolation, convergence and retained policy, finite
 outputs, and the ordered element/rotor query envelopes. Each final query must
 be in its element envelope and retained polar domain. A pure lookup checks its
 polar values and source fields. The rotor envelope must combine the element
-envelopes. Differential loads must give the recorded annular loads after
-multiplying by width; the loads must sum to the recorded totals, and shaft
-power must equal torque times the executed shaft speed.
+envelopes. Differential loads must match the solver's force projection from
+the retained section state and its verified effective lift and drag
+coefficients. They must give the recorded annular loads after multiplying by
+width; the loads must sum to the recorded totals, and shaft power must equal
+torque times the executed shaft speed.
 
 Computed PY-05 v2 reports must match the retained mass/CG/inertia, drive,
-friction, stops and initial pose. Every sample time and RPM/shaft speed must
-match the retained time window and drive interpolation. Completed histories
-reach the declared end; a stop-contact history ends at its recorded stop and
-time. A contradictory or malformed file is left unchanged and rejected before
-it can enter history or comparison.
+friction, stops and initial pose. For every sample, the retained drive sets
+RPM, shaft speed, its segment derivative and applied hinge torque. An ordinary
+internal knot uses the outgoing segment; terminal first contact uses the
+segment that reached the stop, including contact at that segment's end knot.
+The same instantaneous model checks hinge torque terms, acceleration, energy
+and powers from the retained angle and velocity. The report's cumulative
+trapezoidal rule over retained sample times and checked powers gives work and
+dissipated energy. Completed histories reach the declared end; a stop-contact
+history ends at its recorded stop and time. A contradictory or malformed file
+is left unchanged and rejected before it can enter history or comparison.
 
 Repeated arithmetic allows four ULPs (units in the last place), including
 conversion through the draft's display units. The time-step check uses four

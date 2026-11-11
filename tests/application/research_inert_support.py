@@ -1,13 +1,18 @@
 """Explicitly inert store/caller support. Never normal deployment data."""
-from dataclasses import fields, replace
+from bisect import bisect_right
+from dataclasses import replace
 import math
 
 from pyfoldable.application import design_analysis, mechanism_transient as mech, provider_design_analysis as managed
 from pyfoldable.application.provider_record_store import ProviderRecordStore
-from pyfoldable.core.bem import BEM_ANNULUS_SCHEMA_VERSION, BEMAnnulusResult, BEMPolarQueryEnvelope
+from pyfoldable.core.bem import (
+    BEM_ANNULUS_SCHEMA_VERSION, BEMAnnulusResult, BEMPolarQueryEnvelope, _section_differential_loads,
+)
 from pyfoldable.core.bem_rotor import BEM_ROTOR_SCHEMA_VERSION, BEMRotorElement, BEMRotorResult, _interpolate_station
 from pyfoldable.core.providers import ProviderIdentity
-from pyfoldable.dynamics.mechanism_transient import RPM_TO_RAD_S, StopContact, TransientResult
+from pyfoldable.dynamics.mechanism_transient import (
+    StopContact, TransientResult, _accumulated_output, _drive_at, _hinge_torques, _sample_output,
+)
 from pyfoldable.core.profile_catalog import load_project_airfoil
 from pyfoldable.providers import xfoil
 from research_reference_loader import ref
@@ -65,6 +70,10 @@ def bem(monkeypatch, fail=False):
             correction = settings.annulus_settings.rotational_augmentation.apply(
                 alpha, query.cl, query.cd, chord_over_radius=station.chord_m/radius)
             circulation = .5 * speed * station.chord_m * correction.cl
+            thrust_per_m, torque_per_m = _section_differential_loads(
+                blade.blade_count, condition.air_density_kg_m3, speed, station.chord_m,
+                radius, phi, correction.cl, correction.cd,
+            )
             local = BEMAnnulusResult(
                 schema_version=BEM_ANNULUS_SCHEMA_VERSION, operating_condition_id=condition.id,
                 airfoil_id=profile, scenario_id=family.scenario_id, polar_bounds=bounds,
@@ -76,7 +85,7 @@ def bem(monkeypatch, fail=False):
                 relative_speed_m_s=speed, reynolds=re, mach=mach, cl=correction.cl, cd=correction.cd,
                 raw_polar_cl=query.cl, raw_polar_cd=query.cd, rotational_augmentation=correction.as_mapping(),
                 circulation_m2_s=circulation, tip_loss_factor=1., root_loss_factor=1., combined_loss_factor=1.,
-                differential_thrust_n_m=1.25/(hi-lo), differential_torque_nm_m=.01/(hi-lo), residual_m2_s=0.,
+                differential_thrust_n_m=thrust_per_m, differential_torque_nm_m=torque_per_m, residual_m2_s=0.,
                 polar_sources=query.sources, interpolated_dimensions=query.interpolated_dimensions,
                 clamped_dimensions=query.clamped_dimensions,
                 polar_query_envelope=BEMPolarQueryEnvelope.from_queries((query,)),
@@ -100,6 +109,25 @@ def bem(monkeypatch, fail=False):
     return calls
 
 
+def inert_history(request, times, angles, velocities, segment_starts, contact=None):
+    """Build report channels around chosen states, without integrating dynamics."""
+    d, p = request.drive, request.parameters
+    knots = tuple(t-d.time_s[0] for t in d.time_s)
+    output = {}
+    for i, (time, theta, velocity) in enumerate(zip(times, angles, velocities)):
+        segment = bisect_right(segment_starts, i)-1
+        state = _drive_at(d, knots, time-d.time_s[0], segment)
+        for key, value in _sample_output(p, theta, velocity, state, _hinge_torques(p, theta, velocity, state)).items():
+            output.setdefault(key, []).append(value)
+    output.update(_accumulated_output(times, output))
+    return TransientResult(
+        status="stop_contact" if contact else "completed", message="INERT fixture",
+        time_s=times, angle_rad=angles, angular_velocity_rad_s=velocities,
+        segment_start_indices=segment_starts, contact=contact,
+        **{key: tuple(values) for key, values in output.items()},
+    )
+
+
 def mechanism(monkeypatch, *, contact=False):
     """Serialize a synthetic PY-05 sample history; never integrate dynamics."""
     calls = []
@@ -109,21 +137,12 @@ def mechanism(monkeypatch, *, contact=False):
         stop_time = d.time_s[-1]/2 if contact else d.time_s[-1]
         n = math.ceil(stop_time / request.controls.max_step_s)
         times = tuple(stop_time*i/n for i in range(n)) + (stop_time,)
-        rpm = tuple(d.rpm[0] + t/d.time_s[-1]*(d.rpm[-1]-d.rpm[0]) for t in times)
         angles = (request.initial_angle_rad,) * len(times)
         velocity = (request.initial_angular_velocity_rad_s,) * len(times)
         event = None
         if contact:
             angles = (*angles[:-1], request.parameters.upper_stop_rad)
             event = StopContact("upper", stop_time, angles[-1], velocity[-1])
-        return TransientResult(**{
-            f.name: (0.,)*len(times) for f in fields(TransientResult)
-            if f.name not in {"status", "message", "contact", "segment_start_indices"}
-        } | {
-            "status": "stop_contact" if contact else "completed", "message": "INERT fixture",
-            "time_s": times, "rpm": rpm, "omega_rad_s": tuple(r*RPM_TO_RAD_S for r in rpm),
-            "angle_rad": angles, "angular_velocity_rad_s": velocity,
-            "segment_start_indices": (0,), "contact": event,
-        })
+        return inert_history(request, times, angles, velocity, (0,), event)
     monkeypatch.setattr(mech, "solve_mechanism_transient", inert)
     return calls
