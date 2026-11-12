@@ -445,9 +445,12 @@ def render_result(row, *, imported=False, root: Path | None = None):
     elif tab == "Mühendislik değerlendirmesi":
         _assessment_tab(row)
     else:
-        fig = views.playback_figure(row)
-        if fig is not None:
-            rui._plot(fig, "coupled_playback")  # scroll zoom disabled, like the other workspace figures
+        from . import blade_ui
+        blade_ui.coupled_blade_tab(row, root)
+        with st.expander("Eski hızlı oynatma (renksiz, 24 noktalı kesit)"):
+            fig = views.playback_figure(row)
+            if fig is not None:
+                rui._plot(fig, "coupled_playback")  # scroll zoom disabled, like the other workspace figures
         st.caption("Kabul edilen MBDyn durumlarında rijit parça yüzeyleri (katalog kesiti, beyan edilen istasyonlar). "
                    "Basınç veya gerilme alanı çözülmediği için gösterilmez. 3B için WebGL gerekir.")
     _details(row)
@@ -607,7 +610,19 @@ def _flow_tab(row, root):
                f"{_fmt(r['aero_shaft_torque_nm'], 3)} N·m · tahrik torku {_fmt(r['drive_torque_nm'], 3)} N·m.")
     show_plane = st.toggle("Hız düzlemini 3B sahnede göster", value=True, key="coupled_flow_plane")
     rui = _rui()
-    rui._plot(views.flow_scene_figure(row, fc, w, show_plane=show_plane), "coupled_flow_scene")
+    from . import blade_ui
+    try:
+        _, mesh = blade_ui.coupled_spec_mesh(row)
+        fields, crange, frame = blade_ui.field_controls(row, "coupled_flow", w, allow_none=True)
+        rui._plot(views.flow_blade_scene(row, fc, w, mesh, fields=fields, crange=crange, rotor_fixed=frame == "rotor",
+                                         show_plane=show_plane), "coupled_flow_scene")
+        st.caption("Kanatlar (MBDyn gövde durumları), kanattaki renk (DUST elemanları), girdap parçacıkları, panel izi ve "
+                   "hız düzlemi aynı kabul edilen pencereye aittir. Renk ölçeği tüm pencerelerde sabittir. "
+                   + ("Rotorla birlikte görünümde iz ve düzlem de rotor açısı kadar döndürülür." if frame == "rotor" else
+                      "Dönen görünüm laboratuvar çerçevesidir."))
+    except (ValueError, KeyError) as exc:
+        st.caption("Kanat yüzeyi bu kayıttan oluşturulamadı (" + str(exc) + "); eski sahne gösteriliyor.")
+        rui._plot(views.flow_scene_figure(row, fc, w, show_plane=show_plane), "coupled_flow_scene")
     c1, c2 = st.columns(2)
     with c1:
         st.markdown("**Eksenel hız, y = 0 düzlemi (dust_post)**")

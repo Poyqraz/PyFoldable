@@ -260,6 +260,17 @@ lowest tested start 1600 RPM.
   induction frozen (direct XFOIL, diagnostic). Independent review findings applied.
 * Plan: `docs/prototype_measurement_plan.md`. No new coupled runs.
 
+## Lofted 3-D blade increment (after `11491a2`)
+
+* `pyfoldable/visualization/blade_surface.py` (loft), `fold_interference.py` (contacts),
+  `blade_results.py` (strips); `pyfoldable/application/blade_geometry.py`, `blade_views.py`,
+  `blade_ui.py`; wired into the design preview (3B/Plan), BEM results, coupled *3B oynatma* and the flow
+  scene (`coupled_views.flow_blade_scene`). Docs `docs/blade_3d_view.md`; demo records
+  `reports/blade3d_20261113/`.
+* Findings: hinge-plane split interlocks at −0.03° (trailing side); with the display joint zone the 800 mm
+  design folds clear to −66.6°; deeper folding needs a declared joint (axial offset). The legacy preview /
+  GEOM-01/03 fold side differs from the coupled convention (not changed; owner decision).
+
 ## Next concrete items
 
 00. (After the engineering-use increment) Measurements first: priorities 1–3 of

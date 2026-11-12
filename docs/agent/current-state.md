@@ -178,7 +178,12 @@ classifies each deployment output as comparative, preliminary (scales with decla
 illustrative (assumed stop law, ideal drive) or a numerical check, with contact impulse/energy and shaft
 momentum checks (`pyfoldable/coupled/assessment.py`, `reports/coupled_engineering_20261113/`); the
 −23° fold limit is labelled as the aerodynamic representation's, not the mechanism's travel.
-Measurement plan: [prototype measurement plan](../prototype_measurement_plan.md). ADR-010 is
+Measurement plan: [prototype measurement plan](../prototype_measurement_plan.md). A lofted 3-D blade
+(catalog profile, declared stations, coupled-model fold convention) replaces the design 3B/Plan preview
+and colours BEM and coupled sectional results on the surface (strips, kind and unit labelled), with fold
+contacts screened and no interlocked pose drawn; coupled playback and the flow scene are synchronised to
+one accepted window ([lofted 3-D blade](../blade_3d_view.md)). The legacy preview and GEOM-01/03 clearance
+still fold toward the leading-edge side (inconsistency recorded, not changed). ADR-010 is
 proposed, not accepted. `physical_qualification` remains false. Design and limits:
 [coupled dynamic analysis](../coupled_dynamic_analysis.md).
 

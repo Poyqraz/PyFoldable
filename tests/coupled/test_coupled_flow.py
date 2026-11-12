@@ -142,6 +142,34 @@ def test_figures_and_paraview_export_use_the_same_accepted_windows(run):
     assert pvd.count("<DataSet") == len(fc.windows)
 
 
+def test_coloured_blade_scene_is_synchronised_to_one_accepted_window(run):
+    """Blades posed from the window's MBDyn states and coloured with the same window's element loads, with the
+    same window's particles and plane; the rotor-relative view rotates all of them by minus the azimuth."""
+    from pyfoldable.application import blade_geometry as bg
+    from pyfoldable.application import blade_views as bv
+    from pyfoldable.visualization import blade_results as br
+    from pyfoldable.visualization import blade_surface as bs
+    row = _row(run)
+    fc = flow.load(run, row)
+    w = 13
+    mesh = bs.loft(bg.spec_from_coupled(row), n_side=20, dr=0.01, joint="relief")
+    fields = [br.coupled_fields(row, w, b)["fz_per_span"] for b in range(2)]
+    phys = views.flow_blade_scene(row, fc, w, mesh, fields=fields, crange=(0.0, 200.0))
+    names = [t.name or "" for t in phys.data]
+    assert any(n.startswith("Sonuç") for n in names) and any("Girdap parçacıkları" in n for n in names)
+    assert any("Hız düzlemi" in n for n in names)
+    p, _, _ = fc.particles(w)
+    part = next(t for t in phys.data if "Girdap parçacıkları" in (t.name or ""))
+    rel = views.flow_blade_scene(row, fc, w, mesh, fields=fields, crange=(0.0, 200.0), rotor_fixed=True)
+    part_rel = next(t for t in rel.data if "Girdap parçacıkları" in (t.name or ""))
+    psi = bg.rotor_azimuth(row, w)
+    x, y = np.asarray(part.x), np.asarray(part.y)
+    assert np.allclose(part_rel.x, x * np.cos(-psi) - y * np.sin(-psi), atol=1e-6)
+    blade = next(t for t in rel.data if (t.name or "").startswith("Sonuç"))
+    # rotor-relative: blade 1's tip quarter-chord sits on +Y (azimuth removed)
+    assert np.max(np.asarray(blade.y)) > 0.9 * 1000 * mesh.spec.stations[-1][0] * np.cos(np.radians(bg.folds_deg(row, w)[0]))
+
+
 def test_dust_post_flow_field_reader_parses_genuine_output():
     path = Path(__file__).resolve().parents[2] / "pyfoldable" / "coupled" / "participants" / "extract_flow.py"
     spec = importlib.util.spec_from_file_location("extract_flow", path)

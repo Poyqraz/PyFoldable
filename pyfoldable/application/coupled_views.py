@@ -356,6 +356,60 @@ def flow_scene_figure(row, fc, window, *, max_particles=6000, show_plane=True):
     return fig
 
 
+def flow_traces(row, fc, window, *, max_particles=6000, show_plane=True, view_rotation_rad=0.0):
+    """DUST wake of one accepted window (particles, first panel-wake rows, dust_post velocity plane) as traces,
+    optionally rotated about the shaft (rotor-relative view)."""
+    import math
+    import numpy as np
+    c, s = math.cos(view_rotation_rad), math.sin(view_rotation_rad)
+
+    def rot(x, y):
+        return x * c - y * s, x * s + y * c
+    out = []
+    p, v, _ = fc.particles(window)
+    pick = _subsample(len(p), max_particles)
+    mag = np.linalg.norm(v[pick], axis=1)
+    x, y = rot(1000 * p[pick, 0], 1000 * p[pick, 1])
+    out.append(go.Scatter3d(
+        x=x, y=y, z=1000 * p[pick, 2], mode="markers",
+        marker=dict(size=1.6, color=np.log10(np.maximum(mag, 1e-12)), colorscale="Greys", opacity=.6,
+                    colorbar=dict(title="log₁₀|α|<br>(parçacık)", x=-0.02, xanchor="right", len=.45, y=.75)),
+        name=f"Girdap parçacıkları (DUST, {len(pick)}/{len(p)})", hoverinfo="skip"))
+    pw = fc.panel_wake[fc.index(window)]
+    for row_i in (0, 1):
+        x, y = rot(1000 * pw[row_i, :, 0], 1000 * pw[row_i, :, 1])
+        out.append(go.Scatter3d(x=x, y=y, z=1000 * pw[row_i, :, 2], mode="markers",
+                                marker=dict(size=1.8, color="#111827"), showlegend=row_i == 0,
+                                name="Panel izi (DUST, ilk sıra)", hoverinfo="skip"))
+    if show_plane:
+        vel = fc.plane_velocity[fc.index(window)]
+        X, Z = np.meshgrid(1000 * fc.plane_x, 1000 * fc.plane_z)
+        Xr, Yr = rot(X, np.full_like(X, 1000 * fc.plane_y))
+        down = -vel[:, :, 2]
+        out.append(go.Surface(x=Xr, y=Yr, z=Z, surfacecolor=down, colorscale="RdBu_r",
+                              cmin=float(np.percentile(down, 1)), cmax=float(np.percentile(down, 99)), opacity=.45,
+                              showscale=False, name="Hız düzlemi (dust_post, −w)", showlegend=True,
+                              hovertemplate="−w %{surfacecolor:.2f} m/s<extra>Hız düzlemi</extra>"))
+    return out
+
+
+def flow_blade_scene(row, fc, window, mesh, *, fields=None, crange=None, rotor_fixed=False, show_plane=True,
+                     max_particles=6000, selected_radius_m=None, colorscale="Viridis"):
+    """One accepted window: lofted blades posed from that window's MBDyn body states (coloured with that window's
+    element results when ``fields`` is given), with that window's wake and velocity plane. ``rotor_fixed``
+    removes the rotor azimuth from everything (blades, wake and plane rotate together)."""
+    from . import blade_geometry as bg
+    from . import blade_views as bv
+    rotation = -bg.rotor_azimuth(row, window) if rotor_fixed else 0.0
+    R = 1000 * row["run_definition"]["case"]["geometry"]["tip_radius_m"]
+    return bv.blade_figure(mesh, field=fields, crange=crange, transforms=bg.node_transforms(row, window),
+                           view_rotation_rad=rotation, selected_radius_m=selected_radius_m, colorscale=colorscale,
+                           extra_traces=flow_traces(row, fc, window, max_particles=max_particles, show_plane=show_plane,
+                                                    view_rotation_rad=rotation),
+                           scene_ranges=((-1.35 * R, 1.35 * R), (-1.35 * R, 1.35 * R), (-2.05 * R, 0.55 * R)),
+                           uirevision=f"flow:{row['result_sha256']}:{rotor_fixed}")
+
+
 def flow_plane_figure(row, fc, window):
     """Downward axial velocity −w on the meridional plane y = 0 (lab frame), from dust_post: the
     velocity DUST's lifting lines, panel wake and particles induce, plus the free stream."""

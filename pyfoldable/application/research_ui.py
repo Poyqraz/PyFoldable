@@ -101,22 +101,8 @@ def _geometry(active):
         st.caption(f"{i.profile} · Katalog kesiti, iki eksen aynı kord ölçeğinde.")
         _plot(views.airfoil_figure(foil), "research_airfoil")
     else:
-        st.caption(f"Gösterilen katlanma pozu: {_fmt(i.fold_deg, 1)}°. BEM, ana kanadı tam açık (0°) çözer.")
-        try:
-            if view == "3B":
-                revision = st.session_state.get("_research_camera_revision", 0)
-                controls, reset = st.columns((1.5, 1), vertical_alignment="bottom")
-                camera = _choice(controls.selectbox, "Kamera", tuple(views.CAMERAS),
-                                 key=f"research_camera_{revision}", default="İzometrik")
-                reset.button("Kamerayı sıfırla", on_click=_reset_camera)
-                _plot(views.surface_figure(active, foil, camera, revision), "research_surface")
-                st.caption("3B için tarayıcıda WebGL gerekir. Plan ve profil görünümleri WebGL gerektirmez.")
-            else:
-                _plot(views.plan_figure(active, foil), "research_plan")
-        except ValueError as exc:
-            st.warning("Bu konumda saklanan istasyonlardan yüzey çizilemiyor. Menteşe ve istasyon açıklığını kontrol edin.")
-            with st.expander("Önizleme teknik ayrıntısı"):
-                st.text(str(exc))
+        from . import blade_ui
+        blade_ui.design_preview(active, foil, view)
     st.markdown(
         f"**İç parça — proksimal:** {_fmt(1000 * result['proximal_m'] if active.root else None, 1)} mm  \n"
         f"**Dış parça — distal:** {_fmt(1000 * result['distal_m'], 1)} mm"
@@ -129,7 +115,8 @@ def _geometry(active):
     st.caption(
         f"Bu pozdaki merkez çizgisi zarfı: {_fmt(1000*audit['centerline_envelope_diameter_m'], 1)} mm · "
         f"beyan edilen alt sınırdaki zarf: {_fmt(1000*result['declared_stow_limit_centerline_envelope_m'], 1)} mm. "
-        "Kesikli gri çizgiler yüzey verisi olmayan aralıkları gösterir. Bu bir açıklık veya temas hesabı değildir."
+        "Saydam gri yer tutucular yüzey verisi olmayan aralıkları gösterir. Merkez çizgisi zarfı bir açıklık hesabı "
+        "değildir; yüzey teması yukarıda ayrıca taranır."
     )
     with st.expander("Kord ve burulma istasyonları"):
         st.dataframe([{"Yarıçap [mm]": 1000*s.r_over_R*d.blade.radius_m, "r/R": s.r_over_R,
@@ -631,6 +618,8 @@ def _results(row, *, archived=False, imported=False):
     if radial:
         b.download_button("Radyal CSV indir", research.records_csv(radial), name+"_radyal.csv", "text/csv")
         _radial(radial)
+        from . import blade_ui
+        blade_ui.bem_on_blade(row)
     mech = row["mechanism"]
     if mech["status"] == "computed":
         doc = json.loads(mech["report_text"])["result"]
