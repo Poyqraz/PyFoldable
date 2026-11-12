@@ -1,0 +1,24 @@
+
+main_-5_const 20261112T071200_20d4a1092d: completed 720/720 events {'last': 720, 'release': 289, 'largest_opening': 312, 'first_contact': 309, 'second_swing_min': 338}
+  max theta_dot 38.9 rad/s (theta_dot/Omega 0.15), impact 33.95228804987468, release->contact 3.4722222222222237 ms, theta max 0.81, second swing -2.6995235439348066, final -0.53
+  coverage alpha -0.48..2.90 Re 186972..304767 Mach max 0.2957; rpm 2400.0..2400.0
+  thrust latched rev 36.36917623716412, last rev 36.761 N, Qaero 2.9808, Qdrive 2.9669; peak thrust after release 39.29 N, peak |Qdrive| 75.2
+  checks {'kinematic_closure_position_m': 5e-08, 'load_transfer_force_relative': 1.469e-06, 'load_transfer_moment_relative': 1.18e-06, 'interface_power_closure_relative': 8.9e-07, 'prescribed_speed_deviation_rpm': 0.0, 'hinge_balance_relative_residual': 0.01006054, 'contact_steps_per_half_period': 8.652493993, 'hinge_balance_contact_phase_relative_residual': 0.187655654}
+
+m20_const_2400 20261112T191618_02b58b9c61: failed_solver 296/296 events {'last': 296, 'release': 289, 'largest_opening': 296}
+  max theta_dot 95.4 rad/s (theta_dot/Omega 0.38), impact None, release->contact None ms, theta max -16.30, second swing None, final -16.30
+  coverage alpha -0.49..2.51 Re 187412..315617 Mach max 0.3062; rpm 2400.0..2400.0
+  thrust latched rev 30.743759607875493, last rev 30.994 N, Qaero 2.5476, Qdrive 7.3898; peak thrust after release 39.44 N, peak |Qdrive| 92.0
+  checks {'kinematic_closure_position_m': 7.5e-08, 'load_transfer_force_relative': 1.106e-06, 'load_transfer_moment_relative': 1.051e-06, 'interface_power_closure_relative': 9.5e-07, 'prescribed_speed_deviation_rpm': 0.0, 'hinge_balance_relative_residual': 0.010708402, 'contact_steps_per_half_period': 8.652493993, 'hinge_balance_contact_phase_relative_residual': 0.0}
+
+m20_ramp_2200_2400 20261112T203049_d66ad5cd8d: completed 720/720 events {'last': 720, 'release': 289, 'largest_opening': 313, 'first_contact': 310, 'second_swing_min': 340}
+  max theta_dot 149.1 rad/s (theta_dot/Omega 0.65), impact 133.09005996811547, release->contact 3.6458333333333344 ms, theta max 3.03, second swing -10.557951276106952, final -0.40
+  coverage alpha -0.82..2.29 Re 174471..317510 Mach max 0.3081; rpm 2200.0..2400.0
+  thrust latched rev 22.123494341573224, last rev 36.901 N, Qaero 2.9877, Qdrive 2.3086; peak thrust after release 37.73 N, peak |Qdrive| 284.6
+  checks {'kinematic_closure_position_m': 2.08e-07, 'load_transfer_force_relative': 6.428e-06, 'load_transfer_moment_relative': 5.524e-06, 'interface_power_closure_relative': 3.496e-06, 'prescribed_speed_deviation_rpm': 0.0, 'hinge_balance_relative_residual': 0.010443538, 'contact_steps_per_half_period': 8.652493993, 'hinge_balance_contact_phase_relative_residual': 0.176350414}
+
+m15_ramp_2200_2400 20261112T203052_6971a5d10d: completed 720/720 events {'last': 720, 'release': 289, 'largest_opening': 313, 'first_contact': 310, 'second_swing_min': 340}
+  max theta_dot 111.2 rad/s (theta_dot/Omega 0.48), impact 99.38004907536182, release->contact 3.6458333333333344 ms, theta max 2.24, second swing -8.059920370990689, final 0.02
+  coverage alpha -0.82..2.28 Re 174327..305123 Mach max 0.2961; rpm 2200.0..2400.0
+  thrust latched rev 23.933544760562974, last rev 36.931 N, Qaero 2.9904, Qdrive 2.6734; peak thrust after release 37.57 N, peak |Qdrive| 210.3
+  checks {'kinematic_closure_position_m': 1.53e-07, 'load_transfer_force_relative': 5.034e-06, 'load_transfer_moment_relative': 4.352e-06, 'interface_power_closure_relative': 2.575e-06, 'prescribed_speed_deviation_rpm': 0.0, 'hinge_balance_relative_residual': 0.010381903, 'contact_steps_per_half_period': 8.652493993, 'hinge_balance_contact_phase_relative_residual': 0.174439307}

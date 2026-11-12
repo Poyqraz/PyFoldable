@@ -211,10 +211,30 @@ Fully deployed BEM route unchanged: the UI reproduced 43.647 N / 3.277 N m / 823
   workflow after app restarts. ParaView files validated with VTK 9.3.1 readers.
 * Evidence: `reports/coupled_flow_20261112/` (wake comparison and VTK validation outputs).
 
+## Deployment increment (after `da35bc1`)
+
+* Assessed hinge geometry (RBF junction chord ≤ 1 − cos(θ/2); distal sweep), aerodynamic coverage
+  over RPM × fold (Re floor 165k ≈ 2200 RPM; Mach ceiling 0.31 reached in the opening swing) and drive
+  options (prescribed ramp first; motor law needs measured data).
+* Implemented: `drive_profile` ramp (MBDyn cosine drive), instantaneous-speed centrifugal moment and
+  the rotating-frame acceleration moment in post-processing and the hinge balance, `envelope.py`
+  (fold limit −23° here; `failed_geometry_envelope`), trajectory applicability with a fold-rate energy
+  bound (refuses Re/Mach from shaft speed; warns for the swing), UI drive inputs, RPM in the flow
+  timeline; legacy records restore as constant speed.
+* Runs: `…191618` (−20°, 2400 RPM; stopped at Mach 0.31, window 296), `…203049` (−20°, ramp
+  2200→2400; completed), `…203052` (−15°, same ramp; completed); ≈ 52 min each; flow companions built. Ramp cases rerun after the drive-label
+  fix (development records `…191622`/`…192518` no longer restore; results identical).
+* Evidence: `reports/coupled_deployment_20261112/`.
+
 ## Next concrete items
 
-0. Toward larger folding and spin-up (recommended order, see the final report of the flow
-   increment): (a) kinematic check of the RBF junction elements at large fold angles (no solver);
+0. Deployment (updated after the deployment increment): the binding limit is polar coverage
+   (Mach ≤ 0.31, Re ≥ 165k). Next decision: build the declared XFOIL 6.99 (pinned archive and flags
+   in `providers/xfoil.py`; download needs approval) and capture attached-flow NACA2412 polars to
+   Mach ≈ 0.36 and Re ≈ 100k through the provider workflow; that opens releases to the geometry
+   envelope at 2400 RPM and ramps from ≈ 1500 RPM. Spin-up from rest additionally needs measured
+   static spin-up data (RPM, torque, thrust from rest, folded) to identify and validate a post-stall
+   treatment, and motor data for a torque-driven shaft. Earlier list (still valid): (a) kinematic check of the RBF junction elements at large fold angles (no solver);
    (b) genuine wide-α / low-Re polar data or a separately declared post-stall model, because
    DUST stops outside the admitted table (the −15° start failed at window 1); (c) torque-driven
    shaft (motor law) instead of prescribed speed; (d) measure the rbf velocity-point bias during

@@ -23,7 +23,9 @@ from pathlib import Path
 
 from . import MODEL_ID, SCHEMA_VERSION
 from .frames import relative_angle_about_z, rotvec_to_matrix
+from .envelope import fold_envelope
 from .mbdyn_output import parse_jnt, parse_mov, parse_out
+from .model import shaft_speed
 
 DRIVE_JOINT, SPRING_BASE, LATCH_BASE, HUB = 2, 500, 600, 2
 CONTACT_TOL_RAD = 1e-9  # penetration below this is numerical round-off of a latched open pose
@@ -163,7 +165,9 @@ def build_result(run: Path, *, participant_outcome: str | None, participant_mess
     rho, mu, a = case["density_kg_m3"], case["viscosity_pa_s"], case["speed_of_sound_m_s"]
     name_to_key = {dust["geometry"][k]["name"]: k for k in dust["geometry"]} if dust else {}
     jh = mech["distal_inertia_cg_kg_m2"] + mech["distal_mass_kg"] * mech["distal_cg_from_hinge_m"] ** 2
-    kcf = mech["distal_mass_kg"] * W ** 2 * geo["hinge_radius_m"] * mech["distal_cg_from_hinge_m"]
+    mrc = mech["distal_mass_kg"] * geo["hinge_radius_m"] * mech["distal_cg_from_hinge_m"]
+    env = fold_envelope(case)
+    first_outside_envelope = None
     series, radial = [], []
     components = list(dict.fromkeys(nd["dust_component"] for nd in nodes))
     closure = {"kinematic_position_m": 0.0, "kinematic_rotation_rad": 0.0, "load_force_n": 0.0, "load_moment_nm": 0.0,
@@ -212,7 +216,12 @@ def build_result(run: Path, *, participant_outcome: str | None, participant_mess
         # latched during at least part of this window (window spans t_{w-1}..t_w)
         row["latch_active"] = (t - dt) < mech["release_time_s"] - 1e-12
         row["contact_active"] = contact
-        row["centrifugal_hinge_moment_derived_nm"] = [-kcf * math.sin(th) for th in theta]
+        w_t, wdot_t = shaft_speed(case, t)  # prescribed (constant or ramp)
+        row["centrifugal_hinge_moment_derived_nm"] = [-mrc * w_t ** 2 * math.sin(th) for th in theta]
+        # rotating-frame acceleration: -(J_h + m r_h c_g cos th) dOmega/dt (zero at constant speed)
+        row["frame_acceleration_hinge_moment_derived_nm"] = [-(jh + mrc * math.cos(th)) * wdot_t for th in theta]
+        if min(math.degrees(x) for x in theta) < env["fold_limit_deg"] - 1e-9 and first_outside_envelope is None:
+            first_outside_envelope = w
         # aerodynamic coverage of the queried section states (final lifting-line iterate)
         lo = {"alpha": math.inf, "re": math.inf, "mach": math.inf}
         hi = {"alpha": -math.inf, "re": -math.inf, "mach": -math.inf}
@@ -292,16 +301,19 @@ def build_result(run: Path, *, participant_outcome: str | None, participant_mess
         status = "failed_incomplete"
     elif first_uncovered is not None:
         status = "failed_aero_coverage"
+    elif first_outside_envelope is not None:
+        status = "failed_geometry_envelope"
     else:
         status = "completed"
     valid_until = accepted
-    for marker in (first_unconverged, first_uncovered):
+    for marker in (first_unconverged, first_uncovered, first_outside_envelope):
         if marker is not None:
             valid_until = min(valid_until, marker - 1)
     execution = {"status": status, "participant_outcome": participant_outcome, "message": participant_message,
                  "dust_abort_reason": dust_abort, "exit_codes": exit_codes or {}, "windows_planned": n_planned,
                  "windows_accepted": accepted, "first_unconverged_window": first_unconverged,
                  "first_uncovered_window": first_uncovered, "valid_prefix_windows": valid_until,
+                 "first_outside_fold_envelope_window": first_outside_envelope, "fold_envelope": env,
                  "mbdyn_steps": len(steps), "mbdyn_max_newton_iterations": max((s["iterations"] for s in steps), default=None),
                  "mbdyn_termination_note": "MBDyn begins one step beyond the final coupling window and reports an "
                                            "interruption when the adapter closes; this is expected after a finished run.",
@@ -323,7 +335,9 @@ def build_result(run: Path, *, participant_outcome: str | None, participant_mess
         "raw_outputs": {"run_id": run.name, "files": raw_manifest(run)},
         "physical_qualification": False, "reference_agreement": "NOT_ASSESSED", "joint_loss_model": "NOT_MODELED",
         "structural_stress": "NOT_SOLVED", "pressure_field": "NOT_SOLVED",
-        "scope": ("Prescribed constant shaft speed; rigid proximal and distal segments; ideal in-plane revolute fold "
+        "scope": (("Prescribed constant shaft speed" if case["controls"].get("drive_profile", "constant") == "constant"
+                   else "Prescribed shaft-speed ramp (drive torque is the reaction of the prescribed history)")
+                  + "; rigid proximal and distal segments; ideal in-plane revolute fold "
                   "hinge with declared spring/damper/penalty-stop law; DUST lifting line with retained provider tables. "
                   "Not CFD, not FEA, no joint strength or fatigue, no measured hardware properties unless declared."),
     }
@@ -354,8 +368,9 @@ def _checks(series, case, closure, jh, dt) -> list[dict]:
         "Power of element loads with rigid-body element velocities vs node F.v + M.w.")
     rpm = [r["rpm"] for r in series]
     if rpm:
-        add("prescribed_speed_deviation_rpm", max(abs(x - case["rpm"]) for x in rpm), 1e-6 * case["rpm"],
-            "Hub speed vs prescribed constant speed.")
+        dev = max(abs(r["rpm"] - shaft_speed(case, r["time_s"])[0] * 30.0 / math.pi) for r in series)
+        add("prescribed_speed_deviation_rpm", dev, 1e-6 * case["rpm"],
+            "Hub speed vs the prescribed speed history (constant or ramp) at each accepted window.")
     # hinge balance: J_h th'' = M_aero + M_law + M_centrifugal using central differences on smooth windows only
     res, scale, used = 0.0, 1e-12, 0
     contact_res, contact_scale = 0.0, 1e-12
@@ -365,7 +380,8 @@ def _checks(series, case, closure, jh, dt) -> list[dict]:
             continue
         for b in range(len(r1["theta_deg"])):
             acc = (r2["theta_rate_rad_s"][b] - r0["theta_rate_rad_s"][b]) / (2 * dt)
-            rhs = r1["hinge_aero_torque_nm"][b] + r1["hinge_law_torque_nm"][b] + r1["centrifugal_hinge_moment_derived_nm"][b]
+            rhs = (r1["hinge_aero_torque_nm"][b] + r1["hinge_law_torque_nm"][b] + r1["centrifugal_hinge_moment_derived_nm"][b]
+                   + r1.get("frame_acceleration_hinge_moment_derived_nm", [0.0] * len(r1["theta_deg"]))[b])
             smooth = not (r0["contact_active"][b] or r1["contact_active"][b] or r2["contact_active"][b])
             mag = max(abs(rhs), abs(r1["centrifugal_hinge_moment_derived_nm"][b]), abs(r1["hinge_law_torque_nm"][b]),
                       abs(r1["hinge_aero_torque_nm"][b]))
@@ -375,7 +391,8 @@ def _checks(series, case, closure, jh, dt) -> list[dict]:
                 contact_res, contact_scale = max(contact_res, abs(jh * acc - rhs)), max(contact_scale, mag)
     if used:
         add("hinge_balance_relative_residual", res / scale, 0.05,
-            "Independent planar hinge equation J_h th'' = M_aero + M_law - m W^2 r_h c_g sin(th), central differences, "
+            "Independent planar hinge equation J_h th'' = M_aero + M_law - m W^2 r_h c_g sin(th) "
+            "- (J_h + m r_h c_g cos th) dW/dt, central differences, "
             "smooth windows only (no latch or contact in the stencil); a large value would indicate double-counted "
             "or missing inertial loads.")
     m = case["mechanics"]

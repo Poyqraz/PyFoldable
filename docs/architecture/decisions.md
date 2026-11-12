@@ -277,7 +277,7 @@ socket adapter route) as separate processes under a detached supervisor, bound t
 same `ResearchDesign` and retained-provider admission as the fully deployed BEM. The
 application never imports solver bindings; without the operator toolchain manifest the
 route reports "not installed" and nothing else changes. Structural model: prescribed
-constant shaft speed, rigid proximal and distal segments, ideal in-plane revolute fold
+shaft speed (constant or ramp), rigid proximal and distal segments, ideal in-plane revolute fold
 hinge with a declared spring/damper/penalty-stop law, optional release latch.
 Aerodynamics: one continuous DUST lifting line per blade, RBF-coupled to massless MBDyn
 nodes rigidly attached to both segments (per-segment lifting lines left a spurious vortex
@@ -293,7 +293,9 @@ loads and node states, without solvers. Every accepted window is kept; the recor
 duration and never thins samples. DUST's rbf lifting-line branch evaluates the body velocity
 at the leading line (≈ −1.4 % thrust vs standalone at 5°, located, not corrected). Flow data
 (particles, panel wake, dust_post velocity planes) is a separate run-folder companion bound to
-the sealed record by raw-file sha256, extracted only on explicit request.
+the sealed record by raw-file sha256, extracted only on explicit request. Shaft acceleration is a
+prescribed speed history (constant or smooth ramp) until measured motor data exist; folds are bounded
+by a lifting-line geometry envelope enforced on every window.
 
 Not covered: spin-up from rest, fully folded start, torque-driven shaft, friction,
 joint loss, CFD fields, structural stress or strength, contact beyond the declared

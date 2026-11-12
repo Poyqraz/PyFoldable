@@ -162,8 +162,13 @@ the main record restores by upload as `.json.xz` (4.60 MB) or from its run folde
 Closure evidence: `reports/coupled_closure_20261112/`. The *Akış ve tepki* view shows the
 DUST wake (vortex particles, panel wake, dust_post velocity plane) with θ, loads and hinge
 moments on one timeline, from a flow companion extracted on request from the run's retained
-outputs and bound to the sealed record by raw-file sha256 (no solver; stays in the run folder). The retained 800 mm table
-supports only small releases; spin-up and folded starts are not covered. ADR-010 is
+outputs and bound to the sealed record by raw-file sha256 (no solver; stays in the run folder). Deployment extension: prescribed smooth shaft-speed
+ramp (drive torque is an output; no motor law), fold geometry envelope (−23° for the 800 mm design)
+enforced before and during runs, and a trajectory check of section Re/Mach against the admitted
+table. Demonstrated: deployment from −20° during a 2200→2400 RPM ramp (completed, inside the table);
+−20° at 2400 RPM leaves the table's Mach 0.31 in the opening swing (fail-closed). Spin-up from rest
+remains unsupported (deep stall and low Re outside the data). Evidence: `reports/coupled_deployment_20261112/`. The retained 800 mm table supports
+deployment only inside that envelope; spin-up and folded starts are not covered. ADR-010 is
 proposed, not accepted. `physical_qualification` remains false. Design and limits:
 [coupled dynamic analysis](../coupled_dynamic_analysis.md).
 

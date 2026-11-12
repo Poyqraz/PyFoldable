@@ -1,0 +1,5 @@
+run 20261112T203049_d66ad5cd8d
+max |frame-acceleration hinge moment| 0.372 N m
+max |aerodynamic hinge moment| after release 0.198 N m
+all smooth windows (n=349): residual with frame term 0.0104, without 0.0470
+ramp windows (n=234): residual with frame term 0.0104, without 0.0470

@@ -32,6 +32,9 @@ _STATUS_TEXT = {
     "failed_incomplete": ("warning", "Planlanan pencerelerin tamamı kabul edilmedi; kısmi geçmiş saklandı."),
     "cancelled": ("info", "Kullanıcı tarafından durduruldu; kabul edilen pencereler kısmi geçmiş olarak saklandı."),
     "timeout": ("warning", "Süre bütçesi aşıldı; kabul edilen pencereler kısmi geçmiş olarak saklandı."),
+    "failed_geometry_envelope": ("warning", "Katlanma geometri sınırı aşıldı: bir kanadın katlanma açısı sürekli kaldırma "
+                                           "çizgisinin geometri sınırının ötesine geçti. Sınır içindeki ilk aralık geçerli "
+                                           "önek olarak gösterilir; sonrası tamamlanmış sonuç değildir."),
 }
 _PREP_TEXT = {
     "inert_fixture_tables": "seçilen polar kaydı bir yazılım test kaydıdır; mühendislik analizinde kullanılamaz.",
@@ -44,6 +47,13 @@ _PREP_TEXT = {
     "missing_source": "mekanik girdilerin kaynağını ve niteliğini beyan edin.",
     "unsupported_blade_count": "bu sürüm 1–4 kanadı destekler.",
     "toolchain_invalid": "araç zinciri bildirimi doğrulanamadı.",
+    "fold_outside_geometry_envelope": "başlangıç katlanması sürekli kaldırma çizgisinin geometri sınırının ötesinde "
+                                      "(RBF menteşe geçişi ve dış parça süpürmesi); daha küçük bir açı seçin.",
+    "outside_admitted_reynolds": "planlanan devir aralığı saklanan polar verisinin Reynolds aralığından çıkıyor; "
+                                 "düşük devirli kalkış bu veriyle desteklenmez.",
+    "outside_admitted_mach": "planlanan devir/katlanma aralığı saklanan polar verisinin Mach aralığından çıkıyor.",
+    "invalid_controls": "çözücü veya şaft hız profili ayarı geçersiz (rampa tasarım devrinin altından başlamalı ve "
+                        "simülasyon süresi içinde bitmeli).",
 }
 DEMO_SOURCE = ("Gösterim varsayımı: 30 g dış parça, menteşeden 55 mm kütle merkezi, 3e-5 kg·m² CG ataleti; "
                "esnek (penaltı) stop. Sahibin pervanesinin ölçülmüş özelliği değildir.")
@@ -103,7 +113,7 @@ def _mechanics_inputs():
              help="Tek yönlü doğrusal yay–sönümleyici temas yasası (penaltı). Ölçülmüş temas değildir.")
     e = num(a, "Stop geri sekme katsayısı [-]", "stop_e", .5, .01, 1.0)
     st.caption("Kuru sürtünme ve menteşe tahrik momenti bu sürümde dinamik analizde desteklenmez (0 kabul edilir). "
-               "Şaft devri sabit tutulur; tahrik torku bir çıktıdır.")
+               "Şaft devri öngörülür (sabit veya rampa, aşağıda); tahrik torku bir çıktıdır.")
     if None in (mass, cg, inertia) or not source.strip():
         return None, "Kütle, kütle merkezi, atalet ve kaynak girildiğinde hazırlanabilir."
     try:
@@ -117,9 +127,31 @@ def _mechanics_inputs():
         return None, str(exc)
 
 
+def _drive_inputs():
+    """Shaft speed history: constant design speed or a prescribed smooth ramp to it."""
+    rui = _rui()
+    st.markdown("**Şaft hız profili**")
+    profile = rui._choice(st.radio, "Profil", ("constant", "ramp"), key="coupled_drive_profile", default="constant",
+                          horizontal=True, display={"constant": "Sabit tasarım devri",
+                                                    "ramp": "Öngörülen rampa (yumuşak, yarım kosinüs)"}.__getitem__)
+    if profile != "ramp":
+        return {"drive_profile": "constant"}
+    a, b, c = st.columns(3)
+
+    def num(col, label, key, default, lo, hi, **kw):
+        return rui._field(col.number_input, label, "coupled_drive_" + key, default, min_value=lo, max_value=hi, **kw)
+    rpm0 = num(a, "Rampa başlangıç devri [RPM]", "rpm0", 2200., 1., 1e5)
+    t0 = num(b, "Rampa başlangıcı [s]", "t0", .05, 0., 2.)
+    T = num(c, "Rampa süresi [s]", "T", .05, .001, 2.)
+    st.caption("Devir geçmişi öngörülür (kinematik sınır koşulu); tahrik torku bu geçmişin gerektirdiği tork olarak "
+               "çıkar. Motor yasası (tork–devir eğrisi, rotor ataleti) bu sürümde yoktur: ölçülmüş motor verisi gerekir.")
+    return {"drive_profile": "ramp", "ramp_start_rpm": rpm0, "ramp_start_s": t0, "ramp_duration_s": T}
+
+
 def _controls_inputs():
     rui = _rui()
     defaults = CoupledControls()
+    drive = _drive_inputs()
     with st.expander("Gelişmiş · çözücü ayarları"):
         a, b = st.columns(2)
 
@@ -137,7 +169,8 @@ def _controls_inputs():
         timeout = num(b, "Süre bütçesi [s]", "timeout", defaults.wall_timeout_s, 10., 21600.)
     return CoupledControls(azimuth_step_deg=step, duration_s=duration, elements_per_segment=int(nel),
                            coupling_max_iterations=int(iters), coupling_position_tol_m=tol, coupling_rotation_tol_rad=tol,
-                           aitken_initial_relaxation=aitken, max_wake_particles=int(particles), wall_timeout_s=timeout)
+                           aitken_initial_relaxation=aitken, max_wake_particles=int(particles), wall_timeout_s=timeout,
+                           **drive)
 
 
 def _token(active, family, mech, ctrl):
@@ -148,7 +181,7 @@ def _token(active, family, mech, ctrl):
 def render_analysis(active, family, readiness_status, repository, root: Path):
     """Analiz page section."""
     st.markdown("**Dinamik aero-mekanik analiz · DUST–MBDyn–preCICE (isteğe bağlı)**")
-    st.caption("Sabit şaft devri, rijit iç ve dış parça, eksene paralel ideal katlanma menteşesi, beyan edilen yay/sönüm/stop yasası. "
+    st.caption("Öngörülen şaft devri (sabit veya rampa), rijit iç ve dış parça, eksene paralel ideal katlanma menteşesi, beyan edilen yay/sönüm/stop yasası. "
                "Aerodinamik yükler BEM ile aynı saklanan polar sürümünden DUST kaldırma çizgisiyle hesaplanır. "
                "CFD, FEA, eklem dayanımı veya yorulma değildir.")
     ready = readiness_cached()
@@ -184,8 +217,10 @@ def render_analysis(active, family, readiness_status, repository, root: Path):
     env = prep.request["c81"]["envelope"]
     pre = prep.request["preflight_no_induction_ranges"]
     lim = svc.supported_duration(prep.case)
-    revs = prep.case.n_steps * prep.case.dt_s * prep.case.omega_rad_s / (2 * math.pi)
-    after = max(0.0, prep.case.n_steps * prep.case.dt_s - prep.case.mechanics.release_time_s) * prep.case.omega_rad_s / (2 * math.pi)
+    from pyfoldable.coupled.model import shaft_speed
+    turns = [shaft_speed(prep.case, (k + 0.5) * prep.case.dt_s)[0] * prep.case.dt_s / (2 * math.pi) for k in range(prep.case.n_steps)]
+    revs = sum(turns)
+    after = sum(t for k, t in enumerate(turns) if (k + 1) * prep.case.dt_s > prep.case.mechanics.release_time_s)
     st.caption(f"Simülasyon {revs:.1f} devir (serbest bırakmadan sonra {after:.1f} devir) · kayıt tahmini "
                f"{svc.estimated_result_bytes(prep.case) / 2**20:.1f} / {lim['limit_bytes'] / 2**20:.0f} MiB · bu adım ve eleman "
                f"sayısıyla desteklenen en uzun süre {lim['duration_s']:.3f} s ({lim['revolutions']:.1f} devir). "
@@ -198,6 +233,21 @@ def render_analysis(active, family, readiness_status, repository, root: Path):
                f"{env['reynolds'][1]:.0f} · Mach {env['mach'][0]:.2f}…{env['mach'][1]:.2f}. İndüksiyonsuz ön tahmin: "
                f"α {pre['alpha_deg'][0]:.2f}…{pre['alpha_deg'][1]:.2f}° · Mach {pre['mach'][0]:.3f}…{pre['mach'][1]:.3f}. "
                "Katlanma hızı uç Mach sayısını artırır; her kabul edilen adım tabloya göre denetlenir.")
+    from pyfoldable.coupled import envelope as envmod
+    fe = envmod.fold_envelope(prep.case)
+    appl = svc.trajectory_applicability(prep.case, env)
+    st.caption(f"Katlanma geometri sınırı: {fe['fold_limit_deg']:.1f}° "
+               f"({'RBF menteşe geçişinde kiriş kısalması ≤ %2' if fe['limited_by'] == 'junction_chord' else 'dış parça süpürmesi ≤ 25°'}); "
+               "bu sınırın ötesindeki pencereler geçerli öneki sonlandırır. Yörünge (başlangıç devrinden tasarım devrine, "
+               "başlangıç katlanmasından açığa) için indüksiyonsuz durum: Re "
+               f"{'tablo içinde' if appl['reynolds_ok'] else 'tablo dışında'} · Mach {'tablo içinde' if appl['mach_ok'] else 'tablo dışında'}"
+               f" · α {'tablo içinde' if appl['alpha_ok'] else 'tablo dışında olabilir (indüksiyon değiştirir; çalışma denetler)'}.")
+    sw = appl.get("swing")
+    if sw and not (sw["mach_ok"] and sw["reynolds_ok"]):
+        st.warning(f"Açılma salınımı uyarısı: dış parça en çok ≈ {appl['fold_rate_bound_rad_s']:.0f} rad/s ile öne savrulabilir "
+                   f"(enerji sınırı, aero momenti ihmal); uçta Mach ≤ {sw['mach'][1]:.3f}, Re ≤ {sw['reynolds'][1]:.3g} olabilir — "
+                   f"tablo üst sınırı Mach {env['mach'][1]:.2f}, Re {env['reynolds'][1]:.3g}. Tahmin muhafazakârdır; aşılırsa DUST "
+                   "durur ve kabul edilen önek kısmi geçmiş olarak saklanır.")
     if mech.declaration_kind == "demonstration_assumption":
         st.caption("Mekanik değerler gösterim varsayımıdır; sonuç ölçülmüş donanımı temsil etmez.")
     busy = run_state is not None and svc.poll(Path(run_state["run_dir"])).get("state") in ("queued", "running")
@@ -336,9 +386,10 @@ def render_result(row, *, imported=False, root: Path | None = None):
         contact = any(any(r["contact_active"]) for r in valid)
         cs = row["run_definition"]["case"]
         t_end = ex["valid_prefix_windows"] * cs["dt_s"]
-        to_rev = cs["omega_rad_s"] / (2 * math.pi)
-        st.caption(f"Kısa analiz penceresi: {t_end * to_rev:.1f} devir, serbest bırakmadan sonra "
-                   f"{max(0.0, t_end - m['release_time_s']) * to_rev:.1f} devir ({t_end:.4f} s). Son pencere değerleri "
+        turns = [r["rpm"] / 60.0 * cs["dt_s"] for r in valid]  # accepted speed history (constant or ramp)
+        after_rel = sum(t for r, t in zip(valid, turns) if r["time_s"] > m["release_time_s"])
+        st.caption(f"Kısa analiz penceresi: {sum(turns):.1f} devir, serbest bırakmadan sonra "
+                   f"{after_rel:.1f} devir ({t_end:.4f} s). Son pencere değerleri "
                    "uzun süreli oturmuş performans değildir; ortalamalar için tam devir pencerelerini kullanın.")
         st.caption(f"Kabul edilen pencereler {ex['windows_accepted']}/{ex['windows_planned']} · geçerli önek {ex['valid_prefix_windows']} · "
                    f"stop teması {'oluştu' if contact else 'oluşmadı'} · bağlaşım iterasyonu "
@@ -516,7 +567,9 @@ def _flow_tab(row, root):
     rui._plot(views.response_timeline_figure(row, w, ev), "coupled_flow_timeline")
     st.caption("Siyah çizgi seçili pencere; noktalı çizgiler olaylardır. Eksen aralıkları ilk çeyrek turdan sonraki "
                "verilere göre seçilir: kaldırma çizgisi izinin ani başlangıç geçişi (ilk pencereler) çizilir ama ölçeği "
-               "belirlemez. Temas anındaki tahrik torku sıçraması stop darbesinin sabit devirli şafta tepkisidir.")
+               "belirlemez. Tork ve menteşe satırları %1–99 aralığına ölçeklenir; stop darbesindeki kısa tepki "
+               "sıçramaları çizilir ama eksenden taşar. Tahrik torku sıçraması, devri öngörülen (sonsuz rijit) "
+               "şaftın darbeye tepkisidir ve zaman adımına bağlıdır; şaft yükü tahmini değildir.")
     topology = row["run_definition"]["case"]["controls"].get("aero_topology", "split_rigid")
     st.caption(_RBF_NOTE if topology == "continuous_rbf" else _SPLIT_NOTE)
     with st.expander("Akış verisi kimliği ve ParaView"):

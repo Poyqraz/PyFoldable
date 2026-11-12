@@ -2,7 +2,7 @@
 
 Structural representation (minimum useful, see ADR in docs):
 
-* rotor hub: rigid, driven by a *prescribed constant shaft speed* (MBDyn
+* rotor hub: rigid, driven by a *prescribed shaft speed* — constant or a smooth ramp (MBDyn
   ``axial rotation`` joint). Torque-driven shaft dynamics are a different
   boundary condition and are not offered here; the drive reaction torque is an
   output, never an input.
@@ -30,6 +30,7 @@ from pyfoldable.core.bem_rotor import _interpolate_station
 SUPPORTED_DRIVE = "prescribed_constant_speed"
 DECLARATION_KINDS = ("demonstration_assumption", "declared_hardware_property")
 MAX_DURATION_S = 2.0  # duration control bound (s); the restorable-record bound is usually tighter
+DRIVE_PROFILES = ("constant", "ramp")
 
 
 @dataclass(frozen=True)
@@ -114,6 +115,13 @@ class CoupledControls:
     # vortices at the hinge cancel only at exactly zero fold and leave a spurious vortex pair otherwise.
     aero_topology: str = "continuous_rbf"
     wall_timeout_s: float = 3600.0
+    # Shaft speed: "constant" (design RPM throughout) or "ramp": a prescribed smooth (half-cosine) rise
+    # from ramp_start_rpm to the design RPM between ramp_start_s and ramp_start_s + ramp_duration_s.
+    # The drive torque is an output (the torque the prescribed history requires); no motor law.
+    drive_profile: str = "constant"
+    ramp_start_rpm: float = 0.0
+    ramp_start_s: float = 0.0
+    ramp_duration_s: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -232,6 +240,36 @@ def validate_controls(c: CoupledControls) -> None:
     _finite("wall_timeout_s", c.wall_timeout_s, lo=10.0, hi=6 * 3600.0)
     if c.aero_topology not in ("continuous_rbf", "split_rigid"):
         raise CoupledCaseError("invalid_controls", "aero_topology must be continuous_rbf or split_rigid")
+    if c.drive_profile not in DRIVE_PROFILES:
+        raise CoupledCaseError("invalid_controls", "drive_profile must be constant or ramp")
+    for name in ("ramp_start_rpm", "ramp_start_s", "ramp_duration_s"):  # finite and non-negative for every profile
+        _finite(name, getattr(c, name), lo=0.0, hi=1e5)
+    if c.drive_profile == "ramp":
+        _finite("ramp_start_rpm", c.ramp_start_rpm, lo=0.0, hi=1e5, strict_lo=True)
+        _finite("ramp_start_s", c.ramp_start_s, lo=0.0, hi=MAX_DURATION_S)
+        _finite("ramp_duration_s", c.ramp_duration_s, lo=0.0, hi=MAX_DURATION_S, strict_lo=True)
+
+
+def shaft_speed(case, t: float) -> tuple[float, float]:
+    """Prescribed shaft angular speed and acceleration [rad/s, rad/s^2] at time ``t``.
+
+    Accepts a CoupledCase or its serialized dict (records without drive fields are constant speed)."""
+    if isinstance(case, dict):
+        w1, c = case["omega_rad_s"], case["controls"]
+        prof, rpm0, t0, T = (c.get("drive_profile", "constant"), c.get("ramp_start_rpm", 0.0),
+                             c.get("ramp_start_s", 0.0), c.get("ramp_duration_s", 0.0))
+    else:
+        w1, c = case.omega_rad_s, case.controls
+        prof, rpm0, t0, T = c.drive_profile, c.ramp_start_rpm, c.ramp_start_s, c.ramp_duration_s
+    if prof != "ramp":
+        return w1, 0.0
+    w0 = rpm0 * math.pi / 30.0
+    if t <= t0:
+        return w0, 0.0
+    if t >= t0 + T:
+        return w1, 0.0
+    phase = math.pi * (t - t0) / T
+    return w0 + 0.5 * (w1 - w0) * (1.0 - math.cos(phase)), 0.5 * (w1 - w0) * math.sin(phase) * math.pi / T
 
 
 def _segment_sections(blade, lo: float, hi: float) -> tuple[SegmentSection, ...]:
@@ -283,9 +321,24 @@ def build_case(active, mechanics: CoupledMechanics, controls: CoupledControls) -
         raise CoupledCaseError("unsupported_blade_count", "v1 supports 1..4 blades")
     if mechanics.distal_cg_from_hinge_m > geometry.tip_radius_m - geometry.hinge_radius_m + 1e-9:
         raise CoupledCaseError("invalid_input", "Distal CG must lie on the distal segment")
+    if controls.drive_profile == "ramp":
+        if not controls.ramp_start_rpm < active.inputs.rpm:
+            raise CoupledCaseError("invalid_controls", "ramp_start_rpm must be below the design RPM")
+        dt = math.radians(controls.azimuth_step_deg) / active.design.operating_conditions[0].angular_speed_rad_s
+        end = max(1, int(round(controls.duration_s / dt))) * dt  # simulated end time (whole steps)
+        if controls.ramp_start_s + controls.ramp_duration_s > end + 1e-12:
+            raise CoupledCaseError("invalid_controls", "the ramp must end within the simulated time")
+    from .envelope import fold_envelope
+    env = fold_envelope({"geometry": {"hinge_radius_m": geometry.hinge_radius_m,
+                                      "last_aero_radius_m": geometry.last_aero_radius_m}})
+    if math.degrees(mechanics.initial_fold_rad) < env["fold_limit_deg"] - 1e-9:
+        raise CoupledCaseError("fold_outside_geometry_envelope",
+                               f"initial fold {math.degrees(mechanics.initial_fold_rad):.1f} deg is beyond the "
+                               f"lifting-line geometry envelope {env['fold_limit_deg']:.1f} deg ({env['limited_by']})")
     cond = active.design.operating_conditions[0]
     speed_of_sound = math.sqrt(1.4 * 287.05 * cond.temperature_k)
     return CoupledCase(geometry, mechanics, controls, active.inputs.rpm, cond.angular_speed_rad_s,
                        cond.forward_speed_m_s, cond.air_density_kg_m3, cond.dynamic_viscosity_pa_s,
                        cond.temperature_k, speed_of_sound,
+                       drive=SUPPORTED_DRIVE if controls.drive_profile == "constant" else "prescribed_speed_ramp",
                        meta={"speed_of_sound_model": "sqrt(1.4*287.05*T), matching research initial_query_ranges"})

@@ -21,7 +21,7 @@ from pathlib import Path
 
 from . import MODEL_ID, SCHEMA_VERSION
 from .frames import blade_frame, fmt_matrix_rowwise, matmul, matvec, rot_z
-from .model import CoupledCase, SegmentSection
+from .model import CoupledCase, SegmentSection, shaft_speed
 
 NODE_Z_OFFSET_M = 0.01  # distinct preCICE vertex labels per blade, along the hinge-axis direction
 GROUND, HUB = 1, 2
@@ -106,9 +106,19 @@ def blade_sections(case: CoupledCase) -> tuple[SegmentSection, ...]:
     return tuple(sorted(out, key=lambda s: s.radius_m))
 
 
+def _drive_caller(case: CoupledCase) -> str:
+    """Prescribed hub angular velocity: constant, or MBDyn's half-cosine (smooth) ramp."""
+    c, w1 = case.controls, case.omega_rad_s
+    if c.drive_profile != "ramp":
+        return f"const, {_r(w1)}"
+    w0 = shaft_speed(case, 0.0)[0]
+    return (f"cosine, {_r(c.ramp_start_s)}, {_r(math.pi / c.ramp_duration_s)}, {_r(0.5 * (w1 - w0))}, half, "
+            f"{_r(w0)}")
+
+
 def _distal_pose(case: CoupledCase, rb, local):
     """Initial global position, orientation, velocity and spin of a point fixed to the distal body."""
-    g, m, w = case.geometry, case.mechanics, case.omega_rad_s
+    g, m, w = case.geometry, case.mechanics, shaft_speed(case, 0.0)[0]
     hinge = matvec(rb, (0.0, g.hinge_radius_m, local[2]))
     rel = matvec(rot_z(m.initial_fold_rad), [a - c for a, c in zip(matvec(rb, local), hinge)])
     pos = tuple(c + r for c, r in zip(hinge, rel))
@@ -158,6 +168,8 @@ def dust_component(case: CoupledCase, node: dict, sections, *, coupled: bool, ai
 def dust_references(case: CoupledCase, *, coupled: bool) -> str:
     g = case.geometry
     out = []
+    if not coupled and case.controls.drive_profile != "constant":
+        raise ValueError("the DUST-only reference deck supports constant shaft speed only")
     if not coupled:
         out += ["reference_tag = Rotor", "parent_tag = 0", "origin = (/0.0, 0.0, 0.0/)",
                 "orientation = (/1.0,0.0,0.0, 0.0,1.0,0.0, 0.0,0.0,1.0/)", "multiple = F", "moving = T",
@@ -226,7 +238,7 @@ def mbdyn_model(case: CoupledCase, *, aero: bool = True) -> str:
     """``aero=False`` omits the external force (mechanical verification decks only)."""
     g, m, c = case.geometry, case.mechanics, case.controls
     n = g.blade_count
-    w = case.omega_rad_s
+    w = shaft_speed(case, 0.0)[0]  # initial speed (design speed unless a ramp starts lower)
     latch = m.release_time_s > 0.0
     cnodes = coupling_nodes(case)
     extra = cnodes if c.aero_topology == "continuous_rbf" else []
@@ -281,7 +293,7 @@ def mbdyn_model(case: CoupledCase, *, aero: bool = True) -> str:
         L.append(f"  body: {DIST + b}, {DIST + b}, {_r(m.distal_mass_kg)}, 0., {_r(m.distal_cg_from_hinge_m)}, {_r(-z)}, "
                  f"diag, {_r(jd)}, {_r(jd)}, {_r(jd)};")
     L += ["", f"  joint: {J_CLAMP}, clamp, {GROUND}, node, node;",
-          f"  joint: {J_DRIVE}, axial rotation, {GROUND}, null, {HUB}, null, const, {_r(w)};"]
+          f"  joint: {J_DRIVE}, axial rotation, {GROUND}, null, {HUB}, null, {_drive_caller(case)};"]
     for b in range(n):
         rb = blade_frame(b, n)
         prox_pos = matvec(rb, (0.0, g.root_radius_m, NODE_Z_OFFSET_M * b))

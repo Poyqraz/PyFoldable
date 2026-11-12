@@ -387,8 +387,9 @@ def response_timeline_figure(row, window, ev):
     from plotly.subplots import make_subplots
     s = row["series"][:row["execution"]["valid_prefix_windows"]]
     t = [r["time_s"] for r in s]
-    fig = make_subplots(rows=4, cols=1, shared_xaxes=True, vertical_spacing=.04,
-                        subplot_titles=("Katlanma açısı θ [°]", "İtki [N]", "Tork [N·m]", "Menteşe momenti [N·m]"))
+    fig = make_subplots(rows=5, cols=1, shared_xaxes=True, vertical_spacing=.035,
+                        subplot_titles=("Katlanma açısı θ [°]", "İtki [N]", "Tork [N·m]", "Menteşe momenti [N·m]",
+                                        "Şaft devri [RPM]"))
     nb = len(s[0]["theta_deg"]) if s else 0
     for b in range(nb):
         fig.add_trace(go.Scatter(x=t, y=[r["theta_deg"][b] for r in s], name=f"θ · kanat {b + 1}",
@@ -402,6 +403,7 @@ def response_timeline_figure(row, window, ev):
                              line=dict(color="#0b6170")), row=4, col=1)
     fig.add_trace(go.Scatter(x=t, y=[r["hinge_law_torque_nm"][0] for r in s], name="Yay+sönüm+stop (kanat 1)",
                              line=dict(color="#A44AC2", width=1)), row=4, col=1)
+    fig.add_trace(go.Scatter(x=t, y=[r["rpm"] for r in s], name="Şaft devri", line=dict(color="#374151")), row=5, col=1)
     by_w = {r["window"]: r for r in s}
     for key, w in ev.items():  # events: dotted lines with legend entries (labels would overlap in time)
         if key == "last" or w not in by_w:
@@ -419,13 +421,15 @@ def response_timeline_figure(row, window, ev):
     channels = {2: (("thrust_n", None),), 3: (("aero_shaft_torque_nm", None), ("drive_torque_nm", None)),
                 4: (("hinge_aero_torque_nm", 0), ("hinge_law_torque_nm", 0))}
     for rown, keys in channels.items():
-        vals = [r[k][i] if i is not None else r[k] for r in late for k, i in keys]
+        vals = sorted(r[k][i] if i is not None else r[k] for r in late for k, i in keys)
+        if rown in (3, 4):  # stop impacts give very short reaction spikes; they stay plotted beyond the range
+            vals = vals[int(0.01 * len(vals)):max(int(0.01 * len(vals)) + 1, int(0.99 * len(vals)))]
         lo, hi = min(vals), max(vals)
         pad = 0.06 * (hi - lo or 1.0)
         fig.update_yaxes(range=[lo - pad, hi + pad], row=rown, col=1)
-    fig.update_layout(height=680, margin=dict(l=55, r=20, t=30, b=40), hovermode="x unified",
-                      legend=dict(orientation="h", x=0, y=-.06, xanchor="left", yanchor="top"))
-    fig.update_xaxes(title="Zaman [s]", row=4, col=1)
+    fig.update_layout(height=820, margin=dict(l=55, r=20, t=30, b=40), hovermode="x unified",
+                      legend=dict(orientation="h", x=0, y=-.05, xanchor="left", yanchor="top"))
+    fig.update_xaxes(title="Zaman [s]", row=5, col=1)
     return fig
 
 

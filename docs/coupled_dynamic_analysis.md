@@ -107,7 +107,7 @@ and failed runs stay in the run directory (git-ignored `outputs/`).
 
 ## 5. Structural model and laws (minimum useful representation)
 
-* Prescribed constant shaft speed: MBDyn `axial rotation` between ground and hub.
+* Prescribed shaft speed (constant, or a smooth ramp, §13): MBDyn `axial rotation` between ground and hub.
   Drive reaction torque is an **output**; torque-driven shaft dynamics are a different
   boundary condition and are not offered (no over-constraint of the same DOF).
 * Per blade: rigid proximal body rigidly attached to the hub (`total joint`); rigid distal
@@ -315,7 +315,7 @@ released, step or spacing studies) share the bias; absolute levels carry it.
 
 Supported: 800 mm research template (and other templates whose hinge lies inside the
 station span, axis ∥ shaft), any catalog profile with a complete admitted stored
-version (today NACA0012 and NACA2412), prescribed constant shaft speed, small releases
+version (today NACA0012 and NACA2412), prescribed shaft speed (constant or ramp), small releases
 inside the admitted table envelope. Not supported / not claimed: spin-up from rest,
 fully folded start, torque-driven shaft, dry friction, applied hinge torque, joint loss,
 gap aerodynamics, CFD pressure fields, structural stress, fatigue, clevis–tang strength,
@@ -439,3 +439,79 @@ layout was replaced: its hinge band carries 46–60 % of the near-wake strength 
 latched, growing to 5.9–7.7 after release) and its inboard strength grows from 1.13 to 2.65
 while thrust rises to 42.8 N — the junction vortex pair diagnosed in §9, now visible in the
 genuine particle wake. Evidence: `reports/coupled_flow_20261112/`.
+
+## 13. Deployment from larger folds and shaft acceleration
+
+**Assessment (what limits a larger deployment today).** Three questions were checked before any run
+(`reports/coupled_deployment_20261112/`):
+
+1. *Hinge geometry of the continuous line.* DUST moves each line point as a weighted average of two
+   rigidly moving nodes; across the hinge the averaged chord shortens by up to 1 − cos(θ/2). On the
+   main mesh only the station just outboard of the hinge is affected: 1.3 % at −20°, 2.9 % at −30°,
+   6.5 % at −45°, 25 % at −90°. The folded distal span is also swept against the local radial
+   direction: 16.5° at −20°, 37.5° at −45°, 78° at −90° (span nearly aligned with the flow; a lifting
+   line with 2-D polars no longer represents it). The run showed no concentrated hinge vortex in the
+   particle wake at −20° (hinge band ≤ 2.7 % of the near-wake strength through release and rebound).
+   Envelope: worst-case junction chord distortion ≤ 2 % and distal sweep at mid-distal radius ≤ 25°
+   (near the hinge the sweep equals |θ|) → fold ≥ −23.0° for
+   this design (chord-limited); enforced when the case is built and on every accepted window
+   (`failed_geometry_envelope` ends the valid prefix).
+2. *Aerodynamic coverage.* The retained NACA2412 table (XFOIL captures, attached flow) covers α −6…8°,
+   Re 165k–330k, Mach 0.10–0.31. At 14 m/s the no-induction section states leave it below ≈ 2200 RPM
+   (root Re < 165k) and below ≈ 1500 RPM also in α; at rest the sections sit at α −64…−77° (deep
+   stall) and Re 42k–66k. The binding limit for deployment at speed is Mach: the opening swing adds
+   θ̇·(r − r_h) to the distal speed. Released from −20° at 2400 RPM, the tip reached the table's
+   Mach 0.31 seven windows after release (θ̇ = 95 rad/s and rising) and DUST stopped (fail-closed;
+   accepted prefix kept, run `…191618`). An energy bound, θ̇_max = Ω √(2 m r_h c_g (1 − cos θ₀)/J_h)
+   (aerodynamic and damping moments neglected; −5°: 42 vs 38.9 rad/s solved; −20° at 2200 RPM: 154 vs
+   149 rad/s solved) estimates this before a run.
+3. *Shaft acceleration.* A prescribed speed history needs no motor data and makes the drive torque an
+   output (the torque that history requires). A torque-driven motor needs a measured torque–speed
+   law, controller behaviour and rotor/hub inertia, none of which exist here. Order chosen: the
+   prescribed ramp now; the motor law after measurements.
+
+**What changed in the model.** *Drive:* `drive_profile = "ramp"` prescribes a smooth half-cosine rise
+from `ramp_start_rpm` to the design RPM (MBDyn `cosine … half` drive on the axial-rotation joint;
+nodes start at the ramp-start speed); the time step is defined at the design speed. Constant-speed
+decks are byte-identical to before (pinned by test). *Hinge dynamics in post-processing:* the
+centrifugal moment uses the instantaneous speed, and the rotating-frame acceleration moment
+−(J_h + m r_h c_g cos θ) Ω̇ is a new derived channel included in the independent hinge balance; on the
+−20° ramp run it peaks at 0.37 N·m (aerodynamic hinge moment 0.20 N·m) and the balance closes to 1.0 %
+with it versus 4.7 % without it. *Preparation:* refuses folds beyond the envelope and planned speeds
+whose section Reynolds or Mach leave the admitted table (robust to induction); reports α and the
+opening-swing estimate as warnings (the bound is conservative; DUST and the per-window audit stop a
+run that actually leaves the table).
+
+**Runs** (NACA2412, 800 mm template, 14 m/s, demonstration-assumption mechanics: 30 g, CG 55 mm,
+J_cg 3e-5 kg m², stop 500 N m/rad, e = 0.5; 2.5° steps at 2400 RPM; latched until 0.05 s):
+
+| Case | Status | Peak θ̇ [rad/s] (θ̇/Ω) | Impact rate | 2nd swing | Mach max | Thrust: last latched rev → last rev |
+|---|---|---|---|---|---|---|
+| −5°, constant 2400 RPM (`…071200`) | completed | 38.9 (0.15) | 34.0 | −2.70° | 0.296 | 36.37 → 36.76 N |
+| −20°, constant 2400 RPM (`…191618`) | stopped at the table's Mach limit, window 296 | ≥ 95 (0.38) | — | — | 0.306 accepted | 30.74 N latched |
+| −15°, ramp 2200→2400 RPM over 0.05 s from release (`…203052`) | completed | 111 (0.48) | 99.4 | −8.06° | 0.296 | 23.93 → 36.93 N |
+| −20°, same ramp (`…203049`) | completed | 149 (0.65) | 133 | −10.56° | 0.308 | 22.12 → 36.90 N |
+
+All completed windows converged and stayed inside the admitted table; load, moment and power transfer
+close to ≤ 6.4e-6 relative; hinge balance 1.0 %; contact resolved with 8.7 steps per half-period.
+Folded −20° at 2200 RPM the rotor gives 22 N; first contact comes 3.6 ms after release; thrust then
+oscillates with the hinge (34 → 25 → 27 → 33 N) and settles with the ramp (36.6–37.6 N at 2400 RPM);
+the slipstream half a radius below the disk speeds up from 17.0 to 19.2 m/s with RPM. The prescribed
+(infinitely stiff) drive reacts the stop impact with drive-torque spikes up to 285 N·m at −20°: a
+consequence of prescribing speed (an impulse spread over one step, so its peak depends on the time
+step), not a shaft-load prediction.
+
+**RBF bias during motion.** The located rbf evaluation-point error scales with the body angular
+velocity of the distal elements, Ω + θ̇. At the peak opening rate it is up to 1.65 × its steady size
+on the distal elements (θ̇/Ω = 0.65 at −20°) for a few milliseconds — an estimate from the error's
+form, not a measurement.
+
+**Supported operating envelope (this design, retained data).** Folds to −23° (geometry, enforced);
+planned shaft speeds whose section Re ≥ 165k and Mach ≤ 0.31 without induction (≈ ≥ 2200 RPM at
+14 m/s, enforced at preparation); α within −6…8° and Mach ≤ 0.31 during the opening swing, audited
+per window (the swing estimate is a warning). Evidence: −5° at 2400 RPM and −15°/−20° released at
+2200 RPM during the ramp completed; −20° at 2400 RPM stopped at the Mach limit. The −20° ramp case
+reached Mach 0.308 (0.6 % margin, one run); "about −7° at 2400 RPM" is an extrapolation from the
+swing estimate, not a run. Not supported: spin-up from rest or low RPM (deep stall, low Re — needs
+data and a separately identified post-stall treatment, see the handoff), folds beyond −23°
+(lifting-line geometry), torque-driven shaft (no measured motor data).

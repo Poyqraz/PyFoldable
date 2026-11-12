@@ -288,3 +288,46 @@ def test_flow_tab_without_toolchain_explains_how_to_prepare_flow_data(tmp_path, 
     assert any("hazırlanmadı" in i.value for i in at.info)
     assert any("araç zinciri" in c.value for c in at.caption)
     assert not any(b.key == "coupled_flow_build" for b in at.button)
+
+
+
+def _ready_app(tmp_path, monkeypatch):
+    store(tmp_path, monkeypatch, PROJECT_AIRFOIL_IDS)
+    bem(monkeypatch)
+    _forbid_runs(monkeypatch)
+    fake = toolchain.Readiness("ready", "ok", toolchain.Toolchain(tmp_path / "tc.json", {}),
+                               {"versions": {"dust_revision": "3b1d2e61f0b7", "mbdyn_revision": "55c86cc6ec7f",
+                                             "precice_version": "2.5.0"}})
+    monkeypatch.setattr(toolchain, "readiness", lambda **k: fake)
+    at = go(app(), "Analiz")
+    at.button(key="coupled_fill_demo").click().run()
+    return at
+
+
+def test_drive_ramp_inputs_and_fold_envelope_refusal(tmp_path, monkeypatch):
+    at = _ready_app(tmp_path, monkeypatch)
+    at.radio(key="coupled_drive_profile").set_value("ramp").run()
+    at.number_input(key="coupled_drive_rpm0").set_value(2200.0).run()
+    assert not at.exception
+    assert any("Motor yasası" in c.value for c in at.caption)  # the drive torque is an output of the prescribed history
+    at.radio(key="coupled_drive_profile").set_value("constant").run()
+    at.number_input(key="coupled_fold").set_value(-45.0).run()
+    assert any("geometri sınırının ötesinde" in w.value for w in at.warning)
+
+
+def test_low_speed_trajectory_refusal_is_explained(tmp_path, monkeypatch):
+    at = _ready_app(tmp_path, monkeypatch)
+
+    def refuse(*a, **k):
+        raise svc.CoupledPreparationError("outside_admitted_reynolds", "Planlanan yörüngede reynolds 1.08e+05…")
+    monkeypatch.setattr(svc, "prepare", refuse)
+    at.radio(key="coupled_drive_profile").set_value("ramp").run()
+    assert any("Reynolds aralığından çıkıyor" in w.value for w in at.warning)
+
+
+
+def test_every_coupled_status_has_an_explanation():
+    from pyfoldable.application import coupled_ui
+    statuses = {"completed", "failed_aero_coverage", "failed_unconverged_coupling", "failed_geometry_envelope",
+                "cancelled", "timeout", "failed_solver", "failed_incomplete"}
+    assert statuses <= set(coupled_ui._STATUS_TEXT)
