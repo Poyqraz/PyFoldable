@@ -176,12 +176,21 @@ def render_analysis(active, family, readiness_status, repository, root: Path):
     try:
         prep = svc.prepare(active, family, repository, mech, ctrl, readiness=tcmod.readiness(hash_executables=True))
     except svc.CoupledPreparationError as exc:
-        st.warning("Dinamik analiz hazırlanamadı: " + _PREP_TEXT.get(exc.code, "girdileri ve şablonu kontrol edin."))
+        detail = str(exc).split(": ", 1)[-1] if exc.code == "result_too_large" else None
+        st.warning("Dinamik analiz hazırlanamadı: " + (detail or _PREP_TEXT.get(exc.code, "girdileri ve şablonu kontrol edin.")))
         with st.expander("Hazırlık teknik ayrıntısı"):
             st.text(str(exc))
         return
     env = prep.request["c81"]["envelope"]
     pre = prep.request["preflight_no_induction_ranges"]
+    lim = svc.supported_duration(prep.case)
+    revs = prep.case.n_steps * prep.case.dt_s * prep.case.omega_rad_s / (2 * math.pi)
+    after = max(0.0, prep.case.n_steps * prep.case.dt_s - prep.case.mechanics.release_time_s) * prep.case.omega_rad_s / (2 * math.pi)
+    st.caption(f"Simülasyon {revs:.1f} devir (serbest bırakmadan sonra {after:.1f} devir) · kayıt tahmini "
+               f"{svc.estimated_result_bytes(prep.case) / 2**20:.1f} / {lim['limit_bytes'] / 2**20:.0f} MiB · bu adım ve eleman "
+               f"sayısıyla desteklenen en uzun süre {lim['duration_s']:.3f} s ({lim['revolutions']:.1f} devir). "
+               + ("Bu bir kayıt boyutu sınırıdır" if lim["limited_by"] == "record_size" else "Bu, süre ayarının üst sınırıdır")
+               + ", fiziksel oturma süresi değildir; her kabul edilen pencere saklanır.")
     st.caption(f"Pencere sayısı {prep.case.n_steps} · zaman adımı {prep.case.dt_s * 1000:.4f} ms · "
                f"menteşe ekseni ataleti {prep.case.mechanics.hinge_inertia_kg_m2:.3e} kg·m² · stop sönümü "
                f"{prep.case.mechanics.stop_damping_nm_s_per_rad:.4f} N·m·s/rad.")
@@ -231,6 +240,16 @@ def _progress():
         st.error(f"Çalıştırma {state} durumunda sonuçsuz bitti: {status.get('message', '')}. Ham çıktılar: {run}")
 
 
+def _archive(row) -> bytes:
+    """Compressed record, computed once per record and session (not on every rerun)."""
+    cache = st.session_state.setdefault("_coupled_archive_cache", {})
+    key = row["result_sha256"]
+    if key not in cache:
+        cache.clear()
+        cache[key] = svc.record_archive_bytes(row)
+    return cache[key]
+
+
 def save(row, *, imported=False):
     history = st.session_state.setdefault(HISTORY, ())
     if any(json.loads(raw)["result_sha256"] == row["result_sha256"] for raw, _ in history):
@@ -278,20 +297,35 @@ def render_result(row, *, imported=False):
         st.caption("Mekanik girdiler gösterim varsayımıdır: " + m["source"])
     valid = row["series"][:ex["valid_prefix_windows"]]
     if valid:
-        last = valid[-1]
         th = [r["theta_deg"][0] for r in valid]
+        cs0 = row["run_definition"]["case"]
+        per_rev = max(1, int(round(2 * math.pi / (cs0["omega_rad_s"] * cs0["dt_s"]))))
+        # one full revolution averages out the azimuthal ripple; shorter histories show the last window
+        span = valid[-per_rev:] if len(valid) >= per_rev else valid[-1:]
+        tag = "Son tam devir ort." if len(valid) >= per_rev else "Son pencere"
+
+        def mean(key):
+            return sum(r[key] for r in span) / len(span)
         a, b, c, d = st.columns(4)
-        a.metric("Son itki [N]", _fmt(last["thrust_n"], 3))
-        b.metric("Aero şaft torku [N·m]", _fmt(last["aero_shaft_torque_nm"], 3))
-        c.metric("Tahrik torku [N·m]", _fmt(last["drive_torque_nm"], 3))
+        a.metric(f"{tag} itki [N]", _fmt(mean("thrust_n"), 3))
+        b.metric(f"{tag} aero şaft torku [N·m]", _fmt(mean("aero_shaft_torque_nm"), 3))
+        c.metric(f"{tag} tahrik torku [N·m]", _fmt(mean("drive_torque_nm"), 3))
         d.metric("θ en küçük / en büyük [°]", f"{_fmt(min(th), 1)} / {_fmt(max(th), 1)}")
         contact = any(any(r["contact_active"]) for r in valid)
+        cs = row["run_definition"]["case"]
+        t_end = ex["valid_prefix_windows"] * cs["dt_s"]
+        to_rev = cs["omega_rad_s"] / (2 * math.pi)
+        st.caption(f"Kısa analiz penceresi: {t_end * to_rev:.1f} devir, serbest bırakmadan sonra "
+                   f"{max(0.0, t_end - m['release_time_s']) * to_rev:.1f} devir ({t_end:.4f} s). Son pencere değerleri "
+                   "uzun süreli oturmuş performans değildir; ortalamalar için tam devir pencerelerini kullanın.")
         st.caption(f"Kabul edilen pencereler {ex['windows_accepted']}/{ex['windows_planned']} · geçerli önek {ex['valid_prefix_windows']} · "
                    f"stop teması {'oluştu' if contact else 'oluşmadı'} · bağlaşım iterasyonu "
                    f"{min(r['coupling_iterations'] for r in valid)}–{max(r['coupling_iterations'] for r in valid)}.")
     a, b, c, d = st.columns(4)
     name = f"pyfoldable_dinamik_{i['profile']}_{row['result_sha256'][:8]}"
     a.download_button("Sonuç JSON’u", views.saved_json(row), name + ".json", "application/json")
+    a.download_button("Sıkıştırılmış kayıt (.json.gz)", _archive(row), name + ".json.gz", "application/gzip",
+                      help="Aynı mühürlü kaydın kayıpsız gzip hâli; Karşılaştırma / kayıtlar sayfasından açılabilir.")
     if row["series"]:
         b.download_button("Zaman serisi CSV", views.series_csv(row), name + "_zaman.csv", "text/csv")
         c.download_button("Radyal CSV", views.radial_csv(row), name + "_radyal.csv", "text/csv")

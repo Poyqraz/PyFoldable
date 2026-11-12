@@ -1,0 +1,207 @@
+{
+ "averaging_windows": {
+  "last_latched_rev_minus5deg": {
+   "aero_power_w": 743.015185951998,
+   "aero_shaft_torque_nm": 2.9555301562234693,
+   "azimuth_step_deg": 2.5,
+   "drive_power_w": 742.8788201374686,
+   "drive_torque_nm": 2.9558209085788283,
+   "elements_per_segment": 8,
+   "result_sha256": "c7a2ab47b0a337ab2faaa00b6c86c4c8712e95be56ba6a190c119e8e97db7aee",
+   "revolutions": 1.0,
+   "run_id": "20261112T071200_20d4a1092d",
+   "theta_deg_range": [
+    -5.000000000000212,
+    -4.999999999999575
+   ],
+   "thrust_n": 36.36917623716412,
+   "time_s": [
+    0.025,
+    0.05
+   ],
+   "topology": "continuous_rbf",
+   "windows": [
+    145,
+    288
+   ]
+  },
+  "rev1_after_release": {
+   "aero_power_w": 753.6428598709977,
+   "aero_shaft_torque_nm": 2.9931240693755417,
+   "azimuth_step_deg": 2.5,
+   "drive_power_w": 707.0873882866198,
+   "drive_torque_nm": 2.813411326093851,
+   "elements_per_segment": 8,
+   "result_sha256": "c7a2ab47b0a337ab2faaa00b6c86c4c8712e95be56ba6a190c119e8e97db7aee",
+   "revolutions": 1.0,
+   "run_id": "20261112T071200_20d4a1092d",
+   "theta_deg_range": [
+    -4.991168161816956,
+    0.8086415807572216
+   ],
+   "thrust_n": 36.934011770415275,
+   "time_s": [
+    0.05,
+    0.075
+   ],
+   "topology": "continuous_rbf",
+   "windows": [
+    289,
+    432
+   ]
+  },
+  "rev2_after_release": {
+   "aero_power_w": 749.6295886305217,
+   "aero_shaft_torque_nm": 2.9814774809678855,
+   "azimuth_step_deg": 2.5,
+   "drive_power_w": 845.1760857670045,
+   "drive_torque_nm": 3.362848795821959,
+   "elements_per_segment": 8,
+   "result_sha256": "c7a2ab47b0a337ab2faaa00b6c86c4c8712e95be56ba6a190c119e8e97db7aee",
+   "revolutions": 1.0,
+   "run_id": "20261112T071200_20d4a1092d",
+   "theta_deg_range": [
+    -1.215843376762626,
+    0.1263822199873383
+   ],
+   "thrust_n": 36.76487962093284,
+   "time_s": [
+    0.075,
+    0.1
+   ],
+   "topology": "continuous_rbf",
+   "windows": [
+    433,
+    576
+   ]
+  },
+  "rev3_after_release_last": {
+   "aero_power_w": 749.3895879408651,
+   "aero_shaft_torque_nm": 2.9807943177847123,
+   "azimuth_step_deg": 2.5,
+   "drive_power_w": 745.6597596038234,
+   "drive_torque_nm": 2.966885915141574,
+   "elements_per_segment": 8,
+   "result_sha256": "c7a2ab47b0a337ab2faaa00b6c86c4c8712e95be56ba6a190c119e8e97db7aee",
+   "revolutions": 1.0,
+   "run_id": "20261112T071200_20d4a1092d",
+   "theta_deg_range": [
+    -0.7282594425922365,
+    0.030770330284376226
+   ],
+   "thrust_n": 36.761207450148135,
+   "time_s": [
+    0.1,
+    0.125
+   ],
+   "topology": "continuous_rbf",
+   "windows": [
+    577,
+    720
+   ]
+  }
+ },
+ "case": {
+  "dt_s": 0.00017361111111111112,
+  "n_steps": 720,
+  "omega_rad_s": 251.32741228718345
+ },
+ "controls": {
+  "aero_topology": "continuous_rbf",
+  "aitken_initial_relaxation": 0.5,
+  "azimuth_step_deg": 2.5,
+  "coupling_angular_velocity_tol_rad_s": 0.001,
+  "coupling_max_iterations": 30,
+  "coupling_position_tol_m": 1e-06,
+  "coupling_rotation_tol_rad": 1e-06,
+  "coupling_velocity_tol_m_s": 0.001,
+  "duration_s": 0.125,
+  "elements_per_segment": 8,
+  "fmm": false,
+  "ll_damp": 25.0,
+  "ll_max_iter": 200,
+  "ll_tol": 1e-06,
+  "max_wake_particles": 60000,
+  "mbdyn_max_iterations": 50,
+  "mbdyn_spectral_radius": 0.6,
+  "mbdyn_tolerance": 1e-06,
+  "n_wake_panels": 1,
+  "vortex_stretching": true,
+  "wake_box_axial_m": 1.6,
+  "wake_box_radial_factor": 1.6,
+  "wall_timeout_s": 3600.0
+ },
+ "locked_open_coupled_5deg_last_rev": {
+  "aero_power_w": 757.8838977006839,
+  "aero_shaft_torque_nm": 3.0121300841934584,
+  "azimuth_step_deg": 5.0,
+  "drive_power_w": 757.6200382281118,
+  "drive_torque_nm": 3.0144743517368675,
+  "elements_per_segment": 8,
+  "result_sha256": "04774b5010022c74a457bff27b73c652b4d0c5c1bb7f027f845566f04094786a",
+  "revolutions": 1.0,
+  "run_id": "20261112T073117_fab3a9a152",
+  "theta_deg_range": [
+   -1.1131941385122308e-13,
+   1.7731592349159108e-13
+  ],
+  "thrust_n": 37.11183159253789,
+  "time_s": [
+   0.125,
+   0.15
+  ],
+  "topology": "continuous_rbf",
+  "windows": [
+   361,
+   432
+  ]
+ },
+ "mechanics": {
+  "declaration_kind": "demonstration_assumption",
+  "distal_cg_from_hinge_m": 0.055,
+  "distal_inertia_cg_kg_m2": 3e-05,
+  "distal_mass_kg": 0.03,
+  "fold_limit_rad": -2.9670597283903604,
+  "hinge_damping_nm_s_per_rad": 0.0,
+  "hub_mass_kg": 0.1,
+  "initial_fold_rad": -0.08726646259971647,
+  "initial_rate_rad_s": 0.0,
+  "proximal_mass_kg": 0.05,
+  "release_time_s": 0.05,
+  "source": "Demonstration assumption: 30 g distal segment, CG 55 mm from hinge, J_cg 3e-5 kg m^2; compliant penalty stop; not measured hardware",
+  "spring_nm_per_rad": 0.0,
+  "spring_rest_rad": 0.0,
+  "stop_angle_rad": 0.0,
+  "stop_restitution": 0.5,
+  "stop_stiffness_nm_per_rad": 500.0
+ },
+ "release_5deg_last_rev": {
+  "aero_power_w": 757.2512631778586,
+  "aero_shaft_torque_nm": 3.009448365425224,
+  "azimuth_step_deg": 5.0,
+  "drive_power_w": 750.5647222326717,
+  "drive_torque_nm": 2.986402141343129,
+  "elements_per_segment": 8,
+  "result_sha256": "ec22c1578509b27e724eac6898786ec5f8c1f0acbb2caaecfa86c8bc57c56205",
+  "revolutions": 1.0,
+  "run_id": "20261112T071157_91efdf9841",
+  "theta_deg_range": [
+   -0.7463669043849583,
+   0.03173916206062028
+  ],
+  "thrust_n": 37.04855261778526,
+  "time_s": [
+   0.1,
+   0.125
+  ],
+  "topology": "continuous_rbf",
+  "windows": [
+   289,
+   360
+  ]
+ },
+ "result_sha256": "c7a2ab47b0a337ab2faaa00b6c86c4c8712e95be56ba6a190c119e8e97db7aee",
+ "run_id": "20261112T071200_20d4a1092d",
+ "status": "completed",
+ "windows": 720
+}

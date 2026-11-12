@@ -168,6 +168,44 @@ def test_result_size_estimate_bounds_recorded_runs_and_rejects_oversized_runs(ru
     svc.check_result_budget(case)
 
 
+def test_supported_duration_is_explicit_and_is_the_size_budget_boundary(run):
+    import math
+    row = _build(run)
+    case = svc.case_from_record(row)
+    lim = svc.supported_duration(case)
+    assert lim["windows"] >= 1 and lim["limit_bytes"] == svc.MAX_COUPLED_RESULT_BYTES
+    assert lim["revolutions"] == pytest.approx(lim["duration_s"] * case.omega_rad_s / (2 * math.pi))
+    edge = svc.case_from_record(row, duration_s=lim["duration_s"])
+    assert edge.n_steps == lim["windows"]
+    svc.check_result_budget(edge)
+    over = svc.case_from_record(row, duration_s=lim["duration_s"] + 2 * case.dt_s)
+    with pytest.raises(svc.CoupledPreparationError) as err:
+        svc.check_result_budget(over)
+    assert err.value.code == "result_too_large"
+    assert f"{lim['duration_s']:.3f}" in str(err.value)
+
+
+def test_compressed_record_restores_losslessly_and_inflation_is_bounded(run):
+    import gzip
+    row = _build(run)
+    plain = svc.record_json_bytes(row)
+    archive = svc.record_archive_bytes(row)
+    assert archive[:2] == b"\x1f\x8b" and len(archive) < len(plain)
+    assert svc.record_archive_bytes(row) == archive  # deterministic (no timestamp)
+    assert gzip.decompress(archive) == plain
+    assert svc.read_saved_coupled_result(archive) == svc.read_saved_coupled_result(plain)
+    with pytest.raises(ValueError, match="size"):
+        svc.read_saved_coupled_result(gzip.compress(b" " * (svc.MAX_COUPLED_RESULT_BYTES + 1), mtime=0))
+    with pytest.raises(ValueError, match="size"):
+        svc.read_saved_coupled_result(b"\x1f\x8b" + b"\0" * svc.MAX_COUPLED_ARCHIVE_BYTES)
+    with pytest.raises(ValueError):
+        svc.read_saved_coupled_result(archive[:-12])  # truncated stream
+    with pytest.raises(ValueError):
+        svc.read_saved_coupled_result(archive + archive)  # concatenated members are not one record
+    with pytest.raises(ValueError):
+        svc.read_saved_coupled_result(archive + b"trailing")
+
+
 def test_altered_mechanics_or_table_is_rejected_even_when_digests_are_resealed(run):
     row = _build(run)
     for change in ("mechanics", "c81"):

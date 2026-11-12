@@ -9,6 +9,7 @@ directory. Missing toolchains never affect the BEM route.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+import gzip
 import hashlib
 import json
 import math
@@ -18,6 +19,7 @@ import shutil
 import subprocess
 import sys
 import time
+import zlib
 
 from pyfoldable.coupled import MODEL_ID, SCHEMA_VERSION
 from pyfoldable.coupled import c81 as c81mod
@@ -30,7 +32,12 @@ from pyfoldable.coupled.postprocess import digest
 from . import research_design as research
 
 PARTICIPANTS = Path(__file__).resolve().parents[1] / "coupled" / "participants"
+# Canonical (uncompressed) record bound: the whole record is parsed, re-verified and kept in the
+# session; measured restore of a 16.6 MB record peaks at ~215 MB RSS.
 MAX_COUPLED_RESULT_BYTES = 24 * 1024 * 1024
+# Compressed transport bound (gzip of the same canonical JSON; measured ratio ~3x).
+MAX_COUPLED_ARCHIVE_BYTES = 12 * 1024 * 1024
+GZIP_MAGIC = b"\x1f\x8b"
 # Controls added after records were first written, with the meaning older records had.
 # A saved record lacking such a field is restored with exactly this value (identical decks).
 LEGACY_CONTROL_DEFAULTS = {"vortex_stretching": True, "aero_topology": "split_rigid"}
@@ -91,14 +98,59 @@ def estimated_result_bytes(case: CoupledCase) -> int:
     return postprocess.estimated_result_bytes(case, len(deckmod.coupling_nodes(case)))
 
 
+def supported_duration(case: CoupledCase) -> dict:
+    """Longest simulated time whose complete record stays restorable at this step and discretization.
+
+    The record keeps every accepted window (no thinning), so this is a storage bound, stated before a
+    run; it is not a physical settling time. Also bounded by the duration control's own limit."""
+    from pyfoldable.coupled.model import MAX_DURATION_S
+    per = postprocess.estimated_bytes_per_window(case, len(deckmod.coupling_nodes(case)))
+    windows = max(0, (MAX_COUPLED_RESULT_BYTES - postprocess.RESULT_FIXED_BYTES) // per)
+    limited_by = "record_size"
+    if windows * case.dt_s > MAX_DURATION_S:
+        windows, limited_by = int(math.floor(MAX_DURATION_S / case.dt_s + 1e-9)), "duration_control"
+    duration = windows * case.dt_s
+    return {"windows": int(windows), "duration_s": duration, "revolutions": duration * case.omega_rad_s / (2 * math.pi),
+            "limit_bytes": MAX_COUPLED_RESULT_BYTES, "bytes_per_window": per, "limited_by": limited_by}
+
+
 def check_result_budget(case: CoupledCase) -> None:
     """Fail closed before running when the complete record could not be restored (size cap)."""
     est = estimated_result_bytes(case)
     if est > MAX_COUPLED_RESULT_BYTES:
+        lim = supported_duration(case)
         raise CoupledPreparationError(
             "result_too_large",
-            f"Tahmini sonuç kaydı {est / 2**20:.1f} MiB, sınır {MAX_COUPLED_RESULT_BYTES / 2**20:.0f} MiB: "
-            "süreyi kısaltın veya azimut adımını büyütün.")
+            f"Tahmini sonuç kaydı {est / 2**20:.1f} MiB, sınır {MAX_COUPLED_RESULT_BYTES / 2**20:.0f} MiB. "
+            f"Bu azimut adımı ve eleman sayısıyla desteklenen en uzun süre {lim['duration_s']:.3f} s "
+            f"({lim['revolutions']:.1f} devir, {lim['windows']} pencere): süreyi kısaltın veya azimut adımını büyütün. "
+            "Kayıt her kabul edilen pencereyi saklar; örnek seyreltilmez.")
+
+
+def record_json_bytes(row: dict) -> bytes:
+    """Canonical record bytes (identical to the JSON download)."""
+    return (json.dumps(row, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
+            + "\n").encode("utf-8")
+
+
+def record_archive_bytes(row: dict) -> bytes:
+    """Lossless compressed transport of the same canonical record (single gzip member, no timestamp)."""
+    return gzip.compress(record_json_bytes(row), compresslevel=6, mtime=0)
+
+
+def _inflate_record(raw: bytes) -> bytes:
+    """Bounded decompression: one complete gzip member (CRC checked), no trailing data, output never
+    larger than the canonical record bound."""
+    _require(len(raw) <= MAX_COUPLED_ARCHIVE_BYTES, "Coupled archive size is invalid.")
+    inflater = zlib.decompressobj(16 + zlib.MAX_WBITS)
+    try:
+        out = inflater.decompress(raw, MAX_COUPLED_RESULT_BYTES + 1)
+    except zlib.error as exc:
+        raise ValueError("Coupled archive is not a valid gzip stream.") from exc
+    _require(len(out) <= MAX_COUPLED_RESULT_BYTES and not inflater.unconsumed_tail, "Coupled result size is invalid.")
+    _require(inflater.eof, "Coupled archive is truncated.")
+    _require(not inflater.unused_data, "Coupled archive has trailing data.")
+    return out
 
 
 def prepare(active, family, repository, mechanics: CoupledMechanics, controls: CoupledControls,
@@ -233,6 +285,8 @@ def case_from_record(row: dict, **control_overrides) -> CoupledCase:
 def read_saved_coupled_result(raw: bytes) -> dict:
     from pyfoldable.coupled.frames import relative_angle_about_z, rotvec_to_matrix
 
+    if isinstance(raw, bytes) and raw[:2] == GZIP_MAGIC:
+        raw = _inflate_record(raw)
     _require(isinstance(raw, bytes) and 0 < len(raw) <= MAX_COUPLED_RESULT_BYTES, "Coupled result size is invalid.")
 
     def unique(pairs):

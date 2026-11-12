@@ -1,0 +1,36 @@
+{
+ "after_upgrade": "20261112T070700_c891c455ae",
+ "before_upgrade": "20261112T004422_676d3c8c65",
+ "byte_identical_files": {
+  "dust_extract.json": true,
+  "structure/adapter_windows.jsonl": true,
+  "structure/out.jnt": true,
+  "structure/out.mov": true,
+  "structure/out.out": true
+ },
+ "deck_files_differing": [
+  "precice-config.xml"
+ ],
+ "dust_hdf5_results_byte_identical": 0,
+ "dust_hdf5_results_total": 432,
+ "notes": "preCICE configuration differs by an XML comment only; contact_active and checks differ because post-processing (contact round-off tolerance, relative closure checks) changed between the runs; HDF5 files differ in file metadata while dust_extract.json (all extracted per-element data) is byte-identical",
+ "record_sections_equal": {
+  "checks": false,
+  "closure": false,
+  "joint_outputs": true,
+  "node_states": true,
+  "radial": true,
+  "series": false,
+  "window_exchange": true
+ },
+ "request_keys_differing": [
+  "case_sha256",
+  "controls",
+  "deck",
+  "request_sha256",
+  "toolchain"
+ ],
+ "series_fields_differing": [
+  "contact_active"
+ ]
+}

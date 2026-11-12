@@ -1,0 +1,436 @@
+{
+ "continuous_rbf_open_same_duration": [
+  {
+   "aero_power_w": 810.2093124161786,
+   "aero_shaft_torque_nm": 3.2200329839916284,
+   "azimuth_step_deg": 5.0,
+   "drive_power_w": 868.8380743651531,
+   "drive_torque_nm": 3.4569968570414504,
+   "elements_per_segment": 8,
+   "result_sha256": "89d3d930b865ab48801fb3382bd89bfeef7aa165110373352f1b461fa1a83036",
+   "revolutions": 1.0,
+   "run_id": "20261112T070920_67c85e4108",
+   "theta_deg_range": [
+    -6.281595495890446e-14,
+    6.679164831073386e-14
+   ],
+   "thrust_n": 40.62669026264674,
+   "time_s": [
+    0.0,
+    0.025
+   ],
+   "topology": "continuous_rbf",
+   "windows": [
+    1,
+    72
+   ]
+  },
+  {
+   "aero_power_w": 764.6208154070916,
+   "aero_shaft_torque_nm": 3.0389051890073486,
+   "azimuth_step_deg": 5.0,
+   "drive_power_w": 764.3493560347073,
+   "drive_torque_nm": 3.041249456550769,
+   "elements_per_segment": 8,
+   "result_sha256": "89d3d930b865ab48801fb3382bd89bfeef7aa165110373352f1b461fa1a83036",
+   "revolutions": 1.0,
+   "run_id": "20261112T070920_67c85e4108",
+   "theta_deg_range": [
+    -1.1449996853268662e-13,
+    1.1449996853268662e-13
+   ],
+   "thrust_n": 37.652123554151174,
+   "time_s": [
+    0.025,
+    0.05
+   ],
+   "topology": "continuous_rbf",
+   "windows": [
+    73,
+    144
+   ]
+  },
+  {
+   "aero_power_w": 759.5756233282603,
+   "aero_shaft_torque_nm": 3.0188536541326085,
+   "azimuth_step_deg": 5.0,
+   "drive_power_w": 759.309855661942,
+   "drive_torque_nm": 3.0211979216747915,
+   "elements_per_segment": 8,
+   "result_sha256": "89d3d930b865ab48801fb3382bd89bfeef7aa165110373352f1b461fa1a83036",
+   "revolutions": 1.0,
+   "run_id": "20261112T070920_67c85e4108",
+   "theta_deg_range": [
+    -1.1449996853268662e-13,
+    1.176805232141501e-13
+   ],
+   "thrust_n": 37.24653019700981,
+   "time_s": [
+    0.05,
+    0.075
+   ],
+   "topology": "continuous_rbf",
+   "windows": [
+    145,
+    216
+   ]
+  }
+ ],
+ "continuous_rbf_static_minus_0p5deg": [
+  {
+   "aero_power_w": 809.3137278990994,
+   "aero_shaft_torque_nm": 3.216473838257945,
+   "azimuth_step_deg": 5.0,
+   "drive_power_w": 868.8541776032257,
+   "drive_torque_nm": 3.4570609297899235,
+   "elements_per_segment": 8,
+   "result_sha256": "1161ac5077a64e237dbddb7e2777adc8ef111afb69f3ced3811890d3a6f30c48",
+   "revolutions": 1.0,
+   "run_id": "20261112T070917_55f6aea26f",
+   "theta_deg_range": [
+    -0.5000000000000253,
+    -0.4999999999999013
+   ],
+   "thrust_n": 40.54318106166633,
+   "time_s": [
+    0.0,
+    0.025
+   ],
+   "topology": "continuous_rbf",
+   "windows": [
+    1,
+    72
+   ]
+  },
+  {
+   "aero_power_w": 763.7242999711885,
+   "aero_shaft_torque_nm": 3.0353420513531444,
+   "azimuth_step_deg": 5.0,
+   "drive_power_w": 763.4538390603443,
+   "drive_torque_nm": 3.0376863077234537,
+   "elements_per_segment": 8,
+   "result_sha256": "1161ac5077a64e237dbddb7e2777adc8ef111afb69f3ced3811890d3a6f30c48",
+   "revolutions": 1.0,
+   "run_id": "20261112T070917_55f6aea26f",
+   "theta_deg_range": [
+    -0.5000000000001852,
+    -0.4999999999999044
+   ],
+   "thrust_n": 37.57100827913937,
+   "time_s": [
+    0.025,
+    0.05
+   ],
+   "topology": "continuous_rbf",
+   "windows": [
+    73,
+    144
+   ]
+  },
+  {
+   "aero_power_w": 758.6949275174891,
+   "aero_shaft_torque_nm": 3.015353389717353,
+   "azimuth_step_deg": 5.0,
+   "drive_power_w": 758.4301404566834,
+   "drive_torque_nm": 3.0176976460890415,
+   "elements_per_segment": 8,
+   "result_sha256": "1161ac5077a64e237dbddb7e2777adc8ef111afb69f3ced3811890d3a6f30c48",
+   "revolutions": 1.0,
+   "run_id": "20261112T070917_55f6aea26f",
+   "theta_deg_range": [
+    -0.5000000000003124,
+    -0.49999999999994255
+   ],
+   "thrust_n": 37.167419683539435,
+   "time_s": [
+    0.05,
+    0.075
+   ],
+   "topology": "continuous_rbf",
+   "windows": [
+    145,
+    216
+   ]
+  }
+ ],
+ "question": "Does a static, latched fold (no hinge motion) change thrust? Two-line layout vs continuous line.",
+ "split_rigid_open_reference_5deg": [
+  {
+   "aero_power_w": 829.2664844401788,
+   "aero_shaft_torque_nm": 3.2969139607247304,
+   "azimuth_step_deg": 5.0,
+   "drive_power_w": 888.1603713017244,
+   "drive_torque_nm": 3.5338778337750667,
+   "elements_per_segment": 8,
+   "result_sha256": "232f908facea640724b8a39529bd0be91249fd1b1f94372853d6baa5a2b1a41b",
+   "revolutions": 1.0,
+   "run_id": "20261112T004422_676d3c8c65",
+   "theta_deg_range": [
+    -1.3343701288645313e-89,
+    1.143198051949402e-59
+   ],
+   "thrust_n": 42.22735507570009,
+   "time_s": [
+    0.0,
+    0.025
+   ],
+   "topology": "split_rigid (legacy record)",
+   "windows": [
+    1,
+    72
+   ]
+  },
+  {
+   "aero_power_w": 782.6052834830078,
+   "aero_shaft_torque_nm": 3.1114342563373487,
+   "azimuth_step_deg": 5.0,
+   "drive_power_w": 782.577898842155,
+   "drive_torque_nm": 3.1137785238799567,
+   "elements_per_segment": 8,
+   "result_sha256": "232f908facea640724b8a39529bd0be91249fd1b1f94372853d6baa5a2b1a41b",
+   "revolutions": 1.0,
+   "run_id": "20261112T004422_676d3c8c65",
+   "theta_deg_range": [
+    -1.2769365509683496e-89,
+    8.803408939381963e-90
+   ],
+   "thrust_n": 39.114654193370285,
+   "time_s": [
+    0.025,
+    0.05
+   ],
+   "topology": "split_rigid (legacy record)",
+   "windows": [
+    73,
+    144
+   ]
+  },
+  {
+   "aero_power_w": 778.0417462976411,
+   "aero_shaft_torque_nm": 3.0932901638770143,
+   "azimuth_step_deg": 5.0,
+   "drive_power_w": 778.0177910362377,
+   "drive_torque_nm": 3.095634431421364,
+   "elements_per_segment": 8,
+   "result_sha256": "232f908facea640724b8a39529bd0be91249fd1b1f94372853d6baa5a2b1a41b",
+   "revolutions": 1.0,
+   "run_id": "20261112T004422_676d3c8c65",
+   "theta_deg_range": [
+    -1.280480264800204e-89,
+    8.788869458051737e-90
+   ],
+   "thrust_n": 38.72144831047963,
+   "time_s": [
+    0.05,
+    0.075
+   ],
+   "topology": "split_rigid (legacy record)",
+   "windows": [
+    145,
+    216
+   ]
+  },
+  {
+   "aero_power_w": 776.5597407125548,
+   "aero_shaft_torque_nm": 3.087397939833499,
+   "azimuth_step_deg": 5.0,
+   "drive_power_w": 776.5369136128736,
+   "drive_torque_nm": 3.0897422073703247,
+   "elements_per_segment": 8,
+   "result_sha256": "232f908facea640724b8a39529bd0be91249fd1b1f94372853d6baa5a2b1a41b",
+   "revolutions": 1.0,
+   "run_id": "20261112T004422_676d3c8c65",
+   "theta_deg_range": [
+    -1.2840341664020095e-89,
+    8.774335163687909e-90
+   ],
+   "thrust_n": 38.5980250431731,
+   "time_s": [
+    0.075,
+    0.1
+   ],
+   "topology": "split_rigid (legacy record)",
+   "windows": [
+    217,
+    288
+   ]
+  },
+  {
+   "aero_power_w": 776.4880535426453,
+   "aero_shaft_torque_nm": 3.087112933760885,
+   "azimuth_step_deg": 5.0,
+   "drive_power_w": 776.4652837759296,
+   "drive_torque_nm": 3.089457201304761,
+   "elements_per_segment": 8,
+   "result_sha256": "232f908facea640724b8a39529bd0be91249fd1b1f94372853d6baa5a2b1a41b",
+   "revolutions": 1.0,
+   "run_id": "20261112T004422_676d3c8c65",
+   "theta_deg_range": [
+    -1.2875983069894273e-89,
+    8.75980609858618e-90
+   ],
+   "thrust_n": 38.58961486343918,
+   "time_s": [
+    0.1,
+    0.125
+   ],
+   "topology": "split_rigid (legacy record)",
+   "windows": [
+    289,
+    360
+   ]
+  },
+  {
+   "aero_power_w": 776.6094915137057,
+   "aero_shaft_torque_nm": 3.0875957476208415,
+   "azimuth_step_deg": 5.0,
+   "drive_power_w": 776.5866281338049,
+   "drive_torque_nm": 3.0899400151640677,
+   "elements_per_segment": 8,
+   "result_sha256": "232f908facea640724b8a39529bd0be91249fd1b1f94372853d6baa5a2b1a41b",
+   "revolutions": 1.0,
+   "run_id": "20261112T004422_676d3c8c65",
+   "theta_deg_range": [
+    -1.2911727381073656e-89,
+    8.745282304248972e-90
+   ],
+   "thrust_n": 38.60062100972754,
+   "time_s": [
+    0.125,
+    0.15
+   ],
+   "topology": "split_rigid (legacy record)",
+   "windows": [
+    361,
+    432
+   ]
+  }
+ ],
+ "split_rigid_static_minus_0p5deg": [
+  {
+   "aero_power_w": 906.0476485035091,
+   "aero_shaft_torque_nm": 3.6021838601835716,
+   "azimuth_step_deg": 5.0,
+   "drive_power_w": 965.7936793062157,
+   "drive_torque_nm": 3.842770951712327,
+   "elements_per_segment": 8,
+   "result_sha256": "61d27d13ea77220784ce8e1e78f2dd7d13061d371ccdb212aef628635495d67d",
+   "revolutions": 1.0,
+   "run_id": "20261112T064948_aba91dea80",
+   "theta_deg_range": [
+    -0.5000000000000707,
+    -0.4999999999999394
+   ],
+   "thrust_n": 47.46514329124859,
+   "time_s": [
+    0.0,
+    0.025
+   ],
+   "topology": "split_rigid (legacy record)",
+   "windows": [
+    1,
+    72
+   ]
+  },
+  {
+   "aero_power_w": 913.9371127181241,
+   "aero_shaft_torque_nm": 3.633588403940406,
+   "azimuth_step_deg": 5.0,
+   "drive_power_w": 913.8095467674743,
+   "drive_torque_nm": 3.6359326603152033,
+   "elements_per_segment": 8,
+   "result_sha256": "61d27d13ea77220784ce8e1e78f2dd7d13061d371ccdb212aef628635495d67d",
+   "revolutions": 1.0,
+   "run_id": "20261112T064948_aba91dea80",
+   "theta_deg_range": [
+    -0.5000000000002488,
+    -0.49999999999994105
+   ],
+   "thrust_n": 48.23063069500385,
+   "time_s": [
+    0.025,
+    0.05
+   ],
+   "topology": "split_rigid (legacy record)",
+   "windows": [
+    73,
+    144
+   ]
+  },
+  {
+   "aero_power_w": 910.8610823269098,
+   "aero_shaft_torque_nm": 3.6213580910255843,
+   "azimuth_step_deg": 5.0,
+   "drive_power_w": 910.735733870814,
+   "drive_torque_nm": 3.6237023473991243,
+   "elements_per_segment": 8,
+   "result_sha256": "61d27d13ea77220784ce8e1e78f2dd7d13061d371ccdb212aef628635495d67d",
+   "revolutions": 1.0,
+   "run_id": "20261112T064948_aba91dea80",
+   "theta_deg_range": [
+    -0.5000000000003124,
+    -0.4999999999999458
+   ],
+   "thrust_n": 47.85888345113519,
+   "time_s": [
+    0.05,
+    0.075
+   ],
+   "topology": "split_rigid (legacy record)",
+   "windows": [
+    145,
+    216
+   ]
+  },
+  {
+   "aero_power_w": 905.4712653216743,
+   "aero_shaft_torque_nm": 3.599929063620803,
+   "azimuth_step_deg": 5.0,
+   "drive_power_w": 905.3500318650099,
+   "drive_torque_nm": 3.6022733199930332,
+   "elements_per_segment": 8,
+   "result_sha256": "61d27d13ea77220784ce8e1e78f2dd7d13061d371ccdb212aef628635495d67d",
+   "revolutions": 1.0,
+   "run_id": "20261112T064948_aba91dea80",
+   "theta_deg_range": [
+    -0.5000000000004778,
+    -0.49999999999990447
+   ],
+   "thrust_n": 47.36202185931076,
+   "time_s": [
+    0.075,
+    0.1
+   ],
+   "topology": "split_rigid (legacy record)",
+   "windows": [
+    217,
+    288
+   ]
+  },
+  {
+   "aero_power_w": 904.859011894318,
+   "aero_shaft_torque_nm": 3.597494840968892,
+   "azimuth_step_deg": 5.0,
+   "drive_power_w": 904.7382449854521,
+   "drive_torque_nm": 3.599839097343025,
+   "elements_per_segment": 8,
+   "result_sha256": "61d27d13ea77220784ce8e1e78f2dd7d13061d371ccdb212aef628635495d67d",
+   "revolutions": 1.0,
+   "run_id": "20261112T064948_aba91dea80",
+   "theta_deg_range": [
+    -0.5000000000001334,
+    -0.4999999999997908
+   ],
+   "thrust_n": 47.29091768919386,
+   "time_s": [
+    0.1,
+    0.125
+   ],
+   "topology": "split_rigid (legacy record)",
+   "windows": [
+    289,
+    360
+   ]
+  }
+ ]
+}

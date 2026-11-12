@@ -1,5 +1,6 @@
 """Normal research workspace. All numerical execution is user-initiated."""
 from dataclasses import dataclass, replace
+import inspect
 import json
 import math
 from pathlib import Path
@@ -639,11 +640,28 @@ def _results(row, *, archived=False, imported=False):
         st.json(row, expanded=False)
 
 
+_COUPLED_PREFIX = b'{"artifact_class":"pyfoldable_coupled_result"'
+
+
 def _artifact_class(raw):
-    """Peek only at the declared class; the selected reader performs all validation."""
+    """Peek only at the declared class; the selected reader performs all validation.
+
+    Bounded before any full parse: compressed input inflates under the coupled bounds; input
+    larger than the research reader's limit is only a coupled candidate when it starts with the
+    canonical (sorted-key) coupled header, otherwise it is rejected without parsing."""
+    from . import coupled_analysis
+    if raw[:2] == b"\x1f\x8b":  # compressed coupled record (bounded inflation)
+        try:
+            raw = coupled_analysis._inflate_record(raw)
+        except ValueError:
+            return None
+    if len(raw) > coupled_analysis.MAX_COUPLED_RESULT_BYTES:
+        return None
+    if len(raw) > research.MAX_SAVED_RESULT_BYTES:
+        return "pyfoldable_coupled_result" if raw.lstrip()[:len(_COUPLED_PREFIX)] == _COUPLED_PREFIX else None
     try:
         doc = json.loads(raw.decode("utf-8"))
-    except (UnicodeDecodeError, ValueError):
+    except (UnicodeDecodeError, ValueError, RecursionError):
         return None
     return doc.get("artifact_class") if isinstance(doc, dict) else None
 
@@ -659,7 +677,14 @@ def _history(root=None):
     restore_error = None
     with st.expander("Önceki sonuç JSON’unu aç"):
         st.caption("Uygulamanın dışa aktardığı sonuç dosyası. İçerik tutarlılığı denetlenir, hesap başlatılmaz.")
-        uploaded = st.file_uploader("Sonuç JSON dosyası", type=("json",), key="research_restore")
+        # Per-uploader bound (app default 5 MB): coupled records are up to 24 MiB as JSON or 12 MiB as
+        # .json.gz; each reader enforces its own stricter size limit and full content verification.
+        kwargs = {"max_upload_size": 26} if "max_upload_size" in inspect.signature(st.file_uploader).parameters else {}
+        uploaded = st.file_uploader("Sonuç JSON dosyası (.json veya dinamik kayıt için .json.gz)", type=("json", "gz"),
+                                    key="research_restore", **kwargs)
+        if not kwargs:  # older Streamlit: the application-wide upload limit applies
+            st.caption("Bu Streamlit sürümünde yükleme sınırı uygulama ayarıdır; büyük dinamik kayıtları yerel "
+                       "çalıştırma klasöründen açın.")
         if st.button("Sonucu oturuma ekle", disabled=uploaded is None) and uploaded is not None:
             raw = uploaded.getvalue()
             try:

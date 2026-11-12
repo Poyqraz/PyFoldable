@@ -113,15 +113,21 @@ def hinge_point(nodes, b, X, body_state) -> list[float]:
     return body_state["x"]
 
 
+RESULT_FIXED_BYTES = 400_000  # request, decks, C81 text, definitions, checks (measured, with margin)
+
+
+def estimated_bytes_per_window(case, n_coupling_nodes: int) -> int:
+    """Conservative record bytes per accepted window, from measured per-item sizes of recorded runs
+    plus ~10 % margin: exchanged loads/kinematics per coupling node, MBDyn states of ground, hub and
+    body nodes, per-element radial rows, per-blade series/joint channels."""
+    nb = case.geometry.blade_count
+    return (450 * n_coupling_nodes + 320 * (2 + 2 * nb) + 260 * 2 * case.controls.elements_per_segment * nb
+            + 600 * nb + 200)
+
+
 def estimated_result_bytes(case, n_coupling_nodes: int) -> int:
-    """Conservative size of a complete result record (JSON), from measured per-item sizes of recorded
-    runs plus ~10 % margin: exchanged loads/kinematics per coupling node, MBDyn states of ground, hub
-    and body nodes, per-element radial rows, per-blade series/joint channels, fixed request overhead."""
-    g, c = case.geometry, case.controls
-    nb = g.blade_count
-    per_window = (450 * n_coupling_nodes + 320 * (2 + 2 * nb) + 260 * 2 * c.elements_per_segment * nb
-                  + 600 * nb + 200)
-    return 400_000 + case.n_steps * per_window
+    """Conservative size of a complete result record (JSON)."""
+    return RESULT_FIXED_BYTES + case.n_steps * estimated_bytes_per_window(case, n_coupling_nodes)
 
 
 def raw_manifest(run: Path) -> dict:

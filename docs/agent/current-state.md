@@ -150,8 +150,14 @@ release, stop contact and rebound were executed (run ledger in the
 [handoff](handoffs/coupled-dust-mbdyn-precice-20261112.md)). The earlier post-release thrust
 rise was traced to free vortices at the hinge between per-segment lifting lines; the default
 aerodynamic topology is now one continuous lifting line per blade with RBF coupling
-(`continuous_rbf`); earlier records restore as `split_rigid`. Open: the rbf route sits ≈ 1.4 %
-below standalone DUST thrust for the same line. The retained 800 mm table
+(`continuous_rbf`); earlier records restore as `split_rigid`. The rbf route sits ≈ 1.4 % below
+standalone DUST thrust for the same line (locked open, 5°): located in DUST 3b1d2e61's rbf
+branch, which evaluates the lifting-line body velocity at the leading line instead of the
+control point (reproduced by a diagnostic standalone build), partly offset by MBDyn's
+step-dependent node speed; not corrected, bias during motion not measured. Histories are short
+analysis windows (main case: 2 latched + 3 released revolutions); the 24 MiB record bound is
+reported before a run as the supported duration, and records transport as bounded `.json.gz`.
+Closure evidence: `reports/coupled_closure_20261112/`. The retained 800 mm table
 supports only small releases; spin-up and folded starts are not covered. ADR-010 is
 proposed, not accepted. `physical_qualification` remains false. Design and limits:
 [coupled dynamic analysis](../coupled_dynamic_analysis.md).

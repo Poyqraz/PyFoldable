@@ -182,26 +182,51 @@ and status consistency, and requires the saved coupling nodes and bodies to equa
 regenerated from the case. A saved request without `aero_topology` restores as
 `split_rigid` (its declared legacy meaning, identical decks); any other missing control is
 rejected. Node states keep the ground, hub and body nodes; the kinematics of the
-continuous-line coupling nodes are in the exchanged window data. Preparation refuses a run
-whose conservatively estimated record exceeds the 24 MiB restore limit
-(`result_too_large`; e.g. the default continuous line allows ≈ 0.16 s at 2.5° steps, ≈ 0.3 s
-at 5°). Checksums identify content; they do not prove physical validity.
+continuous-line coupling nodes are in the exchanged window data. Checksums identify content;
+they do not prove physical validity.
+
+**Storage bound vs simulated duration.** The record keeps every accepted window (no thinning),
+so its size grows linearly with the number of windows. The canonical record is bounded at
+24 MiB because restoration parses and re-verifies the whole record and the session keeps it
+(measured: a 16.6 MB record restores in 2 s at 215 MB peak RSS). This is a storage bound,
+not a physical one, and it is stated before a run: preparation reports the planned
+revolutions (total and after release), the estimated record size and the longest supported
+duration for the chosen step and discretization (`supported_duration`; default continuous
+line: 0.319 s / 12.8 revolutions at 5°, ≈ 0.16 s at 2.5°), and refuses a longer run with
+`result_too_large` naming that limit. Transport is a lossless single-member gzip of the same
+canonical JSON (`.json.gz` download, ≈ 3× smaller; the 720-window main record is 5.64 MB);
+import inflates with bounds (≤ 12 MiB compressed, ≤ 24 MiB inflated, one complete member,
+CRC checked, no trailing data) before the unchanged verification. The import uploader has its
+own 26 MB bound (the application default of 5 MB had made records above ~5 MB, including the
+main 16.6 MB record, unrestorable by upload; restoration from the local run folder was
+unaffected). Result views label the history as a short analysis window (revolutions in total
+and after release) and show last-full-revolution means instead of last-window values. Runs
+longer than the bound (e.g. tens of revolutions at 2.5°) would need chunked histories with
+lazy views; that is a stated limitation, not implemented. Resource note: the session keeps up
+to 12 records as canonical JSON and re-parses them on each render, so several large imported
+records raise memory use and page latency. The import peek rejects inputs above the research
+reader's limit unless they start with the canonical coupled header, so nothing larger than a
+research record is fully parsed before the coupled reader's own bounds. On Streamlit versions
+without a per-uploader limit the application-wide 5 MB limit applies and the page says so.
 
 ## 9. Verification performed (actual executions; details and run ids in the handoff)
 
 | Check | Result |
 |---|---|
 | Upstream coupled LL vs standalone | 2e-10 … 1e-8 rel. L2, 11/11 converged |
-| Standalone DUST, open rotor 2400 RPM/14 m/s, last of 6 revs | NACA2412 38.67 N / 3.114 N·m (10°), 38.37 N / 3.073 N·m (5°), spanwise ×2: −0.8 % T; NACA0012 29.72 N / 2.354 N·m. BEM (retained): 43.65 N / 3.277 N·m and 33.42 N / 2.488 N·m. DUST ≈ −11 % T, −5 % Q for both profiles (method difference; not tuned) |
+| Standalone DUST, open rotor 2400 RPM/14 m/s, last of 6 revs, two-line layout (historical) | NACA2412 38.67 N / 3.114 N·m (10°), 38.37 N / 3.073 N·m (5°), spanwise ×2: −0.8 % T; NACA0012 29.72 N / 2.354 N·m. The earlier "DUST ≈ −11 % T vs BEM" figure belongs to this layout; the current comparison is in §11 |
 | MBDyn mechanics vs independent ODE | spring+centrifugal pendulum: 0.005–0.015° max error; stop restitution 0.515 vs ODE 0.510 vs declared 0.5 |
 | Drive torque vs dH_z/dt (aero-free) | 0.005 N·m RMS after start transient (ρ∞=0.6) |
 | Coupled locked open rotor 5° vs standalone 5°, `split_rigid` | +0.6 % T, +0.5 % Q; drive 3.0899 vs aero 3.0876 N·m |
-| Same, `continuous_rbf` (6 revs) | 37.11 N / 3.012 N·m vs standalone continuous line 37.65 N / 3.039 N·m: −1.4 % T, −0.9 % Q (open item below); drive 3.0145 vs aero 3.0121 N·m |
+| Same, `continuous_rbf` (6 revs) | 37.11 N / 3.012 N·m vs standalone continuous line 37.65 N / 3.039 N·m: −1.4 % T, −0.9 % Q (located below); drive 3.0145 vs aero 3.0121 N·m |
+| Coupled geometry and timing (`continuous_rbf`) | DUST's written lifting line at every result is a rigid rotation of the standalone geometry (residual ≤ 2.4e-16 m); its azimuth equals MBDyn's state at window k+1 (alignment rule of §8 confirmed); during fold motion (θ −5…+0.77°, 120 windows) DUST's written points equal the RBF reconstruction from exchanged node states to 1.1e-16 m; nodes stay on their rigid segments to 2.7e-8 m |
+| RBF node spacing ×0.5 / ×2 (aero discretization fixed; release −5° at 0.01 s, 2.5°, 259 windows; diagnostic driver override, records intentionally do not restore) | max Δθ 0.0015° / 0.011°, max Δthrust 0.019 / 0.018 N, max Δ hinge aero moment 0.0008 / 0.005 N·m (peak 0.54 N·m), last-revolution thrust ±0.002 %, identical first contact |
+| MBDyn node speed vs Ωr (rigid windows) | +0.113 % at 5°, +0.0283 % at 2.5° (∝ step²); exchanged angular velocity exact (1e-14); integrated azimuth leads Ωt by 0.0019°/step at 5° |
 | Topology, standalone (6 revs, 5°) | continuous line 37.65 N vs two segments 38.37 N (−1.9 %; the split layout also carries a 2 mm element next to the hinge) |
 | Static −0.5° fold, latched, 5° (topology check) | `split_rigid` ≈ 47.7 N vs 38.7 N open (+23 %); `continuous_rbf` 37.17 N vs 37.25 N open (−0.2 %) |
 | Release −5° at 0.05 s, 5°: last rev | `split_rigid` 42.75 N (rise from 37.9 N); `continuous_rbf` 37.05 N (flat), hinge history identical to 0.01° |
 | RBF load reduction vs DUST node loads | force 2e-7…3e-6, moment 9e-7…3e-6 relative (closure checks of every continuous-line run) |
-| Toolchain after Ubuntu security update (python3.10, libgfortran5) | `split_rigid` locked-open run repeated: all 432 windows bit-identical |
+| Toolchain after Ubuntu security update (python3.10, libgfortran5) | the one repeated case (`split_rigid` locked open, 432 windows, `…004422` before vs `…070700` after): the adapter window log (all exchanged loads and kinematics), MBDyn's .mov/.jnt/.out and the DUST extraction are byte-identical; the HDF5 result files differ only byte-wise (file metadata; extracted data identical); the preCICE configuration differs by an XML comment; record digests and derived checks differ because the request records the toolchain identity and later controls and post-processing changed between the runs (review package `toolchain/replay_comparison.json`). This is evidence for that case, not proof that every result is invariant to the update. Each run is bound to the manifest it ran with (`toolchain/run_environment_binding.json`). Exception: the standalone topology row above compares the two-line run (before the update) with the continuous-line run (after); its −1.9 % carries the unquantified update effect. All RBF-gap and coupled comparisons use one environment |
 | Coupling tolerance 1e-6 vs 1e-8 (release case, 5°) | θ_max differs 6e-8°, final thrust 6e-6 N |
 | Hinge balance (smooth windows) | 0.9–1.5 % relative residual |
 | Main coupled case (NACA2412, −5° latched 0.05 s, 2.5°, 720 windows), `continuous_rbf` | completed; contact 3.65 ms after release at 38.8 rad/s, restitution 0.514 (declared 0.5), θ_max +0.81°, 7 contacts, second swing −2.70°, θ_final −0.53°; latched rev 36.37 N, last rev 36.76 N / 2.981 N·m (no rise); α −0.48…2.90°, Mach max 0.296; hinge balance 1.0 % |
@@ -223,17 +248,51 @@ and vortex stretching; merging stations next to the hinge made it worse
 (`…064957_1a28302b46`). Fix: the `continuous_rbf` topology (§4). With it the static −0.5°
 fold changes thrust by −0.2 %, and the release cases stay flat (table above).
 
+### Located: coupled continuous line vs standalone (−1.4 % T, locked open, 5°)
+
+Diagnostic budget fixed in advance: existing outputs plus one diagnostic standalone DUST build
+and run, three coupled spacing runs. Raw evidence, scripts and the diagnostic patch are in
+`reports/coupled_closure_20261112/` (see its README). Findings, in the order they were checked:
+
+1. *Generated geometry* — identical: the two DUST inputs differ only in the coupling lines;
+   all 63 preprocessed geometry datasets match; the coupled line at every step is a rigid
+   rotation of the standalone line (≤ 2.4e-16 m). Section frames reconstructed from the
+   written geometry reproduce DUST's own projected velocity exactly (|up·b| ≈ 1e-16).
+2. *Adapter transformations and timing* — exact: positions sent equal MBDyn's states; DUST's
+   written geometry equals MBDyn's state of the aligned window; the one-step label lag is the
+   documented alignment rule.
+3. *Evaluation-point velocities* — the only input difference. In DUST 3b1d2e61 the lifting-line
+   angle of attack uses the element body velocity `ub`. Standalone DUST evaluates it at the
+   control point (`ctr_pt`, half a chord behind the leading line); rigid coupling at the vertex
+   mean (same point); the `rbf` branch (`mod_precice.f90`, element-centre block) at `loc_cen`,
+   the leading-line midpoint. Observed: the spanwise velocity component changes by exactly
+   Ω×(chord offset) (−7.824 m/s predicted and observed at the root element); the rigid-coupled
+   pair keeps the standalone value (7.604 vs 7.609 m/s).
+4. *Positive reproduction* — a standalone DUST build whose only change evaluates lifting-line
+   `ub` at the leading-line midpoint (`dust-ubcen.diagnostic.patch`; never used for production)
+   run on byte-identical inputs gives 36.972 N / 3.0025 N·m (stock 37.646 N / 3.0387 N·m,
+   −1.79 %); coupled rbf 37.112 N / 3.0121 N·m. Per element, the α gap to the coupled run falls
+   from 0.007…0.22° (stock) to 0.003…0.013° (diagnostic), and the spanwise velocity agrees
+   (−0.137 vs −0.137 m/s).
+5. *Remainder (+0.38 % above the diagnostic run)* — not isolated. The coupled sectional speed is
+   ≈ 0.1 % higher and MBDyn's node speed exceeds Ωr by 0.113 % at 5°; a speed error of that size
+   alone would explain roughly +0.23 % (thrust ∝ speed²), so part of the remainder is unexplained.
+
+Status: the dominant cause is DUST's rbf-branch evaluation point for the lifting-line body
+velocity (a pinned-implementation behaviour, established by reproduction, not by
+elimination); a smaller opposite remainder (+0.38 %) is not isolated (MBDyn's step-dependent
+node speed is a candidate for part of it). No correction or
+multiplier is applied, and DUST is not modified. **Observed bounds:** −1.42 % thrust, −0.88 %
+torque for the locked-open rotor at 5° steps; spacing of the coupling nodes changes released
+results by ≤ 0.05 % in thrust. **Assumptions, not observed:** at 2.5° steps the MBDyn offset
+is ≈ 4× smaller, so the net bias is expected nearer the −1.8 % of the diagnostic build; during
+fold motion the hinge rate adds ω_fold × (chord offset) to the same term (fold rates up to
+≈ 40 rad/s vs Ω = 251 rad/s), so the bias may vary transiently by a fraction of itself; its size
+during motion has not been measured. Comparisons within the continuous topology (latched vs
+released, step or spacing studies) share the bias; absolute levels carry it.
+
 ### Unresolved observations (not hidden)
 
-* **Coupled continuous line vs standalone continuous line (−1.4 % T).** With the hinge
-  locked open the `continuous_rbf` route gives 37.11 N against 37.65 N for the same DUST
-  lifting line run standalone; per element the angle of attack is lower by 0.17° at the
-  root, 0.09° at mid-span and 0.01° at the tip, persistent from ~20 steps on, while the
-  sectional speed agrees to 0.1 % (the MBDyn kinematic error). DUST's rigid coupling
-  agrees with its standalone counterpart to 0.02°, so the offset sits in DUST 3b1d2e61's
-  rbf branch for lifting lines (e.g. its quarter-chord element centre/velocity handling
-  around the wake update); it is not identified. Comparisons inside one topology (release
-  vs locked, latched vs released) are unaffected; absolute levels carry this ≈ 1.4 % offset.
 * **Grazing contact.** MBDyn's Newton iteration can cycle at a grazing contact of the
   piecewise penalty law (observed once at 5° steps without vortex stretching, step 299);
   the run fails closed with its accepted prefix. A smoothed contact law is a candidate
@@ -250,3 +309,44 @@ gap aerodynamics, CFD pressure fields, structural stress, fatigue, clevis–tang
 manufacturability, latching or seating beyond the declared penalty law, the 250 mm /
 7100 RPM case (no admitted data), the four profiles without data. Contact phases need
 ≥ 8 steps per contact half-period (reported as a diagnostic).
+
+What the current evidence supports, and what it does not:
+
+* *Demonstrated:* small-angle coupled motion (release from −5°, stop contact, rebound,
+  settling oscillation around −0.5°) with every window converged, inside the admitted table,
+  with exact kinematic/geometric correspondence and closed load/power transfer.
+* *Short-window load predictions:* histories of 1.6–6 revolutions (main case: 2 latched + 3
+  after release); per-revolution means still drift by ≈ 0.04 % between the last two locked-open
+  revolutions. They are not long-term settled performance, and absolute levels carry the
+  located rbf bias (≈ −1.4 % at 5°).
+* *Unresolved numerical effects:* rbf lifting-line velocity point (above), MBDyn step-dependent
+  node speed (+0.11 % at 5°, +0.03 % at 2.5°), azimuth lead 0.0019°/step at 5°, grazing-contact
+  Newton cycling.
+* *Unsupported:* large folds, folded start, spin-up, torque-driven shaft (no admitted table
+  coverage or model); runs longer than the record bound. Mechanical properties are declared
+  demonstration assumptions; `physical_qualification` is false.
+
+## 11. Numerical summary (current topology; NACA2412, 800 mm template, 2400 RPM, 14 m/s)
+
+All DUST values use the same admitted C81 table, the same canonical stations and 16
+lifting-line elements per blade (8 per segment); means are over the stated windows. Run ids
+and sealed digests are in the review package.
+
+| Case | Step | Window | Thrust [N] | Torque [N·m] | Power [W] |
+|---|---|---|---|---|---|
+| Standalone DUST, one continuous line per blade (stock 3b1d2e61) | 5° | rev 6 of 6 (0.125–0.150 s) | 37.646 | 3.0387 | 763.7 |
+| Coupled `continuous_rbf`, hinge locked open (`…073117`) | 5° | rev 6 of 6 | 37.112 | 3.0121 aero / 3.0145 drive | 757.9 aero / 757.6 drive |
+| Coupled, latched at −5° (main `…071200`) | 2.5° | rev 2 (0.025–0.050 s) | 36.369 | 2.9555 / 2.9558 | 743.0 / 742.9 |
+| Coupled, released at 0.05 s, rev 1 after release | 2.5° | 0.050–0.075 s | 36.934 | 2.9931 / 2.8134 | 753.6 / 707.1 |
+| Same, rev 2 after release | 2.5° | 0.075–0.100 s | 36.765 | 2.9815 / 3.3628 | 749.6 / 845.2 |
+| Same, rev 3 after release (last) | 2.5° | 0.100–0.125 s | 36.761 | 2.9808 / 2.9669 | 749.4 / 745.7 |
+| Coupled, released at 0.05 s (`…071157`), rev 3 after release | 5° | 0.100–0.125 s | 37.049 | 3.0094 / 2.9864 | 757.3 / 750.6 |
+| Fully deployed BEM (retained, 40 elements, ideal full open) | steady | — | 43.647 | 3.2774 | 823.7 |
+
+After release the drive torque differs from the aerodynamic torque by the hinge's inertial
+exchange (the distal segment's opening and oscillation), not by a model error; the power
+check of §9 closes per window. Under matched geometry, tables, operating point and blade
+discretization, standalone DUST with the continuous line gives −13.75 % thrust and −7.28 %
+torque relative to BEM (method difference: unsteady free wake vs momentum theory, 16 vs 40
+radial elements; not tuned). This replaces the earlier −11 % / −5 % figure, which belonged
+to the two-line layout.

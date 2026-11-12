@@ -288,7 +288,10 @@ aborts outside α/Mach but extrapolates in Re). Coupling: preCICE serial-implici
 Aitken; unconverged, uncovered, failed, cancelled or timed-out runs keep only a labelled
 valid prefix and can never become completed results. Records are restored by
 regenerating case, table and decks and re-deriving channels from retained exchanged
-loads and node states, without solvers.
+loads and node states, without solvers. Every accepted window is kept; the record size bound
+(24 MiB canonical JSON, bounded gzip transport) is surfaced before a run as a supported
+duration and never thins samples. DUST's rbf lifting-line branch evaluates the body velocity
+at the leading line (≈ −1.4 % thrust vs standalone at 5°, located, not corrected).
 
 Not covered: spin-up from rest, fully folded start, torque-driven shaft, friction,
 joint loss, CFD fields, structural stress or strength, contact beyond the declared

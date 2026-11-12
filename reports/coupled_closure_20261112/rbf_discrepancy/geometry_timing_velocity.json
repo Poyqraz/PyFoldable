@@ -1,0 +1,75 @@
+{
+ "coupled_rbf_geometry_vs_reference": [
+  {
+   "psi_fit_deg": 5.001581124346417,
+   "psi_minus_Omega_window_time_deg": 0.0015811243464156632,
+   "result_index": 0,
+   "rigid_fit_residual_m": 5.551115123125783e-17,
+   "time_label_s": 0.0
+  },
+  {
+   "psi_fit_deg": 105.03907453270773,
+   "psi_minus_Omega_window_time_deg": 0.03907453270772976,
+   "result_index": 20,
+   "rigid_fit_residual_m": 1.5265566588595902e-16,
+   "time_label_s": 0.006944444444444445
+  },
+  {
+   "psi_fit_deg": 145.18875042122914,
+   "psi_minus_Omega_window_time_deg": 0.1887504212290878,
+   "result_index": 100,
+   "rigid_fit_residual_m": 4.440892098500626e-16,
+   "time_label_s": 0.034722222222222224
+  },
+  {
+   "psi_fit_deg": 285.3758452818811,
+   "psi_minus_Omega_window_time_deg": 0.3758452818810838,
+   "result_index": 200,
+   "rigid_fit_residual_m": 1.3322676295501878e-15,
+   "time_label_s": 0.06944444444444445
+  },
+  {
+   "psi_fit_deg": 65.56294014253332,
+   "psi_minus_Omega_window_time_deg": 0.5629401425333072,
+   "result_index": 300,
+   "rigid_fit_residual_m": 1.6653345369377348e-15,
+   "time_label_s": 0.10416666666666667
+  },
+  {
+   "psi_fit_deg": 0.808034409988231,
+   "psi_minus_Omega_window_time_deg": 0.8080344099885224,
+   "result_index": 431,
+   "rigid_fit_residual_m": 2.9976021664879227e-15,
+   "time_label_s": 0.14965277777777777
+  }
+ ],
+ "mbdyn_node_velocity": {
+  "20261112T004422_676d3c8c65": {
+   "azimuth_step_deg": 5.0,
+   "node_speed_over_Omega_r_minus_1": [
+    0.0011293054984660156,
+    0.0011293957480512725,
+    0.00113412268336055
+   ],
+   "windows": "rigid (locked/latched) windows only"
+  },
+  "20261112T071200_20d4a1092d": {
+   "azimuth_step_deg": 2.5,
+   "node_speed_over_Omega_r_minus_1": [
+    0.00028234849025432496,
+    0.00028257164688505124,
+    0.000284765517512664
+   ],
+   "windows": "rigid (locked/latched) windows only"
+  },
+  "20261112T073117_fab3a9a152": {
+   "azimuth_step_deg": 5.0,
+   "node_speed_over_Omega_r_minus_1": [
+    0.001129305498458244,
+    0.0011293957480514312,
+    0.0011341226833627704
+   ],
+   "windows": "rigid (locked/latched) windows only"
+  }
+ }
+}

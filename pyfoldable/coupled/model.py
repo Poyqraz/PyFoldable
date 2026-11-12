@@ -29,6 +29,7 @@ from pyfoldable.core.bem_rotor import _interpolate_station
 
 SUPPORTED_DRIVE = "prescribed_constant_speed"
 DECLARATION_KINDS = ("demonstration_assumption", "declared_hardware_property")
+MAX_DURATION_S = 2.0  # duration control bound (s); the restorable-record bound is usually tighter
 
 
 @dataclass(frozen=True)
@@ -217,7 +218,7 @@ def validate_mechanics(m: CoupledMechanics) -> None:
 
 def validate_controls(c: CoupledControls) -> None:
     _finite("azimuth_step_deg", c.azimuth_step_deg, lo=0.1, hi=30.0)
-    _finite("duration_s", c.duration_s, lo=0.0, hi=2.0, strict_lo=True)
+    _finite("duration_s", c.duration_s, lo=0.0, hi=MAX_DURATION_S, strict_lo=True)
     if type(c.elements_per_segment) is not int or not 2 <= c.elements_per_segment <= 40:
         raise CoupledCaseError("invalid_controls", "elements_per_segment must be 2..40")
     if type(c.coupling_max_iterations) is not int or not 2 <= c.coupling_max_iterations <= 200:

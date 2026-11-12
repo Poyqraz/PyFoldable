@@ -63,7 +63,7 @@ as listed below. No `.wslconfig`, MCP, credential or Serena change.
     3.10.12-1~22.04.12 → .18, libgfortran5) changed the coupling interpreter hash; readiness
     failed closed (`toolchain_invalid`) until `tools/coupled/write_manifest.py` was re-run. Prior
     manifest kept at `~/pyf-work/coupled_toolchain.pre-ubuntu-upgrade-20261112.json`; a repeated
-    `split_rigid` locked-open run (`…070700_c891c455ae`) is bit-identical to `…004422_676d3c8c65`.
+    `split_rigid` locked-open run (`…070700_c891c455ae`) reproduces `…004422_676d3c8c65`: exchanged window data, MBDyn outputs and DUST extraction byte-identical (HDF5 metadata and record digests differ; `toolchain/replay_comparison.json`).
 
 ## Actual executions (run ids under `outputs/coupled_runs/`, raw outputs kept locally)
 
@@ -88,10 +88,13 @@ as listed below. No `.wslconfig`, MCP, credential or Serena change.
 | `20261112T064957_1a28302b46` | E4 station merge near hinge | worse; approach reverted |
 | `20261112T070917_55f6aea26f` | E3 condition, `continuous_rbf`, 0.075 s | 37.17 N (open: 37.25 N, `…070920_67c85e4108`) |
 | `20261112T073117_fab3a9a152` | `continuous_rbf` locked open, 6 revs | 37.11 N / 3.012 N m; standalone continuous `sa_cont_s5_d150` 37.65 N / 3.039 N m |
-| `20261112T070700_c891c455ae` | `split_rigid` locked open repeated after the OS update | bit-identical to `…004422_676d3c8c65` |
+| `20261112T070700_c891c455ae` | `split_rigid` locked open repeated after the OS update | exchanged data, MBDyn outputs and DUST extraction byte-identical to `…004422_676d3c8c65` (evidence for this case only) |
 | `20261112T071157_91efdf9841` | `continuous_rbf` release −5° at 0.05 s, 5° | completed; last rev 37.05 N (split: 42.75 N) |
 | `20261112T071200_20d4a1092d` | **main**, `continuous_rbf`, 2.5°, 720 windows | completed, 2280 s; see "Main results" |
 | `20261112T074237_2a6ad5bd14` | `continuous_rbf` 30 windows | fixture `tests/fixtures/coupled/release_30w_rbf` |
+| `20261112T104303_5d5d234081`, `…104306_fc454dbf5a`, `…104309_3578a648d8` | closure: rbf node spacing ×1 / ×0.5 / ×2 (diagnostic driver override), release −5° at 0.01 s, 2.5°, 259 windows | completed; ≤ 0.019 N, ≤ 0.011° differences; records intentionally do not restore (decks differ from the generator) |
+| `20261112T104628_964ec74da3` | closure: started from the browser (0.04 s) and cancelled with *Durdur* | `cancelled`, 78/115 windows kept as labelled partial history |
+| `~/pyf-work/diag/runs/sa_cont_s5_d150_ubcen` | closure: standalone DUST **diagnostic build** (lifting-line `ub` at the leading line; patch in the review package), same inputs as `sa_cont_s5_d150` | 36.972 N / 3.0025 N m (stock 37.646 / 3.0387; coupled rbf 37.112 / 3.0121) |
 
 Full ordinary suite after the first commit: 2195 passed, 9 skipped (pre-existing missing generated CSVs),
 37 subtests passed (WSL, Python 3.10.12, 398 s). Focused: `tests/coupled` + `tests/ui/test_coupled_ui.py`
@@ -133,11 +136,44 @@ start → progress → automatic navigation to results); re-opened after an app 
 
 Fully deployed BEM route unchanged: the UI reproduced 43.647 N / 3.277 N m / 823.693 W.
 
+## Release-closure pass (2026-11-12, after `6f9f0a7`)
+
+* RBF gap: geometry, frames, adapter transformations and timing checked first (all exact);
+  the only input difference is the lifting-line `ub` evaluation point; a diagnostic standalone
+  DUST build with that single change reproduces the coupled deficit (−1.79 % vs −1.42 %); the
+  remainder matches MBDyn's +0.113 % node speed at 5°. No multiplier, no DUST change.
+* Mapping verification during motion: DUST written geometry = RBF reconstruction from exchanged
+  node states (1.1e-16 m); node rigidity 2.7e-8 m; spacing ×0.5/×2 ≤ 0.05 % thrust.
+* Persistence: supported duration reported in preparation and in the over-limit refusal;
+  bounded `.json.gz` transport; coupled import uploader bound 26 MB (the app's 5 MB default had
+  blocked restoring records above ~5 MB by upload); result views show revolution counts and
+  last-full-revolution means.
+* Browser check on the working tree after `6f9f0a7`: BEM 43.647 N / 3.277 N m / 823.693 W;
+  preparation caption and over-limit refusal; start, progress, cancel → labelled partial;
+  restore from the run folder before and after two app restarts; all result tabs; 3-D playback
+  frames equal the record (window, time, θ, thrust at windows 288/297/306/342/720); diagnostic
+  spacing record refused ("Saved decks do not match"). Not exercised in the browser: uploading
+  a `.json.gz` file (the browser pane cannot attach files; covered by tests and by verifying the
+  archive bytes the download button serves).
+* Toolchain: each run bound to its manifest (`toolchain/run_environment_binding.json`). The
+  replay `…070700` vs `…004422`: exchanged window data, MBDyn outputs and DUST extraction are
+  byte-identical, HDF5 files differ only in metadata, record digests differ by design
+  (`toolchain/replay_comparison.json`); evidence for that case only. libgfortran5 is not hashed
+  by the manifest. The standalone two-line vs continuous comparison (−1.9 %) spans the update.
+* Independent read-only review of this pass: no defect in the bounded inflation; findings
+  addressed: environment-mixing claim corrected, import peek size-gated (and RecursionError
+  handled), per-uploader limit applied only when Streamlit supports it, caption wording at the
+  duration-control limit, attribution of the +0.38 % remainder softened, replay evidence packaged.
+* Review package: `reports/coupled_closure_20261112/` (README, SHA256SUMS).
+
 ## Next concrete items
 
-1. Locate the ≈ 1.4 % coupled-vs-standalone thrust offset of DUST's `rbf` lifting-line branch
-   (α lower by 0.17° at the root; rigid coupling agrees to 0.02°), e.g. by instrumenting element
-   centre/velocity handling around the wake update in `mod_precice.f90`, or report upstream.
+1. The ≈ 1.4 % offset is located (design doc §9 "Located"): DUST's rbf branch evaluates the
+   lifting-line body velocity at `loc_cen` (leading line). Options, none taken here: report
+   upstream with the diagnostic patch and evidence; measure the bias during fold motion with a
+   diagnostic coupled build; or change the pinned DUST revision after review.
+1a. Longer histories need chunked records with lazy views (the 24 MiB bound is reported as a
+   supported duration before a run).
 2. Smooth contact law (or event handling) to avoid MBDyn Newton cycling at grazing contact.
 3. Independent review of the coupled route (Astra-B or equivalent); PR creation was not
    requested.

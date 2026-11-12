@@ -125,6 +125,11 @@ def test_recorded_coupled_result_renders_every_view_and_survives_edits(tmp_path,
     at.radio(key="research_results_kind").set_value("Dinamik bağlaşık").run()
     assert not at.exception
     assert any("Tamamlandı" in s.value for s in at.success)
+    # the result is labelled as a short analysis window with its revolution counts
+    assert any("devir" in c.value and "uzun süreli" in c.value for c in at.caption)
+    # fixtures are shorter than one revolution: headline loads are labelled as last-window values
+    labels = [m.label for m in at.metric]
+    assert any(lbl.startswith("Son pencere") for lbl in labels) and not any("tam devir" in lbl for lbl in labels)
     for tab in ("Menteşe", "Yükler", "Güç", "Kapsam ve yakınsama", "Radyal", "3B oynatma"):
         at.radio(key="coupled_tab").set_value(tab).run()
         assert not at.exception, tab
@@ -134,3 +139,25 @@ def test_recorded_coupled_result_renders_every_view_and_survives_edits(tmp_path,
     assert len(at.session_state["research_coupled_results"]) == 1
     go(at, "Karşılaştırma / kayıtlar")
     assert any("Dinamik bağlaşık kayıtlar" in m.value for m in at.markdown)
+
+
+def test_compressed_coupled_record_is_recognised_for_import(tmp_path):
+    from pyfoldable.application import research_ui
+    row = _record(tmp_path, FIXTURE_RBF)
+    archive = svc.record_archive_bytes(row)
+    assert research_ui._artifact_class(archive) == "pyfoldable_coupled_result"
+    assert research_ui._artifact_class(b"\x1f\x8bnot-a-gzip") is None
+
+
+def test_import_peek_is_bounded_before_any_full_parse():
+    from pyfoldable.application import research_design, research_ui
+    big = research_design.MAX_SAVED_RESULT_BYTES + 1
+    # a large upload that is not a canonical coupled record is never parsed in full
+    other = b'{"artifact_class":"pyfoldable_research_result","x":"' + b"a" * big + b'"}'
+    assert research_ui._artifact_class(other) is None
+    # a large canonical coupled record is recognised from its leading key (the reader verifies everything)
+    coupled = b'{"artifact_class":"pyfoldable_coupled_result",' + b" " * big + b"}"
+    assert research_ui._artifact_class(coupled) == "pyfoldable_coupled_result"
+    assert research_ui._artifact_class(b"{" * (svc.MAX_COUPLED_RESULT_BYTES + 1)) is None
+    # deeply nested small input does not escape as an exception
+    assert research_ui._artifact_class(b"[" * 200000) is None
