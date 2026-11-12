@@ -15,6 +15,7 @@ import json
 import lzma
 import math
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -263,6 +264,79 @@ def cancel(run: Path) -> None:
 def load_result(run: Path) -> dict:
     raw = (run / "result.json").read_bytes()
     return read_saved_coupled_result(raw)
+
+
+# ---------------------------------------------------------------------------
+# Flow companion: extracted on request from retained DUST outputs (no solver run).
+
+FLOW_TIMEOUT_S = 1800
+
+
+def local_run_dir(root: Path, row: dict) -> Path | None:
+    """The record's own run folder on this computer: inside the runs root, holding this very record
+    (its result.json carries the same result_sha256) and its DUST outputs. Flow data lives there."""
+    run_id = str(row.get("raw_outputs", {}).get("run_id", ""))
+    if (not run_id or any(c in run_id for c in "/\\:\0") or run_id in (".", "..") or Path(run_id).is_absolute()
+            or not re.fullmatch(r"[0-9A-Za-z_.-]+", run_id)):
+        return None
+    base = runs_root(root).resolve()
+    d = (base / run_id).resolve()
+    if d.parent != base or not (d / "result.json").is_file() or not (d / "dust" / "Output").is_dir():
+        return None
+    try:  # the sealed JSON is compact; its top-level digest appears exactly once
+        raw = (d / "result.json").read_bytes()
+    except OSError:
+        return None
+    key = b'"result_sha256":"' + str(row.get("result_sha256", "")).encode() + b'"'
+    return d if raw.count(b'"result_sha256":') == 1 and key in raw else None
+
+
+def load_flow(root: Path, row: dict):
+    """Verified flow companion of ``row`` or a FlowCompanionError explaining why it is unavailable."""
+    from pyfoldable.coupled import flow
+    d = local_run_dir(root, row)
+    if d is None:
+        raise flow.FlowCompanionError("no_run_folder", "Bu kaydın çalıştırma klasörü bu bilgisayarda yok; akış verisi "
+                                                       "ham DUST çıktılarından üretilir ve kayıtla taşınmaz.")
+    return flow.load(d, row)
+
+
+def build_flow(root: Path, row: dict, *, max_frames: int = 81, readiness: tcmod.Readiness | None = None):
+    """Explicit action: extract the flow companion from the record's retained DUST outputs with the
+    attested toolchain (coupling venv + dust_post). Never starts a solver; verifies the result."""
+    from pyfoldable.coupled import flow
+    d = local_run_dir(root, row)
+    if d is None:
+        raise flow.FlowCompanionError("no_run_folder", "Bu kaydın çalıştırma klasörü bu bilgisayarda yok.")
+    readiness = readiness or tcmod.readiness(hash_executables=True)
+    if readiness.status != "ready":
+        raise flow.FlowCompanionError("toolchain_" + readiness.status, readiness.message)
+    tc = readiness.toolchain
+    windows = flow.select_windows(row, max_frames)
+    if not windows:
+        raise flow.FlowCompanionError("no_windows", "Kabul edilen pencere yok.")
+    missing = [w for w in windows if f"dust/Output/run_res_{w:04d}.h5" not in row["raw_outputs"]["files"]]
+    if missing:
+        raise flow.FlowCompanionError("source_missing", f"Kayıtta listelenmeyen DUST çıktısı: pencere {missing[0]}.")
+    out = flow.companion_dir(d)
+    out.mkdir(exist_ok=True)
+    spec = {"result_sha256": row["result_sha256"], "windows": windows, "dust_post": tc.exe("dust_post"),
+            "plane": flow.default_plane(row)}
+    (out / "spec.json").write_text(json.dumps(spec, indent=1))
+    proc = subprocess.Popen([tc.exe("coupling_python"), "-I", str(PARTICIPANTS / "extract_flow.py"), str(d),
+                             str(out / "spec.json")], cwd=d, env=tc.environment(), stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT, text=True, start_new_session=True)
+    try:
+        log, _ = proc.communicate(timeout=FLOW_TIMEOUT_S)
+    except subprocess.TimeoutExpired:
+        import signal
+        os.killpg(proc.pid, signal.SIGKILL)  # extractor and dust_post together
+        proc.communicate()
+        raise flow.FlowCompanionError("timeout", f"Akış verisi çıkarma süresi ({FLOW_TIMEOUT_S} s) aşıldı.")
+    (out / "extract_flow.log").write_text(log or "")
+    if proc.returncode != 0:
+        raise flow.FlowCompanionError("extraction_failed", "Akış verisi çıkarılamadı; ayrıntı flow/extract_flow.log.")
+    return flow.load(d, row)
 
 
 # ---------------------------------------------------------------------------

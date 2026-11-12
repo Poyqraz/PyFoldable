@@ -159,7 +159,10 @@ analysis windows (main case: 2 latched + 3 released revolutions); the 24 MiB rec
 reported before a run as the supported duration, and records transport as bounded `.json.gz`
 or `.json.xz`; uploads are capped by the server-wide 5 MiB limit on every Streamlit version, so
 the main record restores by upload as `.json.xz` (4.60 MB) or from its run folder.
-Closure evidence: `reports/coupled_closure_20261112/`. The retained 800 mm table
+Closure evidence: `reports/coupled_closure_20261112/`. The *Akış ve tepki* view shows the
+DUST wake (vortex particles, panel wake, dust_post velocity plane) with θ, loads and hinge
+moments on one timeline, from a flow companion extracted on request from the run's retained
+outputs and bound to the sealed record by raw-file sha256 (no solver; stays in the run folder). The retained 800 mm table
 supports only small releases; spin-up and folded starts are not covered. ADR-010 is
 proposed, not accepted. `physical_qualification` remains false. Design and limits:
 [coupled dynamic analysis](../coupled_dynamic_analysis.md).

@@ -234,3 +234,57 @@ def test_xz_archive_is_prepared_only_on_request(tmp_path, monkeypatch):
     assert any(".json.xz" in c.value and "MB" in c.value for c in at.caption)
     at.radio(key="coupled_tab").set_value("Yükler").run()  # a rerun reuses the prepared archive
     assert not at.exception and calls == [row["result_sha256"]]
+
+
+FLOW_FIXTURE = FIXTURE.with_name("flow_30w_rbf")
+FLOW_RUN_ID = "20261112T074237_2a6ad5bd14"
+
+
+def _flow_app(tmp_path, monkeypatch, *, with_run_folder=True, with_companion=True):
+    store(tmp_path, monkeypatch, PROJECT_AIRFOIL_IDS)
+    bem(monkeypatch)
+    _no_toolchain(monkeypatch, tmp_path)
+    _forbid_runs(monkeypatch)
+    runs = tmp_path / "runs"
+    runs.mkdir()
+    if with_run_folder:
+        shutil.copytree(FLOW_FIXTURE, runs / FLOW_RUN_ID)
+        if not with_companion:
+            shutil.rmtree(runs / FLOW_RUN_ID / "flow")
+    monkeypatch.setenv("PYFOLDABLE_COUPLED_RUNS", str(runs))
+    row = svc.read_saved_coupled_result((FLOW_FIXTURE / "result.json").read_bytes())
+    at = app()
+    at.session_state["research_coupled_results"] = ((json.dumps(row, sort_keys=True, separators=(",", ":")), False),)
+    at.session_state["_coupled_active"] = (None, row["result_sha256"])
+    go(at, "Sonuçlar")
+    at.radio(key="research_results_kind").set_value("Dinamik bağlaşık").run()
+    at.radio(key="coupled_tab").set_value("Akış ve tepki").run()
+    assert not at.exception
+    return at
+
+
+def test_flow_tab_shows_wake_and_response_of_the_same_window_and_jumps_to_events(tmp_path, monkeypatch):
+    at = _flow_app(tmp_path, monkeypatch)
+    assert any("Hesaplanan (DUST)" in c.value and "Çözülmeyen" in c.value for c in at.caption)
+    assert any("RBF" in c.value for c in at.caption)
+    assert at.select_slider(key="coupled_flow_window").value == 13  # opens at the first stop contact
+    labels = {m.label: m.value for m in at.metric}
+    assert "Girdap parçacığı" in labels and int(labels["Girdap parçacığı"]) > 0
+    at.selectbox(key="coupled_flow_event").set_value("second_swing_min").run()
+    assert not at.exception and at.select_slider(key="coupled_flow_window").value == 29
+    at.select_slider(key="coupled_flow_window").set_value(4).run()
+    assert not at.exception
+    assert any("kilitli" in c.value or "serbest salınım" in c.value or "stop temasında" in c.value for c in at.caption)
+
+
+def test_flow_tab_explains_a_missing_run_folder_without_offering_extraction(tmp_path, monkeypatch):
+    at = _flow_app(tmp_path, monkeypatch, with_run_folder=False)
+    assert any("çalıştırma klasörü" in i.value for i in at.info)
+    assert not any(b.key == "coupled_flow_build" for b in at.button)
+
+
+def test_flow_tab_without_toolchain_explains_how_to_prepare_flow_data(tmp_path, monkeypatch):
+    at = _flow_app(tmp_path, monkeypatch, with_companion=False)
+    assert any("hazırlanmadı" in i.value for i in at.info)
+    assert any("araç zinciri" in c.value for c in at.caption)
+    assert not any(b.key == "coupled_flow_build" for b in at.button)

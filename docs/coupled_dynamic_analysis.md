@@ -363,3 +363,79 @@ discretization, standalone DUST with the continuous line gives −13.75 % thrust
 torque relative to BEM (method difference: unsteady free wake vs momentum theory, 16 vs 40
 radial elements; not tuned). This replaces the earlier −11 % / −5 % figure, which belonged
 to the two-line layout.
+
+## 12. Flow and response view (wake, induced velocity, loads and hinge on one timeline)
+
+**What is shown and where it comes from.**
+
+| Layer | Source | Status |
+|---|---|---|
+| Vortex particles (position, strength vector α, core radius) | DUST result file of the accepted window | computed by DUST |
+| Implicit panel-wake rows | DUST result file | computed by DUST |
+| Velocity on the meridional plane y = 0 (lab frame) | `dust_post` flow_field (DUST 3b1d2e61 kernels: lifting lines, panel wake, particles, free stream) | computed from the vortex model; not a CFD field |
+| θ, thrust, torques, hinge moments | the sealed record (MBDyn states, exchanged loads) | computed |
+| Blade surfaces | catalog sections placed at MBDyn states | reconstructed |
+| Boundary layer, surface pressure, viscous core below the particle radius, hub/spinner and hinge-gap flow, structural deformation | — | not resolved by this model |
+
+DUST's lifting-line panel ends one chord behind the quarter-chord line: the first wake row lies
+0.250 c behind the drawn trailing edge (measured at six sections, window 720 of the main case).
+The blade geometry at a given state is exact (§9). Circulation, particle strength and induced
+velocity carry the located rbf bias of the continuous line (≈ −1.4 % thrust at 5° locked open;
+root circulation a few per cent low); particle positions are DUST outputs convected by that
+velocity, so they are indirectly affected; the bias during folding has not been measured.
+
+**Workflow.** Results → *Dinamik bağlaşık* → *Akış ve tepki*. If the record's run folder is on
+this computer and the toolchain is attested, *Akış verisini hazırla* extracts the flow
+companion from the retained DUST outputs (no solver; main case ≈ 35 s, ≈ 34 MB in
+`<run>/flow/`). The view then offers an event jump (release, first stop contact, largest
+opening, second-swing minimum, last window) and a window slider; for the selected accepted
+window it shows the 3-D scene (reconstructed blades, DUST particles coloured by log₁₀|α|, panel
+wake, velocity plane), the downward axial velocity on the plane, the near-wake strength by
+radius against the last latched frame, and θ, thrust, torques and hinge moments on one time
+axis with the window cursor and event lines. *ParaView akış paketini hazırla* writes
+`particles.pvd`, `plane.pvd` and `rotor.pvd` (binary legacy VTK; validated with VTK 9.3.1
+readers) plus the companion manifest.
+
+**Frames.** A regular stride (≤ 81 frames, always the last window) plus every third window from
+just before release to 72 windows after it, and the event windows themselves (main case: 110
+frames; events are exact frames).
+
+**Storage, binding and restoration.** The companion (`flow_companion.json` + `.npz`) stays in
+the run folder and is not part of the sealed record (it is tens of MB; the record stays
+restorable within the upload bound). It is accepted only if its manifest names the record's
+`result_sha256`, every frame's source is that window's own DUST result file with exactly the
+sha256 the sealed record lists in `raw_outputs` (and so is the geometry file `dust_post` reads),
+each frame's DUST time label equals the window time minus one step, the array file matches its
+digest and the manifest's shapes and counts, and every frame is an accepted window of the valid
+prefix; any mismatch fails closed with a stated reason. The extractor re-hashes its inputs after
+`dust_post` and refuses a redirected or stale work folder. Residual trust: the array digest is
+declared in the same local folder, so the checks prove consistency with the record's sources,
+not who wrote the arrays. The run folder itself must lie inside the runs root and hold this very
+record, so a forged record naming another run cannot read or overwrite that run's flow data. A record opened from an
+uploaded file has no run folder and therefore no flow view (the page says so). `dust_post` is
+identified by name and sha256 in the manifest.
+
+**What the main case shows** (NACA2412, 2400 RPM, 14 m/s, release from −5° at 0.05 s, 2.5°;
+near wake = particles within 0.5 R below the disk; hinge band = r_h ± 15 mm):
+
+| Window (event) | θ [°] | Thrust [N] | Particles | Hinge-band Σ\|α\| | Tip-band Σ\|α\| | max −w at z = −R/2 [m/s] |
+|---|---|---|---|---|---|---|
+| 288 (last latched) | −5.00 | 36.11 | 9 184 | 0.081 | 1.43 | 17.84 |
+| 309 (first contact) | 0.28 | 38.70 | 9 856 | 0.087 | 1.47 | 18.51 |
+| 312 (largest opening) | 0.81 | 36.21 | 9 952 | 0.088 | 1.48 | 18.68 |
+| 338 (second-swing min.) | −2.70 | 36.76 | 10 784 | 0.090 | 1.44 | 18.60 |
+| 720 (last) | −0.53 | 36.89 | 17 192 | 0.090 | 1.76 | 17.94 |
+
+Around first contact thrust peaks briefly (38.7 N) and the slipstream half a radius below the
+disk is ≈ 0.7–0.8 m/s faster; thrust and that slipstream speed are back near their settled
+values about one revolution later (36.8–37.2 N, 17.9 m/s from window 360 on). The tip-band
+strength does not return: it grows from 1.43 to 1.76 by the end of the run, which mixes the
+response to opening (larger tip radius) with continued wake development, since the latched
+reference frame itself is not yet a developed wake (particle count still rising). The hinge band
+carries about 2 % of the near-wake strength throughout: the continuous line sheds no
+concentrated hinge vortex. These are observations of the vortex model; causes are not separated.
+The same view applied to the earlier two-line record (`…005547`, same case) shows why that
+layout was replaced: its hinge band carries 46–60 % of the near-wake strength (3.4 while
+latched, growing to 5.9–7.7 after release) and its inboard strength grows from 1.13 to 2.65
+while thrust rises to 42.8 N — the junction vortex pair diagnosed in §9, now visible in the
+genuine particle wake. Evidence: `reports/coupled_flow_20261112/`.

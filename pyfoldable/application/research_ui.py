@@ -835,7 +835,7 @@ def render_research(root: Path):
             if row is None:
                 st.info("Etkin dinamik sonuç yok. Analiz’den başlatın veya kayıtlardan açın.")
             else:
-                coupled_ui.render_result(row, imported=coupled_ui.retained()[row["result_sha256"]][1])
+                coupled_ui.render_result(row, imported=coupled_ui.retained()[row["result_sha256"]][1], root=root)
             return
         archive_key = st.session_state.get("_research_result_view")
         record = _retained().get(archive_key) if archive_key is not None else None

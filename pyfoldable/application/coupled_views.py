@@ -288,3 +288,238 @@ def radial_csv(row) -> str:
 
 def saved_json(row) -> str:
     return json.dumps(row, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False) + "\n"
+
+
+# ---------------------------------------------------------------------------
+# Flow and response (flow companion: DUST-computed wake and induced velocity)
+
+EVENT_LABELS = {"release": "Kilit açılışı", "first_contact": "İlk stop teması", "largest_opening": "En büyük açılma",
+                "second_swing_min": "İkinci salınım minimumu", "last": "Son pencere"}
+_EVENT_COLORS = {"release": "#6B7280", "first_contact": "#DC2626", "largest_opening": "#D97706",
+                 "second_swing_min": "#7C3AED", "last": "#374151"}
+
+
+def _node_state(row, window):
+    for entry in row["node_states"]:
+        if entry["window"] == window:
+            return entry
+    raise KeyError(window)
+
+
+def _subsample(n, cap):
+    import numpy as np
+    return np.arange(n) if n <= cap else np.linspace(0, n - 1, cap).round().astype(int)
+
+
+def flow_scene_figure(row, fc, window, *, max_particles=6000, show_plane=True):
+    """Reconstructed blade surfaces at the MBDyn state of ``window`` with the DUST wake of the same
+    accepted window: vortex particles coloured by strength and the meridional velocity plane."""
+    import numpy as np
+    entry = _node_state(row, window)
+    fig = go.Figure()
+    for mesh in segment_meshes(row):
+        w = _world(mesh, entry["nodes"][str(mesh["node"]["mbdyn_label"])])
+        i, j, k = zip(*mesh["faces"])
+        x, y, z = zip(*[tuple(1000 * c for c in p) for p in w])
+        fig.add_trace(go.Mesh3d(x=x, y=y, z=z, i=i, j=j, k=k, color=_SEGMENT_COLORS[mesh["node"]["segment"]],
+                                flatshading=True, showlegend=False, hoverinfo="skip",
+                                name=f"blade{mesh['node']['blade'] + 1}_{mesh['node']['segment']}",
+                                lighting=dict(ambient=.8, diffuse=.6)))
+    p, v, _ = fc.particles(window)
+    pick = _subsample(len(p), max_particles)
+    mag = np.linalg.norm(v[pick], axis=1)
+    fig.add_trace(go.Scatter3d(
+        x=1000 * p[pick, 0], y=1000 * p[pick, 1], z=1000 * p[pick, 2], mode="markers",
+        marker=dict(size=1.6, color=np.log10(np.maximum(mag, 1e-12)), colorscale="Viridis", opacity=.75,
+                    colorbar=dict(title="log₁₀|α|", x=1.0, len=.5, y=.75)),
+        name=f"Girdap parçacıkları (DUST, {len(pick)}/{len(p)})", hoverinfo="skip"))
+    pw = fc.panel_wake[fc.index(window)]
+    for row_i, dash in ((0, "solid"), (1, "dot")):
+        fig.add_trace(go.Scatter3d(x=1000 * pw[row_i, :, 0], y=1000 * pw[row_i, :, 1], z=1000 * pw[row_i, :, 2],
+                                   mode="markers", marker=dict(size=1.8, color="#111827"), showlegend=row_i == 0,
+                                   name="Panel izi (DUST, ilk sıra)", hoverinfo="skip"))
+    if show_plane:
+        vel = fc.plane_velocity[fc.index(window)]
+        X, Z = np.meshgrid(1000 * fc.plane_x, 1000 * fc.plane_z)
+        fig.add_trace(go.Surface(x=X, y=np.full_like(X, 1000 * fc.plane_y), z=Z, surfacecolor=-vel[:, :, 2],
+                                 colorscale="RdBu_r", cmin=float(np.percentile(-vel[:, :, 2], 1)),
+                                 cmax=float(np.percentile(-vel[:, :, 2], 99)), opacity=.55, showscale=False,
+                                 name="Hız düzlemi (dust_post)", hoverinfo="skip", showlegend=True))
+    R = 1000 * row["run_definition"]["case"]["geometry"]["tip_radius_m"]
+    fig.update_layout(height=560, margin=dict(l=0, r=0, t=30, b=0),
+                      legend=dict(orientation="h", x=0, y=0, xanchor="left", yanchor="top"),
+                      scene=dict(xaxis=dict(range=[-1.35 * R, 1.35 * R], title="X [mm]"),
+                                 yaxis=dict(range=[-1.35 * R, 1.35 * R], title="Y [mm]"),
+                                 zaxis=dict(range=[-2.05 * R, 0.55 * R], title="Z [mm] (itki yönü)"),
+                                 aspectmode="manual", aspectratio=dict(x=1, y=1, z=2.6 / 2.7),
+                                 camera=dict(eye=dict(x=1.35, y=-1.35, z=.55))))
+    return fig
+
+
+def flow_plane_figure(row, fc, window):
+    """Downward axial velocity −w on the meridional plane y = 0 (lab frame), from dust_post: the
+    velocity DUST's lifting lines, panel wake and particles induce, plus the free stream."""
+    import numpy as np
+    i = fc.index(window)
+    vel = fc.plane_velocity[i]
+    down = -vel[:, :, 2]
+    fig = go.Figure(go.Heatmap(x=1000 * fc.plane_x, y=1000 * fc.plane_z, z=down, colorscale="RdBu_r",
+                               zmin=float(np.percentile(down, 1)), zmax=float(np.percentile(down, 99)),
+                               colorbar=dict(title="−w [m/s]"),
+                               hovertemplate="x %{x:.0f} mm · z %{y:.0f} mm · −w %{z:.2f} m/s<extra></extra>"))
+    p, v, _ = fc.particles(window)
+    near = np.abs(p[:, 1] - fc.plane_y) < 0.01
+    fig.add_trace(go.Scatter(x=1000 * p[near, 0], y=1000 * p[near, 2], mode="markers",
+                             marker=dict(size=3, color="rgba(17,24,39,.55)"), name="Parçacıklar (|y| < 10 mm)"))
+    R = 1000 * row["run_definition"]["case"]["geometry"]["tip_radius_m"]
+    for sgn in (-1, 1):
+        fig.add_shape(type="line", x0=sgn * R, x1=sgn * R, y0=-2 * R, y1=0.5 * R, line=dict(dash="dot", width=1, color="#6B7280"))
+    fig.update_layout(height=420, margin=dict(l=55, r=20, t=24, b=45),
+                      legend=dict(orientation="h", x=0, y=-.18, xanchor="left", yanchor="top"))
+    fig.update_xaxes(title="X [mm] (y = 0 düzlemi, laboratuvar çerçevesi)", scaleanchor="y", scaleratio=1,
+                     constrain="domain", range=[1000 * fc.plane_x[0], 1000 * fc.plane_x[-1]])
+    fig.update_yaxes(title="Z [mm] (itki yönü)", constrain="domain", range=[1000 * fc.plane_z[0], 1000 * fc.plane_z[-1]])
+    return fig
+
+
+def response_timeline_figure(row, window, ev):
+    """θ, thrust, torques and hinge moment on one time axis with the selected window and events."""
+    from plotly.subplots import make_subplots
+    s = row["series"][:row["execution"]["valid_prefix_windows"]]
+    t = [r["time_s"] for r in s]
+    fig = make_subplots(rows=4, cols=1, shared_xaxes=True, vertical_spacing=.04,
+                        subplot_titles=("Katlanma açısı θ [°]", "İtki [N]", "Tork [N·m]", "Menteşe momenti [N·m]"))
+    nb = len(s[0]["theta_deg"]) if s else 0
+    for b in range(nb):
+        fig.add_trace(go.Scatter(x=t, y=[r["theta_deg"][b] for r in s], name=f"θ · kanat {b + 1}",
+                                 line=dict(color=_COLORS[b % 4], width=1.5)), row=1, col=1)
+    fig.add_trace(go.Scatter(x=t, y=[r["thrust_n"] for r in s], name="İtki", line=dict(color="#0b6170")), row=2, col=1)
+    fig.add_trace(go.Scatter(x=t, y=[r["aero_shaft_torque_nm"] for r in s], name="Aero şaft torku",
+                             line=dict(color="#0b6170")), row=3, col=1)
+    fig.add_trace(go.Scatter(x=t, y=[r["drive_torque_nm"] for r in s], name="Tahrik (tepki) torku",
+                             line=dict(color="#DC671D", width=1)), row=3, col=1)
+    fig.add_trace(go.Scatter(x=t, y=[r["hinge_aero_torque_nm"][0] for r in s], name="Aerodinamik (kanat 1)",
+                             line=dict(color="#0b6170")), row=4, col=1)
+    fig.add_trace(go.Scatter(x=t, y=[r["hinge_law_torque_nm"][0] for r in s], name="Yay+sönüm+stop (kanat 1)",
+                             line=dict(color="#A44AC2", width=1)), row=4, col=1)
+    by_w = {r["window"]: r for r in s}
+    for key, w in ev.items():  # events: dotted lines with legend entries (labels would overlap in time)
+        if key == "last" or w not in by_w:
+            continue
+        fig.add_vline(x=by_w[w]["time_s"], line=dict(color=_EVENT_COLORS[key], dash="dot", width=1))
+        fig.add_trace(go.Scatter(x=[None], y=[None], mode="lines", line=dict(color=_EVENT_COLORS[key], dash="dot"),
+                                 name=f"{EVENT_LABELS[key]} · {by_w[w]['time_s']:.4f} s"), row=1, col=1)
+    if window in by_w:
+        fig.add_vline(x=by_w[window]["time_s"], line=dict(color="#111827", width=2))
+    # y ranges from the data after the first quarter revolution: the impulsive start of the
+    # lifting-line wake (first windows) would otherwise dominate the scale; it stays plotted.
+    case = row["run_definition"]["case"]
+    t0 = 0.25 * 2 * math.pi / case["omega_rad_s"]
+    late = [r for r in s if r["time_s"] >= t0] or s
+    channels = {2: (("thrust_n", None),), 3: (("aero_shaft_torque_nm", None), ("drive_torque_nm", None)),
+                4: (("hinge_aero_torque_nm", 0), ("hinge_law_torque_nm", 0))}
+    for rown, keys in channels.items():
+        vals = [r[k][i] if i is not None else r[k] for r in late for k, i in keys]
+        lo, hi = min(vals), max(vals)
+        pad = 0.06 * (hi - lo or 1.0)
+        fig.update_yaxes(range=[lo - pad, hi + pad], row=rown, col=1)
+    fig.update_layout(height=680, margin=dict(l=55, r=20, t=30, b=40), hovermode="x unified",
+                      legend=dict(orientation="h", x=0, y=-.06, xanchor="left", yanchor="top"))
+    fig.update_xaxes(title="Zaman [s]", row=4, col=1)
+    return fig
+
+
+def wake_radial_figure(row, fc, window, ref_window):
+    """Near-wake particle strength by radius (within half a tip radius below the disk): where the
+    blades shed vorticity. Compared with a reference window (e.g. the last latched frame)."""
+    from pyfoldable.coupled.flow import radial_wake_strength
+    g = row["run_definition"]["case"]["geometry"]
+    R = g["tip_radius_m"]
+    fig = go.Figure()
+    for w, name, color in ((ref_window, f"Referans (pencere {ref_window})", "#9CA3AF"), (window, f"Seçili (pencere {window})", "#0b6170")):
+        r, total = radial_wake_strength(fc, w, R)
+        fig.add_trace(go.Scatter(x=1000 * r, y=total, mode="lines+markers", name=name, line=dict(color=color, shape="hvh")))
+    fig.add_vline(x=1000 * g["hinge_radius_m"], line=dict(dash="dot", color="#DC671D"))
+    fig.add_annotation(x=1000 * g["hinge_radius_m"], y=1, yref="paper", text="menteşe yarıçapı", showarrow=False,
+                       xanchor="left", yanchor="top", font=dict(size=10, color="#DC671D"))
+    fig.update_layout(height=300, margin=dict(l=55, r=20, t=24, b=45),
+                      legend=dict(orientation="h", x=0, y=-.25, xanchor="left", yanchor="top"))
+    fig.update_xaxes(title="Yarıçap r [mm]")
+    fig.update_yaxes(title="Σ|α| yakın iz [m³/s]")
+    return fig
+
+
+def _vtk_binary(values, dtype) -> bytes:
+    import numpy as np
+    return np.ascontiguousarray(values, dtype=np.dtype(dtype).newbyteorder(">")).tobytes()
+
+
+def flow_vtk_zip(row, fc) -> bytes:
+    """ParaView series for the flow companion frames (binary legacy VTK, .pvd collections):
+    DUST vortex particles (strength vector, |alpha|, core radius), the dust_post velocity plane and
+    the reconstructed blade surfaces at the same accepted windows."""
+    import numpy as np
+    meshes = segment_meshes(row, n_loop=48)
+    times = {r["window"]: r["time_s"] for r in row["series"]}
+    states = {e["window"]: e for e in row["node_states"]}
+    buf = io.BytesIO()
+    cols = {"particles": [], "plane": [], "rotor": []}
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for w in fc.windows.tolist():
+            t = times.get(w, 0.0)
+            p, v, rad = fc.particles(w)
+            n = len(p)
+            head = (f"# vtk DataFile Version 3.0\nPyFoldable DUST vortex particles, window {w}\nBINARY\n"
+                    f"DATASET POLYDATA\nPOINTS {n} float\n").encode()
+            body = _vtk_binary(p, "f4") + f"\nVERTICES {n} {2 * n}\n".encode()
+            body += _vtk_binary(np.column_stack([np.ones(n, dtype=int), np.arange(n)]), "i4")
+            body += f"\nPOINT_DATA {n}\nVECTORS alpha float\n".encode() + _vtk_binary(v, "f4")
+            body += b"\nSCALARS alpha_magnitude float 1\nLOOKUP_TABLE default\n" + _vtk_binary(np.linalg.norm(v, axis=1), "f4")
+            body += b"\nSCALARS core_radius_m float 1\nLOOKUP_TABLE default\n" + _vtk_binary(rad, "f4") + b"\n"
+            name = f"particles/particles_{w:05d}.vtk"
+            zf.writestr(name, head + body)
+            cols["particles"].append((t, name))
+            vel = fc.plane_velocity[fc.index(w)]
+            nx, nz = len(fc.plane_x), len(fc.plane_z)
+            head = (f"# vtk DataFile Version 3.0\nPyFoldable dust_post velocity plane, window {w}\nBINARY\n"
+                    f"DATASET RECTILINEAR_GRID\nDIMENSIONS {nx} 1 {nz}\n").encode()
+            body = f"X_COORDINATES {nx} float\n".encode() + _vtk_binary(fc.plane_x, "f4")
+            body += b"\nY_COORDINATES 1 float\n" + _vtk_binary([fc.plane_y], "f4")
+            body += f"\nZ_COORDINATES {nz} float\n".encode() + _vtk_binary(fc.plane_z, "f4")
+            body += f"\nPOINT_DATA {nx * nz}\nVECTORS velocity float\n".encode() + _vtk_binary(vel.reshape(-1, 3), "f4") + b"\n"
+            name = f"plane/plane_{w:05d}.vtk"
+            zf.writestr(name, head + body)
+            cols["plane"].append((t, name))
+            if w in states:
+                pts, polys = [], []
+                for mesh in meshes:
+                    base = len(pts)
+                    pts += _world(mesh, states[w]["nodes"][str(mesh["node"]["mbdyn_label"])])
+                    polys += [tuple(base + q for q in f) for f in mesh["faces"]]
+                head = (f"# vtk DataFile Version 3.0\nPyFoldable reconstructed blade surfaces, window {w}\nBINARY\n"
+                        f"DATASET POLYDATA\nPOINTS {len(pts)} float\n").encode()
+                body = _vtk_binary(pts, "f4") + f"\nPOLYGONS {len(polys)} {4 * len(polys)}\n".encode()
+                body += _vtk_binary([(3, a, b, c) for a, b, c in polys], "i4") + b"\n"
+                name = f"rotor/rotor_{w:05d}.vtk"
+                zf.writestr(name, head + body)
+                cols["rotor"].append((t, name))
+        for key, entries in cols.items():
+            pvd = ['<?xml version="1.0"?>', '<VTKFile type="Collection" version="0.1">', "<Collection>"]
+            pvd += [f'<DataSet timestep="{t!r}" file="{n}"/>' for t, n in entries]
+            pvd += ["</Collection>", "</VTKFile>"]
+            zf.writestr(f"{key}.pvd", "\n".join(pvd) + "\n")
+        zf.writestr("flow_companion.json", json.dumps(fc.manifest, indent=1, sort_keys=True))
+        zf.writestr("README.txt",
+                    "PyFoldable coupled flow export (accepted windows of one sealed record).\n"
+                    "particles.pvd : DUST vortex particles (computed): alpha = particle strength vector,\n"
+                    "                core_radius_m = regularisation radius. Coordinates in metres, lab frame.\n"
+                    "plane.pvd     : velocity on the y = 0 plane from dust_post (DUST kernels: lifting lines,\n"
+                    "                panel wake and particles plus free stream). A vortex-model velocity, not CFD.\n"
+                    "rotor.pvd     : blade surfaces reconstructed from catalog sections at the MBDyn states\n"
+                    "                (not DUST's lifting-line geometry).\n"
+                    "Not resolved by this model: boundary layers, surface pressure, viscous core structure below\n"
+                    "the particle radius, hub/spinner and hinge-gap flow, structural deformation.\n"
+                    "flow_companion.json lists, for every frame, the record's raw DUST file (and the geometry file\n"
+                    "dust_post read) with the sha256 the sealed record holds; the loader checks these and the array\n"
+                    "digest. That proves consistency with the record's sources, not who produced the arrays.\n")
+    return buf.getvalue()

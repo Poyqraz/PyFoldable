@@ -194,8 +194,32 @@ Fully deployed BEM route unchanged: the UI reproduced 43.647 N / 3.277 N m / 823
   superseded.
 * Packaged: `release_case/<run id>.json.xz` beside the `.json.gz` (same record, lossless).
 
+## Flow-and-response increment (after `c3b641f`)
+
+* Assessed: every run keeps one DUST result file per accepted window with particles
+  (position, α, core radius), panel-wake rows and per-element solution; `dust_post` flow_field
+  evaluates DUST's own velocity on a grid in ≈ 0.2–0.3 s per frame. No new solver run was
+  needed.
+* Implemented: `participants/extract_flow.py` (coupling venv), `pyfoldable/coupled/flow.py`
+  (verification, events, frame selection, wake metrics), `coupled_analysis.local_run_dir /
+  load_flow / build_flow`, views (3-D scene, plane, timeline with events, radial wake strength,
+  ParaView zip) and the *Akış ve tepki* tab; fixture `tests/fixtures/coupled/flow_30w_rbf`
+  (genuine sealed record + companion extracted from its outputs); tests
+  `tests/coupled/test_coupled_flow.py` and flow UI tests.
+* Built companions: main `…071200` (110 frames, 34.5 MB, 33.5 s), earlier two-line `…005547`
+  (37.9 MB), 5° release `…071157` (built from the browser). Browser demo through the normal
+  workflow after app restarts. ParaView files validated with VTK 9.3.1 readers.
+* Evidence: `reports/coupled_flow_20261112/` (wake comparison and VTK validation outputs).
+
 ## Next concrete items
 
+0. Toward larger folding and spin-up (recommended order, see the final report of the flow
+   increment): (a) kinematic check of the RBF junction elements at large fold angles (no solver);
+   (b) genuine wide-α / low-Re polar data or a separately declared post-stall model, because
+   DUST stops outside the admitted table (the −15° start failed at window 1); (c) torque-driven
+   shaft (motor law) instead of prescribed speed; (d) measure the rbf velocity-point bias during
+   motion before trusting large fold rates; then a staged campaign −10°, −20°, −45° with ≥ 8
+   steps per contact.
 1. The ≈ 1.4 % offset is located (design doc §9 "Located"): DUST's rbf branch evaluates the
    lifting-line body velocity at `loc_cen` (leading line). Options, none taken here: report
    upstream with the diagnostic patch and evidence; measure the bias during fold motion with a

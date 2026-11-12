@@ -305,7 +305,7 @@ def active_result():
     return None if rec is None else rec[0]
 
 
-def render_result(row, *, imported=False):
+def render_result(row, *, imported=False, root: Path | None = None):
     rui = _rui()
     ex = row["execution"]
     i = row["request"]["research"]["inputs"]
@@ -357,7 +357,8 @@ def render_result(row, *, imported=False):
     if not row["series"]:
         _details(row)
         return
-    tab = rui._choice(st.radio, "Grafik", ("Menteşe", "Yükler", "Güç", "Kapsam ve yakınsama", "Radyal", "3B oynatma"),
+    tab = rui._choice(st.radio, "Grafik", ("Menteşe", "Yükler", "Güç", "Kapsam ve yakınsama", "Radyal", "3B oynatma",
+                                           "Akış ve tepki"),
                       key="coupled_tab", default="Menteşe", horizontal=True)
     if tab == "Menteşe":
         rui._plot(views.time_figure(row, (("theta_deg", "θ"),), "Katlanma açısı θ [°]", per_blade=True), "coupled_theta")
@@ -392,6 +393,8 @@ def render_result(row, *, imported=False):
         rui._plot(views.radial_figure(rows, field, field), "coupled_radial_plot")
         with st.expander("Radyal veri tablosu"):
             st.dataframe(rows, hide_index=True, use_container_width=True)
+    elif tab == "Akış ve tepki":
+        _flow_tab(row, root)
     else:
         fig = views.playback_figure(row)
         if fig is not None:
@@ -399,6 +402,138 @@ def render_result(row, *, imported=False):
         st.caption("Kabul edilen MBDyn durumlarında rijit parça yüzeyleri (katalog kesiti, beyan edilen istasyonlar). "
                    "Basınç veya gerilme alanı çözülmediği için gösterilmez. 3B için WebGL gerekir.")
     _details(row)
+
+
+FLOW_CACHE = "_coupled_flow_cache"
+FLOW_WINDOW = "coupled_flow_window"
+_FLOW_HELP = (
+    "**Hesaplanan (DUST):** girdap parçacıklarının konumu ve şiddeti (α), örtük panel izinin ilk sırası ve "
+    "y = 0 düzlemindeki hız — dust_post’un DUST çekirdekleriyle kaldırma çizgileri, panel izi ve parçacıklardan "
+    "hesapladığı indüklenmiş hız artı serbest akım; bir girdap modeli hızıdır, CFD alanı değildir. "
+    "**Yeniden oluşturulan:** kanat yüzeyleri (katalog kesiti, MBDyn durumlarında); DUST’un kaldırma çizgisi paneli "
+    "çeyrek kirişten bir kiriş boyu geride biter; ilk iz sırası çizilen firar kenarının 0,25 kiriş arkasındadır (ölçüldü). "
+    "**Çözülmeyen:** sınır tabakası, yüzey basıncı, parçacık çekirdeğinden küçük girdap yapısı, göbek/menteşe "
+    "aralığı akışı, yapısal şekil değiştirme.")
+_RBF_NOTE = ("Bilinen RBF farkı (sürekli kaldırma çizgisi, continuous_rbf): DUST’un rbf kolu kaldırma çizgisi gövde "
+             "hızını kiriş başı çizgisinde değerlendirir; kilitli-açık 5° karşılaştırmada itki bağımsız DUST’tan −%1,4 "
+             "düşüktür ve kök bölgesinde bağlı dolaşım birkaç yüzde zayıftır. Belirli bir durumdaki kanat geometrisi "
+             "kesindir; iz şiddeti ve indüklenmiş hız bu yanlılığı taşır, parçacık konumları da (bu hızla taşındıkları "
+             "için) dolaylı etkilenir. Katlanma sırasındaki büyüklüğü ölçülmedi.")
+_SPLIT_NOTE = ("Bu kayıt eski iki çizgili düzendedir (split_rigid): her kanat parçasının serbest uç girdapları menteşede "
+               "buluşur ve sıfırdan farklı katlanmada sahte bir girdap çifti bırakır; serbest bırakma sonrası itki artışı "
+               "bu düzenin hatasıdır (tasarım belgesi §9). Yakın iz grafiğinde menteşe bandına bakın.")
+
+
+def _flow(row, root):
+    """Verified flow companion of this record (cached per record and file version in the session)."""
+    from pyfoldable.coupled import flow
+    d = svc.local_run_dir(root, row) if root is not None else None
+    if d is None:
+        raise flow.FlowCompanionError("no_run_folder", "Bu kaydın çalıştırma klasörü bu bilgisayarda yok; akış verisi ham "
+                                                       "DUST çıktılarından üretilir ve sonuç dosyasıyla taşınmaz.")
+    npz, man = flow.companion_dir(d) / "flow_companion.npz", flow.companion_dir(d) / "flow_companion.json"
+    stamp = ((row["result_sha256"], npz.stat().st_mtime_ns, npz.stat().st_size, man.stat().st_mtime_ns, man.stat().st_size)
+             if npz.is_file() and man.is_file() else None)
+    cache = st.session_state.setdefault(FLOW_CACHE, {})
+    if stamp is not None and cache.get("stamp") == stamp:
+        return cache["fc"]
+    fc = svc.load_flow(root, row)
+    cache.clear()
+    cache.update(stamp=stamp, fc=fc)
+    return fc
+
+
+def _flow_tab(row, root):
+    from pyfoldable.coupled import flow
+    st.caption(_FLOW_HELP)
+    try:
+        fc = _flow(row, root)
+    except flow.FlowCompanionError as exc:
+        if exc.code in ("missing", "checksum", "malformed", "source_mismatch", "other_record", "unsupported", "too_large"):
+            (st.info if exc.code == "missing" else st.error)(str(exc).split(": ", 1)[-1])
+            ready = readiness_cached()
+            if ready.status != "ready":
+                st.caption("Akış verisini hazırlamak için DUST araç zinciri gerekir: " + ready.message)
+            elif st.button("Akış verisini hazırla (kayıtlı DUST çıktılarından; çözücü çalışmaz)", key="coupled_flow_build",
+                           help="Seçilen pencerelerde girdap parçacıklarını ve panel izini okur, dust_post ile y = 0 "
+                                "düzleminde hızı hesaplar; ana koşu için ≈ 35 s ve ≈ 35 MB."):
+                with st.spinner("Akış verisi çıkarılıyor…"):
+                    try:
+                        svc.build_flow(root, row, readiness=tcmod.readiness(hash_executables=True))
+                    except (flow.FlowCompanionError, OSError, ValueError) as err:
+                        st.error("Akış verisi hazırlanamadı: " + str(err))
+                        return
+                st.session_state.pop(FLOW_CACHE, None)
+                st.rerun()
+        else:
+            st.info(str(exc).split(": ", 1)[-1])
+        return
+    ev = flow.events(row)
+    windows = fc.windows.tolist()
+    valid = row["series"][:row["execution"]["valid_prefix_windows"]]
+    by_w = {r["window"]: r for r in valid}
+    if st.session_state.get(FLOW_WINDOW) not in windows:
+        st.session_state[FLOW_WINDOW] = flow.nearest_frame(fc, ev.get("first_contact", windows[-1]))
+
+    def jump():
+        key = st.session_state.get("coupled_flow_event")
+        if key in ev:
+            st.session_state[FLOW_WINDOW] = flow.nearest_frame(fc, ev[key])
+        st.session_state["coupled_flow_event"] = None  # the same event can be chosen again later
+    names = {k: f"{views.EVENT_LABELS[k]} · pencere {w}" for k, w in ev.items()}
+    a, b = st.columns([1, 3])
+    a.selectbox("Olaya git", list(names), format_func=names.__getitem__, key="coupled_flow_event", on_change=jump,
+                index=None, placeholder="Olay seçin")
+    w = b.select_slider("Pencere (akış verisi olan kabul edilmiş pencereler)", options=windows, key=FLOW_WINDOW)
+    r = by_w[w]
+    phase = ("kilitli (serbest bırakma öncesi)" if r["latch_active"] else
+             "stop temasında" if any(r["contact_active"]) else "serbest salınım")
+    p, _, _ = fc.particles(w)
+    m = st.columns(5)
+    m[0].metric("Zaman [s]", f"{r['time_s']:.4f}")
+    m[1].metric("θ [°]", " / ".join(_fmt(x, 2) for x in r["theta_deg"]))
+    m[2].metric("İtki [N]", _fmt(r["thrust_n"], 2))
+    m[3].metric("Menteşe aero momenti [N·m]", _fmt(r["hinge_aero_torque_nm"][0], 3))
+    m[4].metric("Girdap parçacığı", f"{len(p)}")
+    st.caption(f"Durum: {phase} · θ̇ {_fmt(r['theta_rate_rad_s'][0], 1)} rad/s · aero şaft torku "
+               f"{_fmt(r['aero_shaft_torque_nm'], 3)} N·m · tahrik torku {_fmt(r['drive_torque_nm'], 3)} N·m.")
+    show_plane = st.toggle("Hız düzlemini 3B sahnede göster", value=True, key="coupled_flow_plane")
+    rui = _rui()
+    rui._plot(views.flow_scene_figure(row, fc, w, show_plane=show_plane), "coupled_flow_scene")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("**Eksenel hız, y = 0 düzlemi (dust_post)**")
+        rui._plot(views.flow_plane_figure(row, fc, w), "coupled_flow_plane_fig")
+        st.caption("−w: aşağı doğru (itkiye ters) eksenel hız. Düzlem laboratuvar çerçevesinde sabittir; kanatlar her "
+                   "yarım turda içinden geçer. Kanat çizgisine çok yakın noktalarda çekirdek düzenlemesi etkilidir.")
+    with c2:
+        st.markdown("**Yakın iz şiddeti, yarıçapa göre**")
+        ref = flow.nearest_frame(fc, ev["release"] - 1) if "release" in ev else windows[0]
+        rui._plot(views.wake_radial_figure(row, fc, w, ref), "coupled_flow_radial")
+        st.caption("Diskin yarım uç yarıçapı altına kadar parçacık şiddeti toplamı (Σ|α|): kanadın girdap bıraktığı "
+                   "yarıçaplar (uç ve kök girdapları; menteşe yarıçapı işaretli). Referans son kilitli karedir; iz o anda "
+                   "hâlâ gelişmektedir, bu yüzden fark yalnız serbest bırakmanın etkisi değildir.")
+    rui._plot(views.response_timeline_figure(row, w, ev), "coupled_flow_timeline")
+    st.caption("Siyah çizgi seçili pencere; noktalı çizgiler olaylardır. Eksen aralıkları ilk çeyrek turdan sonraki "
+               "verilere göre seçilir: kaldırma çizgisi izinin ani başlangıç geçişi (ilk pencereler) çizilir ama ölçeği "
+               "belirlemez. Temas anındaki tahrik torku sıçraması stop darbesinin sabit devirli şafta tepkisidir.")
+    topology = row["run_definition"]["case"]["controls"].get("aero_topology", "split_rigid")
+    st.caption(_RBF_NOTE if topology == "continuous_rbf" else _SPLIT_NOTE)
+    with st.expander("Akış verisi kimliği ve ParaView"):
+        st.json({"windows": len(windows), "particles_total": fc.manifest["particles_total"],
+                 "npz_sha256": fc.manifest["npz"]["sha256"], "dust_post_sha256": fc.manifest["dust_post"]["sha256"],
+                 "result_sha256": fc.manifest["result_sha256"], "plane": fc.manifest["plane"]}, expanded=False)
+        cache = st.session_state.setdefault("_coupled_flow_vtk", {})
+        key = fc.manifest["npz"]["sha256"]
+        if key not in cache:
+            if st.button("ParaView akış paketini hazırla", key="coupled_flow_vtk_prepare",
+                         help="Parçacıklar, hız düzlemi ve kanat yüzeyleri; .pvd zaman koleksiyonları (≈ 40 MB)."):
+                with st.spinner("ParaView paketi hazırlanıyor…"):
+                    cache.clear()
+                    cache[key] = views.flow_vtk_zip(row, fc)
+        if key in cache:
+            st.download_button("ParaView akış paketi (.zip)", cache[key],
+                               f"pyfoldable_akis_{row['result_sha256'][:8]}.zip", "application/zip")
 
 
 def _details(row):

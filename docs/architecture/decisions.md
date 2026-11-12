@@ -291,7 +291,9 @@ regenerating case, table and decks and re-deriving channels from retained exchan
 loads and node states, without solvers. Every accepted window is kept; the record size bound
 (24 MiB canonical JSON, bounded gzip transport) is surfaced before a run as a supported
 duration and never thins samples. DUST's rbf lifting-line branch evaluates the body velocity
-at the leading line (≈ −1.4 % thrust vs standalone at 5°, located, not corrected).
+at the leading line (≈ −1.4 % thrust vs standalone at 5°, located, not corrected). Flow data
+(particles, panel wake, dust_post velocity planes) is a separate run-folder companion bound to
+the sealed record by raw-file sha256, extracted only on explicit request.
 
 Not covered: spin-up from rest, fully folded start, torque-driven shaft, friction,
 joint loss, CFD fields, structural stress or strength, contact beyond the declared
