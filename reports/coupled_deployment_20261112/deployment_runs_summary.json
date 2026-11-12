@@ -52,7 +52,22 @@
    "contact_steps_per_half_period": 8.652493992595248,
    "hinge_balance_contact_phase_relative_residual": 0.1876556537653557
   },
-  "fold_envelope_deg": null
+  "fold_envelope_deg": null,
+  "polar_family": "research_axial_800_attached_xfoil_v1:NACA2412",
+  "table_envelope": {
+   "alpha_deg": [
+    -6.000000000000001,
+    8.0
+   ],
+   "reynolds": [
+    165000.0,
+    330000.0
+   ],
+   "mach": [
+    0.1,
+    0.31
+   ]
+  }
  },
  "m20_const_2400": {
   "run_id": "20261112T191618_02b58b9c61",
@@ -105,7 +120,22 @@
    "contact_steps_per_half_period": 8.652493992595248,
    "hinge_balance_contact_phase_relative_residual": 0.0
   },
-  "fold_envelope_deg": -22.956681909067157
+  "fold_envelope_deg": -22.956681909067157,
+  "polar_family": "research_axial_800_attached_xfoil_v1:NACA2412",
+  "table_envelope": {
+   "alpha_deg": [
+    -6.000000000000001,
+    8.0
+   ],
+   "reynolds": [
+    165000.0,
+    330000.0
+   ],
+   "mach": [
+    0.1,
+    0.31
+   ]
+  }
  },
  "m20_ramp_2200_2400": {
   "run_id": "20261112T203049_d66ad5cd8d",
@@ -160,7 +190,22 @@
    "contact_steps_per_half_period": 8.652493992595248,
    "hinge_balance_contact_phase_relative_residual": 0.17635041432183438
   },
-  "fold_envelope_deg": -22.956681909067157
+  "fold_envelope_deg": -22.956681909067157,
+  "polar_family": "research_axial_800_attached_xfoil_v1:NACA2412",
+  "table_envelope": {
+   "alpha_deg": [
+    -6.000000000000001,
+    8.0
+   ],
+   "reynolds": [
+    165000.0,
+    330000.0
+   ],
+   "mach": [
+    0.1,
+    0.31
+   ]
+  }
  },
  "m15_ramp_2200_2400": {
   "run_id": "20261112T203052_6971a5d10d",
@@ -215,6 +260,231 @@
    "contact_steps_per_half_period": 8.652493992595248,
    "hinge_balance_contact_phase_relative_residual": 0.17443930701379068
   },
-  "fold_envelope_deg": -22.956681909067157
+  "fold_envelope_deg": -22.956681909067157,
+  "polar_family": "research_axial_800_attached_xfoil_v1:NACA2412",
+  "table_envelope": {
+   "alpha_deg": [
+    -6.000000000000001,
+    8.0
+   ],
+   "reynolds": [
+    165000.0,
+    330000.0
+   ],
+   "mach": [
+    0.1,
+    0.31
+   ]
+  }
+ },
+ "v3_m22.5_const_2400": {
+  "run_id": "20261112T220252_1f1a7bf962",
+  "status": "completed",
+  "windows": 720,
+  "valid": 720,
+  "events": {
+   "last": 720,
+   "release": 289,
+   "largest_opening": 312,
+   "first_contact": 308,
+   "second_swing_min": 336
+  },
+  "max_fold_rate_rad_s": 183.88006806652558,
+  "fold_rate_over_shaft_speed_at_peak": 0.7316355442215431,
+  "impact_rate_at_first_contact_rad_s": 167.12640458584278,
+  "time_release_to_contact_ms": 3.2986111111111134,
+  "theta_max_deg": 3.5851748583801397,
+  "second_swing_min_deg": -11.539998954012809,
+  "theta_final_deg": -0.7543870578865158,
+  "coverage": {
+   "alpha_deg": [
+    -0.49393485802239784,
+    2.7750475822840817
+   ],
+   "reynolds": [
+    187511.02200197327,
+    352166.2041116054
+   ],
+   "mach": [
+    0.11799621890738027,
+    0.34170003033903545
+   ]
+  },
+  "thrust_last_latched_rev_n": 29.485254531307362,
+  "thrust_last_rev_n": 36.75631548519826,
+  "aero_torque_last_rev_nm": 2.980539251917502,
+  "drive_torque_last_rev_nm": 3.235376904077084,
+  "peak_thrust_n": 48.81055609291859,
+  "peak_drive_torque_abs_nm": 340.0790252491391,
+  "rpm_range": [
+   2399.999999999985,
+   2400.000000000013
+  ],
+  "checks": {
+   "kinematic_closure_position_m": 2.0838664524513995e-07,
+   "load_transfer_force_relative": 6.241201006310829e-06,
+   "load_transfer_moment_relative": 5.175544184552809e-06,
+   "interface_power_closure_relative": 3.363544865965416e-06,
+   "prescribed_speed_deviation_rpm": 1.5006662579253316e-11,
+   "hinge_balance_relative_residual": 0.010725131124937518,
+   "contact_steps_per_half_period": 8.652493992595248,
+   "hinge_balance_contact_phase_relative_residual": 0.15868001234997967
+  },
+  "fold_envelope_deg": -22.956681909067157,
+  "polar_family": "research_axial_800_deploy_xfoil_v3:NACA2412",
+  "table_envelope": {
+   "alpha_deg": [
+    -6.000000000000001,
+    8.0
+   ],
+   "reynolds": [
+    100000.0,
+    400000.0
+   ],
+   "mach": [
+    0.07,
+    0.36
+   ]
+  }
+ },
+ "v3_m20_ramp_1600_2400": {
+  "run_id": "20261112T220255_14fc6eaab8",
+  "status": "completed",
+  "windows": 864,
+  "valid": 864,
+  "events": {
+   "last": 864,
+   "release": 289,
+   "largest_opening": 321,
+   "first_contact": 318,
+   "second_swing_min": 359
+  },
+  "max_fold_rate_rad_s": 105.21603084218177,
+  "fold_rate_over_shaft_speed_at_peak": 0.6229444917632485,
+  "impact_rate_at_first_contact_rad_s": 94.3132607411068,
+  "time_release_to_contact_ms": 5.034722222222225,
+  "theta_max_deg": 2.06837065753704,
+  "second_swing_min_deg": -12.267563042243012,
+  "theta_final_deg": -0.7694851838174243,
+  "coverage": {
+   "alpha_deg": [
+    -1.831265485871495,
+    2.443865320020014
+   ],
+   "reynolds": [
+    135405.58699424268,
+    299105.9183528811
+   ],
+   "mach": [
+    0.08520751001019473,
+    0.2902166652634697
+   ]
+  },
+  "thrust_last_latched_rev_n": 2.2335926861903754,
+  "thrust_last_rev_n": 36.923064509165144,
+  "aero_torque_last_rev_nm": 2.988603376729906,
+  "drive_torque_last_rev_nm": 3.255140403222938,
+  "peak_thrust_n": 38.91074704710484,
+  "peak_drive_torque_abs_nm": 189.7539012910537,
+  "rpm_range": [
+   1599.9999999999998,
+   2400.000000000011
+  ],
+  "checks": {
+   "kinematic_closure_position_m": 1.0429692930136181e-07,
+   "load_transfer_force_relative": 6.03362190303459e-06,
+   "load_transfer_moment_relative": 2.9630907222776554e-06,
+   "interface_power_closure_relative": 2.568112400276668e-06,
+   "prescribed_speed_deviation_rpm": 1.2732925824820995e-11,
+   "hinge_balance_relative_residual": 0.01009229424290654,
+   "contact_steps_per_half_period": 8.652493992595248,
+   "hinge_balance_contact_phase_relative_residual": 0.16844961007744888
+  },
+  "fold_envelope_deg": -22.956681909067157,
+  "polar_family": "research_axial_800_deploy_xfoil_v3:NACA2412",
+  "table_envelope": {
+   "alpha_deg": [
+    -6.000000000000001,
+    8.0
+   ],
+   "reynolds": [
+    100000.0,
+    400000.0
+   ],
+   "mach": [
+    0.07,
+    0.36
+   ]
+  }
+ },
+ "v3_m20_ramp_2200_2400": {
+  "run_id": "20261112T220258_0bb5c02ad8",
+  "status": "completed",
+  "windows": 720,
+  "valid": 720,
+  "events": {
+   "last": 720,
+   "release": 289,
+   "largest_opening": 313,
+   "first_contact": 310,
+   "second_swing_min": 340
+  },
+  "max_fold_rate_rad_s": 149.1166751641686,
+  "fold_rate_over_shaft_speed_at_peak": 0.6464866084914995,
+  "impact_rate_at_first_contact_rad_s": 133.09005996811547,
+  "time_release_to_contact_ms": 3.6458333333333344,
+  "theta_max_deg": 3.0265116911294427,
+  "second_swing_min_deg": -10.557951276106952,
+  "theta_final_deg": -0.39548561797005494,
+  "coverage": {
+   "alpha_deg": [
+    -0.8194706597009462,
+    2.2866093788950783
+   ],
+   "reynolds": [
+    174471.04249512896,
+    317510.39145192475
+   ],
+   "mach": [
+    0.1097904704665171,
+    0.3080741681779861
+   ]
+  },
+  "thrust_last_latched_rev_n": 22.123494341573224,
+  "thrust_last_rev_n": 36.900903755186846,
+  "aero_torque_last_rev_nm": 2.987737857779587,
+  "drive_torque_last_rev_nm": 2.3085968649283064,
+  "peak_thrust_n": 37.73423511798068,
+  "peak_drive_torque_abs_nm": 284.591097415433,
+  "rpm_range": [
+   2199.999999999993,
+   2400.000000000009
+  ],
+  "checks": {
+   "kinematic_closure_position_m": 2.0825472106522636e-07,
+   "load_transfer_force_relative": 6.4284333034284745e-06,
+   "load_transfer_moment_relative": 5.523745386597412e-06,
+   "interface_power_closure_relative": 3.4959104956722108e-06,
+   "prescribed_speed_deviation_rpm": 1.0913936421275139e-11,
+   "hinge_balance_relative_residual": 0.010443538440327587,
+   "contact_steps_per_half_period": 8.652493992595248,
+   "hinge_balance_contact_phase_relative_residual": 0.17635041432183438
+  },
+  "fold_envelope_deg": -22.956681909067157,
+  "polar_family": "research_axial_800_deploy_xfoil_v3:NACA2412",
+  "table_envelope": {
+   "alpha_deg": [
+    -6.000000000000001,
+    8.0
+   ],
+   "reynolds": [
+    100000.0,
+    400000.0
+   ],
+   "mach": [
+    0.07,
+    0.36
+   ]
+  }
  }
 }

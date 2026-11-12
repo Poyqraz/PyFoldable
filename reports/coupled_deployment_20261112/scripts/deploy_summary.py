@@ -10,7 +10,10 @@ from pyfoldable.coupled import flow  # noqa: E402
 
 root = Path.home() / "projects/PyFoldable"
 runs = {"main_-5_const": "20261112T071200_20d4a1092d", "m20_const_2400": "20261112T191618_02b58b9c61",
-        "m20_ramp_2200_2400": "20261112T203049_d66ad5cd8d", "m15_ramp_2200_2400": "20261112T203052_6971a5d10d"}
+        "m20_ramp_2200_2400": "20261112T203049_d66ad5cd8d", "m15_ramp_2200_2400": "20261112T203052_6971a5d10d",
+        # widened deploy-v3 polar family (reports/coupled_deploy_polars_20261112)
+        "v3_m22.5_const_2400": "20261112T220252_1f1a7bf962", "v3_m20_ramp_1600_2400": "20261112T220255_14fc6eaab8",
+        "v3_m20_ramp_2200_2400": "20261112T220258_0bb5c02ad8"}
 out = {}
 for label, rid in runs.items():
     row = s.load_result(root / "outputs/coupled_runs" / rid)
@@ -41,9 +44,12 @@ for label, rid in runs.items():
          "peak_drive_torque_abs_nm": max(abs(r["drive_torque_nm"]) for r in v[(ev.get("release",1)-1):]),
          "rpm_range": [min(r["rpm"] for r in v), max(r["rpm"] for r in v)],
          "checks": {c["name"]: c["value"] for c in row["checks"]},
-         "fold_envelope_deg": ex.get("fold_envelope", {}).get("fold_limit_deg")}
+         "fold_envelope_deg": ex.get("fold_envelope", {}).get("fold_limit_deg"),
+         "polar_family": row["request"]["aero_admission"]["family_id"],
+         "table_envelope": {q: row["request"]["c81"]["envelope"][q] for q in ("alpha_deg", "reynolds", "mach")}}
     out[label] = d
     print(f"\n{label} {rid}: {d['status']} {d['valid']}/{d['windows']} events {ev}")
+    print(f"  polars {d['polar_family']} table Re {d['table_envelope']['reynolds']} Mach {d['table_envelope']['mach']}")
     print(f"  max theta_dot {rate:.1f} rad/s (theta_dot/Omega {d['fold_rate_over_shaft_speed_at_peak']:.2f}), impact {d['impact_rate_at_first_contact_rad_s']}, "
           f"release->contact {d['time_release_to_contact_ms']} ms, theta max {d['theta_max_deg']:.2f}, second swing {d['second_swing_min_deg']}, final {d['theta_final_deg']:.2f}")
     print(f"  coverage alpha {cov['alpha_deg'][0]:.2f}..{cov['alpha_deg'][1]:.2f} Re {cov['reynolds'][0]:.0f}..{cov['reynolds'][1]:.0f} Mach max {cov['mach'][1]:.4f}; rpm {d['rpm_range'][0]:.1f}..{d['rpm_range'][1]:.1f}")

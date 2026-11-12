@@ -11,7 +11,9 @@ from pyfoldable.coupled import flow  # noqa: E402
 
 root = Path.home() / "projects/PyFoldable"
 runs = {"main_-5_const": "20261112T071200_20d4a1092d", "m20_ramp_2200_2400": "20261112T203049_d66ad5cd8d",
-        "m15_ramp_2200_2400": "20261112T203052_6971a5d10d", "m20_const_2400_partial": "20261112T191618_02b58b9c61"}
+        "m15_ramp_2200_2400": "20261112T203052_6971a5d10d", "m20_const_2400_partial": "20261112T191618_02b58b9c61",
+        "v3_m22.5_const_2400": "20261112T220252_1f1a7bf962", "v3_m20_ramp_1600_2400": "20261112T220255_14fc6eaab8",
+        "v3_m20_ramp_2200_2400": "20261112T220258_0bb5c02ad8"}
 out = {}
 for label, rid in runs.items():
     row = s.load_result(root / "outputs/coupled_runs" / rid)

@@ -226,15 +226,35 @@ Fully deployed BEM route unchanged: the UI reproduced 43.647 N / 3.277 N m / 823
   fix (development records `…191622`/`…192518` no longer restore; results identical).
 * Evidence: `reports/coupled_deployment_20261112/`.
 
+## Deployment polar increment (after `ae5cd35`, approved "Yes, build XFOIL")
+
+* XFOIL 6.99 built in WSL (`~/pyf-work/xfoil/`, MIT archive sha256 verified, CI recipe, GNU Fortran
+  11.4.0; executable `d1076680…`); preflight package hashes pinned in the protocol. The executable is
+  not committed.
+* Declarations `configs/polars/RESEARCH_AXIAL_800_DEPLOY_V1/V2/V3.json`; V1/V2 stopped on a genuine
+  non-convergence (retained, verify-only), V3 20/20 cells installed as
+  `research_axial_800_deploy_xfoil_v3:NACA2412` / `2026-11-12-deploy-v3` (content `418d7d65…`).
+  Operator script `examples/research_deploy_polar_data.py`; tests
+  `tests/application/test_research_deploy_protocol.py`; UI names the family and shows the
+  interpolation caveat (`research_ui._source_summary/_source_note`). The store family's
+  `source_identity` was left as installed (reinstalling would change the content sha the runs bind).
+* Runs with the new table: `…220252` (−22.5°, 2400 RPM, completed, Mach 0.342), `…220255` (−20°,
+  release at 1600 RPM during a 1600→2400 ramp, completed; frame-acceleration hinge moment 1.24 N·m vs
+  aero ≤ 0.18 N·m), `…220258` (control, bit-identical to `…203049`); ≈ 59–81 min each; flow
+  companions built. Estimated (no-induction, untested) floor now ≈ 1500 RPM at 14 m/s, set by α;
+lowest tested start 1600 RPM.
+* Evidence: `reports/coupled_deploy_polars_20261112/`, `reports/coupled_deployment_20261112/`.
+
 ## Next concrete items
 
-0. Deployment (updated after the deployment increment): the binding limit is polar coverage
-   (Mach ≤ 0.31, Re ≥ 165k). Next decision: build the declared XFOIL 6.99 (pinned archive and flags
-   in `providers/xfoil.py`; download needs approval) and capture attached-flow NACA2412 polars to
-   Mach ≈ 0.36 and Re ≈ 100k through the provider workflow; that opens releases to the geometry
-   envelope at 2400 RPM and ramps from ≈ 1500 RPM. Spin-up from rest additionally needs measured
-   static spin-up data (RPM, torque, thrust from rest, folded) to identify and validate a post-stall
-   treatment, and motor data for a torque-driven shaft. Earlier list (still valid): (a) kinematic check of the RBF junction elements at large fold angles (no solver);
+0. Deployment (updated after the deployment polar increment): releases to the geometry envelope at
+   2400 RPM and from ramps starting at 1600 RPM run inside attached-flow data. What remains is not
+   more XFOIL: spin-up from rest and starts below ≈ 1500 RPM put the root below α −6° (−11.6° at
+   1200 RPM, ≈ −77° at rest; deep stall) and need measured static spin-up data (RPM, torque, thrust from rest and folded) to
+   identify and validate a post-stall treatment; a torque-driven shaft needs a measured motor
+   torque–speed law, controller behaviour and rotor/hub inertia; and the hinge mechanics (mass, CG,
+   inertia, stop stiffness, restitution) are demonstration assumptions that dominate the impact
+   rates and rebound. Earlier list (still valid): (a) kinematic check of the RBF junction elements at large fold angles (no solver);
    (b) genuine wide-α / low-Re polar data or a separately declared post-stall model, because
    DUST stops outside the admitted table (the −15° start failed at window 1); (c) torque-driven
    shaft (motor law) instead of prescribed speed; (d) measure the rbf velocity-point bias during

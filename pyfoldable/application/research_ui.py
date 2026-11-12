@@ -337,10 +337,9 @@ def _readiness(active, repository, store_error):
         status = first_check or _Readiness("unselected")
     else:
         status = _inspect_family(active, family, repository, initial)
-        source_summary = ("800 mm eksenel referansın saklanan sağlayıcı çıktıları"
-                          if family.family_id.startswith("research_axial_800_attached_xfoil_v1:")
-                          else family.source_identity.split(";")[0][:110])
-        st.caption(f"Kaynak: {source_summary} · {len(family.requests)} hücre")
+        st.caption(f"Kaynak: {_source_summary(family)} · {len(family.requests)} hücre")
+        if (note := _source_note(family)) is not None:
+            st.caption(note)
         if family.evidence_class == "inert_fixture":
             st.warning("Test kaydı: katsayılar mühendislik sonucu olarak kullanılamaz.")
     if status.status == "outside":
@@ -350,6 +349,23 @@ def _readiness(active, repository, store_error):
     elif status.status == "ready":
         st.success("Hazırlık tamamlandı. BEM’i siz başlatabilirsiniz.")
     return family, status
+
+
+def _source_summary(family) -> str:
+    if family.family_id.startswith("research_axial_800_attached_xfoil_v1:"):
+        return "800 mm eksenel referansın saklanan sağlayıcı çıktıları"
+    if family.family_id.startswith("research_axial_800_deploy_xfoil_v3:"):
+        return ("800 mm eksenel referans · açılma için genişletilmiş XFOIL ızgarası "
+                "(Re 100k–400k, Mach 0,07–0,36, α −6…8°, ekli akış)")
+    return family.source_identity.split(";")[0][:110]
+
+
+def _source_note(family) -> str | None:
+    if family.family_id.startswith("research_axial_800_deploy_xfoil_v3:"):
+        return ("Izgara seviyeleri, bu XFOIL derlemesinin yakınsama ön taramasıyla seçildi: yakınsamayan iç "
+                "durumlar (ör. Mach 0,10 / Re 130k, Mach 0,20 / Re 165k ve 400k) tabloda yoktur ve bunların "
+                "üzerinden doğrusal ara değer kullanılır. Ekli akış verisidir; ayrılmış akışı temsil etmez.")
+    return None
 
 
 def _analysis_scope(active, family, readiness):

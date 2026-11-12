@@ -258,3 +258,23 @@ def test_mechanics_action_is_independent_of_missing_aerodynamic_data(tmp_path, m
     go(records, RECORDS)
     assert not any(box.label == "Birinci BEM kaydı" for box in records.selectbox)
     assert any("bağımsız mekanizma kaydı" in c.value for c in records.caption)
+
+
+def test_source_summary_names_the_retained_research_families():
+    from types import SimpleNamespace
+    from pyfoldable.application import research_ui
+    family = lambda fid, src="operator-captured numerical records; plan_sha256:x": SimpleNamespace(  # noqa: E731
+        family_id=fid, source_identity=src)
+    assert research_ui._source_summary(family("research_axial_800_attached_xfoil_v1:NACA2412")) == \
+        "800 mm eksenel referansın saklanan sağlayıcı çıktıları"
+    deploy = research_ui._source_summary(family("research_axial_800_deploy_xfoil_v3:NACA2412"))
+    assert "açılma" in deploy and "Re 100k–400k" in deploy and "Mach 0,07–0,36" in deploy and "ekli akış" in deploy
+    assert research_ui._source_summary(family("other:X", "caller source; detail")) == "caller source"
+
+
+def test_deploy_family_shows_the_convergence_prescreen_caveat():
+    from types import SimpleNamespace
+    from pyfoldable.application import research_ui
+    deploy = research_ui._source_note(SimpleNamespace(family_id="research_axial_800_deploy_xfoil_v3:NACA2412"))
+    assert "ön tarama" in deploy and "130k" in deploy and "ara değer" in deploy and "ayrılmış akış" in deploy
+    assert research_ui._source_note(SimpleNamespace(family_id="research_axial_800_attached_xfoil_v1:NACA2412")) is None

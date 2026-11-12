@@ -295,7 +295,10 @@ at the leading line (≈ −1.4 % thrust vs standalone at 5°, located, not corr
 (particles, panel wake, dust_post velocity planes) is a separate run-folder companion bound to
 the sealed record by raw-file sha256, extracted only on explicit request. Shaft acceleration is a
 prescribed speed history (constant or smooth ramp) until measured motor data exist; folds are bounded
-by a lifting-line geometry envelope enforced on every window.
+by a lifting-line geometry envelope enforced on every window. Wider polar coverage enters as a
+separate retained family captured under a declared protocol with its own pinned executable (no
+cells mixed across executables or families; failed declarations retained); the user selects the
+version, and the angle range stays attached flow.
 
 Not covered: spin-up from rest, fully folded start, torque-driven shaft, friction,
 joint loss, CFD fields, structural stress or strength, contact beyond the declared

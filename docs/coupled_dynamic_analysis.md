@@ -151,6 +151,11 @@ loads by ~2 %; at 5° this is ~0.5 %. Steps ≤ 5° are required; 2.5° is used 
   large releases: the opening rate raises tip Mach above 0.31 (DUST abort) and Re above
   330k. Larger motions need new genuine provider data under a declared protocol or a
   distinct, documented aerodynamic model.
+* A second NACA2412 family (`research_axial_800_deploy_xfoil_v3`, version `2026-11-12-deploy-v3`)
+  widens the same attached-flow angle grid to Re 100k–400k and Mach 0.07–0.36 (separately built
+  XFOIL 6.99; §13 and `reports/coupled_deploy_polars_20261112/`). With two versions of one
+  profile the application no longer auto-selects; the user picks the version. It does not
+  extend α, so spin-up from rest is still outside every admitted table.
 
 ## 7. Coupling scheme, checkpoints, failure handling
 
@@ -315,8 +320,8 @@ released, step or spacing studies) share the bias; absolute levels carry it.
 
 Supported: 800 mm research template (and other templates whose hinge lies inside the
 station span, axis ∥ shaft), any catalog profile with a complete admitted stored
-version (today NACA0012 and NACA2412), prescribed shaft speed (constant or ramp), small releases
-inside the admitted table envelope. Not supported / not claimed: spin-up from rest,
+version (today NACA0012 and NACA2412; NACA2412 in two versions), prescribed shaft speed (constant
+or ramp), releases inside the fold envelope and the admitted table envelope (§13). Not supported / not claimed: spin-up from rest,
 fully folded start, torque-driven shaft, dry friction, applied hinge torque, joint loss,
 gap aerodynamics, CFD pressure fields, structural stress, fatigue, clevis–tang strength,
 manufacturability, latching or seating beyond the declared penalty law, the 250 mm /
@@ -335,8 +340,10 @@ What the current evidence supports, and what it does not:
 * *Unresolved numerical effects:* rbf lifting-line velocity point (above), MBDyn step-dependent
   node speed (+0.11 % at 5°, +0.03 % at 2.5°), azimuth lead 0.0019°/step at 5°, grazing-contact
   Newton cycling.
-* *Unsupported:* large folds, folded start, spin-up, torque-driven shaft (no admitted table
-  coverage or model); runs longer than the record bound. Mechanical properties are declared
+* *Deployment (§13):* releases from −15…−22.5° at 1600–2400 RPM completed with the same checks;
+  the hinge response is model output from demonstration-assumption mechanics.
+* *Unsupported:* folds beyond −23°, folded start, spin-up from rest, torque-driven shaft (no
+  admitted table coverage or model); runs longer than the record bound. Mechanical properties are declared
   demonstration assumptions; `physical_qualification` is false.
 
 ## 11. Numerical summary (current topology; NACA2412, 800 mm template, 2400 RPM, 14 m/s)
@@ -491,9 +498,12 @@ J_cg 3e-5 kg m², stop 500 N m/rad, e = 0.5; 2.5° steps at 2400 RPM; latched un
 | −20°, constant 2400 RPM (`…191618`) | stopped at the table's Mach limit, window 296 | ≥ 95 (0.38) | — | — | 0.306 accepted | 30.74 N latched |
 | −15°, ramp 2200→2400 RPM over 0.05 s from release (`…203052`) | completed | 111 (0.48) | 99.4 | −8.06° | 0.296 | 23.93 → 36.93 N |
 | −20°, same ramp (`…203049`) | completed | 149 (0.65) | 133 | −10.56° | 0.308 | 22.12 → 36.90 N |
+| *deploy-v3 table:* −22.5°, constant 2400 RPM (`…220252`) | completed | 184 (0.73) | 167 | −11.54° | 0.342 | 29.49 → 36.76 N |
+| *deploy-v3 table:* −20°, ramp 1600→2400 RPM over 0.06 s from release (`…220255`, 0.15 s) | completed | 105 (0.62) | 94.3 | −12.27° | 0.290 | 2.23 → 36.92 N |
+| *deploy-v3 table:* −20°, ramp 2200→2400 (`…220258`, control) | completed | bit-identical to `…203049` | | | | |
 
 All completed windows converged and stayed inside the admitted table; load, moment and power transfer
-close to ≤ 6.4e-6 relative; hinge balance 1.0 %; contact resolved with 8.7 steps per half-period.
+close to ≤ 6.5e-6 relative; hinge balance 1.0 %; contact resolved with 8.7 steps per half-period.
 Folded −20° at 2200 RPM the rotor gives 22 N; first contact comes 3.6 ms after release; thrust then
 oscillates with the hinge (34 → 25 → 27 → 33 N) and settles with the ramp (36.6–37.6 N at 2400 RPM);
 the slipstream half a radius below the disk speeds up from 17.0 to 19.2 m/s with RPM. The prescribed
@@ -506,12 +516,59 @@ velocity of the distal elements, Ω + θ̇. At the peak opening rate it is up to
 on the distal elements (θ̇/Ω = 0.65 at −20°) for a few milliseconds — an estimate from the error's
 form, not a measurement.
 
-**Supported operating envelope (this design, retained data).** Folds to −23° (geometry, enforced);
-planned shaft speeds whose section Re ≥ 165k and Mach ≤ 0.31 without induction (≈ ≥ 2200 RPM at
-14 m/s, enforced at preparation); α within −6…8° and Mach ≤ 0.31 during the opening swing, audited
-per window (the swing estimate is a warning). Evidence: −5° at 2400 RPM and −15°/−20° released at
-2200 RPM during the ramp completed; −20° at 2400 RPM stopped at the Mach limit. The −20° ramp case
-reached Mach 0.308 (0.6 % margin, one run); "about −7° at 2400 RPM" is an extrapolation from the
-swing estimate, not a run. Not supported: spin-up from rest or low RPM (deep stall, low Re — needs
-data and a separately identified post-stall treatment, see the handoff), folds beyond −23°
-(lifting-line geometry), torque-driven shaft (no measured motor data).
+**Widened attached-flow polars (deploy-v3).** The binding limits above were the table's Mach 0.31 and
+Re 165k, not the solver. XFOIL 6.99 was built locally from MIT's archive (pinned sha256, the CI
+recipe) and a declared NACA2412 grid captured through the operator protocol
+(`examples/research_deploy_polar_data.py`, `configs/polars/RESEARCH_AXIAL_800_DEPLOY_V3.json`):
+Re 100k, 165k, 245k, 330k, 400k × Mach 0.07, 0.10, 0.31, 0.36, α −6…8° (unchanged; attached flow
+only). The first two declarations (V1, V2) stopped on a genuine XFOIL non-convergence at Mach 0.05 /
+Re 330k, α 6° (V2 with 300 instead of 160 iterations, same point); both stay retained as failed
+evidence. A diagnostic convergence map of this executable then showed four isolated non-converging
+states in the 2° sequence; V3's levels avoid them, so three of them (Mach 0.10/Re 130k, 0.20/165k,
+0.20/400k) lie inside the table and are bridged by linear interpolation; the application states
+this next to the version choice. At the six cells shared with the 2026-11-11 family the new build
+reproduced CL/CD/CM exactly (GNU Fortran 11.4 vs 14.2); this does not show build independence
+elsewhere. Evidence and limits:
+`reports/coupled_deploy_polars_20261112/`. More XFOIL coverage is not validity in separated flow.
+
+*Results with the widened table.* (1) The control case (−20°, 2200→2400 RPM) on the new table is
+bit-identical to `…203049` on the retained one in all seven compared series (thrust, aerodynamic and
+drive torque, hinge aerodynamic moment, RPM, θ, θ̇; the result hashes differ because the bound tables
+differ): its trajectory stays inside
+Re 165k–330k × Mach 0.10–0.31, where both C81 files interpolate the same six source tables
+(`table_swap_check.json`). This is a consistency check of the table swap, not a measure of polar
+sensitivity. (2) Released from −22.5° at a constant 2400 RPM — the case that stopped at Mach 0.31
+from −20° — the rotor now deploys: tip Mach 0.342 and Re 352k in the swing (inside 0.36 / 400k),
+first contact 3.3 ms after release at θ̇ = 167 rad/s, rebound to −11.5°, −0.75° at the end of the run; thrust
+peaks at 48.8 N after release, and the prescribed drive reacts with up to 340 N·m (impulse
+artefact, as above). (3) Released from −20° at 1600 RPM during a 1600→2400 RPM ramp over 0.06 s:
+folded at 1600 RPM the rotor gives only 2.2 N at 14 m/s (latched-revolution mean; the run's lowest
+section α is −1.8°);
+contact after 5.0 ms at 94 rad/s, deepest rebound of all runs (−12.3°), then thrust follows the ramp
+to 36.9 N. The rotating-frame acceleration moment peaks at 1.24 N·m against an aerodynamic hinge
+moment of at most 0.18 N·m: at low speed with a fast ramp the shaft acceleration, not aerodynamics,
+dominates the hinge moments (the global hinge balance closes to 1.0 % with that term; a dominant
+term makes that relative residual easier to meet). The run's lowest section states (Re ≈ 135k,
+Mach ≈ 0.085, run-wide minima) lie in the interpolation cell Re 100k–165k × Mach 0.07–0.10, whose
+Mach 0.10 edge passes the bridged non-converging Mach 0.10 / Re 130k state. All three runs: every
+window converged (at most 3 coupling iterations, read from the run records) and inside the admitted
+table; load/moment/power transfer close to ≤ 6.5e-6 relative; hinge balance 1.0–1.1 % overall and
+16–18 % in contact phases (`hinge_balance_contact_phase_relative_residual`, as for the earlier runs);
+contact 8.7 steps per half-period. Wake metrics and flow
+manifests for all runs are in `reports/coupled_deployment_20261112/`.
+
+**Supported operating envelope (this design).** Folds to −23° (geometry, enforced). *Retained
+2026-11-11 table:* planned speeds with section Re ≥ 165k and Mach ≤ 0.31 without induction (≈ ≥ 2200
+RPM at 14 m/s, enforced at preparation). *Deploy-v3 table:* section Re 100k–400k and Mach 0.07–0.36
+(enforced). The lower limit is then set by α, which is only a warning at preparation: without
+induction the root reaches −5.6° at 1500 RPM (0.4° inside the −6° table edge) and −11.6° at 1200 RPM
+(`section_state_map_deploy_v3.txt`). So the *estimated* floor is ≈ 1500 RPM at 14 m/s, untested; the
+lowest tested start is 1600 RPM; DUST and the window audit stop a run that crosses α −6°. In both
+cases α −6…8° and the table Mach hold during the opening swing, audited per window. Evidence
+(completed): −5° and −22.5° released at a constant 2400 RPM; −15° and −20° released at 2200 RPM in a
+2200→2400 ramp; −20° released at 1600 RPM in a 1600→2400 ramp. −20° at a constant 2400 RPM was run
+only on the retained table, where it stopped at the Mach limit; it was not rerun on deploy-v3.
+Margins are single runs (−22.5° at 2400 RPM: Mach 0.342 of 0.36, 5 %; the fold envelope is −23°).
+Not supported: spin-up from rest or below ≈ 1500 RPM (root α < −6°: −11.6° at 1200 RPM, ≈ −77° at
+rest; deep stall — needs data and a separately identified post-stall treatment, see the handoff),
+folds beyond −23° (lifting-line geometry), torque-driven shaft (no measured motor data).

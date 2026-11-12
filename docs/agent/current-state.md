@@ -168,7 +168,12 @@ enforced before and during runs, and a trajectory check of section Re/Mach again
 table. Demonstrated: deployment from −20° during a 2200→2400 RPM ramp (completed, inside the table);
 −20° at 2400 RPM leaves the table's Mach 0.31 in the opening swing (fail-closed). Spin-up from rest
 remains unsupported (deep stall and low Re outside the data). Evidence: `reports/coupled_deployment_20261112/`. The retained 800 mm table supports
-deployment only inside that envelope; spin-up and folded starts are not covered. ADR-010 is
+deployment only inside that envelope; spin-up and folded starts are not covered. A second retained
+NACA2412 family (`research_axial_800_deploy_xfoil_v3`, locally built XFOIL 6.99, Re 100k–400k ×
+Mach 0.07–0.36, same attached α −6…8°; two failed declarations retained) lets −22.5° at 2400 RPM and
+−20° released at 1600 RPM during a 1600→2400 ramp complete; the estimated (no-induction, untested)
+floor becomes ≈ 1500 RPM at 14 m/s, set by α. The user chooses between the two NACA2412 versions; the interpolation caveat is shown.
+Evidence: `reports/coupled_deploy_polars_20261112/`. ADR-010 is
 proposed, not accepted. `physical_qualification` remains false. Design and limits:
 [coupled dynamic analysis](../coupled_dynamic_analysis.md).
 
