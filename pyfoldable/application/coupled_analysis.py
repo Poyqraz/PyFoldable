@@ -22,6 +22,7 @@ import time
 from pyfoldable.coupled import MODEL_ID, SCHEMA_VERSION
 from pyfoldable.coupled import c81 as c81mod
 from pyfoldable.coupled import deck as deckmod
+from pyfoldable.coupled import postprocess
 from pyfoldable.coupled import toolchain as tcmod
 from pyfoldable.coupled.model import CoupledCase, CoupledCaseError, CoupledControls, CoupledMechanics, build_case
 from pyfoldable.coupled.postprocess import digest
@@ -32,7 +33,7 @@ PARTICIPANTS = Path(__file__).resolve().parents[1] / "coupled" / "participants"
 MAX_COUPLED_RESULT_BYTES = 24 * 1024 * 1024
 # Controls added after records were first written, with the meaning older records had.
 # A saved record lacking such a field is restored with exactly this value (identical decks).
-LEGACY_CONTROL_DEFAULTS = {"vortex_stretching": True}
+LEGACY_CONTROL_DEFAULTS = {"vortex_stretching": True, "aero_topology": "split_rigid"}
 RUNS_ENV = "PYFOLDABLE_COUPLED_RUNS"
 
 
@@ -86,6 +87,20 @@ def preflight_ranges(case: CoupledCase) -> dict:
             "mach": [min(r[2] for r in rows), max(r[2] for r in rows)]}
 
 
+def estimated_result_bytes(case: CoupledCase) -> int:
+    return postprocess.estimated_result_bytes(case, len(deckmod.coupling_nodes(case)))
+
+
+def check_result_budget(case: CoupledCase) -> None:
+    """Fail closed before running when the complete record could not be restored (size cap)."""
+    est = estimated_result_bytes(case)
+    if est > MAX_COUPLED_RESULT_BYTES:
+        raise CoupledPreparationError(
+            "result_too_large",
+            f"Tahmini sonuç kaydı {est / 2**20:.1f} MiB, sınır {MAX_COUPLED_RESULT_BYTES / 2**20:.0f} MiB: "
+            "süreyi kısaltın veya azimut adımını büyütün.")
+
+
 def prepare(active, family, repository, mechanics: CoupledMechanics, controls: CoupledControls,
             *, readiness: tcmod.Readiness | None = None) -> CoupledPreparation:
     """No solver, no file writes. Raises CoupledPreparationError with a stable code."""
@@ -105,6 +120,7 @@ def prepare(active, family, repository, mechanics: CoupledMechanics, controls: C
         case = build_case(active, mechanics, controls)
     except CoupledCaseError as exc:
         raise CoupledPreparationError(exc.code, str(exc)) from exc
+    check_result_budget(case)
     files = deckmod.generate_deck(case, table.text, coupled=True)
     scripts = {name: _sha_text((PARTICIPANTS / name).read_text(encoding="utf-8")) for name in ("adapter.py", "extract_dust.py")}
     request = {
@@ -187,10 +203,34 @@ def _require(cond: bool, message: str) -> None:
         raise ValueError(message)
 
 
-def read_saved_coupled_result(raw: bytes) -> dict:
+def _case_from_request(req: dict, overrides: dict | None = None):
+    """Declared case of a saved request, rebuilt from its own draft, inputs, mechanics and controls."""
     from pyfoldable.application import design_analysis
     from pyfoldable.application.design_draft import DesignDraftArtifact
     from pyfoldable.application.provider_design_analysis import RootDatum
+
+    rs = req["research"]
+    _require(hashlib.sha256(rs["draft_toml"].encode()).hexdigest() == rs["draft_sha256"], "Saved draft checksum mismatch.")
+    draft = DesignDraftArtifact("saved.toml", rs["draft_toml"], rs["draft_source_sha256"], rs["draft_sha256"])
+    design, angle = design_analysis._load_geometry(draft)
+    _require(angle == 0, "Saved draft is not the open reference pose.")
+    inputs = research.ResearchInputs(**rs["inputs"])
+    root = None if rs["root"] is None else RootDatum(**rs["root"])
+    active = _ActiveLike(inputs, design, root, rs["length_order_policy"])
+    mech = CoupledMechanics(**req["mechanics"])
+    missing = set(asdict(CoupledControls())) - set(req["controls"])
+    _require(missing <= set(LEGACY_CONTROL_DEFAULTS),
+             "Saved controls lack a field without a declared legacy meaning.")
+    ctrl = CoupledControls(**{**{k: LEGACY_CONTROL_DEFAULTS[k] for k in missing}, **req["controls"], **(overrides or {})})
+    return build_case(active, mech, ctrl), inputs
+
+
+def case_from_record(row: dict, **control_overrides) -> CoupledCase:
+    """Case of a saved record (optionally with changed controls, e.g. for budget estimates)."""
+    return _case_from_request(row["request"], control_overrides)[0]
+
+
+def read_saved_coupled_result(raw: bytes) -> dict:
     from pyfoldable.coupled.frames import relative_angle_about_z, rotvec_to_matrix
 
     _require(isinstance(raw, bytes) and 0 < len(raw) <= MAX_COUPLED_RESULT_BYTES, "Coupled result size is invalid.")
@@ -213,21 +253,7 @@ def read_saved_coupled_result(raw: bytes) -> dict:
         req_body = {k: v for k, v in req.items() if k != "request_sha256"}
         _require(req["request_sha256"] == digest(req_body), "Coupled request digest mismatch.")
         # 1. draft and geometry
-        rs = req["research"]
-        _require(hashlib.sha256(rs["draft_toml"].encode()).hexdigest() == rs["draft_sha256"], "Saved draft checksum mismatch.")
-        draft = DesignDraftArtifact("saved.toml", rs["draft_toml"], rs["draft_source_sha256"], rs["draft_sha256"])
-        design, angle = design_analysis._load_geometry(draft)
-        _require(angle == 0, "Saved draft is not the open reference pose.")
-        inputs = research.ResearchInputs(**rs["inputs"])
-        root = None if rs["root"] is None else RootDatum(**rs["root"])
-        active = _ActiveLike(inputs, design, root, rs["length_order_policy"])
-        mech = CoupledMechanics(**req["mechanics"])
-        ctrl = CoupledControls(**req["controls"])
-        missing = set(asdict(ctrl)) - set(req["controls"])
-        _require(missing <= set(LEGACY_CONTROL_DEFAULTS)
-                 and all(getattr(ctrl, k) == LEGACY_CONTROL_DEFAULTS[k] for k in missing),
-                 "Saved controls lack a field without a declared legacy meaning.")
-        case = build_case(active, mech, ctrl)
+        case, inputs = _case_from_request(req)
         recorded = case.as_dict()
         recorded["controls"] = {k: v for k, v in recorded["controls"].items() if k in req["controls"]}
         _require(digest(recorded) == req["case_sha256"], "Saved case contradicts the saved draft and inputs.")
@@ -239,6 +265,15 @@ def read_saved_coupled_result(raw: bytes) -> dict:
         # 3. decks regenerated
         files = deckmod.generate_deck(case, table.text, coupled=True)
         _require(deckmod.deck_manifest(files) == req["deck"] == row["run_definition"]["deck"], "Saved decks do not match.")
+        # coupling nodes and bodies drive the hinge moment, element labels and 3-D placement
+        rd = row["run_definition"]
+        regen = json.loads(json.dumps(deckmod.coupling_nodes(case)))
+        saved = rd["coupling_nodes"]
+        core = {"blade", "segment", "mbdyn_label", "dust_component", "local", "global"}
+        _require(isinstance(saved, list) and len(saved) == len(regen)
+                 and all(isinstance(s, dict) and core <= set(s) and s == {k: g[k] for k in s} for s, g in zip(saved, regen))
+                 and ("bodies" not in rd or rd["bodies"] == json.loads(json.dumps(deckmod.bodies(case)))),
+                 "Saved coupling nodes or bodies do not match the case.")
         # 4. derived channels recomputed from exchanged loads and MBDyn node states
         ex = row["execution"]
         series, wins, states = row["series"], row["window_exchange"], {s["window"]: s["nodes"] for s in row["node_states"]}
@@ -254,7 +289,9 @@ def read_saved_coupled_result(raw: bytes) -> dict:
             for b in range(case.geometry.blade_count):
                 th = relative_angle_about_z(rotvec_to_matrix(nodes[str(100 + b)]["phi"]), rotvec_to_matrix(nodes[str(200 + b)]["phi"]))
                 _require(abs(math.degrees(th) - r["theta_deg"][b]) < 1e-9, "Hinge angle does not match node states.")
-                _require(math.isclose(r["hinge_aero_torque_nm"][b], M[2 * b + 1][2], rel_tol=0, abs_tol=1e-12), "Hinge aero torque mismatch.")
+                cn = row["run_definition"]["coupling_nodes"]
+                m_h = postprocess.hinge_aero_torque(cn, b, X, F, M, postprocess.hinge_point(cn, b, X, nodes[str(200 + b)]))
+                _require(math.isclose(r["hinge_aero_torque_nm"][b], m_h, rel_tol=0, abs_tol=1e-12), "Hinge aero torque mismatch.")
             _require(abs(r["rpm"] - nodes["2"]["w"][2] * 60 / (2 * math.pi)) < 1e-9, "RPM does not match hub state.")
         # 5. coverage recomputed from the per-element table and the admitted envelope
         env = req["c81"]["envelope"]

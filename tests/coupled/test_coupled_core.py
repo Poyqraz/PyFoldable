@@ -113,7 +113,9 @@ def test_deck_is_deterministic_and_uses_verified_conventions(active):
     assert "method: ms, 0.6, 0.6;" in mbd
     dust_in = a["dust/dust.in"]
     assert "u_inf = (/ 0.0, 0.0, -14.0 /)" in dust_in and "ll_stall_regularisation = F" in dust_in
-    comp = a["dust/comps/blade1_distal.in"]
+    assert "coupling_type = rbf" in a["dust/comps/blade1.in"]
+    legacy = build_case(active, case.mechanics, CoupledControls(duration_s=0.01, aero_topology="split_rigid"))
+    comp = deckmod.generate_deck(legacy, text)["dust/comps/blade1_distal.in"]
     assert "coupling_type = rigid" in comp and "coupling_node = (/ 0.0, 0.27, 0.0 /)" in comp
     vertices = json.loads(a["structure/adapter_config.json"])["vertices"]
     assert len({tuple(v) for v in vertices}) == len(vertices)  # one-to-one nearest-neighbour mapping
@@ -129,3 +131,44 @@ def test_no_coupled_imports_in_application_without_toolchain(monkeypatch, tmp_pa
     monkeypatch.delenv("PYFOLDABLE_COUPLED_TOOLCHAIN")
     monkeypatch.setattr(toolchain, "DEFAULT", tmp_path / "absent.json")
     assert toolchain.readiness().status == "not_installed"
+
+
+def test_continuous_lifting_line_has_no_free_vortices_at_the_hinge(active):
+    """Two separate lifting lines meeting at the hinge leave free end vortices that cancel only when
+    exactly coincident; a static -0.5 deg fold alone raised thrust by ~25 % (spurious vortex pair).
+    The default topology is one continuous DUST lifting line per blade with RBF coupling to static
+    MBDyn nodes on each rigid segment; only one node spacing straddles the hinge."""
+    case = build_case(active, _mech(initial_fold_rad=math.radians(-5)), CoupledControls())
+    assert case.controls.aero_topology == "continuous_rbf"
+    deck = deckmod.generate_deck(case, c81mod.build_c81(_tables()).text)
+    comps = sorted(k for k in deck if k.startswith("dust/comps/") and k.endswith(".in") and "_nodes" not in k)
+    assert comps == ["dust/comps/blade1.in", "dust/comps/blade2.in"]
+    comp = deck["dust/comps/blade1.in"]
+    assert "coupling_type = rbf" in comp and "coupling_node_file = ./comps/blade1_nodes.in" in comp
+    spans = [float(line.split("=")[1]) for line in comp.splitlines() if line.startswith("span =")]
+    assert min(spans) > 0.03 and abs(sum(spans) - (0.388 - 0.144)) < 1e-12   # stations only, no hinge section
+    nodes = deckmod.coupling_nodes(case)
+    blade = [n for n in nodes if n["blade"] == 0]
+    radii = sorted(n["local"][1] for n in blade)
+    gaps = [b - a for a, b in zip(radii, radii[1:])]
+    assert max(gaps) - min(gaps) < 1e-12                                   # uniform grid
+    inner = max(r for r in radii if r < 0.27); outer = min(r for r in radii if r > 0.27)
+    assert abs((inner + outer) / 2 - 0.27) < 1e-12                         # hinge mid-way between nodes
+    assert all((n["segment"] == "proximal") == (n["local"][1] < 0.27) for n in blade)
+    files = deck["dust/comps/blade1_nodes.in"].split()
+    assert len(files) == 3 * len(blade)
+    mbd = deck["structure/rotor.mbd"]
+    n_b = case.geometry.blade_count
+    assert f"structural nodes: {2 + 2 * n_b + len(nodes)};" in mbd and f"rigid bodies: {1 + 2 * n_b};" in mbd
+    for nd in nodes:  # no added mass: every coupling node is fully constrained to its segment body node
+        assert f"joint: {nd['mbdyn_label']}, total joint,\n    {nd['body_label']}, position" in mbd                         # ground + coupling nodes
+    vertices = json.loads(deck["structure/adapter_config.json"])["vertices"]
+    assert len({tuple(v) for v in vertices}) == len(vertices) == len(nodes)
+
+
+def test_rbf_weights_follow_dust_semantics():
+    from pyfoldable.coupled.postprocess import rbf_weights
+    nodes = [(0.0, 0.10, 0.0), (0.0, 0.12, 0.0), (0.0, 0.14, 0.0)]
+    idx, w = rbf_weights(nodes, (0.02, 0.125, 0.001))       # chordwise/normal offsets scaled by 1e-3
+    assert sorted(idx) == [1, 2] and abs(sum(w) - 1) < 1e-15
+    assert w[idx.index(1)] == pytest.approx(0.015 / 0.02, rel=5e-3)   # inverse distance: nearer node heavier

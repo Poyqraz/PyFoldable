@@ -108,6 +108,10 @@ class CoupledControls:
     ll_damp: float = 25.0
     fmm: bool = False
     vortex_stretching: bool = True
+    # continuous_rbf: one DUST lifting line per blade, RBF-coupled to static nodes on both rigid segments.
+    # split_rigid (records before 2026-11-12): one rigidly coupled lifting line per segment; its free end
+    # vortices at the hinge cancel only at exactly zero fold and leave a spurious vortex pair otherwise.
+    aero_topology: str = "continuous_rbf"
     wall_timeout_s: float = 3600.0
 
 
@@ -225,6 +229,8 @@ def validate_controls(c: CoupledControls) -> None:
         _finite(name, getattr(c, name), lo=0.0, hi=1.0, strict_lo=True)
     _finite("aitken_initial_relaxation", c.aitken_initial_relaxation, lo=0.0, hi=1.0, strict_lo=True)
     _finite("wall_timeout_s", c.wall_timeout_s, lo=10.0, hi=6 * 3600.0)
+    if c.aero_topology not in ("continuous_rbf", "split_rigid"):
+        raise CoupledCaseError("invalid_controls", "aero_topology must be continuous_rbf or split_rigid")
 
 
 def _segment_sections(blade, lo: float, hi: float) -> tuple[SegmentSection, ...]:

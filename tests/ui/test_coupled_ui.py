@@ -16,6 +16,7 @@ from research_inert_support import store, bem  # noqa: E402
 
 APP = Path(__file__).resolve().parents[2] / "apps/pyfoldable_research.py"
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "coupled" / "release_30w"
+FIXTURE_RBF = FIXTURE.with_name("release_30w_rbf")
 
 
 def app():
@@ -68,9 +69,9 @@ def test_inert_fixture_tables_cannot_feed_a_coupled_run(tmp_path, monkeypatch):
     assert "_coupled_run" not in at.session_state
 
 
-def _record(tmp_path):
+def _record(tmp_path, fixture=FIXTURE):
     run = tmp_path / "run"
-    shutil.copytree(FIXTURE, run)
+    shutil.copytree(fixture, run)
     row = postprocess.build_result(run, participant_outcome="finished", exit_codes={}, extraction_ok=True)
     return row
 
@@ -109,12 +110,13 @@ def test_local_run_directory_result_can_be_opened_read_only(tmp_path, monkeypatc
     assert len(at.session_state["research_coupled_results"]) == 1
 
 
-def test_recorded_coupled_result_renders_every_view_and_survives_edits(tmp_path, monkeypatch):
+@pytest.mark.parametrize("fixture", [FIXTURE, FIXTURE_RBF], ids=["split_rigid", "continuous_rbf"])
+def test_recorded_coupled_result_renders_every_view_and_survives_edits(tmp_path, monkeypatch, fixture):
     store(tmp_path, monkeypatch, PROJECT_AIRFOIL_IDS)
     bem(monkeypatch)
     _no_toolchain(monkeypatch, tmp_path)
     _forbid_runs(monkeypatch)
-    row = _record(tmp_path)
+    row = _record(tmp_path, fixture)
     at = app()
     raw = json.dumps(row, sort_keys=True, separators=(",", ":"))
     at.session_state["research_coupled_results"] = ((raw, False),)

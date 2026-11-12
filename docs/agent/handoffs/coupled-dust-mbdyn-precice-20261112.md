@@ -42,6 +42,28 @@ as listed below. No `.wslconfig`, MCP, credential or Serena change.
 7. Window acceptance at max-iterations is read from `precice-MBDyn-iterations.log`.
 8. Latch flag means "latched during part of the window" (release inside window 144 at 5° made
    the hinge-balance stencil span an acceleration jump).
+9. **Aerodynamic topology `continuous_rbf` (default).** Root cause of the post-release thrust
+   rise: per-segment lifting lines leave free end vortices at the hinge that cancel only when
+   coincident (design doc §9 "Resolved"). One continuous DUST lifting line per blade, `rbf`
+   coupling to a uniform grid of massless MBDyn nodes, each fully constrained to its segment's
+   body node. Earlier records restore as `split_rigid` via `LEGACY_CONTROL_DEFAULTS`; legacy decks
+   are byte-identical to the previous generator (8 cases incl. non-zero fold and fold rate).
+10. Coupling nodes are dynamic, not static: MBDyn's external structural force with accelerations
+    rejects static nodes (`StructExtForce(700): ... is not dynamic`, runs `…070651_69c3972b66`,
+    `…070657_e65d989b79`, failed_solver at set-up). A massless dynamic node under a total joint was
+    checked in a stand-alone MBDyn deck (|v| 50.33 vs Ωr 50.27 m/s).
+11. Record size: node states keep ground, hub and body nodes only; preparation refuses runs whose
+    estimated record exceeds the 24 MiB restore limit (`result_too_large`; previously a long run
+    could produce an unrestorable record). The estimate is 1.19–1.23 × the actual record size for
+    rebuilt 360/432/720-window `continuous_rbf` records and the 720-window `split_rigid` record
+    (main: 16.6 MB actual, 19.8 MB estimated). Restore binds saved coupling nodes/bodies to the case.
+    Independent review (read-only agent, two passes): no confirmed defect; size cap, restore binding,
+    legacy byte-identity and an rbf record fixture were added in response.
+12. Toolchain re-attested after Ubuntu unattended upgrades (2026-11-12 06:58–07:00: python3.10
+    3.10.12-1~22.04.12 → .18, libgfortran5) changed the coupling interpreter hash; readiness
+    failed closed (`toolchain_invalid`) until `tools/coupled/write_manifest.py` was re-run. Prior
+    manifest kept at `~/pyf-work/coupled_toolchain.pre-ubuntu-upgrade-20261112.json`; a repeated
+    `split_rigid` locked-open run (`…070700_c891c455ae`) is bit-identical to `…004422_676d3c8c65`.
 
 ## Actual executions (run ids under `outputs/coupled_runs/`, raw outputs kept locally)
 
@@ -60,15 +82,33 @@ as listed below. No `.wslconfig`, MCP, credential or Serena change.
 | `20261112T010638_68279430ef` | NACA0012, same as main | completed 720/720; contact 3.47 ms after release at 39.7 rad/s, e_eff 0.518, settles −0.28°; Mach max 0.296 |
 | `20261112T012130_6307e9790a` | release 5°, DUST vortex stretching off | identical θ history and thrust within ~1 % up to window 298; MBDyn Newton cycled at a grazing contact (step 299) → failed_solver with 298-window valid prefix |
 | `20261112T011303_d503584a80` | started from the browser UI (5°, 173 windows) | completed; see "UI path" |
+| `20261112T064218_36285ecfd1` | E1 `split_rigid`, −5° latched all run, 5° | steady 37.4 N: no rise without hinge motion |
+| `20261112T064223_a564b2a131` | E2 `split_rigid`, damped release | rise still present (≈ +30 %) |
+| `20261112T064948_aba91dea80` | E3 `split_rigid`, static −0.5° latched | ≈ 47–48 N from the first revolution vs 38.7 N open |
+| `20261112T064957_1a28302b46` | E4 station merge near hinge | worse; approach reverted |
+| `20261112T070917_55f6aea26f` | E3 condition, `continuous_rbf`, 0.075 s | 37.17 N (open: 37.25 N, `…070920_67c85e4108`) |
+| `20261112T073117_fab3a9a152` | `continuous_rbf` locked open, 6 revs | 37.11 N / 3.012 N m; standalone continuous `sa_cont_s5_d150` 37.65 N / 3.039 N m |
+| `20261112T070700_c891c455ae` | `split_rigid` locked open repeated after the OS update | bit-identical to `…004422_676d3c8c65` |
+| `20261112T071157_91efdf9841` | `continuous_rbf` release −5° at 0.05 s, 5° | completed; last rev 37.05 N (split: 42.75 N) |
+| `20261112T071200_20d4a1092d` | **main**, `continuous_rbf`, 2.5°, 720 windows | completed, 2280 s; see "Main results" |
+| `20261112T074237_2a6ad5bd14` | `continuous_rbf` 30 windows | fixture `tests/fixtures/coupled/release_30w_rbf` |
 
-Full ordinary suite after the work: 2195 passed, 9 skipped (pre-existing missing generated CSVs),
+Full ordinary suite after the first commit: 2195 passed, 9 skipped (pre-existing missing generated CSVs),
 37 subtests passed (WSL, Python 3.10.12, 398 s). Focused: `tests/coupled` + `tests/ui/test_coupled_ui.py`
 23 passed. A compatibility defect (new control field broke restoration of earlier records) was caught
 by these tests and fixed with an explicit legacy-default rule (`LEGACY_CONTROL_DEFAULTS`).
 
 ## Main results
 
-Main case `20261112T005547_39a32f06ef` (NACA2412, 800 mm template, 2400 RPM, 14 m/s,
+Current main case `20261112T071200_20d4a1092d` (`continuous_rbf`, otherwise identical to the
+record below): completed 720/720, every window converged (2–7 iterations, mean 2.01), α −0.48…2.90°,
+Re 187k…305k, Mach ≤ 0.296. Hinge history matches the earlier record (first contact 3.65 ms after
+release at 38.8 rad/s, rebound −19.9 rad/s, restitution 0.514, 7 contacts, second swing −2.70°,
+final −0.53°). Thrust: last latched rev 36.37 N, last rev 36.76 N / 2.981 N m (drive 2.967 N m),
+i.e. no post-release rise. Checks: load transfer 1.5e-6, moment 1.2e-6, power 8.9e-7, hinge balance
+1.0 %. Absolute levels carry the ≈ 1.4 % coupled-vs-standalone offset of the rbf route (design doc).
+
+Earlier `split_rigid` record `20261112T005547_39a32f06ef` (NACA2412, 800 mm template, 2400 RPM, 14 m/s,
 demonstration-assumption distal segment 30 g / CG 55 mm / J_cg 3e-5 kg m², stop 500 N m/rad,
 e = 0.5, latched at −5° for 0.05 s, 2.5° azimuth steps, 720 windows, 2738 s wall):
 completed; every window converged (2–6 iterations, mean 2.01); all states inside the admitted
@@ -79,8 +119,8 @@ settling oscillation around −0.6° (aerodynamic lag moment −0.16…−0.54 N
 restoring stiffness 28.1 N m/rad). Checks: kinematic closure 1e-16 m, load transfer 6e-7, interface
 power 5e-7 (relative), prescribed-speed deviation 5e-13 RPM, hinge balance 1.0 % (smooth windows),
 contact 8.7 steps per half-period. Latched-phase rotor (−5° fold): 37.5 N, 3.01 N m (last latched
-rev); last rev: 42.63 N, Q_aero 3.323 vs Q_drive 3.321 N m — see the unresolved post-release thrust
-rise in the design doc; do not read post-release levels as converged performance.
+rev); last rev: 42.63 N, Q_aero 3.323 vs Q_drive 3.321 N m — the post-release rise is the spurious
+junction vortex of this topology (resolved by `continuous_rbf`); do not use these post-release levels.
 
 Time step 5° vs 2.5° (same case, `…005554_32f9e3b7d0`): first contact 3.82 vs 3.65 ms, impact rate
 38.63 vs 38.74 rad/s, restitution 0.61 vs 0.514 (5° under-resolves contact, 4.3 steps), second-swing
@@ -95,10 +135,9 @@ Fully deployed BEM route unchanged: the UI reproduced 43.647 N / 3.277 N m / 823
 
 ## Next concrete items
 
-1. **Resolve the post-release thrust rise** (≈ +10–15 % about 0.04 s after release in all release
-   runs, absent in the locked rotor; robust to step, coupling tolerance and vortex stretching):
-   inspect DUST `update_near_field_wake`/implicit first panel under hinge motion and grazing
-   contact, and repeat with a larger wake box; until then post-release load levels are flagged.
+1. Locate the ≈ 1.4 % coupled-vs-standalone thrust offset of DUST's `rbf` lifting-line branch
+   (α lower by 0.17° at the root; rigid coupling agrees to 0.02°), e.g. by instrumenting element
+   centre/velocity handling around the wake update in `mod_precice.f90`, or report upstream.
 2. Smooth contact law (or event handling) to avoid MBDyn Newton cycling at grazing contact.
 3. Independent review of the coupled route (Astra-B or equivalent); PR creation was not
    requested.

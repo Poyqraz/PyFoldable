@@ -75,6 +75,55 @@ def _dust_abort_reason(run: Path) -> str | None:
     return None
 
 
+# DUST 3b1d2e61 src/precice/mod_precice_rbf.f90 (build_connectivity), coupling_node_orientation = I:
+# the n_wei nearest structural nodes in the anisotropic norm sqrt(d^T W d), inverse-distance weights.
+COUPLING_NODE_LABEL_BASE = 1000  # deck.COUPLING_BASE (massless continuous_rbf coupling nodes)
+RBF_WNORM = (1e-3, 1.0, 1e-3)
+RBF_N_WEI = 2
+RBF_W_ORDER = 1.0
+
+
+def rbf_weights(nodes, point) -> tuple[list[int], list[float]]:
+    """Indices into ``nodes`` and weights DUST uses for an aerodynamic point (component frame)."""
+    d = [math.sqrt(sum(wn * (p - q) ** 2 for wn, p, q in zip(RBF_WNORM, point, n))) for n in nodes]
+    idx = sorted(range(len(nodes)), key=lambda i: (d[i], i))[:RBF_N_WEI]
+    inv = [1.0 / max(d[i], 1e-9) ** RBF_W_ORDER for i in idx]
+    s = sum(inv)
+    return idx, [v / s for v in inv]
+
+
+def hinge_aero_torque(nodes, b, X, F, M, hinge_x) -> float:
+    """Axial aerodynamic moment about the hinge point acting on the distal body of blade ``b``: loads
+    sent to the coupling nodes rigidly attached to that body (one node on the hinge axis for
+    split_rigid records, several static nodes for continuous_rbf)."""
+    out = 0.0
+    for i, nd in enumerate(nodes):
+        if nd["blade"] == b and nd["segment"] == "distal":
+            arm = [X[i][k] - hinge_x[k] for k in range(3)]
+            out += M[i][2] + _cross(arm, F[i])[2]
+    return out
+
+
+def hinge_point(nodes, b, X, body_state) -> list[float]:
+    """Hinge position: the distal body node lies on the hinge axis (exchanged state when it is itself a
+    coupling node, else MBDyn's converged node state)."""
+    for i, nd in enumerate(nodes):
+        if nd["mbdyn_label"] == 200 + b:
+            return X[i]
+    return body_state["x"]
+
+
+def estimated_result_bytes(case, n_coupling_nodes: int) -> int:
+    """Conservative size of a complete result record (JSON), from measured per-item sizes of recorded
+    runs plus ~10 % margin: exchanged loads/kinematics per coupling node, MBDyn states of ground, hub
+    and body nodes, per-element radial rows, per-blade series/joint channels, fixed request overhead."""
+    g, c = case.geometry, case.controls
+    nb = g.blade_count
+    per_window = (450 * n_coupling_nodes + 320 * (2 + 2 * nb) + 260 * 2 * c.elements_per_segment * nb
+                  + 600 * nb + 200)
+    return 400_000 + case.n_steps * per_window
+
+
 def raw_manifest(run: Path) -> dict:
     files = {}
     for path in sorted(run.rglob("*")):
@@ -110,6 +159,7 @@ def build_result(run: Path, *, participant_outcome: str | None, participant_mess
     jh = mech["distal_inertia_cg_kg_m2"] + mech["distal_mass_kg"] * mech["distal_cg_from_hinge_m"] ** 2
     kcf = mech["distal_mass_kg"] * W ** 2 * geo["hinge_radius_m"] * mech["distal_cg_from_hinge_m"]
     series, radial = [], []
+    components = list(dict.fromkeys(nd["dust_component"] for nd in nodes))
     closure = {"kinematic_position_m": 0.0, "kinematic_rotation_rad": 0.0, "load_force_n": 0.0, "load_moment_nm": 0.0,
                "interface_power_w": 0.0, "max_node_force_n": 0.0, "max_node_moment_nm": 0.0, "max_interface_power_w": 0.0}
     first_uncovered = None
@@ -129,22 +179,22 @@ def build_result(run: Path, *, participant_outcome: str | None, participant_mess
         row["drive_power_w"] = row["drive_torque_nm"] * blk[HUB]["w"][2]
         theta, rate, m_aero_h, m_law, contact, latch_m = [], [], [], [], [], []
         for b in range(nb):
-            ip, idd = 2 * b, 2 * b + 1
             rp, rd = rotvec_to_matrix(blk[100 + b]["phi"]), rotvec_to_matrix(blk[200 + b]["phi"])
             th = relative_angle_about_z(rp, rd)
             theta.append(th)
             rate.append(blk[200 + b]["w"][2] - blk[100 + b]["w"][2])
-            m_aero_h.append(M[idd][2])
+            m_aero_h.append(hinge_aero_torque(nodes, b, X, F, M, hinge_point(nodes, b, X, blk[200 + b])))
             m_law.append(-jb[SPRING_BASE + b]["m_local"][2])
             contact.append(th > mech["stop_angle_rad"] + CONTACT_TOL_RAD or th < mech["fold_limit_rad"] - CONTACT_TOL_RAD)
             # raw MBDyn output of the driven latch joint (zero once the driven element is inactive)
             latch_m.append(-jb[LATCH_BASE + b]["m_local"][2] if (LATCH_BASE + b) in jb else 0.0)
-            # kinematic closure: state sent to DUST vs MBDyn's final converged state
-            for i, lab in ((ip, 100 + b), (idd, 200 + b)):
-                closure["kinematic_position_m"] = max(closure["kinematic_position_m"],
-                                                      max(abs(X[i][k] - blk[lab]["x"][k]) for k in range(3)))
-                closure["kinematic_rotation_rad"] = max(closure["kinematic_rotation_rad"],
-                                                        max(abs(win["rotation"][i][k] - blk[lab]["phi"][k]) for k in range(3)))
+        # kinematic closure: state sent to DUST vs MBDyn's final converged state
+        for i, nd in enumerate(nodes):
+            lab = nd["mbdyn_label"]
+            closure["kinematic_position_m"] = max(closure["kinematic_position_m"],
+                                                  max(abs(X[i][k] - blk[lab]["x"][k]) for k in range(3)))
+            closure["kinematic_rotation_rad"] = max(closure["kinematic_rotation_rad"],
+                                                    max(abs(win["rotation"][i][k] - blk[lab]["phi"][k]) for k in range(3)))
         row["theta_deg"] = [math.degrees(x) for x in theta]
         row["theta_rate_rad_s"] = rate
         row["hinge_aero_torque_nm"] = m_aero_h
@@ -161,28 +211,47 @@ def build_result(run: Path, *, participant_outcome: str | None, participant_mess
         lo = {"alpha": math.inf, "re": math.inf, "mach": math.inf}
         hi = {"alpha": -math.inf, "re": -math.inf, "mach": -math.inf}
         f_close = m_close = p_el = 0.0
-        for i, nd in enumerate(nodes):
-            key = name_to_key[nd["dust_component"]]
+        Rn = [rotvec_to_matrix(r) for r in win["rotation"]]
+        for comp in components:
+            key = name_to_key[comp]
             g, c = dust["geometry"][key], ds["components"][key]
-            R = rotvec_to_matrix(win["rotation"][i])
-            fsum, msum = [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]
+            own = [i for i, nd in enumerate(nodes) if nd["dust_component"] == comp]
+            fsum = {i: [0.0, 0.0, 0.0] for i in own}
+            msum = {i: [0.0, 0.0, 0.0] for i in own}
+            if len(own) > 1:  # continuous_rbf: DUST moves line points with nodal weights (mod_precice.f90)
+                local = [nodes[i]["local"] for i in own]
+                pts = []
+                for p in g["ll_points_local"]:
+                    idx, wts = rbf_weights(local, p)
+                    pts.append([sum(wt * (X[own[j]][k] + _matvec(Rn[own[j]], [p[q] - local[j][q] for q in range(3)])[k])
+                                    for j, wt in zip(idx, wts)) for k in range(3)])
             for e, (mid, chord) in enumerate(zip(g["element_mid_local"], g["element_chord"])):
                 v2 = c["vel_2d"][e]
                 al, re, ma = c["alpha_deg"][e], rho * v2 * chord / mu, v2 / a
                 for k_, val in (("alpha", al), ("re", re), ("mach", ma)):
                     lo[k_] = min(lo[k_], val); hi[k_] = max(hi[k_], val)
-                arm = _matvec(R, [mid[k] - nd["local"][k] for k in range(3)])
                 dF, dM = c["dF"][e], c["dMom"][e]
-                mom = _cross(arm, dF)
-                for k in range(3):
-                    fsum[k] += dF[k]; msum[k] += dM[k] + mom[k]
-                ve = [V[i][k] + _cross(Om[i], arm)[k] for k in range(3)]
-                p_el += sum(dF[k] * ve[k] + dM[k] * Om[i][k] for k in range(3))
+                if len(own) == 1:
+                    i = own[0]
+                    shares = [(i, 1.0, _matvec(Rn[i], [mid[k] - nodes[i]["local"][k] for k in range(3)]))]
+                else:
+                    # element centre = mean of its two line points; loads split with centre weights
+                    cen = [0.5 * (pts[e][k] + pts[e + 1][k]) for k in range(3)]
+                    idx, wts = rbf_weights(local, mid)
+                    shares = [(own[j], wt, [cen[k] - X[own[j]][k] for k in range(3)]) for j, wt in zip(idx, wts)]
+                for i, wt, arm in shares:
+                    mom = _cross(arm, dF)
+                    for k in range(3):
+                        fsum[i][k] += wt * dF[k]; msum[i][k] += wt * (dM[k] + mom[k])
+                    ve = [V[i][k] + _cross(Om[i], arm)[k] for k in range(3)]
+                    p_el += wt * sum(dF[k] * ve[k] + dM[k] * Om[i][k] for k in range(3))
+                segs = {nodes[i]["segment"] for i, _, _ in shares}
                 cl, cd, cm = c["aero_coeff"][e]
-                radial.append([w, nd["blade"], nd["segment"], e, mid[1], chord, al, re, ma, cl, cd, cm,
-                               dF[0], dF[1], dF[2]])
-            f_close = max(f_close, max(abs(fsum[k] - F[i][k]) for k in range(3)))
-            m_close = max(m_close, max(abs(msum[k] - M[i][k]) for k in range(3)))
+                radial.append([w, nodes[own[0]]["blade"], segs.pop() if len(segs) == 1 else "junction", e, mid[1], chord,
+                               al, re, ma, cl, cd, cm, dF[0], dF[1], dF[2]])
+            for i in own:
+                f_close = max(f_close, max(abs(fsum[i][k] - F[i][k]) for k in range(3)))
+                m_close = max(m_close, max(abs(msum[i][k] - M[i][k]) for k in range(3)))
         closure["load_force_n"] = max(closure["load_force_n"], f_close)
         closure["load_moment_nm"] = max(closure["load_moment_nm"], m_close)
         closure["interface_power_w"] = max(closure["interface_power_w"], abs(p_el - p_if))
@@ -241,7 +310,9 @@ def build_result(run: Path, *, participant_outcome: str | None, participant_mess
         "joint_outputs": [{"window": w, "drive_m_global": jnt[w][DRIVE_JOINT]["m_global"],
                            "hinge_law_m_local": [jnt[w][SPRING_BASE + b]["m_local"] for b in range(nb)]}
                           for w in range(1, accepted + 1)],
-        "node_states": [{"window": w, "nodes": {str(lab): mov[w][lab] for lab in mov[w]}} for w in range(0, accepted + 1)] if mov else [],
+        # ground, hub and body nodes; continuous_rbf coupling-node kinematics are in window_exchange
+        "node_states": [{"window": w, "nodes": {str(lab): mov[w][lab] for lab in mov[w] if lab < COUPLING_NODE_LABEL_BASE}}
+                        for w in range(0, accepted + 1)] if mov else [],
         "closure": closure, "checks": checks,
         "raw_outputs": {"run_id": run.name, "files": raw_manifest(run)},
         "physical_qualification": False, "reference_agreement": "NOT_ASSESSED", "joint_loss_model": "NOT_MODELED",

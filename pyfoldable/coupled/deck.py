@@ -42,18 +42,78 @@ def _sha(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def coupling_nodes(case: CoupledCase) -> list[dict]:
-    """Ordered coupling nodes: for each blade, proximal then distal."""
+COUPLING_BASE = 1000  # continuous_rbf massless coupling nodes: COUPLING_BASE + 100 * blade + k
+
+
+def bodies(case: CoupledCase) -> list[dict]:
+    """MBDyn body nodes: per blade the proximal node at the root, the distal node on the hinge axis."""
     g = case.geometry
-    nodes = []
+    out = []
     for b in range(g.blade_count):
         z = NODE_Z_OFFSET_M * b
         rb = blade_frame(b, g.blade_count)
         for kind, label, r_node in (("proximal", PROX + b, g.root_radius_m), ("distal", DIST + b, g.hinge_radius_m)):
             local = (0.0, r_node, z)
-            nodes.append({"blade": b, "segment": kind, "mbdyn_label": label, "dust_component": f"blade{b + 1}_{kind}",
+            out.append({"blade": b, "segment": kind, "mbdyn_label": label, "local": local,
+                        "global": matvec(rb, local)})
+    return out
+
+
+def rbf_node_spacing(case: CoupledCase) -> float:
+    g = case.geometry
+    return (g.last_aero_radius_m - g.first_aero_radius_m) / (2 * case.controls.elements_per_segment)
+
+
+def coupling_nodes(case: CoupledCase) -> list[dict]:
+    """Ordered coupling nodes (preCICE vertices and MBDyn external-force nodes), blade by blade.
+
+    ``split_rigid`` (records before 2026-11-12): the two body nodes per blade, one rigidly coupled
+    DUST lifting line per segment. ``continuous_rbf``: massless nodes on a uniform spanwise grid placed
+    half a spacing either side of the hinge, each rigidly attached to its segment's body node; one
+    continuous DUST lifting line per blade is RBF-coupled to them, so no free vortices exist at the
+    hinge and only the elements within one spacing of the hinge blend the two segment motions.
+    """
+    g = case.geometry
+    if case.controls.aero_topology == "split_rigid":
+        return [{**bd, "dust_component": f"blade{bd['blade'] + 1}_{bd['segment']}", "body_label": bd["mbdyn_label"]}
+                for bd in bodies(case)]
+    d = rbf_node_spacing(case)
+    h = g.hinge_radius_m
+    k_lo = math.ceil((g.first_aero_radius_m - h) / d - 1.0)
+    k_hi = math.floor((g.last_aero_radius_m - h) / d)
+    nodes = []
+    for b in range(g.blade_count):
+        z = NODE_Z_OFFSET_M * b
+        rb = blade_frame(b, g.blade_count)
+        for i, k in enumerate(range(k_lo, k_hi + 1)):
+            r = h + (k + 0.5) * d
+            seg = "proximal" if r < h else "distal"
+            local = (0.0, r, z)
+            nodes.append({"blade": b, "segment": seg, "mbdyn_label": COUPLING_BASE + 100 * b + i,
+                          "dust_component": f"blade{b + 1}", "body_label": (PROX if seg == "proximal" else DIST) + b,
                           "local": local, "global": matvec(rb, local)})
     return nodes
+
+
+def blade_sections(case: CoupledCase) -> tuple[SegmentSection, ...]:
+    """Canonical stations only (no hinge-interpolated section) for one continuous lifting line."""
+    g = case.geometry
+    seen, out = set(), []
+    for s in (*g.proximal_sections, *g.distal_sections):
+        if s.source == "station" and s.radius_m not in seen:
+            seen.add(s.radius_m)
+            out.append(s)
+    return tuple(sorted(out, key=lambda s: s.radius_m))
+
+
+def _distal_pose(case: CoupledCase, rb, local):
+    """Initial global position, orientation, velocity and spin of a point fixed to the distal body."""
+    g, m, w = case.geometry, case.mechanics, case.omega_rad_s
+    hinge = matvec(rb, (0.0, g.hinge_radius_m, local[2]))
+    rel = matvec(rot_z(m.initial_fold_rad), [a - c for a, c in zip(matvec(rb, local), hinge)])
+    pos = tuple(c + r for c, r in zip(hinge, rel))
+    vel = (-w * pos[1] - m.initial_rate_rad_s * rel[1], w * pos[0] + m.initial_rate_rad_s * rel[0], 0.0)
+    return pos, matmul(rot_z(m.initial_fold_rad), rb), vel, w + m.initial_rate_rad_s
 
 
 def _allocate_elements(sections: tuple[SegmentSection, ...], total: int) -> list[int]:
@@ -71,12 +131,16 @@ def _allocate_elements(sections: tuple[SegmentSection, ...], total: int) -> list
     return [a + e for a, e in zip(base, extra)]
 
 
-def dust_component(case: CoupledCase, node: dict, sections, *, coupled: bool, airfoil_file: str) -> str:
-    counts = _allocate_elements(sections, case.controls.elements_per_segment)
+def dust_component(case: CoupledCase, node: dict, sections, *, coupled: bool, airfoil_file: str,
+                   nodes_file: str | None = None, elements: int | None = None) -> str:
+    counts = _allocate_elements(sections, elements or case.controls.elements_per_segment)
     lines = ["! PyFoldable generated lifting-line segment (quarter-chord line, body frame:",
              "! x chord LE->TE, y span, z lift normal; twist about the quarter-chord line)",
              "mesh_file_type = parametric", "el_type = l"]
-    if coupled:
+    if coupled and nodes_file:
+        lines += ["coupled = T", "coupling_type = rbf", f"coupling_node_file = {nodes_file}",
+                  "coupling_node_orientation = (/ 1.0,0.0,0.0, 0.0,1.0,0.0, 0.0,0.0,1.0 /)"]
+    elif coupled:
         lines += ["coupled = T", "coupling_type = rigid",
                   f"coupling_node = (/ {_vec(node['local'])} /)",
                   "coupling_node_orientation = (/ 1.0,0.0,0.0, 0.0,1.0,0.0, 0.0,0.0,1.0 /)"]
@@ -114,8 +178,11 @@ def dust_references(case: CoupledCase, *, coupled: bool) -> str:
 
 
 def dust_pre(case: CoupledCase) -> str:
-    lines = []
+    lines, seen = [], set()
     for node in coupling_nodes(case):
+        if node["dust_component"] in seen:
+            continue
+        seen.add(node["dust_component"])
         lines += [f"comp_name = {node['dust_component']}",
                   f"geo_file = ./comps/{node['dust_component']}.in",
                   f"ref_tag = Blade{node['blade'] + 1}", ""]
@@ -161,7 +228,9 @@ def mbdyn_model(case: CoupledCase, *, aero: bool = True) -> str:
     n = g.blade_count
     w = case.omega_rad_s
     latch = m.release_time_s > 0.0
-    joints = 2 + 3 * n + (n if latch else 0)
+    cnodes = coupling_nodes(case)
+    extra = cnodes if c.aero_topology == "continuous_rbf" else []
+    joints = 2 + 3 * n + (n if latch else 0) + len(extra)
     L = ["# PyFoldable generated MBDyn model: prescribed shaft speed, rigid proximal/distal segments,",
          "# ideal in-plane fold hinge (axis parallel to shaft), spring/damper/unilateral stop law.",
          "begin: data;", "  problem: initial value;", "end: data;", "",
@@ -176,23 +245,27 @@ def mbdyn_model(case: CoupledCase, *, aero: bool = True) -> str:
          # 3e-3 N m at 5 deg azimuth steps. Constraint reactions show a decaying start/release transient.
          f"  method: ms, {_r(c.mbdyn_spectral_radius)}, {_r(c.mbdyn_spectral_radius)};",
          "  output: iterations;", "end: initial value;", "",
-         "begin: control data;", f"  structural nodes: {2 + 2 * n};", f"  rigid bodies: {1 + 2 * n};",
+         "begin: control data;", f"  structural nodes: {2 + 2 * n + len(extra)};", f"  rigid bodies: {1 + 2 * n};",
          f"  joints: {joints};", *(["  forces: 1;"] if aero else []), "  default orientation: orientation vector;",
          "  default output: all;", "end: control data;", "",
          "begin: nodes;",
          f"  structural: {GROUND}, static, null, eye, null, null;",
          f"  structural: {HUB}, dynamic, null, eye, null, 0., 0., {_r(w)};"]
-    hinge_pts = {}
-    for node in coupling_nodes(case):
+    hinge_pts, poses = {}, {}
+    for node in bodies(case) + extra:
         b = node["blade"]
         rb = blade_frame(b, n)
-        pos = node["global"]
-        vel = (-w * pos[1], w * pos[0], 0.0)
         if node["segment"] == "proximal":
-            rot, wz = rb, w
+            pos, rot, wz = node["global"], rb, w
+            vel = (-w * pos[1], w * pos[0], 0.0)
         else:
-            rot, wz = matmul(rot_z(m.initial_fold_rad), rb), w + m.initial_rate_rad_s
-            hinge_pts[b] = pos
+            pos, rot, vel, wz = _distal_pose(case, rb, node["local"])
+            if node["mbdyn_label"] == DIST + b:
+                hinge_pts[b] = pos
+        poses[node["mbdyn_label"]] = pos
+        # continuous_rbf coupling nodes are dynamic (MBDyn's external structural force with accelerations
+        # rejects static nodes) but have no body element and are fully constrained to their segment's body
+        # node by a total joint: they add no mass and only carry the exchanged loads.
         L.append(f"  structural: {node['mbdyn_label']}, dynamic, {_vec(pos)}, matr, {fmt_matrix_rowwise(rot)}, "
                  f"{_vec(vel)}, 0., 0., {_r(wz)};")
     L += ["end: nodes;", "", "begin: elements;",
@@ -242,12 +315,20 @@ def mbdyn_model(case: CoupledCase, *, aero: bool = True) -> str:
                   "      position orientation, reference, global, eye, rotation orientation, reference, node, eye,",
                   "    position constraint, inactive, inactive, inactive, null,",
                   f"    orientation constraint, inactive, inactive, active, component, 0., 0., {_r(m.initial_fold_rad)};"]
-    labels = ", ".join(str(nd["mbdyn_label"]) for nd in coupling_nodes(case))
+    for nd in extra:
+        L += [f"  joint: {nd['mbdyn_label']}, total joint,",
+              f"    {nd['body_label']}, position, reference, global, {_vec(poses[nd['mbdyn_label']])},",
+              "      position orientation, reference, global, eye, rotation orientation, reference, global, eye,",
+              f"    {nd['mbdyn_label']}, position, reference, node, null,",
+              "      position orientation, reference, global, eye, rotation orientation, reference, global, eye,",
+              "    position constraint, active, active, active, null,",
+              "    orientation constraint, active, active, active, null;"]
+    labels = ", ".join(str(nd["mbdyn_label"]) for nd in cnodes)
     if aero:
         L += ["", f"  force: {F_AERO}, external structural,",
               "    socket, create, yes, path, \"$MBSOCK\", no signal,",
               "    coupling, tight,", "    sorted, yes,", "    orientation, orientation vector,",
-              "    accelerations, yes,", f"    {2 * n}, {labels};"]
+              "    accelerations, yes,", f"    {len(cnodes)}, {labels};"]
     L += ["end: elements;", ""]
     return "\n".join(L)
 
@@ -338,10 +419,20 @@ def generate_deck(case: CoupledCase, c81_text: str, *, coupled: bool = True) -> 
              "dust/dust_pre.in": dust_pre(case),
              "dust/dust.in": dust_main(case, coupled=coupled),
              "dust/References.in": dust_references(case, coupled=coupled)}
-    for node in coupling_nodes(case):
-        g = case.geometry
-        sections = g.proximal_sections if node["segment"] == "proximal" else g.distal_sections
-        files[f"dust/comps/{node['dust_component']}.in"] = dust_component(case, node, sections, coupled=coupled, airfoil_file=airfoil)
+    g = case.geometry
+    if case.controls.aero_topology == "split_rigid":
+        for node in coupling_nodes(case):
+            sections = g.proximal_sections if node["segment"] == "proximal" else g.distal_sections
+            files[f"dust/comps/{node['dust_component']}.in"] = dust_component(case, node, sections, coupled=coupled, airfoil_file=airfoil)
+    else:
+        nodes = coupling_nodes(case)
+        for b in range(g.blade_count):
+            own = [nd for nd in nodes if nd["blade"] == b]
+            # DUST reads "x y z" per line in the component (blade) frame
+            files[f"dust/comps/blade{b + 1}_nodes.in"] = "".join(" ".join(_r(v) for v in nd["local"]) + "\n" for nd in own)
+            files[f"dust/comps/blade{b + 1}.in"] = dust_component(
+                case, own[0], blade_sections(case), coupled=coupled, airfoil_file=airfoil,
+                nodes_file=f"./comps/blade{b + 1}_nodes.in", elements=2 * case.controls.elements_per_segment)
     if coupled:
         files["structure/rotor.mbd"] = mbdyn_model(case)
         files["structure/adapter_config.json"] = json.dumps(adapter_config(case), indent=2, sort_keys=True) + "\n"
@@ -364,4 +455,4 @@ def write_deck(root: Path, files: dict[str, str]) -> None:
 def run_definition(case: CoupledCase, deck: dict, extra: dict) -> dict:
     return {"schema_version": SCHEMA_VERSION, "artifact_class": "pyfoldable_coupled_run_definition",
             "model_id": MODEL_ID, "case": case.as_dict(), "coupling_nodes": coupling_nodes(case),
-            "deck": deck_manifest(deck), **extra}
+            "bodies": bodies(case), "deck": deck_manifest(deck), **extra}

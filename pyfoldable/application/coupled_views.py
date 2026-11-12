@@ -99,6 +99,9 @@ def iterations_figure(row):
     return _layout(fig, "İterasyon", height=220)
 
 
+_SEG_NAMES = {"proximal": "iç parça", "distal": "dış parça", "junction": "menteşe geçiş elemanı"}
+
+
 def radial_rows(row, window):
     cols = row["radial_columns"]
     return [dict(zip(cols, rec)) for rec in row["radial"] if rec[0] == window]
@@ -107,12 +110,13 @@ def radial_rows(row, window):
 def radial_figure(rows, field, label):
     fig = go.Figure()
     for (blade, seg), color in (((0, "proximal"), "#008579"), ((0, "distal"), "#DC671D"),
-                                ((1, "proximal"), "#5BB5A9"), ((1, "distal"), "#F0A672")):
+                                ((1, "proximal"), "#5BB5A9"), ((1, "distal"), "#F0A672"),
+                                ((0, "junction"), "#6B6B6B"), ((1, "junction"), "#A3A3A3")):
         pts = [r for r in rows if r["blade"] == blade and r["segment"] == seg]
         if pts:
             fig.add_trace(go.Scatter(x=[1000 * r["span_y_m"] for r in pts], y=[r[field] for r in pts],
                                      mode="lines+markers", line=dict(color=color, width=2),
-                                     name=f"Kanat {blade + 1} · {'iç' if seg == 'proximal' else 'dış'} parça"))
+                                     name=f"Kanat {blade + 1} · {_SEG_NAMES[seg]}"))
     fig.update_layout(height=280, margin=dict(l=55, r=20, t=24, b=45),
                       legend=dict(orientation="h", x=0, y=-.25, xanchor="left", yanchor="top"))
     fig.update_xaxes(title="Gövde ekseninde açıklık konumu (açık geometri) [mm]")
@@ -133,12 +137,15 @@ def _section_loop(foil, n=24):
 
 
 def segment_meshes(row, n_loop=24):
-    """Body-frame vertices/faces per coupling node (open geometry, quarter-chord stacking)."""
+    """Body-frame vertices/faces per rigid segment (open geometry, quarter-chord stacking).
+
+    Records with ``bodies`` (continuous_rbf) place one surface per MBDyn body node; earlier records
+    used the coupling nodes, which were the body nodes."""
     case = row["run_definition"]["case"]
     foil = load_project_airfoil(case["geometry"]["profile"])
     loop = _section_loop(foil, n_loop)
     meshes = []
-    for node in row["run_definition"]["coupling_nodes"]:
+    for node in row["run_definition"].get("bodies") or row["run_definition"]["coupling_nodes"]:
         sections = case["geometry"]["proximal_sections" if node["segment"] == "proximal" else "distal_sections"]
         verts, faces = [], []
         for s in sections:
@@ -184,7 +191,7 @@ def playback_figure(row, max_frames=90):
             i, j, k = zip(*mesh["faces"])
             x, y, z = zip(*[tuple(1000 * c for c in p) for p in w])
             out.append(go.Mesh3d(x=x, y=y, z=z, i=i, j=j, k=k, color=_SEGMENT_COLORS[mesh["node"]["segment"]],
-                                 flatshading=True, name=mesh["node"]["dust_component"], showlegend=False,
+                                 flatshading=True, name=f"blade{mesh['node']['blade'] + 1}_{mesh['node']['segment']}", showlegend=False,
                                  lighting=dict(ambient=.8, diffuse=.6)))
         return out
 

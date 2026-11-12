@@ -147,7 +147,11 @@ hinge with declared spring/damper/penalty-stop law; every accepted window is aud
 against the admitted polar envelope; failed, unconverged, uncovered, cancelled or
 timed-out runs keep only a labelled valid prefix. Genuine coupled runs with hinge
 release, stop contact and rebound were executed (run ledger in the
-[handoff](handoffs/coupled-dust-mbdyn-precice-20261112.md)). The retained 800 mm table
+[handoff](handoffs/coupled-dust-mbdyn-precice-20261112.md)). The earlier post-release thrust
+rise was traced to free vortices at the hinge between per-segment lifting lines; the default
+aerodynamic topology is now one continuous lifting line per blade with RBF coupling
+(`continuous_rbf`); earlier records restore as `split_rigid`. Open: the rbf route sits ≈ 1.4 %
+below standalone DUST thrust for the same line. The retained 800 mm table
 supports only small releases; spin-up and folded starts are not covered. ADR-010 is
 proposed, not accepted. `physical_qualification` remains false. Design and limits:
 [coupled dynamic analysis](../coupled_dynamic_analysis.md).

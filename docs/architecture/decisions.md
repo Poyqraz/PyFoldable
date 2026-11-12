@@ -279,7 +279,10 @@ application never imports solver bindings; without the operator toolchain manife
 route reports "not installed" and nothing else changes. Structural model: prescribed
 constant shaft speed, rigid proximal and distal segments, ideal in-plane revolute fold
 hinge with a declared spring/damper/penalty-stop law, optional release latch.
-Aerodynamics: DUST lifting line with C81 tables written from the admitted cells without
+Aerodynamics: one continuous DUST lifting line per blade, RBF-coupled to massless MBDyn
+nodes rigidly attached to both segments (per-segment lifting lines left a spurious vortex
+pair at the hinge at any non-zero fold; kept only as `split_rigid` for restoring earlier
+records), with C81 tables written from the admitted cells without
 modification; every accepted window is audited against the admitted envelope (DUST
 aborts outside α/Mach but extrapolates in Re). Coupling: preCICE serial-implicit with
 Aitken; unconverged, uncovered, failed, cancelled or timed-out runs keep only a labelled

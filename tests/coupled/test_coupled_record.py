@@ -13,14 +13,30 @@ from pyfoldable.application import coupled_analysis as svc
 from pyfoldable.coupled import postprocess
 from pyfoldable.coupled.postprocess import digest
 
-FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "coupled" / "release_30w"
+FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "coupled"
+FIXTURE = FIXTURES / "release_30w"            # split_rigid topology (records before the continuous line)
+FIXTURE_RBF = FIXTURES / "release_30w_rbf"    # continuous_rbf topology (default)
+
+
+def _copy(tmp_path, src):
+    dst = tmp_path / "run"
+    shutil.copytree(src, dst)
+    return dst
+
+
+@pytest.fixture(params=[FIXTURE, FIXTURE_RBF], ids=["split_rigid", "continuous_rbf"])
+def run(tmp_path, request):
+    return _copy(tmp_path, request.param)
 
 
 @pytest.fixture()
-def run(tmp_path):
-    dst = tmp_path / "run"
-    shutil.copytree(FIXTURE, dst)
-    return dst
+def legacy_run(tmp_path):
+    return _copy(tmp_path, FIXTURE)
+
+
+@pytest.fixture()
+def rbf_run(tmp_path):
+    return _copy(tmp_path, FIXTURE_RBF)
 
 
 def _build(run, outcome="finished"):
@@ -96,8 +112,8 @@ def test_resealed_contradictions_are_rejected(run, mutate, message):
         svc.read_saved_coupled_result(_bytes(_reseal(row)))
 
 
-def test_legacy_record_without_later_control_restores_but_unknown_omission_is_rejected(run):
-    row = _build(run)
+def test_legacy_record_without_later_control_restores_but_unknown_omission_is_rejected(legacy_run):
+    row = _build(legacy_run)
     assert "vortex_stretching" not in row["request"]["controls"]  # fixture predates the control
     svc.read_saved_coupled_result(_bytes(row))
     tampered = json.loads(json.dumps(row))
@@ -106,6 +122,50 @@ def test_legacy_record_without_later_control_restores_but_unknown_omission_is_re
     req["request_sha256"] = digest({k: v for k, v in req.items() if k != "request_sha256"})
     with pytest.raises(ValueError, match="legacy meaning"):
         svc.read_saved_coupled_result(_bytes(_reseal(tampered)))
+
+
+def test_continuous_rbf_record_reduces_dust_loads_and_keeps_only_body_states(rbf_run):
+    """Real DUST rbf output: the independent RBF reduction closes on the exchanged node loads, the hinge
+    moment sums the distal-segment nodes, and the record keeps MBDyn states of hub and body nodes only
+    (coupling-node kinematics are already in the exchanged window data)."""
+    row = _build(rbf_run)
+    assert row["request"]["controls"]["aero_topology"] == "continuous_rbf"
+    nodes = row["run_definition"]["coupling_nodes"]
+    assert len(nodes) > 4 and len({n["dust_component"] for n in nodes}) == 2
+    checks = {c["name"]: c for c in row["checks"]}
+    assert checks["load_transfer_moment_relative"]["value"] < 1e-5
+    assert {r[2] for r in row["radial"]} == {"proximal", "distal", "junction"}
+    labels = {int(k) for k in row["node_states"][-1]["nodes"]}
+    assert labels == {1, 2, 100, 101, 200, 201}
+    w = row["window_exchange"][10]
+    hinge = row["node_states"][11]["nodes"]["200"]["x"]
+    m_h = sum(w["moment"][i][2] + (w["position"][i][0] - hinge[0]) * w["force"][i][1]
+              - (w["position"][i][1] - hinge[1]) * w["force"][i][0]
+              for i, n in enumerate(nodes) if n["blade"] == 0 and n["segment"] == "distal")
+    assert row["series"][10]["hinge_aero_torque_nm"][0] == pytest.approx(m_h, abs=1e-12)
+
+
+def test_saved_coupling_nodes_must_match_the_regenerated_case(run):
+    row = _build(run)
+    tampered = json.loads(json.dumps(row))
+    node = next(n for n in tampered["run_definition"]["coupling_nodes"] if n["segment"] == "distal")
+    node["segment"] = "proximal"
+    with pytest.raises(ValueError, match="coupling nodes"):
+        svc.read_saved_coupled_result(_bytes(_reseal(tampered)))
+
+
+def test_result_size_estimate_bounds_recorded_runs_and_rejects_oversized_runs(run):
+    from pyfoldable.coupled import deck as deckmod
+    from pyfoldable.coupled.model import CoupledCase
+    row = _build(run)
+    case = svc.case_from_record(row)
+    assert svc.estimated_result_bytes(case) >= len(_bytes(row))
+    long_case = svc.case_from_record(row, duration_s=2.0)
+    assert svc.estimated_result_bytes(long_case) > svc.MAX_COUPLED_RESULT_BYTES
+    with pytest.raises(svc.CoupledPreparationError) as err:
+        svc.check_result_budget(long_case)
+    assert err.value.code == "result_too_large"
+    svc.check_result_budget(case)
 
 
 def test_altered_mechanics_or_table_is_rejected_even_when_digests_are_resealed(run):
