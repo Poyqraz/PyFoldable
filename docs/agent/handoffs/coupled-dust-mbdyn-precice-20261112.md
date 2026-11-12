@@ -245,8 +245,29 @@ Fully deployed BEM route unchanged: the UI reproduced 43.647 N / 3.277 N m / 823
 lowest tested start 1600 RPM.
 * Evidence: `reports/coupled_deploy_polars_20261112/`, `reports/coupled_deployment_20261112/`.
 
+## Engineering-use increment (after `306d5b8`)
+
+* `pyfoldable/coupled/assessment.py`: contact events (impact energy vs centrifugal bound, contact
+  impulse balance, apparent restitution, peak stop torque vs penalty estimate), shaft angular-momentum
+  exchange, output classes; UI tab *Mühendislik değerlendirmesi*; envelope caption and refusal now say
+  the −23° limit is the aerodynamic representation's, not the mechanism's travel
+  (`coupled_ui.envelope_caption`). Tests: `tests/coupled/test_coupled_assessment.py`, UI tests.
+* Evidence `reports/coupled_engineering_20261113/`: contact impulse balance 0.03–0.11 %, energy ratio
+  0.85–0.95, shaft momentum balance ≤ 0.6 % (2.6 % with speed change), swing impulse reported apart
+  from the contact impulse (∝ 1 + e, now illustrative), contact 10 windows ≈ 1.74 ms, peak drive
+  ≈ 1.9 × impulse / duration (§13's "one step" wording corrected; time-step dependence untested);
+  1600 RPM cell: |Δcl| ≤ 0.033 incl. the run's own angles, first-order thrust change 0.13 N with
+  induction frozen (direct XFOIL, diagnostic). Independent review findings applied.
+* Plan: `docs/prototype_measurement_plan.md`. No new coupled runs.
+
 ## Next concrete items
 
+00. (After the engineering-use increment) Measurements first: priorities 1–3 of
+   `docs/prototype_measurement_plan.md` (m·c_g, stop law and travel, hinge friction), then rerun the
+   existing cases with declared hardware properties. Modelling work that does not need hardware: a
+   compliant drive model (rotor inertia, shaft stiffness, speed controller), a hinge friction law, and
+   the sweep/junction verification needed before any fold beyond −23° (§14), and a time-step
+   refinement of one deployment (e.g. 1.25° steps) to show whether contact peaks depend on the step.
 0. Deployment (updated after the deployment polar increment): releases to the geometry envelope at
    2400 RPM and from ramps starting at 1600 RPM run inside attached-flow data. What remains is not
    more XFOIL: spin-up from rest and starts below ≈ 1500 RPM put the root below α −6° (−11.6° at

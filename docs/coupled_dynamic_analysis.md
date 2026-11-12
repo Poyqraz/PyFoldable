@@ -507,9 +507,12 @@ close to ≤ 6.5e-6 relative; hinge balance 1.0 %; contact resolved with 8.7 ste
 Folded −20° at 2200 RPM the rotor gives 22 N; first contact comes 3.6 ms after release; thrust then
 oscillates with the hinge (34 → 25 → 27 → 33 N) and settles with the ramp (36.6–37.6 N at 2400 RPM);
 the slipstream half a radius below the disk speeds up from 17.0 to 19.2 m/s with RPM. The prescribed
-(infinitely stiff) drive reacts the stop impact with drive-torque spikes up to 285 N·m at −20°: a
-consequence of prescribing speed (an impulse spread over one step, so its peak depends on the time
-step), not a shaft-load prediction.
+(infinitely stiff) drive reacts the stop impact with drive-torque spikes up to 285 N·m at −20°, not a
+shaft-load prediction. *Corrected 2026-11-13 (§14):* the spike is not an impulse in one step; it spans
+the whole stop contact (≈ 1.7 ms, 9–10 windows, set by the assumed stop stiffness and J_h), its time
+integral equals the distal segments' change of angular momentum about the shaft, and its peak is
+≈ 2 × that impulse / contact duration — so the peak scales with the assumed stop stiffness and the ideal
+drive; whether it also depends on the time step is untested.
 
 **RBF bias during motion.** The located rbf evaluation-point error scales with the body angular
 velocity of the distal elements, Ω + θ̇. At the peak opening rate it is up to 1.65 × its steady size
@@ -540,8 +543,8 @@ Re 165k–330k × Mach 0.10–0.31, where both C81 files interpolate the same si
 sensitivity. (2) Released from −22.5° at a constant 2400 RPM — the case that stopped at Mach 0.31
 from −20° — the rotor now deploys: tip Mach 0.342 and Re 352k in the swing (inside 0.36 / 400k),
 first contact 3.3 ms after release at θ̇ = 167 rad/s, rebound to −11.5°, −0.75° at the end of the run; thrust
-peaks at 48.8 N after release, and the prescribed drive reacts with up to 340 N·m (impulse
-artefact, as above). (3) Released from −20° at 1600 RPM during a 1600→2400 RPM ramp over 0.06 s:
+peaks at 48.8 N after release, and the prescribed drive reacts with up to 340 N·m (ideal drive and
+assumed stop stiffness, see §14). (3) Released from −20° at 1600 RPM during a 1600→2400 RPM ramp over 0.06 s:
 folded at 1600 RPM the rotor gives only 2.2 N at 14 m/s (latched-revolution mean; the run's lowest
 section α is −1.8°);
 contact after 5.0 ms at 94 rad/s, deepest rebound of all runs (−12.3°), then thrust follows the ramp
@@ -572,3 +575,89 @@ Margins are single runs (−22.5° at 2400 RPM: Mach 0.342 of 0.36, 5 %; the fol
 Not supported: spin-up from rest or below ≈ 1500 RPM (root α < −6°: −11.6° at 1200 RPM, ≈ −77° at
 rest; deep stall — needs data and a separately identified post-stall treatment, see the handoff),
 folds beyond −23° (lifting-line geometry), torque-driven shaft (no measured motor data).
+
+## 14. Engineering use of the results (2026-11-13)
+
+Which deployment outputs can be compared, which can support preliminary decisions and which remain
+illustrative. Evidence: `reports/coupled_engineering_20261113/` (all seven deployment records restored;
+no solver run). In the application: *Sonuçlar → Dinamik bağlaşık → Mühendislik değerlendirmesi*
+(`pyfoldable/coupled/assessment.py`).
+
+**Investigations chosen.** Three open questions decided whether the loads could inform mechanism
+sizing: (1) the stop contact (the pointwise hinge balance there is 16–19 %); (2) the drive-torque
+peaks; (3) the polar data under the 1600 RPM trajectory, which sits in an interpolation cell whose
+edge passes a non-converging XFOIL state; the table-swap control does not test that cell. All three
+were answered from retained records and direct diagnostic XFOIL calls; no new coupled run was needed.
+
+*Stop contact.* Over each whole contact interval the hinge angular-impulse balance
+J_h Δθ̇ = ∫ ΣM dt closes to 0.03–0.11 % in all six contacts. The 16–19 % pointwise residual comes from
+the central difference straddling the non-smooth penalty law, not from an unresolved contact. The
+apparent restitution is 0.514–0.523 against the declared 0.5. The impact kinetic energy ½ J_h θ̇² is
+0.85–0.95 of the centrifugal bound m Ω² r_h c_g (1 − cos θ₀): it is set by the static moment m·c_g,
+the speed, the hinge radius and the release angle, and is independent of J_h. Aerodynamics, damping
+and the ramp remove 5–15 %. The peak stop torque is 0.77–0.82 of the undamped penalty estimate
+|θ̇| √(k J_h), i.e. set by the assumed stop stiffness k and restitution.
+
+*Drive torque.* The net angular impulse (drive minus aerodynamic shaft torque) across the contact equals
+the distal segments' change of angular momentum about the shaft to 0.1–0.6 % at constant speed and on
+the 2200 RPM ramps (2.6 % on the 1600 RPM ramp, where the speed rises 11 RPM during contact and hub
+inertia is not in the balance): 0.066 N·m·s at −5°, 0.17–0.32 N·m·s at −15…−22.5°. This is the
+contact phase only: during the opening swing before it the drive delivers an impulse of the opposite
+sign (≈ Σ(J_h + m r_h c_g)θ̇ at contact), and the contact transfers ≈ (1 + e) times that, so the
+contact figure depends on the assumed restitution e while the swing figure does not; the app reports
+both. Every contact spans 10 windows, ≈ 1.74 ms (the undamped half-period π√(J_h/k) is 1.54 ms; set
+by k and J_h, not by the impact speed), and the peak drive torque is 1.87–1.96 × impulse / duration.
+Whether that peak also depends on the time step (≈ 8.7 steps per contact half-period) is untested: a
+step-refinement run is a next item. A real drive turns the impulses into speed changes ΔΩ ≈ ΔL / I_rotor
+and a torsional load set by shaft stiffness and controller. The peak (75–340 N·m) is a consequence of
+an infinitely stiff drive and the assumed stop.
+
+*Polar sensitivity of the 1600 RPM run.* Only proximal root elements enter the cell Re 100k–165k ×
+Mach 0.07–0.10 (448 of 864 windows, 1600–1954 RPM; α −1.83…−0.85°; 2.4 % of the element |dF_z| in
+those windows; all figures in `cell_polar_sensitivity.json`, diagnostic, not admitted). Direct XFOIL
+with the same executable and settings ran two sequences: the family's 2° sequence at
+Re 130k–160k × Mach 0.085–0.10 (tests the Re/Mach interpolation at the table's angle nodes; the
+non-converging points are at α = 6°) and the run's own angles −2…0° (tests the angle interpolation
+too; one point, α −2° at Mach 0.095/Re 135k, did not converge in that sequence, so convergence here
+depends on the sequence). The table differs from direct XFOIL by up to |Δcl| 0.033 and |Δcd| 0.0009 in
+the run's α range (the measured fact; the largest node deltas, 0.031–0.033, are at α −4 and 0°).
+Applying those worst-case deltas to every cell element of the worst window, with per-element strip
+widths and induction and wake frozen, changes thrust by 0.13 N (thrust 4.1 N there): a first-order
+estimate, not a bound. Cell elements are proximal, so the hinge moment changes only through induction,
+which this estimate leaves out. The 1600 RPM hinge response is therefore not polar-sensitive in this
+cell to first order; its folded-thrust value carries a few-percent interpolation uncertainty.
+
+**Classification (as shown in the application).**
+
+| Class | Outputs | Governed by |
+|---|---|---|
+| Comparative | settled and folded thrust, aerodynamic shaft torque, table coverage, trends between folds and ramps under the same assumptions | polar table, DUST lifting line (rbf bias ≈ −1.4 %, −13.75 % vs BEM, method difference), short windows |
+| Preliminary (sizing input once mechanics are measured) | impact energy and its ratio to the bound, impact rate, release-to-contact time, incoming hinge momentum J_hθ̇, shaft angular impulse during the opening swing, hinge-pin centrifugal load m Ω² r_cg (≈ 616 N open at 2400 RPM with the demonstration mass; stop-impact reaction and aerodynamics excluded) | m, c_g, J_h, Ω, r_h, θ₀ (scaling laws below) |
+| Illustrative | peak stop torque, rebound angle and rate, hinge momentum change and shaft angular impulse across the contact (∝ 1 + e), peak drive torque, contact duration | assumed stop stiffness and restitution; ideal prescribed drive |
+| Numerical check | contact impulse balance, shaft momentum balance, transfer closures, smooth-window hinge balance | — |
+
+Sensitivities d ln(output)/d ln(input) at the declared values (J_h is 75 % m c_g²): impact energy
+m 1, c_g 1, J_cg 0, Ω 2; impact rate m 0.12, c_g −0.25, J_cg −0.12, Ω 1; peak stop torque
+m 0.5, c_g 0.5, k 0.5; contact shaft impulse ≈ m 1.07, c_g 0.86, e 0.33, Ω 1 (approximate). Hinge
+friction is not modelled; a friction moment M_f removes ≈ M_f |θ₀| of impact energy (an assumed
+0.5 N·m at −20° would be ≈ 13 % of 1.34 J).
+
+**Fold limit versus mechanism travel.** −23° is the limit of the present aerodynamic representation
+with its chosen tolerances (junction chord ≤ 2 %, mid-distal sweep ≤ 25°). It says nothing about the
+physical mechanism's travel, which is not declared anywhere in the application. The chord tolerance
+alone would allow −36° (5 %) or −52° (10 %), but the envelope takes the stricter limit and the
+distal sweep reaches 25° at −30°, 35° at −42° and 45° at −54°: relaxing only the chord tolerance
+gives −30°. A lifting line with 2-D polars on a strongly swept, partly flow-aligned span is the real
+barrier. A credible extension needs (a) a sweep treatment verified
+against a higher-fidelity reference (panel or VLM distal segment in DUST, or CFD) at −30…−45°, (b) a
+junction model whose integrated error is shown by refinement (elements per segment 8 → 16 → 32 at fixed
+fold, locked), and (c) for deeper folds, post-stall section data, because the folded distal and the
+low-speed root leave α −6…8°.
+
+**What modelling can improve, and what needs hardware.** Modelling and numerics: sweep and junction
+verification and the refinement study above; a compliant drive model (rotor inertia, shaft torsional
+stiffness, speed controller) so peak torques become predictions given measured parameters; a
+friction law at the hinge; a smooth contact law. Hardware only: distal mass, centre of gravity and
+inertia; stop stiffness, restitution and travel; hinge friction and free play; motor torque–speed
+law, controller response and rotor/hub inertia; static spin-up loads for a post-stall identification.
+Plan: [prototype measurement plan](prototype_measurement_plan.md).

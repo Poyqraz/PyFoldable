@@ -173,7 +173,12 @@ NACA2412 family (`research_axial_800_deploy_xfoil_v3`, locally built XFOIL 6.99,
 Mach 0.07–0.36, same attached α −6…8°; two failed declarations retained) lets −22.5° at 2400 RPM and
 −20° released at 1600 RPM during a 1600→2400 ramp complete; the estimated (no-induction, untested)
 floor becomes ≈ 1500 RPM at 14 m/s, set by α. The user chooses between the two NACA2412 versions; the interpolation caveat is shown.
-Evidence: `reports/coupled_deploy_polars_20261112/`. ADR-010 is
+Evidence: `reports/coupled_deploy_polars_20261112/`. A *Mühendislik değerlendirmesi* result tab
+classifies each deployment output as comparative, preliminary (scales with declared mechanics),
+illustrative (assumed stop law, ideal drive) or a numerical check, with contact impulse/energy and shaft
+momentum checks (`pyfoldable/coupled/assessment.py`, `reports/coupled_engineering_20261113/`); the
+−23° fold limit is labelled as the aerodynamic representation's, not the mechanism's travel.
+Measurement plan: [prototype measurement plan](../prototype_measurement_plan.md). ADR-010 is
 proposed, not accepted. `physical_qualification` remains false. Design and limits:
 [coupled dynamic analysis](../coupled_dynamic_analysis.md).
 

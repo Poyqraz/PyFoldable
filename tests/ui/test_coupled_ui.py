@@ -130,7 +130,7 @@ def test_recorded_coupled_result_renders_every_view_and_survives_edits(tmp_path,
     # fixtures are shorter than one revolution: headline loads are labelled as last-window values
     labels = [m.label for m in at.metric]
     assert any(lbl.startswith("Son pencere") for lbl in labels) and not any("tam devir" in lbl for lbl in labels)
-    for tab in ("Menteşe", "Yükler", "Güç", "Kapsam ve yakınsama", "Radyal", "3B oynatma"):
+    for tab in ("Menteşe", "Yükler", "Güç", "Kapsam ve yakınsama", "Radyal", "3B oynatma", "Mühendislik değerlendirmesi"):
         at.radio(key="coupled_tab").set_value(tab).run()
         assert not at.exception, tab
     # a design edit never relabels or removes a history record opened from the archive
@@ -310,9 +310,34 @@ def test_drive_ramp_inputs_and_fold_envelope_refusal(tmp_path, monkeypatch):
     at.number_input(key="coupled_drive_rpm0").set_value(2200.0).run()
     assert not at.exception
     assert any("Motor yasası" in c.value for c in at.caption)  # the drive torque is an output of the prescribed history
+    # the limit belongs to the aerodynamic representation and its tolerances, not to the mechanism's travel
+    from pyfoldable.application import coupled_ui
+    text = coupled_ui.envelope_caption({"fold_limit_deg": -22.96, "limited_by": "junction_chord"},
+                                       {"reynolds_ok": True, "mach_ok": True, "alpha_ok": True})
+    assert "Aerodinamik temsil sınırı (katlanma): -23.0°" in text and "mekanizma stroku değildir" in text
     at.radio(key="coupled_drive_profile").set_value("constant").run()
     at.number_input(key="coupled_fold").set_value(-45.0).run()
-    assert any("geometri sınırının ötesinde" in w.value for w in at.warning)
+    assert any("geometri sınırının ötesinde" in w.value and "mekanizma stroku değildir" in w.value for w in at.warning)
+
+
+def test_engineering_assessment_tab_classifies_outputs(tmp_path, monkeypatch):
+    store(tmp_path, monkeypatch, PROJECT_AIRFOIL_IDS)
+    bem(monkeypatch)
+    _no_toolchain(monkeypatch, tmp_path)
+    _forbid_runs(monkeypatch)
+    row = _record(tmp_path, FIXTURE_RBF)
+    at = app()
+    at.session_state["research_coupled_results"] = ((json.dumps(row, sort_keys=True, separators=(",", ":")), False),)
+    at.session_state["_coupled_active"] = (None, row["result_sha256"])
+    go(at, "Sonuçlar")
+    at.radio(key="research_results_kind").set_value("Dinamik bağlaşık").run()
+    at.radio(key="coupled_tab").set_value("Mühendislik değerlendirmesi").run()
+    assert not at.exception
+    table = at.dataframe[0].value
+    assert {"Ön karar", "Gösterim", "Sayısal denetim"} <= set(table["Sınıf"])
+    assert "Stop çarpma enerjisi ½J_hθ̇²" in set(table["Çıktı"]) and "Tepe tahrik torku" in set(table["Çıktı"])
+    text = " ".join(c.value for c in at.caption) + " ".join(m.value for m in at.markdown)
+    assert "gösterim varsayımı" in text and "itme dengesi" in text
 
 
 def test_low_speed_trajectory_refusal_is_explained(tmp_path, monkeypatch):

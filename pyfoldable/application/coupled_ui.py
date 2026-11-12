@@ -48,7 +48,8 @@ _PREP_TEXT = {
     "unsupported_blade_count": "bu sürüm 1–4 kanadı destekler.",
     "toolchain_invalid": "araç zinciri bildirimi doğrulanamadı.",
     "fold_outside_geometry_envelope": "başlangıç katlanması sürekli kaldırma çizgisinin geometri sınırının ötesinde "
-                                      "(RBF menteşe geçişi ve dış parça süpürmesi); daha küçük bir açı seçin.",
+                                      "(RBF menteşe geçişi ve dış parça süpürmesi); daha küçük bir açı seçin. Bu, "
+                                      "aerodinamik temsilin seçilen toleranslarla sınırıdır, mekanizma stroku değildir.",
     "outside_admitted_reynolds": "planlanan devir aralığı saklanan polar verisinin Reynolds aralığından çıkıyor; "
                                  "düşük devirli kalkış bu veriyle desteklenmez.",
     "outside_admitted_mach": "planlanan devir/katlanma aralığı saklanan polar verisinin Mach aralığından çıkıyor.",
@@ -236,12 +237,7 @@ def render_analysis(active, family, readiness_status, repository, root: Path):
     from pyfoldable.coupled import envelope as envmod
     fe = envmod.fold_envelope(prep.case)
     appl = svc.trajectory_applicability(prep.case, env)
-    st.caption(f"Katlanma geometri sınırı: {fe['fold_limit_deg']:.1f}° "
-               f"({'RBF menteşe geçişinde kiriş kısalması ≤ %2' if fe['limited_by'] == 'junction_chord' else 'dış parça süpürmesi ≤ 25°'}); "
-               "bu sınırın ötesindeki pencereler geçerli öneki sonlandırır. Yörünge (başlangıç devrinden tasarım devrine, "
-               "başlangıç katlanmasından açığa) için indüksiyonsuz durum: Re "
-               f"{'tablo içinde' if appl['reynolds_ok'] else 'tablo dışında'} · Mach {'tablo içinde' if appl['mach_ok'] else 'tablo dışında'}"
-               f" · α {'tablo içinde' if appl['alpha_ok'] else 'tablo dışında olabilir (indüksiyon değiştirir; çalışma denetler)'}.")
+    st.caption(envelope_caption(fe, appl))
     sw = appl.get("swing")
     if sw and not (sw["mach_ok"] and sw["reynolds_ok"]):
         st.warning(f"Açılma salınımı uyarısı: dış parça en çok ≈ {appl['fold_rate_bound_rad_s']:.0f} rad/s ile öne savrulabilir "
@@ -409,7 +405,7 @@ def render_result(row, *, imported=False, root: Path | None = None):
         _details(row)
         return
     tab = rui._choice(st.radio, "Grafik", ("Menteşe", "Yükler", "Güç", "Kapsam ve yakınsama", "Radyal", "3B oynatma",
-                                           "Akış ve tepki"),
+                                           "Akış ve tepki", "Mühendislik değerlendirmesi"),
                       key="coupled_tab", default="Menteşe", horizontal=True)
     if tab == "Menteşe":
         rui._plot(views.time_figure(row, (("theta_deg", "θ"),), "Katlanma açısı θ [°]", per_blade=True), "coupled_theta")
@@ -446,6 +442,8 @@ def render_result(row, *, imported=False, root: Path | None = None):
             st.dataframe(rows, hide_index=True, use_container_width=True)
     elif tab == "Akış ve tepki":
         _flow_tab(row, root)
+    elif tab == "Mühendislik değerlendirmesi":
+        _assessment_tab(row)
     else:
         fig = views.playback_figure(row)
         if fig is not None:
@@ -453,6 +451,65 @@ def render_result(row, *, imported=False, root: Path | None = None):
         st.caption("Kabul edilen MBDyn durumlarında rijit parça yüzeyleri (katalog kesiti, beyan edilen istasyonlar). "
                    "Basınç veya gerilme alanı çözülmediği için gösterilmez. 3B için WebGL gerekir.")
     _details(row)
+
+
+def envelope_caption(fe, appl) -> str:
+    """Fold limit of the aerodynamic representation (not the mechanism's travel) and the trajectory check."""
+    reason = "RBF menteşe geçişinde kiriş kısalması ≤ %2" if fe["limited_by"] == "junction_chord" else "dış parça süpürmesi ≤ 25°"
+    return (f"Aerodinamik temsil sınırı (katlanma): {fe['fold_limit_deg']:.1f}° ({reason}); bu, sürekli kaldırma "
+            "çizgisinin seçilen toleranslarla sınırıdır, mekanizma stroku değildir. Bu sınırın ötesindeki pencereler geçerli "
+            "öneki sonlandırır. Yörünge (başlangıç devrinden tasarım devrine, başlangıç katlanmasından açığa) için "
+            f"indüksiyonsuz durum: Re {'tablo içinde' if appl['reynolds_ok'] else 'tablo dışında'} · Mach "
+            f"{'tablo içinde' if appl['mach_ok'] else 'tablo dışında'} · α "
+            f"{'tablo içinde' if appl['alpha_ok'] else 'tablo dışında olabilir (indüksiyon değiştirir; çalışma denetler)'}.")
+
+
+_CLASS_LABEL = {"comparative": "Karşılaştırmalı", "preliminary": "Ön karar", "illustrative": "Gösterim",
+                "numerical_check": "Sayısal denetim"}
+
+
+def _num(value):
+    if value is None:
+        return "—"
+    mag = abs(value)
+    text = f"{value:.1f}" if mag >= 100 else f"{value:.3f}" if mag >= 1 else f"{value:.4g}"
+    return text.replace(".", ",")
+
+
+def _assessment_tab(row):
+    """What this record can support: comparative, preliminary (scales with declared mechanics), illustrative."""
+    from pyfoldable.coupled import assessment
+    rows = assessment.output_classes(row)
+    st.markdown("**Bu kayıt neyi destekler?** Her çıktı, onu neyin belirlediğine göre sınıflandırılır. "
+                "Fiziksel nitelendirme yoktur; sınıflar sayısal ve model güvenilirliğini ayırır.")
+    if row["request"]["mechanics"]["declaration_kind"] == "demonstration_assumption":
+        st.caption("Mekanik girdiler gösterim varsayımıdır: “Ön karar” satırları ölçeklenme ilişkisini ve büyüklük "
+                   "mertebesini gösterir; boyutlandırma değeri için ölçülmüş kütle, kütle merkezi, atalet, stop ve tahrik "
+                   "özellikleri gerekir (ölçüm planı: docs/prototype_measurement_plan.md).")
+    if not rows:
+        st.info("Bu kayıtta değerlendirilecek geçerli pencere yok.")
+        return
+    st.dataframe([{"Çıktı": r["label"], "Değer": _num(r["value"]), "Birim": r["unit"], "Sınıf": _CLASS_LABEL[r["class"]],
+                   "Belirleyen": r["governed_by"]} for r in rows], hide_index=True, use_container_width=True)
+    st.caption(" · ".join(f"**{_CLASS_LABEL[k]}:** {v.split(': ', 1)[1]}" for k, v in assessment.CLASSES.items()))
+    ev = assessment.contact_events(row)
+    sh = assessment.shaft_exchange(row)
+    if ev:
+        e = ev[0]
+        res = e["impulse_balance_relative_residual"]
+        resolved = res is not None and res < 0.02
+        st.caption(f"Temas boyunca itme dengesi J_hΔθ̇ = ∫ΣM dt kalıntısı {_num(res)} (kanat 1). "
+                   + ("Noktasal temas fazı kalıntısı ise merkezi farkı türevlenemeyen stop yasasının sıçraması üzerinden "
+                      "aldığı için büyük olabilir; itme dengesi temasın bu kayıtta çözüldüğünü gösterir. " if resolved else
+                      "İtme dengesi de büyük: temas fazı bu kayıtta yetersiz çözülmüş olabilir; temas yüklerini kullanmayın. ")
+                   + f"Çarpma enerjisi merkezkaç sınırının {_num(e['energy_ratio'])} katı: enerji J_h’den bağımsızdır, "
+                   "statik moment m·c_g ve Ω belirler.")
+    if sh:
+        st.caption(f"Açılma salınımında mile {_num(sh['swing_impulse_n_m_s'])} N·m·s ({_num(sh['swing_duration_s'] * 1000)} ms), "
+                   f"temas boyunca {_num(sh['angular_impulse_n_m_s'])} N·m·s ({_num(sh['exchange_duration_s'] * 1000)} ms; "
+                   f"eşdeğer ortalama {_num(sh['equivalent_mean_torque_nm'])} N·m) açısal itme aktarılır; ikisi zıt işaretlidir. "
+                   "Tepe tahrik torku sonsuz rijit öngörülen devrin ve varsayılan stopun sonucudur; gerçek tahrikte bu itmeler, "
+                   "rotor ataleti ve mil burulma rijitliğine göre devir değişimine ve burulma yüküne dönüşür.")
 
 
 FLOW_CACHE = "_coupled_flow_cache"
