@@ -250,6 +250,28 @@ def _archive(row) -> bytes:
     return cache[key]
 
 
+def _xz_export(col, row, name):
+    """Denser .json.xz archive, encoded only on request (seconds) and kept for this record."""
+    cache = st.session_state.setdefault("_coupled_xz_cache", {})
+    key = row["result_sha256"]
+    if key not in cache:
+        slot = col.empty()  # the request button disappears in the same run once the archive exists
+        if slot.button("Daha küçük arşivi hazırla (.json.xz)", key="coupled_prepare_xz",
+                       help="Aynı mühürlü kaydın kayıpsız xz hâli; gzip’ten ~%20 küçük. Hazırlanması birkaç saniye sürer."):
+            with st.spinner("xz arşivi hazırlanıyor…"):
+                cache.clear()
+                cache[key] = svc.record_xz_bytes(row)
+            slot.empty()
+        else:
+            return
+    data = cache[key]
+    col.download_button("Sıkıştırılmış kayıt (.json.xz)", data, name + ".json.xz", "application/x-xz")
+    limit = _rui().restore_upload_limit_bytes()
+    col.caption(f".json.xz {len(data) / 1e6:.2f} MB · yükleme sınırı {limit / 2**20:.0f} MB (sunucu ayarı)"
+                + (" · yüklenebilir" if _rui().restore_archive_fits(len(data))
+                   else " · sınırı aşıyor: yerel çalıştırma klasöründen açın"))
+
+
 def save(row, *, imported=False):
     history = st.session_state.setdefault(HISTORY, ())
     if any(json.loads(raw)["result_sha256"] == row["result_sha256"] for raw, _ in history):
@@ -326,6 +348,7 @@ def render_result(row, *, imported=False):
     a.download_button("Sonuç JSON’u", views.saved_json(row), name + ".json", "application/json")
     a.download_button("Sıkıştırılmış kayıt (.json.gz)", _archive(row), name + ".json.gz", "application/gzip",
                       help="Aynı mühürlü kaydın kayıpsız gzip hâli; Karşılaştırma / kayıtlar sayfasından açılabilir.")
+    _xz_export(a, row, name)
     if row["series"]:
         b.download_button("Zaman serisi CSV", views.series_csv(row), name + "_zaman.csv", "text/csv")
         c.download_button("Radyal CSV", views.radial_csv(row), name + "_radyal.csv", "text/csv")

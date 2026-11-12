@@ -279,6 +279,9 @@ r = record(main)
 (OUT / "release_case").mkdir(parents=True, exist_ok=True)
 plain = (json.dumps(r, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False) + "\n").encode()
 (OUT / "release_case" / f"{main}.json.gz").write_bytes(gzip.compress(plain, compresslevel=6, mtime=0))
+import lzma  # same parameters as coupled_analysis.record_xz_bytes (fits the 5 MiB upload limit)
+(OUT / "release_case" / f"{main}.json.xz").write_bytes(
+    lzma.compress(plain, format=lzma.FORMAT_XZ, check=lzma.CHECK_CRC64, preset=6))
 dump("release_case/summary.json", {
     "run_id": main, "result_sha256": r["result_sha256"], "status": r["execution"]["status"],
     "windows": r["execution"]["windows_accepted"],

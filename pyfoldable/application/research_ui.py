@@ -1,6 +1,5 @@
 """Normal research workspace. All numerical execution is user-initiated."""
 from dataclasses import dataclass, replace
-import inspect
 import json
 import math
 from pathlib import Path
@@ -643,6 +642,22 @@ def _results(row, *, archived=False, imported=False):
 _COUPLED_PREFIX = b'{"artifact_class":"pyfoldable_coupled_result"'
 
 
+MULTIPART_MARGIN_BYTES = 64 * 1024  # older (Tornado) servers count multipart framing against the limit
+
+
+def restore_archive_fits(size: int) -> bool:
+    """Conservative: an archive of ``size`` bytes uploads and is accepted by the coupled reader."""
+    from . import coupled_analysis
+    return size <= min(restore_upload_limit_bytes() - MULTIPART_MARGIN_BYTES, coupled_analysis.MAX_COUPLED_ARCHIVE_BYTES)
+
+
+def restore_upload_limit_bytes() -> int:
+    """Upload bound actually in force for the restore uploader: Streamlit's upload endpoint caps every
+    request at ``server.maxUploadSize`` (MB counted as MiB) on all supported versions; a per-widget
+    ``max_upload_size`` (Streamlit >= 1.53) only changes the browser-side check, so it is not used."""
+    return int(st.get_option("server.maxUploadSize")) * 1024 * 1024
+
+
 def _artifact_class(raw):
     """Peek only at the declared class; the selected reader performs all validation.
 
@@ -650,7 +665,7 @@ def _artifact_class(raw):
     larger than the research reader's limit is only a coupled candidate when it starts with the
     canonical (sorted-key) coupled header, otherwise it is rejected without parsing."""
     from . import coupled_analysis
-    if raw[:2] == b"\x1f\x8b":  # compressed coupled record (bounded inflation)
+    if raw[:2] == coupled_analysis.GZIP_MAGIC or raw[:6] == coupled_analysis.XZ_MAGIC:  # bounded inflation
         try:
             raw = coupled_analysis._inflate_record(raw)
         except ValueError:
@@ -679,12 +694,11 @@ def _history(root=None):
         st.caption("Uygulamanın dışa aktardığı sonuç dosyası. İçerik tutarlılığı denetlenir, hesap başlatılmaz.")
         # Per-uploader bound (app default 5 MB): coupled records are up to 24 MiB as JSON or 12 MiB as
         # .json.gz; each reader enforces its own stricter size limit and full content verification.
-        kwargs = {"max_upload_size": 26} if "max_upload_size" in inspect.signature(st.file_uploader).parameters else {}
-        uploaded = st.file_uploader("Sonuç JSON dosyası (.json veya dinamik kayıt için .json.gz)", type=("json", "gz"),
-                                    key="research_restore", **kwargs)
-        if not kwargs:  # older Streamlit: the application-wide upload limit applies
-            st.caption("Bu Streamlit sürümünde yükleme sınırı uygulama ayarıdır; büyük dinamik kayıtları yerel "
-                       "çalıştırma klasöründen açın.")
+        limit = restore_upload_limit_bytes()
+        uploaded = st.file_uploader("Sonuç JSON dosyası (.json; dinamik kayıt için .json.gz veya .json.xz)",
+                                    type=("json", "gz", "xz"), key="research_restore")
+        st.caption(f"Yükleme sınırı {limit / 2**20:.0f} MB (sunucu ayarı). Dinamik kayıtlar için en küçük biçim "
+                   ".json.xz arşividir; sınırı aşan kayıtları yerel çalıştırma klasöründen açın.")
         if st.button("Sonucu oturuma ekle", disabled=uploaded is None) and uploaded is not None:
             raw = uploaded.getvalue()
             try:

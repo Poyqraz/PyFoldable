@@ -141,20 +141,19 @@ Fully deployed BEM route unchanged: the UI reproduced 43.647 N / 3.277 N m / 823
 * RBF gap: geometry, frames, adapter transformations and timing checked first (all exact);
   the only input difference is the lifting-line `ub` evaluation point; a diagnostic standalone
   DUST build with that single change reproduces the coupled deficit (−1.79 % vs −1.42 %); the
-  remainder matches MBDyn's +0.113 % node speed at 5°. No multiplier, no DUST change.
+  +0.38 % remainder is not isolated (MBDyn's +0.113 % node speed at 5° is a candidate for part
+  of it). No multiplier, no DUST change.
 * Mapping verification during motion: DUST written geometry = RBF reconstruction from exchanged
   node states (1.1e-16 m); node rigidity 2.7e-8 m; spacing ×0.5/×2 ≤ 0.05 % thrust.
 * Persistence: supported duration reported in preparation and in the over-limit refusal;
-  bounded `.json.gz` transport; coupled import uploader bound 26 MB (the app's 5 MB default had
-  blocked restoring records above ~5 MB by upload); result views show revolution counts and
-  last-full-revolution means.
+  bounded `.json.gz` / `.json.xz` transport; result views show revolution counts and
+  last-full-revolution means. Upload limit: see "Acceptance follow-up" below (the 26 MB uploader
+  setting of `9c9d718` was ineffective and is removed).
 * Browser check on the working tree after `6f9f0a7`: BEM 43.647 N / 3.277 N m / 823.693 W;
   preparation caption and over-limit refusal; start, progress, cancel → labelled partial;
   restore from the run folder before and after two app restarts; all result tabs; 3-D playback
   frames equal the record (window, time, θ, thrust at windows 288/297/306/342/720); diagnostic
-  spacing record refused ("Saved decks do not match"). Not exercised in the browser: uploading
-  a `.json.gz` file (the browser pane cannot attach files; covered by tests and by verifying the
-  archive bytes the download button serves).
+  spacing record refused ("Saved decks do not match"). File upload: see "Acceptance follow-up".
 * Toolchain: each run bound to its manifest (`toolchain/run_environment_binding.json`). The
   replay `…070700` vs `…004422`: exchanged window data, MBDyn outputs and DUST extraction are
   byte-identical, HDF5 files differ only in metadata, record digests differ by design
@@ -162,9 +161,38 @@ Fully deployed BEM route unchanged: the UI reproduced 43.647 N / 3.277 N m / 823
   by the manifest. The standalone two-line vs continuous comparison (−1.9 %) spans the update.
 * Independent read-only review of this pass: no defect in the bounded inflation; findings
   addressed: environment-mixing claim corrected, import peek size-gated (and RecursionError
-  handled), per-uploader limit applied only when Streamlit supports it, caption wording at the
+  handled), per-uploader limit applied only when Streamlit supports it (superseded: that limit
+  never raised the server cap and was removed, see "Acceptance follow-up"), caption wording at the
   duration-control limit, attribution of the +0.38 % remainder softened, replay evidence packaged.
 * Review package: `reports/coupled_closure_20261112/` (README, SHA256SUMS).
+
+## Acceptance follow-up (after push-head CI of `9c9d718`, run 43183351201)
+
+* Browser upload after an app restart (Streamlit 1.65, in-app browser): the restore uploader's
+  real `<input type=file>` received the files as genuine `File` objects (DataTransfer; the pane
+  has no file-chooser automation), so the widget's own check, its upload request and the server
+  cap applied. With `9c9d718`: the genuine 5,641,917-byte main `.json.gz` failed with HTTP 413
+  although the widget advertised 26 MB — Streamlit's endpoint caps every request at
+  `server.maxUploadSize` (5 MiB here). Fixed: the uploader states the real limit; the
+  `.json.gz` is now refused up front ("File must be 5.0MB or smaller"); the lossless `.json.xz`
+  of the same record (4,603,084 bytes, sha256 `fc6187bf…`) uploaded, verified and restored as
+  "Dosyadan açılan kayıt · çözücü yeniden çalıştırılmadı" with 720/720 windows, last-revolution
+  means 36.761 N / 2.981 N m / 2.967 N m, demonstration-assumption attribution, all result tabs and
+  3-D frames equal to the sealed values; the in-app `.json.xz` export reports 4.60 MB ·
+  "yüklenebilir". No run directory or solver process was created.
+* Streamlit 1.40.0 (isolated venv `~/pyf-work/venv-st140`, created without system pip):
+  - the app served by 1.40 (port 8766) in the in-app browser: uploader shows "Limit 5MB per file";
+    the genuine `.json.gz` is refused ("File must be 5.0MB or smaller"); the `.json.xz` (sha256
+    `fc6187bf…`) uploads, verifies and restores with the same attribution, metrics, tabs and 3-D
+    frames as on 1.65; the in-app `.json.xz` export reports 4.60 MB · "yüklenebilir";
+  - coupled-route tests (53) pass; the full suite gives 2163 passed, 61 failed, 9 skipped — every
+    failure is `AppTest.file_uploader` missing (added in Streamlit 1.56; used by upload tests that
+    predate this route, e.g. since `af5150c`), none in the coupled route.
+* Independent review of this follow-up: no high/medium findings; addressed: "uploadable" verdict
+  keeps a 64 KiB multipart margin and the 12 MiB archive bound, a vacuous limit test replaced,
+  xz bytes documented as repeatable per liblzma build (not across builds), stale line marked
+  superseded.
+* Packaged: `release_case/<run id>.json.xz` beside the `.json.gz` (same record, lossless).
 
 ## Next concrete items
 

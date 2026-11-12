@@ -18,7 +18,7 @@ Software evidence only: mechanical inputs are declared demonstration assumptions
 | `rbf_discrepancy/geometry_timing_velocity.json` | Coupled geometry vs reference (rigid-fit residual, azimuth vs window time) and MBDyn node speed vs Ωr at 5° and 2.5° |
 | `rbf_discrepancy/dust-ubcen.diagnostic.patch` | The single-line DUST change used for the diagnostic standalone build (lifting-line `ub` at the leading-line midpoint). Diagnostic only; never used for production runs. DUST is MIT-licensed (copyright and permission notice in its `license.md`); this patch excerpt is redistributed under that licence |
 | `spacing_sensitivity/summary.json` | Released runs with coupling-node spacing ×1, ×0.5, ×2 at fixed aerodynamic discretization |
-| `release_case/<run id>.json.gz` | Sealed main release record (`continuous_rbf`, 2.5°, 720 windows); opens in the research workspace (*Karşılaştırma / kayıtlar → Önceki sonuç JSON’unu aç*) with full re-verification |
+| `release_case/<run id>.json.gz`, `.json.xz` | Sealed main release record (`continuous_rbf`, 2.5°, 720 windows), the same canonical JSON in two lossless encodings. Upload the `.json.xz` (4.60 MB) in the research workspace (*Karşılaştırma / kayıtlar → Önceki sonuç JSON’unu aç*); the `.json.gz` (5.64 MB) exceeds the server-wide 5 MiB upload limit. Restoration re-verifies the record; no solver runs. The xz bytes are repeatable for a given liblzma build, not guaranteed bit-identical across builds (the record's `result_sha256` identifies the content) |
 | `release_case/summary.json` | Averaging windows (latched, three revolutions after release), the locked-open 5° and the 5° release reference |
 | `scripts/` | Diagnostics and the package builder, as run (paths refer to the local layout) |
 

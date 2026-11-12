@@ -156,7 +156,9 @@ branch, which evaluates the lifting-line body velocity at the leading line inste
 control point (reproduced by a diagnostic standalone build), partly offset by MBDyn's
 step-dependent node speed; not corrected, bias during motion not measured. Histories are short
 analysis windows (main case: 2 latched + 3 released revolutions); the 24 MiB record bound is
-reported before a run as the supported duration, and records transport as bounded `.json.gz`.
+reported before a run as the supported duration, and records transport as bounded `.json.gz`
+or `.json.xz`; uploads are capped by the server-wide 5 MiB limit on every Streamlit version, so
+the main record restores by upload as `.json.xz` (4.60 MB) or from its run folder.
 Closure evidence: `reports/coupled_closure_20261112/`. The retained 800 mm table
 supports only small releases; spin-up and folded starts are not covered. ADR-010 is
 proposed, not accepted. `physical_qualification` remains false. Design and limits:

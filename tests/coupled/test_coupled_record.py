@@ -206,6 +206,32 @@ def test_compressed_record_restores_losslessly_and_inflation_is_bounded(run):
         svc.read_saved_coupled_result(archive + b"trailing")
 
 
+def test_xz_record_restores_losslessly_and_decoding_is_bounded(run):
+    import lzma
+    row = _build(run)
+    plain = svc.record_json_bytes(row)
+    archive = svc.record_xz_bytes(row)
+    assert archive[:6] == svc.XZ_MAGIC and len(archive) < len(plain)
+    assert svc.record_xz_bytes(row) == archive  # deterministic
+    assert lzma.decompress(archive) == plain
+    assert svc.read_saved_coupled_result(archive) == svc.read_saved_coupled_result(plain)
+    xz = dict(format=lzma.FORMAT_XZ, check=lzma.CHECK_CRC64)
+    with pytest.raises(ValueError, match="size"):  # inflation bomb
+        svc.read_saved_coupled_result(lzma.compress(b" " * (svc.MAX_COUPLED_RESULT_BYTES + 1), preset=6, **xz))
+    with pytest.raises(ValueError, match="size"):
+        svc.read_saved_coupled_result(svc.XZ_MAGIC + b"\0" * svc.MAX_COUPLED_ARCHIVE_BYTES)
+    with pytest.raises(ValueError):  # decoder dictionary beyond the memory limit
+        svc.read_saved_coupled_result(lzma.compress(plain, preset=9, **xz))
+    with pytest.raises(ValueError):
+        svc.read_saved_coupled_result(archive[:-12])  # truncated stream
+    with pytest.raises(ValueError):
+        svc.read_saved_coupled_result(archive + archive)  # concatenated streams are not one record
+    with pytest.raises(ValueError):
+        svc.read_saved_coupled_result(archive + b"trailing")
+    with pytest.raises(ValueError):
+        svc.read_saved_coupled_result(lzma.compress(plain, format=lzma.FORMAT_ALONE))  # not the declared container
+
+
 def test_altered_mechanics_or_table_is_rejected_even_when_digests_are_resealed(run):
     row = _build(run)
     for change in ("mechanics", "c81"):

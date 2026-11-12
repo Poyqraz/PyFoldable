@@ -193,21 +193,34 @@ not a physical one, and it is stated before a run: preparation reports the plann
 revolutions (total and after release), the estimated record size and the longest supported
 duration for the chosen step and discretization (`supported_duration`; default continuous
 line: 0.319 s / 12.8 revolutions at 5°, ≈ 0.16 s at 2.5°), and refuses a longer run with
-`result_too_large` naming that limit. Transport is a lossless single-member gzip of the same
-canonical JSON (`.json.gz` download, ≈ 3× smaller; the 720-window main record is 5.64 MB);
-import inflates with bounds (≤ 12 MiB compressed, ≤ 24 MiB inflated, one complete member,
-CRC checked, no trailing data) before the unchanged verification. The import uploader has its
-own 26 MB bound (the application default of 5 MB had made records above ~5 MB, including the
-main 16.6 MB record, unrestorable by upload; restoration from the local run folder was
-unaffected). Result views label the history as a short analysis window (revolutions in total
+`result_too_large` naming that limit.
+
+*Transport and upload.* Exports are lossless encodings of the same canonical JSON: `.json`,
+`.json.gz` (gzip, immediate, ≈ 3×) and `.json.xz` (xz preset 6, CRC64, ≈ 3.6×, prepared only on
+request because encoding takes seconds). Import accepts all three and inflates with bounds
+(≤ 12 MiB compressed, ≤ 24 MiB inflated, one complete stream with its integrity check, no
+trailing data, xz decoder memory ≤ 16 MiB) before the unchanged verification. Streamlit's upload
+endpoint caps every request at `server.maxUploadSize` (5 MB = 5 MiB in this repository's
+`.streamlit/config.toml`; on 1.40 the Tornado server applies it to the whole multipart body,
+so the "uploadable" verdict keeps a 64 KiB margin); a per-widget `max_upload_size`
+(Streamlit ≥ 1.53) changes only the browser-side check and could not raise that cap — an
+earlier 26 MB uploader setting was therefore misleading (an actual browser upload of the
+5.64 MB main `.json.gz` returned HTTP 413) and has been removed. The uploader and the export
+state the limit in force. Measured on the main record: `.json.gz` 5,641,917 bytes (refused),
+`.json.xz` 4,603,084 bytes (uploads and restores to the identical `result_sha256`). Records
+whose `.json.xz` exceeds the limit (roughly above 18 MB of JSON) open from the local run folder;
+raising the server-wide limit would change every uploader's bound and is left to the owner.
+Version facts: per-widget `max_upload_size` from Streamlit 1.53.0; `AppTest.file_uploader`
+(used by this repository's upload UI tests since before this route) from 1.56.0, so the full UI
+test suite needs ≥ 1.56 while the coupled route and its tests run on the declared floor 1.40.
+Result views label the history as a short analysis window (revolutions in total
 and after release) and show last-full-revolution means instead of last-window values. Runs
 longer than the bound (e.g. tens of revolutions at 2.5°) would need chunked histories with
 lazy views; that is a stated limitation, not implemented. Resource note: the session keeps up
 to 12 records as canonical JSON and re-parses them on each render, so several large imported
 records raise memory use and page latency. The import peek rejects inputs above the research
 reader's limit unless they start with the canonical coupled header, so nothing larger than a
-research record is fully parsed before the coupled reader's own bounds. On Streamlit versions
-without a per-uploader limit the application-wide 5 MB limit applies and the page says so.
+research record is fully parsed before the coupled reader's own bounds.
 
 ## 9. Verification performed (actual executions; details and run ids in the handoff)
 

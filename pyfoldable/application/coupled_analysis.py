@@ -12,6 +12,7 @@ from dataclasses import asdict, dataclass
 import gzip
 import hashlib
 import json
+import lzma
 import math
 import os
 from pathlib import Path
@@ -38,6 +39,10 @@ MAX_COUPLED_RESULT_BYTES = 24 * 1024 * 1024
 # Compressed transport bound (gzip of the same canonical JSON; measured ratio ~3x).
 MAX_COUPLED_ARCHIVE_BYTES = 12 * 1024 * 1024
 GZIP_MAGIC = b"\x1f\x8b"
+XZ_MAGIC = b"\xfd7zXZ\x00"
+# xz decoder memory bound: preset 6 needs < 16 MiB; streams declaring larger dictionaries are refused.
+XZ_MEMLIMIT_BYTES = 16 * 1024 * 1024
+XZ_PRESET = 6  # ~3.6x on recorded runs; the 720-window main record is 4.60 MB (fits a 5 MiB upload limit)
 # Controls added after records were first written, with the meaning older records had.
 # A saved record lacking such a field is restored with exactly this value (identical decks).
 LEGACY_CONTROL_DEFAULTS = {"vortex_stretching": True, "aero_topology": "split_rigid"}
@@ -138,10 +143,31 @@ def record_archive_bytes(row: dict) -> bytes:
     return gzip.compress(record_json_bytes(row), compresslevel=6, mtime=0)
 
 
+def record_xz_bytes(row: dict) -> bytes:
+    """Denser lossless transport of the same canonical record (one .xz stream, CRC64). Repeatable for a
+    given liblzma build, not guaranteed bit-identical across builds; the record's own result_sha256
+    identifies the content. Slower to encode (seconds), so the UI prepares it only on request."""
+    return lzma.compress(record_json_bytes(row), format=lzma.FORMAT_XZ, check=lzma.CHECK_CRC64, preset=XZ_PRESET)
+
+
+def _inflate_xz(raw: bytes) -> bytes:
+    decoder = lzma.LZMADecompressor(format=lzma.FORMAT_XZ, memlimit=XZ_MEMLIMIT_BYTES)
+    try:
+        out = decoder.decompress(raw, MAX_COUPLED_RESULT_BYTES + 1)
+    except lzma.LZMAError as exc:
+        raise ValueError("Coupled archive is not a valid xz stream within the decoder memory limit.") from exc
+    _require(len(out) <= MAX_COUPLED_RESULT_BYTES, "Coupled result size is invalid.")
+    _require(decoder.eof, "Coupled archive is truncated.")
+    _require(not decoder.unused_data, "Coupled archive has trailing data.")
+    return out
+
+
 def _inflate_record(raw: bytes) -> bytes:
-    """Bounded decompression: one complete gzip member (CRC checked), no trailing data, output never
-    larger than the canonical record bound."""
+    """Bounded decompression of a gzip member or an xz stream: one complete stream (integrity
+    checked), no trailing data, output never larger than the canonical record bound."""
     _require(len(raw) <= MAX_COUPLED_ARCHIVE_BYTES, "Coupled archive size is invalid.")
+    if raw[:6] == XZ_MAGIC:
+        return _inflate_xz(raw)
     inflater = zlib.decompressobj(16 + zlib.MAX_WBITS)
     try:
         out = inflater.decompress(raw, MAX_COUPLED_RESULT_BYTES + 1)
@@ -285,7 +311,7 @@ def case_from_record(row: dict, **control_overrides) -> CoupledCase:
 def read_saved_coupled_result(raw: bytes) -> dict:
     from pyfoldable.coupled.frames import relative_angle_about_z, rotvec_to_matrix
 
-    if isinstance(raw, bytes) and raw[:2] == GZIP_MAGIC:
+    if isinstance(raw, bytes) and (raw[:2] == GZIP_MAGIC or raw[:6] == XZ_MAGIC):
         raw = _inflate_record(raw)
     _require(isinstance(raw, bytes) and 0 < len(raw) <= MAX_COUPLED_RESULT_BYTES, "Coupled result size is invalid.")
 

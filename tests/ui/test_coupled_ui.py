@@ -161,3 +161,76 @@ def test_import_peek_is_bounded_before_any_full_parse():
     assert research_ui._artifact_class(b"{" * (svc.MAX_COUPLED_RESULT_BYTES + 1)) is None
     # deeply nested small input does not escape as an exception
     assert research_ui._artifact_class(b"[" * 200000) is None
+
+
+def test_xz_coupled_record_is_recognised_for_import(tmp_path):
+    from pyfoldable.application import research_ui
+    row = _record(tmp_path, FIXTURE_RBF)
+    assert research_ui._artifact_class(svc.record_xz_bytes(row)) == "pyfoldable_coupled_result"
+    assert research_ui._artifact_class(svc.XZ_MAGIC + b"not-an-xz-stream") is None
+
+
+def test_restore_upload_limit_is_the_server_wide_limit(monkeypatch):
+    # Streamlit's upload endpoint caps every request at server.maxUploadSize (a per-widget
+    # max_upload_size only changes the browser-side check), so the bound in force is the server's.
+    import streamlit as st
+    from pyfoldable.application import research_ui
+    real = st.get_option
+    monkeypatch.setattr(st, "get_option", lambda k: 7 if k == "server.maxUploadSize" else real(k))
+    assert research_ui.restore_upload_limit_bytes() == 7 * 1024 * 1024
+
+
+def test_archive_fit_is_conservative_at_both_bounds(monkeypatch):
+    import streamlit as st
+    from pyfoldable.application import research_ui
+    real = st.get_option
+    monkeypatch.setattr(st, "get_option", lambda k: 5 if k == "server.maxUploadSize" else real(k))
+    limit = 5 * 1024 * 1024
+    assert research_ui.restore_archive_fits(4_603_084)            # the main record's .json.xz
+    assert not research_ui.restore_archive_fits(5_641_917)        # the main record's .json.gz
+    assert not research_ui.restore_archive_fits(limit)            # multipart framing counts on older servers
+    assert research_ui.restore_archive_fits(limit - research_ui.MULTIPART_MARGIN_BYTES)
+    monkeypatch.setattr(st, "get_option", lambda k: 64 if k == "server.maxUploadSize" else real(k))
+    assert not research_ui.restore_archive_fits(svc.MAX_COUPLED_ARCHIVE_BYTES + 1)  # archive bound still applies
+
+
+def test_restore_uploader_never_claims_more_than_the_server_accepts(tmp_path, monkeypatch):
+    import streamlit as st
+    store(tmp_path, monkeypatch, PROJECT_AIRFOIL_IDS)
+    bem(monkeypatch)
+    _no_toolchain(monkeypatch, tmp_path)
+    seen = []
+    real = st.file_uploader
+
+    def spy(*a, **k):
+        if k.get("key") == "research_restore":
+            seen.append(k)
+        return real(*a, **k)
+    monkeypatch.setattr(st, "file_uploader", spy)
+    at = go(app(), "Karşılaştırma / kayıtlar")
+    assert not at.exception and seen
+    assert all("max_upload_size" not in k for k in seen)
+    assert set(seen[-1]["type"]) == {"json", "gz", "xz"}
+    assert any("MB" in c.value and ".json.xz" in c.value for c in at.caption)
+
+def test_xz_archive_is_prepared_only_on_request(tmp_path, monkeypatch):
+    store(tmp_path, monkeypatch, PROJECT_AIRFOIL_IDS)
+    bem(monkeypatch)
+    _no_toolchain(monkeypatch, tmp_path)
+    _forbid_runs(monkeypatch)
+    row = _record(tmp_path, FIXTURE_RBF)
+    calls = []
+    real = svc.record_xz_bytes
+    monkeypatch.setattr(svc, "record_xz_bytes", lambda r: calls.append(r["result_sha256"]) or real(r))
+    at = app()
+    raw = json.dumps(row, sort_keys=True, separators=(",", ":"))
+    at.session_state["research_coupled_results"] = ((raw, False),)
+    at.session_state["_coupled_active"] = (None, row["result_sha256"])
+    go(at, "Sonuçlar")
+    at.radio(key="research_results_kind").set_value("Dinamik bağlaşık").run()
+    assert not at.exception and calls == []  # nothing expensive on render
+    at.button(key="coupled_prepare_xz").click().run()
+    assert not at.exception and calls == [row["result_sha256"]]
+    assert any(".json.xz" in c.value and "MB" in c.value for c in at.caption)
+    at.radio(key="coupled_tab").set_value("Yükler").run()  # a rerun reuses the prepared archive
+    assert not at.exception and calls == [row["result_sha256"]]
