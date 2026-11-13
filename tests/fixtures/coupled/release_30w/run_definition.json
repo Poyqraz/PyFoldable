@@ -1,0 +1,245 @@
+{
+ "schema_version": 1,
+ "artifact_class": "pyfoldable_coupled_run_definition",
+ "model_id": "pyfoldable_dust_mbdyn_precice_segmented_rigid_v1",
+ "case": {
+  "geometry": {
+   "blade_count": 2,
+   "tip_radius_m": 0.4,
+   "hub_radius_m": 0.09,
+   "root_radius_m": 0.1,
+   "hinge_radius_m": 0.27,
+   "first_aero_radius_m": 0.144,
+   "last_aero_radius_m": 0.388,
+   "proximal_sections": [
+    {
+     "radius_m": 0.144,
+     "chord_m": 0.07,
+     "twist_rad": 0.4563723796700396,
+     "source": "station"
+    },
+    {
+     "radius_m": 0.17600000000000002,
+     "chord_m": 0.066,
+     "twist_rad": 0.39379248609085005,
+     "source": "station"
+    },
+    {
+     "radius_m": 0.22000000000000003,
+     "chord_m": 0.061,
+     "twist_rad": 0.33525559819023176,
+     "source": "station"
+    },
+    {
+     "radius_m": 0.27,
+     "chord_m": 0.056192307692307694,
+     "twist_rad": 0.291037027076127,
+     "source": "hinge_interpolated"
+    }
+   ],
+   "distal_sections": [
+    {
+     "radius_m": 0.27,
+     "chord_m": 0.056192307692307694,
+     "twist_rad": 0.291037027076127,
+     "source": "hinge_interpolated"
+    },
+    {
+     "radius_m": 0.272,
+     "chord_m": 0.056,
+     "twist_rad": 0.2892682842315628,
+     "source": "station"
+    },
+    {
+     "radius_m": 0.328,
+     "chord_m": 0.05,
+     "twist_rad": 0.2554913607205244,
+     "source": "station"
+    },
+    {
+     "radius_m": 0.388,
+     "chord_m": 0.044,
+     "twist_rad": 0.22985969908449366,
+     "source": "station"
+    }
+   ],
+   "profile": "NACA2412"
+  },
+  "mechanics": {
+   "distal_mass_kg": 0.03,
+   "distal_cg_from_hinge_m": 0.055,
+   "distal_inertia_cg_kg_m2": 3e-05,
+   "spring_nm_per_rad": 0.0,
+   "spring_rest_rad": 0.0,
+   "hinge_damping_nm_s_per_rad": 0.0,
+   "stop_angle_rad": 0.0,
+   "stop_stiffness_nm_per_rad": 250.0,
+   "stop_restitution": 0.5,
+   "fold_limit_rad": -2.9670597283903604,
+   "initial_fold_rad": -0.08726646259971647,
+   "initial_rate_rad_s": 0.0,
+   "release_time_s": 0.001,
+   "proximal_mass_kg": 0.05,
+   "hub_mass_kg": 0.1,
+   "source": "Demonstration assumption: 30 g distal segment, CG 55 mm from hinge, J_cg 3e-5 kg m^2; compliant penalty stop; not measured hardware",
+   "declaration_kind": "demonstration_assumption"
+  },
+  "controls": {
+   "azimuth_step_deg": 5.0,
+   "duration_s": 0.0104,
+   "elements_per_segment": 8,
+   "n_wake_panels": 1,
+   "max_wake_particles": 60000,
+   "wake_box_axial_m": 1.6,
+   "wake_box_radial_factor": 1.6,
+   "coupling_max_iterations": 30,
+   "coupling_position_tol_m": 1e-06,
+   "coupling_rotation_tol_rad": 1e-06,
+   "coupling_velocity_tol_m_s": 0.001,
+   "coupling_angular_velocity_tol_rad_s": 0.001,
+   "aitken_initial_relaxation": 0.5,
+   "mbdyn_tolerance": 1e-06,
+   "mbdyn_max_iterations": 50,
+   "mbdyn_spectral_radius": 0.6,
+   "ll_tol": 1e-06,
+   "ll_max_iter": 200,
+   "ll_damp": 25.0,
+   "fmm": false,
+   "wall_timeout_s": 3600.0
+  },
+  "rpm": 2400.0,
+  "omega_rad_s": 251.32741228718345,
+  "inflow_m_s": 14.0,
+  "density_kg_m3": 1.225,
+  "viscosity_pa_s": 1.81e-05,
+  "temperature_k": 288.15,
+  "speed_of_sound_m_s": 340.29228686527705,
+  "drive": "prescribed_constant_speed",
+  "dt_s": 0.00034722222222222224,
+  "n_steps": 30,
+  "final_time_s": 0.010416666666666668,
+  "derived": {
+   "hinge_inertia_kg_m2": 0.00012075,
+   "stop_damping_nm_s_per_rad": 0.07486824472436916
+  },
+  "meta": {
+   "speed_of_sound_model": "sqrt(1.4*287.05*T), matching research initial_query_ranges"
+  }
+ },
+ "coupling_nodes": [
+  {
+   "blade": 0,
+   "segment": "proximal",
+   "mbdyn_label": 100,
+   "dust_component": "blade1_proximal",
+   "local": [
+    0.0,
+    0.1,
+    0.0
+   ],
+   "global": [
+    0.0,
+    0.1,
+    0.0
+   ]
+  },
+  {
+   "blade": 0,
+   "segment": "distal",
+   "mbdyn_label": 200,
+   "dust_component": "blade1_distal",
+   "local": [
+    0.0,
+    0.27,
+    0.0
+   ],
+   "global": [
+    0.0,
+    0.27,
+    0.0
+   ]
+  },
+  {
+   "blade": 1,
+   "segment": "proximal",
+   "mbdyn_label": 101,
+   "dust_component": "blade2_proximal",
+   "local": [
+    0.0,
+    0.1,
+    0.01
+   ],
+   "global": [
+    -1.2246467991473533e-17,
+    -0.1,
+    0.01
+   ]
+  },
+  {
+   "blade": 1,
+   "segment": "distal",
+   "mbdyn_label": 201,
+   "dust_component": "blade2_distal",
+   "local": [
+    0.0,
+    0.27,
+    0.01
+   ],
+   "global": [
+    -3.306546357697854e-17,
+    -0.27,
+    0.01
+   ]
+  }
+ ],
+ "deck": {
+  "files": {
+   "dust/References.in": {
+    "sha256": "354c7bdddfd9056b8a1251a748e1c217b7c37a95de87df746e270dbbc5d8f1ff",
+    "bytes": 349
+   },
+   "dust/airfoil/NACA2412.c81": {
+    "sha256": "4df4ba024bfe0888864a29ac28ee1d1b5dd4a25c20034f9af89b6bfd020e7837",
+    "bytes": 1973
+   },
+   "dust/comps/blade1_distal.in": {
+    "sha256": "b2ff11bf0db185dcd81e949659adb896776b2f1ce184e6d472272ffd150e1de9",
+    "bytes": 1022
+   },
+   "dust/comps/blade1_proximal.in": {
+    "sha256": "1b91e3a48936422efc1ebcc7a900b61f9d66672bfa4a3469e2bac696a927a301",
+    "bytes": 1034
+   },
+   "dust/comps/blade2_distal.in": {
+    "sha256": "0f3704cff6e74286f13bcdbf11543480c94385f5a77dc7af57c6d7208ed3944e",
+    "bytes": 1023
+   },
+   "dust/comps/blade2_proximal.in": {
+    "sha256": "6b1bfbca1349b7072de8e9dd5f2f3ba89f3917497ff6f082752f54222200f660",
+    "bytes": 1035
+   },
+   "dust/dust.in": {
+    "sha256": "35ed97fb5cc2b254a87e3a6c7f2960ee7a18935bec80b1c0c1b2ca249c667a99",
+    "bytes": 828
+   },
+   "dust/dust_pre.in": {
+    "sha256": "040b9f524d4bdb42631ada8659d6113373c7ce266c6b41a5def0809cb29bfc19",
+    "bytes": 353
+   },
+   "precice-config.xml": {
+    "sha256": "5a7c38723300b7bf0e6018de952ac6c2795c0572b735452fa814545526d65427",
+    "bytes": 3796
+   },
+   "structure/adapter_config.json": {
+    "sha256": "21eaa9ca074b0a8d391a00d304da0379cce83cd28c24f9f49bb797acbc041a44",
+    "bytes": 520
+   },
+   "structure/rotor.mbd": {
+    "sha256": "7d2e90579bd483e7897b4ac78f4d6d49150bfa21c7f666a637c470112fc79c65",
+    "bytes": 6129
+   }
+  },
+  "deck_sha256": "91b6c39b28ed07c95d0ca3cd85f26305bd737525558c0632d1d7e72c128579fc"
+ },
+ "request_sha256": "c07845ca7238718254a5a4cbeb00e09ac0650ed48a71c33551bc72059d6c75b4"
+}

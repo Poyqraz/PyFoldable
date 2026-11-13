@@ -137,6 +137,58 @@ promotion, calibration or experimental validation. Earlier dated acceptance
 records remain historical provenance. Contract:
 [CMM-2 Radau remediation contract](../cmm2_radau_remediation_contract.md).
 
+**2026-11-12 optional DUST–MBDyn–preCICE dynamic route (proposed, unreviewed).** Branch
+`feature/dust-mbdyn-precice-coupling` from PR #113 revision `5d9a5175`. The research
+workspace gains an optional coupled analysis: pinned DUST 3b1d2e61 + preCICE 2.5.0 +
+MBDyn develop 55c86cc6 run as external processes under a detached supervisor, bound to
+the same design and retained-provider admission as the fully deployed BEM (unchanged).
+Prescribed constant shaft speed, rigid proximal/distal segments, ideal in-plane fold
+hinge with declared spring/damper/penalty-stop law; every accepted window is audited
+against the admitted polar envelope; failed, unconverged, uncovered, cancelled or
+timed-out runs keep only a labelled valid prefix. Genuine coupled runs with hinge
+release, stop contact and rebound were executed (run ledger in the
+[handoff](handoffs/coupled-dust-mbdyn-precice-20261112.md)). The earlier post-release thrust
+rise was traced to free vortices at the hinge between per-segment lifting lines; the default
+aerodynamic topology is now one continuous lifting line per blade with RBF coupling
+(`continuous_rbf`); earlier records restore as `split_rigid`. The rbf route sits ≈ 1.4 % below
+standalone DUST thrust for the same line (locked open, 5°): located in DUST 3b1d2e61's rbf
+branch, which evaluates the lifting-line body velocity at the leading line instead of the
+control point (reproduced by a diagnostic standalone build), partly offset by MBDyn's
+step-dependent node speed; not corrected, bias during motion not measured. Histories are short
+analysis windows (main case: 2 latched + 3 released revolutions); the 24 MiB record bound is
+reported before a run as the supported duration, and records transport as bounded `.json.gz`
+or `.json.xz`; uploads are capped by the server-wide 5 MiB limit on every Streamlit version, so
+the main record restores by upload as `.json.xz` (4.60 MB) or from its run folder.
+Closure evidence: `reports/coupled_closure_20261112/`. The *Akış ve tepki* view shows the
+DUST wake (vortex particles, panel wake, dust_post velocity plane) with θ, loads and hinge
+moments on one timeline, from a flow companion extracted on request from the run's retained
+outputs and bound to the sealed record by raw-file sha256 (no solver; stays in the run folder). Deployment extension: prescribed smooth shaft-speed
+ramp (drive torque is an output; no motor law), fold geometry envelope (−23° for the 800 mm design)
+enforced before and during runs, and a trajectory check of section Re/Mach against the admitted
+table. Demonstrated: deployment from −20° during a 2200→2400 RPM ramp (completed, inside the table);
+−20° at 2400 RPM leaves the table's Mach 0.31 in the opening swing (fail-closed). Spin-up from rest
+remains unsupported (deep stall and low Re outside the data). Evidence: `reports/coupled_deployment_20261112/`. The retained 800 mm table supports
+deployment only inside that envelope; spin-up and folded starts are not covered. A second retained
+NACA2412 family (`research_axial_800_deploy_xfoil_v3`, locally built XFOIL 6.99, Re 100k–400k ×
+Mach 0.07–0.36, same attached α −6…8°; two failed declarations retained) lets −22.5° at 2400 RPM and
+−20° released at 1600 RPM during a 1600→2400 ramp complete; the estimated (no-induction, untested)
+floor becomes ≈ 1500 RPM at 14 m/s, set by α. The user chooses between the two NACA2412 versions; the interpolation caveat is shown.
+Evidence: `reports/coupled_deploy_polars_20261112/`. A *Mühendislik değerlendirmesi* result tab
+classifies each deployment output as comparative, preliminary (scales with declared mechanics),
+illustrative (assumed stop law, ideal drive) or a numerical check, with contact impulse/energy and shaft
+momentum checks (`pyfoldable/coupled/assessment.py`, `reports/coupled_engineering_20261113/`); the
+−23° fold limit is labelled as the aerodynamic representation's, not the mechanism's travel.
+Measurement plan: [prototype measurement plan](../prototype_measurement_plan.md). A lofted 3-D blade
+(catalog profile, declared stations, coupled-model fold convention) replaces the design 3B/Plan preview
+and colours BEM and coupled sectional results on the surface (strips, kind and unit labelled), with fold
+contacts screened and no interlocked pose drawn; coupled playback and the flow scene are synchronised to
+one accepted window ([lofted 3-D blade](../blade_3d_view.md)). The 2.5-D preview and GEOM-01/03/04
+clearance now use the same section placement and fold side as the coupled model (owner decision
+2026-11-13; previously a mirrored section folding toward the leading edge; archived clearance reports
+predate it). ADR-010 is
+proposed, not accepted. `physical_qualification` remains false. Design and limits:
+[coupled dynamic analysis](../coupled_dynamic_analysis.md).
+
 ## Reality summary
 
 The project is a Python scientific library plus one Streamlit engineering app,

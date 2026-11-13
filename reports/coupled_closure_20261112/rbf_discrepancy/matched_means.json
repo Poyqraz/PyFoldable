@@ -1,0 +1,41 @@
+{
+ "conditions": "NACA2412, 800 mm template, 2400 RPM, 14 m/s axial, 5 deg azimuth step, 16 lifting-line elements per blade, 6 revolutions (0.15 s), identical geo_input.h5 and dust.in (sha256 in toolchain/run_environment_binding.json); loads from DUST's own result files with one arithmetic for all runs (coupled values reproduce the sealed record's thrust/aero torque to within 1e-7 relative)",
+ "means": {
+  "coupled_rbf_last_1_rev": {
+   "outputs": 72,
+   "power_w": 757.0308632163237,
+   "thrust_n": 37.11183325547237,
+   "torque_nm": 3.0121300988500597
+  },
+  "coupled_rbf_last_2_rev": {
+   "outputs": 144,
+   "power_w": 756.948104648088,
+   "thrust_n": 37.105052983471815,
+   "torque_nm": 3.011800812969612
+  },
+  "standalone_diagnostic_last_1_rev": {
+   "outputs": 72,
+   "power_w": 754.6211629966746,
+   "thrust_n": 36.971535714264206,
+   "torque_nm": 3.0025422063168907
+  },
+  "standalone_diagnostic_last_2_rev": {
+   "outputs": 144,
+   "power_w": 754.5410489546564,
+   "thrust_n": 36.96496013945836,
+   "torque_nm": 3.002223442671934
+  },
+  "standalone_stock_last_1_rev": {
+   "outputs": 72,
+   "power_w": 763.6989361810597,
+   "thrust_n": 37.64585692769174,
+   "torque_nm": 3.0386615181809393
+  },
+  "standalone_stock_last_2_rev": {
+   "outputs": 144,
+   "power_w": 763.6253089652041,
+   "thrust_n": 37.639621294652336,
+   "torque_nm": 3.038368564797201
+  }
+ }
+}

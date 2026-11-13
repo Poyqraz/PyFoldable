@@ -1,0 +1,51 @@
+{
+ "artifact_class": "pyfoldable_coupled_toolchain",
+ "build": {
+  "cgns": "4.3.0 Fortran+HDF5 serial, shared",
+  "dust": "CMAKE_BUILD_TYPE=Release WITH_PRECICE=YES (and a WITH_PRECICE=NO standalone build)",
+  "mbdyn": "configure --disable-netcdf --with-lapack --enable-python",
+  "precice": "Release, PETScMapping=OFF, PythonActions=OFF, MPICommunication=ON"
+ },
+ "executables": {
+  "coupling_python": "~/pyf-work/opt/coupling-venv/bin/python",
+  "dust": "~/pyf-work/opt/dust-3b1d2e61/bin/dust",
+  "dust_post": "~/pyf-work/opt/dust-3b1d2e61/bin/dust_post",
+  "dust_pre": "~/pyf-work/opt/dust-3b1d2e61/bin/dust_pre",
+  "dust_pre_standalone": "~/pyf-work/opt/dust-3b1d2e61-standalone/bin/dust_pre",
+  "dust_standalone": "~/pyf-work/opt/dust-3b1d2e61-standalone/bin/dust",
+  "mbdyn": "~/pyf-work/opt/mbdyn-55c86cc6/bin/mbdyn"
+ },
+ "executables_sha256": {
+  "coupling_python": "33f9dae7896c3ed23260a5cafe72679ba9ff35a0883d67e0d1a1d3018322563e",
+  "dust": "6f40afe90b7e4f39506e351d11bc48886a3520f7101b9f99086bf5170c0f2f3f",
+  "dust_post": "0b5eaff2c1720d17421a90c35da1475596f4a0553c71c7b87a611300e8e2ddce",
+  "dust_pre": "748dfeca5817a566267b448f35d67754f4c542aa70ee588d2740d71f6d0af458",
+  "dust_pre_standalone": "ed9b46d28f394e1c5b517461ba79461669c6c206d212fe9536b7c84b358a6db3",
+  "dust_standalone": "d1bc8588281c5a44c99fb872d1f038f93cf1eb2cd387f7dc814a245fa7d67664",
+  "mbdyn": "23f9d57e9568048fb3fe08be4525a12752394c2460207601434c24a9d44128bb"
+ },
+ "ld_library_path": [
+  "~/pyf-work/opt/precice-2.5.0/lib",
+  "~/pyf-work/opt/cgns-4.3.0/lib",
+  "~/pyf-work/opt/mbdyn-55c86cc6/lib"
+ ],
+ "libprecice_sha256": "306aa4cbfa3c9165145472c33b5a046f297025b09f548b3a23844d61d3db2a5c",
+ "mbdyn_python_module_dir": "~/pyf-work/opt/mbdyn-55c86cc6/libexec/mbpy",
+ "omp_num_threads": 4,
+ "schema_version": 1,
+ "sources": {
+  "cgns": "https://github.com/CGNS/CGNS/archive/refs/tags/v4.3.0.tar.gz",
+  "dust": "https://public.gitlab.polimi.it/DAER/dust.git",
+  "mbdyn": "https://public.gitlab.polimi.it/DAER/mbdyn.git",
+  "precice": "https://github.com/precice/precice/archive/refs/tags/v2.5.0.tar.gz"
+ },
+ "versions": {
+  "dust_revision": "3b1d2e61f0b74a3c9fdde9c850951c73f8c6ad3e",
+  "h5py": "3.11.0",
+  "mbdyn_revision": "55c86cc6ec7ff8d69d31271c8f23220a43d996b6",
+  "mpi4py": "3.1.6",
+  "numpy_coupling": "1.26.4",
+  "precice_version": "2.5.0",
+  "pyprecice_version": "2.5.0.4"
+ }
+}

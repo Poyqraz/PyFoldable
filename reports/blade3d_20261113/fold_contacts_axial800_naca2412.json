@@ -1,0 +1,428 @@
+{
+ "relief": {
+  "joint": "relief",
+  "fold_min_deg": -180.0,
+  "step_deg": 1.1603878084229313,
+  "tolerance_deg": 0.05,
+  "contacts": [
+   {
+    "a": "proximal_1",
+    "b": "proximal_2",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "static parts; no overlap when open"
+   },
+   {
+    "a": "proximal_1",
+    "b": "undefined_root_2",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "static parts; no overlap when open"
+   },
+   {
+    "a": "undefined_root_1",
+    "b": "proximal_2",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "static parts; no overlap when open"
+   },
+   {
+    "a": "undefined_root_1",
+    "b": "undefined_root_2",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "static parts; no overlap when open"
+   },
+   {
+    "a": "distal_1",
+    "b": "proximal_1",
+    "status": "contact",
+    "first_contact_deg": -66.6135126272789,
+    "last_clear_deg": -66.57725050826568,
+    "point_a": [
+     0.03736917199026389,
+     0.24405287495236644,
+     -0.011019287219119548
+    ],
+    "point_b": [
+     0.038196505487722854,
+     0.244,
+     -0.011466812284389505
+    ],
+    "note": ""
+   },
+   {
+    "a": "distal_1",
+    "b": "undefined_root_1",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "no contact down to -180.0 deg (step 1.1603878084229313 deg)"
+   },
+   {
+    "a": "distal_1",
+    "b": "hub",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "no contact down to -180.0 deg (step 1.1603878084229313 deg)"
+   },
+   {
+    "a": "distal_1",
+    "b": "proximal_2",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "no contact down to -180.0 deg (step 1.1603878084229313 deg)"
+   },
+   {
+    "a": "distal_1",
+    "b": "distal_2",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "no contact down to -180.0 deg (step 1.1603878084229313 deg)"
+   },
+   {
+    "a": "distal_1",
+    "b": "undefined_root_2",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "no contact down to -180.0 deg (step 1.1603878084229313 deg)"
+   },
+   {
+    "a": "distal_1",
+    "b": "undefined_tip_2",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "no contact down to -180.0 deg (step 1.1603878084229313 deg)"
+   },
+   {
+    "a": "undefined_tip_1",
+    "b": "proximal_1",
+    "status": "possible_undefined_geometry",
+    "first_contact_deg": -152.69978316465512,
+    "last_clear_deg": -152.6635210456419,
+    "point_a": [
+     0.02557915439523706,
+     0.15041166670810446,
+     -0.007572346448299017
+    ],
+    "point_b": [
+     0.026088433927082873,
+     0.15,
+     -0.00789066375757213
+    ],
+    "note": "involves a region without surface data (placeholder)"
+   },
+   {
+    "a": "undefined_tip_1",
+    "b": "undefined_root_1",
+    "status": "possible_undefined_geometry",
+    "first_contact_deg": -154.5854133533424,
+    "last_clear_deg": -154.54915123432917,
+    "point_a": [
+     0.025081078850161684,
+     0.14241723737522924,
+     -0.00755054487850001
+    ],
+    "point_b": [
+     0.023952434511936176,
+     0.144,
+     -0.0068070419893200285
+    ],
+    "note": "involves a region without surface data (placeholder)"
+   },
+   {
+    "a": "undefined_tip_1",
+    "b": "hub",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "no contact down to -180.0 deg (step 1.1603878084229313 deg)"
+   },
+   {
+    "a": "undefined_tip_1",
+    "b": "proximal_2",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "no contact down to -180.0 deg (step 1.1603878084229313 deg)"
+   },
+   {
+    "a": "undefined_tip_1",
+    "b": "distal_2",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "no contact down to -180.0 deg (step 1.1603878084229313 deg)"
+   },
+   {
+    "a": "undefined_tip_1",
+    "b": "undefined_root_2",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "no contact down to -180.0 deg (step 1.1603878084229313 deg)"
+   },
+   {
+    "a": "undefined_tip_1",
+    "b": "undefined_tip_2",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "no contact down to -180.0 deg (step 1.1603878084229313 deg)"
+   }
+  ],
+  "interference_free_deg": -66.57725050826568
+ },
+ "plane": {
+  "joint": "plane",
+  "fold_min_deg": -180.0,
+  "step_deg": 1.1603878084229313,
+  "tolerance_deg": 0.05,
+  "contacts": [
+   {
+    "a": "proximal_1",
+    "b": "proximal_2",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "static parts; no overlap when open"
+   },
+   {
+    "a": "proximal_1",
+    "b": "undefined_root_2",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "static parts; no overlap when open"
+   },
+   {
+    "a": "undefined_root_1",
+    "b": "proximal_2",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "static parts; no overlap when open"
+   },
+   {
+    "a": "undefined_root_1",
+    "b": "undefined_root_2",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "static parts; no overlap when open"
+   },
+   {
+    "a": "distal_1",
+    "b": "proximal_1",
+    "status": "contact",
+    "first_contact_deg": -0.036262119013216604,
+    "last_clear_deg": 0.0,
+    "point_a": [
+     0.01961564906855608,
+     0.2699875853840883,
+     -0.005480398403043181
+    ],
+    "point_b": [
+     0.019042899871131506,
+     0.27,
+     -0.006451272170385297
+    ],
+    "note": ""
+   },
+   {
+    "a": "distal_1",
+    "b": "undefined_root_1",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "no contact down to -180.0 deg (step 1.1603878084229313 deg)"
+   },
+   {
+    "a": "distal_1",
+    "b": "hub",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "no contact down to -180.0 deg (step 1.1603878084229313 deg)"
+   },
+   {
+    "a": "distal_1",
+    "b": "proximal_2",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "no contact down to -180.0 deg (step 1.1603878084229313 deg)"
+   },
+   {
+    "a": "distal_1",
+    "b": "distal_2",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "no contact down to -180.0 deg (step 1.1603878084229313 deg)"
+   },
+   {
+    "a": "distal_1",
+    "b": "undefined_root_2",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "no contact down to -180.0 deg (step 1.1603878084229313 deg)"
+   },
+   {
+    "a": "distal_1",
+    "b": "undefined_tip_2",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "no contact down to -180.0 deg (step 1.1603878084229313 deg)"
+   },
+   {
+    "a": "undefined_tip_1",
+    "b": "proximal_1",
+    "status": "possible_undefined_geometry",
+    "first_contact_deg": -152.69978316465512,
+    "last_clear_deg": -152.6635210456419,
+    "point_a": [
+     0.02557915439523706,
+     0.15041166670810446,
+     -0.007572346448299017
+    ],
+    "point_b": [
+     0.026088433927082873,
+     0.15,
+     -0.00789066375757213
+    ],
+    "note": "involves a region without surface data (placeholder)"
+   },
+   {
+    "a": "undefined_tip_1",
+    "b": "undefined_root_1",
+    "status": "possible_undefined_geometry",
+    "first_contact_deg": -154.5854133533424,
+    "last_clear_deg": -154.54915123432917,
+    "point_a": [
+     0.025081078850161684,
+     0.14241723737522924,
+     -0.00755054487850001
+    ],
+    "point_b": [
+     0.023952434511936176,
+     0.144,
+     -0.0068070419893200285
+    ],
+    "note": "involves a region without surface data (placeholder)"
+   },
+   {
+    "a": "undefined_tip_1",
+    "b": "hub",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "no contact down to -180.0 deg (step 1.1603878084229313 deg)"
+   },
+   {
+    "a": "undefined_tip_1",
+    "b": "proximal_2",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "no contact down to -180.0 deg (step 1.1603878084229313 deg)"
+   },
+   {
+    "a": "undefined_tip_1",
+    "b": "distal_2",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "no contact down to -180.0 deg (step 1.1603878084229313 deg)"
+   },
+   {
+    "a": "undefined_tip_1",
+    "b": "undefined_root_2",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "no contact down to -180.0 deg (step 1.1603878084229313 deg)"
+   },
+   {
+    "a": "undefined_tip_1",
+    "b": "undefined_tip_2",
+    "status": "clear",
+    "first_contact_deg": null,
+    "last_clear_deg": null,
+    "point_a": null,
+    "point_b": null,
+    "note": "no contact down to -180.0 deg (step 1.1603878084229313 deg)"
+   }
+  ],
+  "interference_free_deg": 0.0
+ }
+}

@@ -121,6 +121,23 @@ The following names belong to solver discovery or workflows, not a new app confi
 `${{ github.token }}` is runner-supplied for artifact download; never persist or
 print it. Source configs use explicit policy fields, not a feature-flag service.
 
+### Optional DUST–MBDyn–preCICE toolchain
+
+Not needed by ordinary tests or CI (they use a recorded run fixture and never start a
+solver). Operator installation, user space, Ubuntu 22.04 with the system libraries listed
+in the script header:
+
+```bash
+PYF_TOOLCHAIN_ROOT=~/pyf-work JOBS=2 bash tools/coupled/build_toolchain.sh
+```
+
+It pins DUST/MBDyn revisions and preCICE/CGNS tarball hashes, builds a separate coupling
+venv and writes `~/.pyfoldable/coupled_toolchain.json`. Re-write only the manifest with
+`python3 tools/coupled/write_manifest.py`. Variables: `PYFOLDABLE_COUPLED_TOOLCHAIN`
+(manifest path), `PYFOLDABLE_COUPLED_RUNS` (run-directory root, default
+`outputs/coupled_runs`). Focused tests: `./venv/bin/python -m pytest tests/coupled tests/ui/test_coupled_ui.py -q`.
+Design, verification and limits: [coupled dynamic analysis](../coupled_dynamic_analysis.md).
+
 ## Security boundaries
 
 No application login, tenant authorization, admin role or production deployment

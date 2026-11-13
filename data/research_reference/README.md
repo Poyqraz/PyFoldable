@@ -23,3 +23,15 @@ These first-party results use the retained catalog coordinates, without manufact
 lookup, symmetry substitution, point repair or stitched family.
 See docs/research_application.md, reports/research_release_20261111/ and the separate
 execution archive. Historical250mm/7100RPM and35/37 negative evidence are unchanged.
+
+## Added 2026-11-12: deployment grid (separate family)
+
+`research_axial_800_deploy_xfoil_v3:NACA2412`, version `2026-11-12-deploy-v3`, content
+418d7d65d227df9f9bdcd9195f86531dd99fa29e6c23b8804f5223425748c222: attached-flow NACA2412 cells
+at Re 100k/165k/245k/330k/400k x Mach 0.07/0.10/0.31/0.36, alpha -6...8 deg (20 cells, 160/160
+points), declared by configs/polars/RESEARCH_AXIAL_800_DEPLOY_V3.json and captured with a
+separately built XFOIL 6.99 (executable d1076680...136a7). Registration only added files; the
+2026-11-11 records and blobs are unchanged. At the six cells shared with the 2026-11-11 family
+the coefficients are identical. The two NACA2412 versions are never mixed; the application asks
+the user to choose one. Evidence, failed declarations and the convergence map:
+reports/coupled_deploy_polars_20261112/. Unqualified numerical evidence, not experimental data.

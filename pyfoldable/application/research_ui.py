@@ -101,22 +101,8 @@ def _geometry(active):
         st.caption(f"{i.profile} · Katalog kesiti, iki eksen aynı kord ölçeğinde.")
         _plot(views.airfoil_figure(foil), "research_airfoil")
     else:
-        st.caption(f"Gösterilen katlanma pozu: {_fmt(i.fold_deg, 1)}°. BEM, ana kanadı tam açık (0°) çözer.")
-        try:
-            if view == "3B":
-                revision = st.session_state.get("_research_camera_revision", 0)
-                controls, reset = st.columns((1.5, 1), vertical_alignment="bottom")
-                camera = _choice(controls.selectbox, "Kamera", tuple(views.CAMERAS),
-                                 key=f"research_camera_{revision}", default="İzometrik")
-                reset.button("Kamerayı sıfırla", on_click=_reset_camera)
-                _plot(views.surface_figure(active, foil, camera, revision), "research_surface")
-                st.caption("3B için tarayıcıda WebGL gerekir. Plan ve profil görünümleri WebGL gerektirmez.")
-            else:
-                _plot(views.plan_figure(active, foil), "research_plan")
-        except ValueError as exc:
-            st.warning("Bu konumda saklanan istasyonlardan yüzey çizilemiyor. Menteşe ve istasyon açıklığını kontrol edin.")
-            with st.expander("Önizleme teknik ayrıntısı"):
-                st.text(str(exc))
+        from . import blade_ui
+        blade_ui.design_preview(active, foil, view)
     st.markdown(
         f"**İç parça — proksimal:** {_fmt(1000 * result['proximal_m'] if active.root else None, 1)} mm  \n"
         f"**Dış parça — distal:** {_fmt(1000 * result['distal_m'], 1)} mm"
@@ -129,7 +115,8 @@ def _geometry(active):
     st.caption(
         f"Bu pozdaki merkez çizgisi zarfı: {_fmt(1000*audit['centerline_envelope_diameter_m'], 1)} mm · "
         f"beyan edilen alt sınırdaki zarf: {_fmt(1000*result['declared_stow_limit_centerline_envelope_m'], 1)} mm. "
-        "Kesikli gri çizgiler yüzey verisi olmayan aralıkları gösterir. Bu bir açıklık veya temas hesabı değildir."
+        "Saydam gri yer tutucular yüzey verisi olmayan aralıkları gösterir. Merkez çizgisi zarfı bir açıklık hesabı "
+        "değildir; yüzey teması yukarıda ayrıca taranır."
     )
     with st.expander("Kord ve burulma istasyonları"):
         st.dataframe([{"Yarıçap [mm]": 1000*s.r_over_R*d.blade.radius_m, "r/R": s.r_over_R,
@@ -337,10 +324,9 @@ def _readiness(active, repository, store_error):
         status = first_check or _Readiness("unselected")
     else:
         status = _inspect_family(active, family, repository, initial)
-        source_summary = ("800 mm eksenel referansın saklanan sağlayıcı çıktıları"
-                          if family.family_id.startswith("research_axial_800_attached_xfoil_v1:")
-                          else family.source_identity.split(";")[0][:110])
-        st.caption(f"Kaynak: {source_summary} · {len(family.requests)} hücre")
+        st.caption(f"Kaynak: {_source_summary(family)} · {len(family.requests)} hücre")
+        if (note := _source_note(family)) is not None:
+            st.caption(note)
         if family.evidence_class == "inert_fixture":
             st.warning("Test kaydı: katsayılar mühendislik sonucu olarak kullanılamaz.")
     if status.status == "outside":
@@ -350,6 +336,23 @@ def _readiness(active, repository, store_error):
     elif status.status == "ready":
         st.success("Hazırlık tamamlandı. BEM’i siz başlatabilirsiniz.")
     return family, status
+
+
+def _source_summary(family) -> str:
+    if family.family_id.startswith("research_axial_800_attached_xfoil_v1:"):
+        return "800 mm eksenel referansın saklanan sağlayıcı çıktıları"
+    if family.family_id.startswith("research_axial_800_deploy_xfoil_v3:"):
+        return ("800 mm eksenel referans · açılma için genişletilmiş XFOIL ızgarası "
+                "(Re 100k–400k, Mach 0,07–0,36, α −6…8°, ekli akış)")
+    return family.source_identity.split(";")[0][:110]
+
+
+def _source_note(family) -> str | None:
+    if family.family_id.startswith("research_axial_800_deploy_xfoil_v3:"):
+        return ("Izgara seviyeleri, bu XFOIL derlemesinin yakınsama ön taramasıyla seçildi: yakınsamayan iç "
+                "durumlar (ör. Mach 0,10 / Re 130k, Mach 0,20 / Re 165k ve 400k) tabloda yoktur ve bunların "
+                "üzerinden doğrusal ara değer kullanılır. Ekli akış verisidir; ayrılmış akışı temsil etmez.")
+    return None
 
 
 def _analysis_scope(active, family, readiness):
@@ -471,7 +474,7 @@ def _bem_run_button(ready):
         return st.button("BEM’i çalıştır", type="primary", key="research_run", disabled=not ready)
 
 
-def _analysis(active, repository, store_error):
+def _analysis(active, repository, store_error, root=None):
     st.subheader("Analiz")
     if active is None:
         st.info("Önce Tasarım’da geçerli bir geometri hazırlayın.")
@@ -502,6 +505,10 @@ def _analysis(active, repository, store_error):
         with st.spinner("Mekanizma hesabı çalışıyor…"):
             row = research.run_mechanics_only(active, options)
         _show_run(row, ("mechanics", active.identity, options))
+    if root is not None:
+        st.divider()
+        from . import coupled_ui
+        coupled_ui.render_analysis(active, family, readiness.status, repository, root)
 
 
 def _invalidate(active, repository):
@@ -520,6 +527,15 @@ def _invalidate(active, repository):
             st.session_state.pop(_ACTIVE, None)
     elif st.session_state.get("_research_mechanics") != selected:
         st.session_state.pop(_ACTIVE, None)
+
+
+def _invalidate_coupled(active, repository):
+    from . import coupled_ui
+    family = None
+    if active is not None:
+        key = st.session_state.get("_research_selected_versions", {}).get(active.inputs.profile)
+        family = _families(repository, active.inputs.profile, active.coordinate_sha256).get(key)
+    coupled_ui.invalidate(active, family)
 
 
 _RADIAL_COLUMNS = {
@@ -602,6 +618,8 @@ def _results(row, *, archived=False, imported=False):
     if radial:
         b.download_button("Radyal CSV indir", research.records_csv(radial), name+"_radyal.csv", "text/csv")
         _radial(radial)
+        from . import blade_ui
+        blade_ui.bem_on_blade(row)
     mech = row["mechanism"]
     if mech["status"] == "computed":
         doc = json.loads(mech["report_text"])["result"]
@@ -626,21 +644,74 @@ def _results(row, *, archived=False, imported=False):
         st.json(row, expanded=False)
 
 
+_COUPLED_PREFIX = b'{"artifact_class":"pyfoldable_coupled_result"'
+
+
+MULTIPART_MARGIN_BYTES = 64 * 1024  # older (Tornado) servers count multipart framing against the limit
+
+
+def restore_archive_fits(size: int) -> bool:
+    """Conservative: an archive of ``size`` bytes uploads and is accepted by the coupled reader."""
+    from . import coupled_analysis
+    return size <= min(restore_upload_limit_bytes() - MULTIPART_MARGIN_BYTES, coupled_analysis.MAX_COUPLED_ARCHIVE_BYTES)
+
+
+def restore_upload_limit_bytes() -> int:
+    """Upload bound actually in force for the restore uploader: Streamlit's upload endpoint caps every
+    request at ``server.maxUploadSize`` (MB counted as MiB) on all supported versions; a per-widget
+    ``max_upload_size`` (Streamlit >= 1.53) only changes the browser-side check, so it is not used."""
+    return int(st.get_option("server.maxUploadSize")) * 1024 * 1024
+
+
+def _artifact_class(raw):
+    """Peek only at the declared class; the selected reader performs all validation.
+
+    Bounded before any full parse: compressed input inflates under the coupled bounds; input
+    larger than the research reader's limit is only a coupled candidate when it starts with the
+    canonical (sorted-key) coupled header, otherwise it is rejected without parsing."""
+    from . import coupled_analysis
+    if raw[:2] == coupled_analysis.GZIP_MAGIC or raw[:6] == coupled_analysis.XZ_MAGIC:  # bounded inflation
+        try:
+            raw = coupled_analysis._inflate_record(raw)
+        except ValueError:
+            return None
+    if len(raw) > coupled_analysis.MAX_COUPLED_RESULT_BYTES:
+        return None
+    if len(raw) > research.MAX_SAVED_RESULT_BYTES:
+        return "pyfoldable_coupled_result" if raw.lstrip()[:len(_COUPLED_PREFIX)] == _COUPLED_PREFIX else None
+    try:
+        doc = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError, RecursionError):
+        return None
+    return doc.get("artifact_class") if isinstance(doc, dict) else None
+
+
 def _retained():
     return {row["result_sha256"]: (row, imported) for row, imported in
             ((json.loads(raw), imported) for raw, imported in st.session_state.get(_HISTORY, ()))}
 
 
-def _history():
+def _history(root=None):
     st.subheader("Karşılaştırma / kayıtlar")
     st.caption("Oturum kapanınca bu liste saklanmaz. Sonuç JSON’unu indirin; daha sonra buradan açabilirsiniz.")
     restore_error = None
     with st.expander("Önceki sonuç JSON’unu aç"):
         st.caption("Uygulamanın dışa aktardığı sonuç dosyası. İçerik tutarlılığı denetlenir, hesap başlatılmaz.")
-        uploaded = st.file_uploader("Sonuç JSON dosyası", type=("json",), key="research_restore")
+        # Per-uploader bound (app default 5 MB): coupled records are up to 24 MiB as JSON or 12 MiB as
+        # .json.gz; each reader enforces its own stricter size limit and full content verification.
+        limit = restore_upload_limit_bytes()
+        uploaded = st.file_uploader("Sonuç JSON dosyası (.json; dinamik kayıt için .json.gz veya .json.xz)",
+                                    type=("json", "gz", "xz"), key="research_restore")
+        st.caption(f"Yükleme sınırı {limit / 2**20:.0f} MB (sunucu ayarı). Dinamik kayıtlar için en küçük biçim "
+                   ".json.xz arşividir; sınırı aşan kayıtları yerel çalıştırma klasöründen açın.")
         if st.button("Sonucu oturuma ekle", disabled=uploaded is None) and uploaded is not None:
+            raw = uploaded.getvalue()
             try:
-                status = _save(research.read_saved_result(uploaded.getvalue()), imported=True)
+                if _artifact_class(raw) == "pyfoldable_coupled_result":
+                    from . import coupled_ui
+                    status = coupled_ui.import_bytes(raw)
+                else:
+                    status = _save(research.read_saved_result(raw), imported=True)
             except (ValueError, OSError) as exc:
                 message = getattr(exc, "user_message",
                                   "Dosya eksik veya saklanan tasarım ve çalışma girdileriyle tutarsız.")
@@ -654,6 +725,8 @@ def _history():
     if restore_error:
         with st.expander("İçe aktarma teknik ayrıntısı"):
             st.text(restore_error)
+    from . import coupled_ui
+    coupled_ui.render_history(root)
     records = _retained()
     if not records:
         st.info("Henüz kayıt yok. Analiz çalıştırabilir veya önceki bir sonucu açabilirsiniz.")
@@ -752,10 +825,23 @@ def render_research(root: Path):
                f"{_fmt(inputs.rpm, 0)} RPM · {_fmt(inputs.inflow_m_s, 2)} m/s · "
                + ("geometri hazır" if active is not None else "girdileri kontrol edin"))
     _invalidate(active, repository)
+    _invalidate_coupled(active, repository)
     if page == "Analiz":
-        _analysis(active, repository, store_error)
+        _analysis(active, repository, store_error, root)
         _invalidate(active, repository)  # A version or mechanical input could have changed in this render.
+        _invalidate_coupled(active, repository)
     elif page == "Sonuçlar":
+        from . import coupled_ui
+        kinds = ("BEM / mekanizma", "Dinamik bağlaşık")
+        kind = (st.radio("Sonuç türü", kinds, horizontal=True, key="research_results_kind")
+                if coupled_ui.retained() else kinds[0])
+        if kind == kinds[1]:
+            row = coupled_ui.active_result()
+            if row is None:
+                st.info("Etkin dinamik sonuç yok. Analiz’den başlatın veya kayıtlardan açın.")
+            else:
+                coupled_ui.render_result(row, imported=coupled_ui.retained()[row["result_sha256"]][1], root=root)
+            return
         archive_key = st.session_state.get("_research_result_view")
         record = _retained().get(archive_key) if archive_key is not None else None
         current = st.session_state.get(_ACTIVE)
@@ -764,4 +850,4 @@ def render_research(root: Path):
         else:
             _results(None if current is None else json.loads(current[1]))
     elif page == "Karşılaştırma / kayıtlar":
-        _history()
+        _history(root)
