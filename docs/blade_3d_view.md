@@ -20,10 +20,20 @@ the shaft-parallel quarter-chord axis (offsets, tilt) is refused rather than dra
 * **Frame and fold convention:** the coupled model's (`pyfoldable/coupled/frames.py`): blade body x along
   the chord LE→TE, y along the span, z lift normal; shaft +Z, rotation +Ω about +Z, so the leading edge
   leads; the hinge axis is parallel to the shaft through the quarter-chord point of the hinge section,
-  and a negative fold turns the distal part back toward the trailing side. *Known inconsistency:* the
-  older preview builder (`visualization/propeller_25d.py`), and GEOM-01/03 surface clearance which reuses
-  it, fold toward the leading-edge side; they were not changed (qualification-gate code), and the
-  application says so next to the view. Aligning them is a separate decision.
+  and a negative fold turns the distal part back toward the trailing side. *Aligned 2026-11-13 (owner
+  decision):* the 2.5-D preview builder (`visualization/propeller_25d.py`), which GEOM-01 geometry search
+  and GEOM-03/04 surface and hardware clearance reuse, used to place a mirrored section (leading edge on −y,
+  positive twist lowering it), so its negative fold went toward the leading edge. It now places the same
+  physical section as the coupled model with the span on x (x_p = y_c, y_p = −x_c, z_p = z_c); its fold
+  rotation is unchanged and now turns the distal part back toward the trailing side. Pinned by
+  `tests/visualization/test_propeller_25d.py` and a preview-vs-loft cross-check in
+  `tests/visualization/test_blade_surface.py`. Clearance reports archived before this change were computed
+  with the mirrored section and stay as they are (historical evidence, not regenerated). Folded values that
+  depend on which edge leads also shift for new runs: GEOM-01 `mesh_envelope_diameter_m` /
+  `mesh_envelope_target` (the trailing edge, 0.75 c from the quarter chord, now swings outward instead of
+  the leading edge at 0.25 c), and GEOM-03/04 witness points and contact angles. New requests get new
+  identities, because the clearance service binds the source hash of `propeller_25d.py`. All preview faces
+  are outward-wound after the change (checked).
 * **Regions:** analysed surface (proximal and distal parts); *joint zone*; *placeholders* where no
   surface data exist (physical root → first station, last station → tip): translucent, extruded from the
   nearest declared section, never coloured with results. The hub is a dotted outline of its radius (no

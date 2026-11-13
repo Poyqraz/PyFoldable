@@ -195,3 +195,35 @@ def test_package_wildcard_exports_keep_the_existing_2d_api_and_new_preview_api()
         "PropellerPreviewSpec",
         "build_propeller_preview_mesh",
     } <= set(visualization.__all__)
+
+
+def _ring(mesh, station_index):
+    n = mesh.section_vertex_count
+    return mesh.vertices[station_index * n:(station_index + 1) * n]
+
+
+def test_sections_follow_the_coupled_model_frame_leading_edge_leads_and_twist_raises_it():
+    """Same physical blade as the coupled model (pyfoldable/coupled/frames.py), expressed with the span on x:
+    x_p = y_c, y_p = -x_c, z_p = z_c. Rotation +Omega about +z moves a blade on +x toward +y, so the leading
+    edge is on +y; positive twist raises the leading edge toward +z (thrust direction), with the camber."""
+    mesh = build_propeller_preview_mesh(_spec(blade_count=1), STATIONS)
+    ring = _ring(mesh, 0)
+    chord, twist = STATIONS[0].chord_m, math.radians(STATIONS[0].twist_deg)
+    ys = [p[1] for p in ring]
+    assert max(ys) == pytest.approx(0.25 * chord * math.cos(twist), rel=0.05)      # leading edge, +y
+    assert min(ys) == pytest.approx(-0.75 * chord * math.cos(twist), rel=0.05)     # trailing edge, -y
+    le = max(ring, key=lambda p: p[1])
+    te = min(ring, key=lambda p: p[1])
+    assert le[2] > 0.0 > te[2]
+
+
+def test_negative_fold_turns_the_distal_part_back_toward_the_trailing_side():
+    open_ = build_propeller_preview_mesh(_spec(blade_count=1), STATIONS)
+    folded = build_propeller_preview_mesh(_spec(blade_count=1, fold_angle_deg=-30.0), STATIONS)
+    tip = len(STATIONS)                                      # last ring (hinge split adds one station)
+    tip_open = sum(p[1] for p in _ring(open_, tip)) / open_.section_vertex_count
+    tip_folded = sum(p[1] for p in _ring(folded, tip)) / folded.section_vertex_count
+    ring = _ring(open_, 0)
+    te_side = math.copysign(1.0, max(ring, key=lambda p: abs(p[1]))[1])      # TE: farthest from the quarter chord
+    shift = 0.5 * (0.98 * 0.125 - 0.10) * math.sin(math.radians(30.0))
+    assert (tip_folded - tip_open) * te_side > shift

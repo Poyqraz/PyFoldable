@@ -268,8 +268,10 @@ lowest tested start 1600 RPM.
   scene (`coupled_views.flow_blade_scene`). Docs `docs/blade_3d_view.md`; demo records
   `reports/blade3d_20261113/`.
 * Findings: hinge-plane split interlocks at −0.03° (trailing side); with the display joint zone the 800 mm
-  design folds clear to −66.6°; deeper folding needs a declared joint (axial offset). The legacy preview /
-  GEOM-01/03 fold side differs from the coupled convention (not changed; owner decision).
+  design folds clear to −66.6°; deeper folding needs a declared joint (axial offset).
+* Convention alignment (owner: "Yes, align them"): `propeller_25d` sections now match the coupled model
+  (LE on +y, twist raising it, fold toward the trailing side); GEOM-01/03/04 inherit it. Archived clearance
+  reports are historical (mirrored section).
 
 ## Next concrete items
 

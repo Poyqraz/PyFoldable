@@ -19,8 +19,8 @@ from pyfoldable.visualization import blade_surface as bs
 from pyfoldable.visualization import fold_interference as fi
 
 CACHE = "_blade3d_cache"
-CONVENTION = ("dönüş +Z etrafında, katlanma firar kenarı tarafına (bağlaşık model ile aynı); "
-              "eski Plan/GEOM-03 önizlemesi katlanmayı hücum kenarı tarafına çizer — ayrı karar gerektirir")
+CONVENTION = ("dönüş +Z etrafında, katlanma firar kenarı tarafına (bağlaşık model, 2,5B önizleme ve GEOM-01/03/04 "
+              "ile aynı konvansiyon)")
 
 
 def _rui():

@@ -122,3 +122,22 @@ def test_hinge_radius_from_arithmetic_does_not_break_the_hinge_ring(spec):
 def test_profile_in_the_wrong_point_order_is_refused(spec):
     with pytest.raises(ValueError, match="Selig"):
         bs.resample_profile(tuple(reversed(spec.profile)), 32)
+
+
+def test_legacy_preview_and_lofted_blade_are_the_same_physical_blade_when_folded(design):
+    """Convention alignment (2026-11-13): the 2.5-D preview used by Plan/GEOM-01/03 and the lofted blade agree
+    once the frames are mapped (x_p = y_c, y_p = -x_c, z_p = z_c), including the fold side."""
+    from pyfoldable.application import research_views
+    active, foil = design
+    folded = replace(active, inputs=replace(active.inputs, fold_deg=-40.0))
+    preview = research_views._mesh(folded, foil)
+    n = preview.section_vertex_count
+    tip_ring = preview.vertices[(preview.station_count - 1) * n:preview.station_count * n]
+    p = [(v[0], v[1], v[2]) for v in tip_ring]
+    mesh = bs.loft(bs.spec_from_design(active, foil), n_side=64, dr=0.004)
+    r_tip = active.design.blade.stations[-1].r_over_R * active.design.blade.radius_m
+    ring = mesh.posed(math.radians(-40.0))[mesh.section_index(r_tip, "distal")]
+    mapped = [(y, -x, z) for x, y, z in ring]
+    for pick in (lambda q: q[1], lambda q: -q[1]):            # leading edge (max y_p) and trailing edge (min y_p)
+        a, b = max(p, key=pick), max(mapped, key=pick)
+        assert math.dist(a, b) < 5e-4

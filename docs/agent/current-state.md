@@ -182,8 +182,10 @@ Measurement plan: [prototype measurement plan](../prototype_measurement_plan.md)
 (catalog profile, declared stations, coupled-model fold convention) replaces the design 3B/Plan preview
 and colours BEM and coupled sectional results on the surface (strips, kind and unit labelled), with fold
 contacts screened and no interlocked pose drawn; coupled playback and the flow scene are synchronised to
-one accepted window ([lofted 3-D blade](../blade_3d_view.md)). The legacy preview and GEOM-01/03 clearance
-still fold toward the leading-edge side (inconsistency recorded, not changed). ADR-010 is
+one accepted window ([lofted 3-D blade](../blade_3d_view.md)). The 2.5-D preview and GEOM-01/03/04
+clearance now use the same section placement and fold side as the coupled model (owner decision
+2026-11-13; previously a mirrored section folding toward the leading edge; archived clearance reports
+predate it). ADR-010 is
 proposed, not accepted. `physical_qualification` remains false. Design and limits:
 [coupled dynamic analysis](../coupled_dynamic_analysis.md).
 
