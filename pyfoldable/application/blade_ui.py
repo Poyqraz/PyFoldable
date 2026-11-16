@@ -236,13 +236,34 @@ def bem_on_blade(row):
     if hit:
         st.caption(f"r = {rui._fmt(r_mm, 1)} mm → şerit {rui._fmt(1000 * hit[0], 1)}–{rui._fmt(1000 * hit[1], 1)} mm: "
                    f"**{_num(hit[2])} {f.unit}**")
-    rui._plot(bv.blade_figure(mesh, fold_deg=0.0, field=f, crange=crange, selected_radius_m=r_mm / 1000,
-                              uirevision=f"bem:{row['result_sha256']}"), "research_blade3d")
+    view = rui._choice(st.radio, "Görünüm", ("static", "rotating"), key="research_blade_view", default="static",
+                       horizontal=True, display={"static": "Durağan kanat (kesit inceleme)",
+                                                 "rotating": "Dönen pervane (açıklayıcı oynatma)"}.__getitem__)
+    if view == "rotating":
+        a = row["aerodynamics"]
+        rui._plot(bv.bem_rotation_figure(mesh_for(spec, n_side=24, dr=0.006), field=f, crange=crange,
+                                         rpm=row["inputs"]["rpm"], thrust_n=a["thrust_n"], torque_nm=a["torque_nm"],
+                                         power_w=a["shaft_power_w"]), "research_blade_rotation")
+        st.caption("Kararlı BEM çözümünün açıklayıcı oynatması: kanat çözülen devirle +z ekseni etrafında döner, "
+                   "renkler ve yükler zamanla değişmez (yük zamanla değişmez; kararlı çözüm). Gösterim gerçek zamandan "
+                   "yavaştır; çarpan karede yazılıdır. Kırmızı ok rotor toplam itkisi, halka ok dönüş yönü ile şaft torku "
+                   "ve gücüdür. Zamanla değişen yük ve katlanma için zamana bağlı analiz gerekir.")
+    else:
+        rui._plot(bv.blade_figure(mesh, fold_deg=0.0, field=f, crange=crange, selected_radius_m=r_mm / 1000,
+                                  uirevision=f"bem:{row['result_sha256']}"), "research_blade3d")
     st.caption(f"{f.note} Hesaplanan: {f.source}, tam açık rotor (0°). Yeniden oluşturulan: kanat yüzeyi "
                f"({spec.profile_id} katalog profili, kaydın taslağındaki istasyonlar). Gri yüzeyler sonuç taşımaz "
                "(kesit uçları, yüzey verisi olmayan aralıklar).")
     rui._plot(bv.radial_link_figure(f, selected_radius_m=r_mm / 1000, crange=crange, hinge_radius_m=spec.hinge_radius_m),
               "research_blade_radial")
+    if st.toggle("Akışı göster (BEM tabanlı rekonstrüksiyon)", value=False, key="research_bem_flow"):
+        from pyfoldable.visualization import bem_flow
+        rui._plot(bem_flow.slipstream_figure(row), "research_bem_flow_fig")
+        st.caption("BEM’in her halka için çözdüğü diskteki eksenel ve teğetsel indüklenmiş hızdan, momentum teorisi "
+                   "(aktüatör disk yasası, süreklilik, açısal momentumun korunumu) ile kurulan akım tüpleri: indüksiyon "
+                   "akış yukarısında sıfırdan uzak izde disk değerinin iki katına çıkar. Eksenel simetrik, viskoz olmayan, "
+                   "uç girdabı sarılması olmayan bir modeldir. Hesaplanan bir iz değildir: zamana bağlı DUST izi (girdap "
+                   "parçacıkları) dinamik analizden, viskoz alan ise CFD’den gelir; bu uygulamada CFD yoktur.")
     _downloads(mesh, f"pyfoldable_{spec.profile_id}_{row['result_sha256'][:8]}_bem_{f.key}", field=f,
                frame_note="tam açık, kanat 1 azimut 0")
 
@@ -334,50 +355,42 @@ def coupled_blade_tab(row, root):
         rui._plot(views.response_timeline_figure(row, w, ev), "coupled_blade_timeline")
     _downloads(mesh, f"pyfoldable_dinamik_{row['result_sha256'][:8]}_w{w}_{f0.key}", field=fields, transforms=tf,
                frame_note="laboratuvar çerçevesi (MBDyn durumları; rotorla birlikte görünüm dışa aktarılmaz)")
-    if st.button("Kısa oynatma hazırla (renkli, kaba ağ)", key="coupled_blade_anim",
-                 help="Seçilen büyüklükle en çok 40 kabul edilen pencereden tarayıcıda oynatılan kareler."):
+    if st.button("Oynatma hazırla (fiziksel zaman, olaylar)", key="coupled_blade_anim",
+                 help="Seçilen büyüklükle eşit aralıklı kabul edilen pencereler ve olay pencereleri; tarayıcıda oynatılır."):
         st.session_state["_coupled_blade_anim"] = (row["result_sha256"], f0.key, frame)
     if st.session_state.get("_coupled_blade_anim") == (row["result_sha256"], f0.key, frame):
         rui._plot(animation_figure(row, spec, f0.key, crange, frame), "coupled_blade_anim_fig")
-        st.caption("Oynatma kaba ağ kullanır (gösterim); değerler seçilen pencerelerin kaydedilmiş sonuçlarıdır.")
+        st.caption("Her kare kabul edilen bir pencerenin fiziksel zamanı, devri, katlanma açısı θ ve rotor açısı ψ ile "
+                   "çözülen yükleridir (MBDyn durumları, DUST elemanları). Olay düğmeleri serbest bırakma, ilk temas, en "
+                   "büyük açılma ve ikinci salınım pencerelerine atlar. Hız düğmeleri yalnız gösterim hızını değiştirir; "
+                   "oynatma kaba ağ kullanır.")
 
 
-def animation_figure(row, spec, key, crange, frame, max_frames=40):
+def animation_figure(row, spec, key, crange, frame, max_frames=60):
+    """Playback of accepted windows (evenly spaced plus the event windows) of a coupled record."""
     import numpy as np
-    import plotly.graph_objects as go
+    from pyfoldable.coupled import flow
     coarse = mesh_for(spec, n_side=20, dr=0.008)
     valid = row["series"][:row["execution"]["valid_prefix_windows"]]
-    pick = np.unique(np.linspace(0, len(valid) - 1, min(max_frames, len(valid))).round().astype(int))
-    windows = [valid[k]["window"] for k in pick]
-    blades = spec.blade_count
-    side = np.isin(coarse.region, ("aero", "joint"))
-    moving = coarse.vertex_part == "distal"
+    by = {r["window"]: r for r in valid}
+    ev = flow.events(row)
+    names = {"release": "Serbest bırakma", "first_contact": "İlk temas", "largest_opening": "En büyük açılma",
+             "second_swing_min": "İkinci salınım"}
+    pick = {valid[k]["window"] for k in np.linspace(0, len(valid) - 1, min(max_frames, len(valid))).round().astype(int)}
+    pick |= {w for k, w in ev.items() if k in names and w in by}
+    frames = []
+    for w in sorted(pick):
+        s = by[w]
+        psi = bg.rotor_azimuth(row, w)
+        blades = [br.coupled_fields(row, w, b)[key] for b in range(spec.blade_count)]
+        frames.append({"name": str(w), "label": f"{s['time_s'] * 1000:.1f} ms".replace(".", ","), "psi": psi,
+                       "transforms": bg.node_transforms(row, w), "field": blades,
+                       "text": (f"Dinamik çözüm · pencere {w} · t = {s['time_s'] * 1000:.2f} ms · {s['rpm']:.0f} RPM · "
+                                f"θ = {s['theta_deg'][0]:.2f}° · ψ = {math.degrees(psi) % 360:.1f}° · itki {s['thrust_n']:.2f} N · "
+                                f"aero şaft torku {s['aero_shaft_torque_nm']:.3f} N·m").replace(".", ",")})
     R = 1000 * spec.tip_radius_m
-
-    def trace(w):
-        tf = bg.node_transforms(row, w)
-        rot = -bg.rotor_azimuth(row, w) if frame == "rotor" else 0.0
-        vs, fs, vals, base = [], [], [], 0
-        for b in range(blades):
-            v = bv._rot(np.asarray(tf[b](coarse.vertices, moving)), rot) * 1000.0
-            fv = br.face_values(coarse, br.coupled_fields(row, w, b)[key])
-            ok = side & np.isfinite(fv)
-            vs.append(v); fs.append(coarse.faces[ok] + base); vals.append(fv[ok]); base += len(v)
-        v, f = np.vstack(vs), np.vstack(fs)
-        return go.Mesh3d(x=v[:, 0], y=v[:, 1], z=v[:, 2], i=f[:, 0], j=f[:, 1], k=f[:, 2], intensity=np.concatenate(vals),
-                         intensitymode="cell", colorscale="Viridis", cmin=crange[0], cmax=crange[1], showscale=True,
-                         hoverinfo="skip", name="Sonuç")
-    frames = [go.Frame(data=[trace(w)], name=str(w)) for w in windows]
-    fig = go.Figure(data=frames[0].data, frames=frames)
-    fig.update_layout(height=520, margin=dict(l=0, r=0, t=10, b=0),
-                      scene=dict(xaxis=dict(range=[-1.15 * R, 1.15 * R]), yaxis=dict(range=[-1.15 * R, 1.15 * R]),
-                                 zaxis=dict(range=[-0.35 * R, 0.35 * R]), aspectmode="manual",
-                                 aspectratio=dict(x=1, y=1, z=0.3)),
-                      updatemenus=[dict(type="buttons", x=0, y=0, xanchor="left", yanchor="top", buttons=[
-                          dict(label="▶", method="animate", args=[None, dict(frame=dict(duration=120, redraw=True),
-                                                                             fromcurrent=True)]),
-                          dict(label="❚❚", method="animate", args=[[None], dict(mode="immediate")])])],
-                      sliders=[dict(steps=[dict(method="animate", label=str(w),
-                                                args=[[str(w)], dict(mode="immediate", frame=dict(redraw=True))])
-                                           for w in windows], currentvalue=dict(prefix="Pencere "))])
-    return fig
+    return bv.playback_figure(coarse, frames, crange=crange, frame_ms=120,
+                              events={names[k]: str(w) for k, w in ev.items() if k in names and w in by},
+                              view_rotation=(lambda f: -f["psi"]) if frame == "rotor" else None,
+                              static_traces=bv._scene_arrows(spec),
+                              scene_ranges=((-1.15 * R, 1.15 * R), (-1.15 * R, 1.15 * R), (-0.35 * R, 0.35 * R)))

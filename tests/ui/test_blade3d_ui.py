@@ -108,3 +108,50 @@ def test_coupled_geometry_stays_inspectable_when_results_cannot_be_mapped(tmp_pa
     assert not at.exception
     assert any("eşlenemedi" in e.value for e in at.error)
     assert "yalnız geometri" in _text(at).lower()                 # blades still drawn, uncoloured
+
+
+def test_bem_result_offers_an_explanatory_rotating_view(tmp_path, monkeypatch):
+    store(tmp_path, monkeypatch, PROJECT_AIRFOIL_IDS)
+    bem(monkeypatch)
+    at = go(app(), ANALYSIS)
+    at.button(key="research_run").click().run()
+    at.radio(key="research_blade_view").set_value("rotating").run()
+    assert not at.exception
+    assert "açıklayıcı oynatma" in _text(at) and "yük zamanla değişmez" in _text(at)
+
+
+def test_coupled_playback_carries_time_rpm_angles_and_event_jumps(tmp_path, monkeypatch):
+    store(tmp_path, monkeypatch, PROJECT_AIRFOIL_IDS)
+    bem(monkeypatch)
+    _no_toolchain(monkeypatch, tmp_path)
+    _forbid_runs(monkeypatch)
+    row = _record(tmp_path, FIXTURE_RBF)
+    at = app()
+    at.session_state["research_coupled_results"] = ((json.dumps(row, sort_keys=True, separators=(",", ":")), False),)
+    at.session_state["_coupled_active"] = (None, row["result_sha256"])
+    go(at, RESULTS)
+    at.radio(key="research_results_kind").set_value("Dinamik bağlaşık").run()
+    at.radio(key="coupled_tab").set_value("3B oynatma").run()
+    at.button(key="coupled_blade_anim").click().run()
+    assert not at.exception
+    assert "fiziksel zaman" in _text(at) and "olay" in _text(at).lower()
+
+
+def test_bem_result_shows_a_labelled_flow_reconstruction(tmp_path, monkeypatch):
+    store(tmp_path, monkeypatch, PROJECT_AIRFOIL_IDS)
+    bem(monkeypatch)
+    at = go(app(), ANALYSIS)
+    at.button(key="research_run").click().run()
+    at.toggle(key="research_bem_flow").set_value(True).run()
+    assert not at.exception
+    text = _text(at)
+    assert "momentum teorisi" in text and "DUST" in text and "CFD" in text
+
+
+def test_flow_plane_offers_components_vectors_and_streamlines(tmp_path, monkeypatch):
+    at = _flow_app(tmp_path, monkeypatch)
+    at.radio(key="coupled_flow_component").set_value("swirl").run()
+    at.toggle(key="coupled_flow_vectors").set_value(True).run()
+    at.toggle(key="coupled_flow_streamlines").set_value(True).run()
+    assert not at.exception
+    assert "anlık" in _text(at)

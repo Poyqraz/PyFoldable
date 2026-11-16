@@ -295,3 +295,131 @@ def vtk_bytes(mesh, *, fold_deg=0.0, field=None, rotor_azimuth_rad: float = 0.0)
             vals = br.face_values(mesh, f)
             out.write("".join(("nan" if not np.isfinite(x) else f"{x:.6e}") + "\n" for x in vals))
     return out.getvalue().encode()
+
+
+def _tr(x, digits=3):
+    return f"{x:.{digits}g}".replace(".", ",")
+
+
+def _frame_traces(mesh, frame, crange, colorscale, view_rotation_rad=0.0):
+    """One playback frame: the coloured (or plain) blades and blade 1's tip marker, posed by the frame."""
+    view = (lambda p: _rot(p, view_rotation_rad)) if view_rotation_rad else (lambda p: p)
+    side = np.isin(mesh.region, ("aero", "joint"))
+    moving = mesh.vertex_part == "distal"
+    fields = _per_blade(frame.get("field"), mesh.spec.blade_count)
+    vs, fs, vals, base = [], [], [], 0
+    for b, t in enumerate(frame["transforms"]):
+        v = view(np.asarray(t(mesh.vertices, moving))) * 1000.0
+        if fields[b] is not None:
+            from pyfoldable.visualization import blade_results as br
+            fv = br.face_values(mesh, fields[b])
+            ok = side & np.isfinite(fv)
+            vals.append(fv[ok])
+        else:
+            ok = side
+        vs.append(v)
+        fs.append(mesh.faces[ok] + base)
+        base += len(v)
+    v, f = np.vstack(vs), np.vstack(fs)
+    kw = dict(x=v[:, 0], y=v[:, 1], z=v[:, 2], i=f[:, 0], j=f[:, 1], k=f[:, 2], name="Kanatlar", hoverinfo="skip",
+              flatshading=False, lighting=dict(ambient=0.55, diffuse=0.75, specular=0.25))
+    if vals:
+        f0 = fields[0]
+        kw.update(intensity=np.concatenate(vals), intensitymode="cell", colorscale=colorscale, cmin=crange[0],
+                  cmax=crange[1],
+                  colorbar=dict(title=dict(text=f"{f0.label}<br>[{f0.unit}] · {KIND_LABEL[f0.kind]}", side="right"), len=0.7))
+    else:
+        kw.update(color=MOVABLE)
+    tip_body = np.array([[0.0, mesh.spec.stations[-1][0], 0.0]])
+    tip = view(np.asarray(frame["transforms"][0](tip_body, np.array([True])))) * 1000.0
+    return [go.Mesh3d(**kw), go.Scatter3d(x=tip[:, 0], y=tip[:, 1], z=tip[:, 2], mode="markers", name="Kanat 1 ucu",
+                                          marker=dict(size=5, color="#111"), hoverinfo="name")]
+
+
+def _scene_arrows(spec, thrust_n=None, torque_nm=None, power_w=None):
+    """Thrust along +z (rotor total) and the rotation direction +Omega about +z with torque and power."""
+    R = spec.tip_radius_m * 1000.0
+    out = []
+    if thrust_n is not None:
+        h = 0.45 * R
+        out += [go.Scatter3d(x=[0, 0], y=[0, 0], z=[0, h], mode="lines", line=dict(color="#C0392B", width=8),
+                             name="İtki (rotor toplamı)", hovertext=f"İtki T = {_tr(thrust_n)} N (rotor toplamı, +z yönünde)",
+                             hoverinfo="text"),
+                go.Cone(x=[0], y=[0], z=[h], u=[0], v=[0], w=[0.12 * R], anchor="tail",
+                        colorscale=[[0, "#C0392B"], [1, "#C0392B"]], showscale=False, sizemode="absolute",
+                        sizeref=0.12 * R, name="İtki yönü", hoverinfo="skip")]
+    th = np.linspace(0.0, 1.5 * math.pi, 60)
+    r = 0.22 * R
+    txt = "Dönüş yönü: +Ω, +z ekseni etrafında (önden bakınca saat yönünün tersi)"
+    if torque_nm is not None:
+        txt += f"; aerodinamik şaft torku Q = {_tr(torque_nm)} N·m"
+    if power_w is not None:
+        txt += f", güç P = {_tr(power_w)} W"
+    out.append(go.Scatter3d(x=list(-r * np.sin(th)), y=list(r * np.cos(th)), z=[0.0] * len(th), mode="lines",
+                            line=dict(color="#2C3E50", width=5), name="Dönüş yönü (+Ω)", hovertext=txt, hoverinfo="text"))
+    out.append(go.Cone(x=[-r * math.sin(th[-1])], y=[r * math.cos(th[-1])], z=[0.0], u=[-math.cos(th[-1])],
+                       v=[-math.sin(th[-1])], w=[0.0], anchor="tail", colorscale=[[0, "#2C3E50"], [1, "#2C3E50"]],
+                       showscale=False, sizemode="absolute", sizeref=0.08 * R, hoverinfo="skip", name="Dönüş oku"))
+    return out
+
+
+SPEEDS = (("0,25×", 4.0), ("0,5×", 2.0), ("1×", 1.0), ("2×", 0.5))
+
+
+def playback_figure(mesh, frames, *, crange=None, colorscale="Viridis", static_traces=(), events=None, frame_ms=80,
+                    view_rotation=None, scene_ranges=None, height=580):
+    """Client-side playback: play/pause, display speed, a slider over the frames (time selection and frame
+    stepping) and event jumps. Each frame carries its own label and annotation text (time, RPM, angles).
+    ``view_rotation(frame)`` gives a per-frame scene rotation (rotor-relative view)."""
+    built = [_frame_traces(mesh, f, crange, colorscale, view_rotation(f) if view_rotation else 0.0) for f in frames]
+
+    def note(text):
+        return [dict(text=text, x=0, y=1.06, xref="paper", yref="paper", showarrow=False, align="left", xanchor="left")]
+    fig = go.Figure(data=built[0] + list(static_traces),
+                    frames=[go.Frame(data=traces, traces=[0, 1], name=f["name"], layout=dict(annotations=note(f["text"])))
+                            for f, traces in zip(frames, built)])
+
+    def anim(names, ms):
+        return [names, dict(frame=dict(duration=ms, redraw=True), transition=dict(duration=0), mode="immediate",
+                            fromcurrent=True)]
+
+    def jump(name):
+        return [[name], dict(mode="immediate", frame=dict(duration=0, redraw=True), transition=dict(duration=0))]
+    buttons = [dict(label="▶", method="animate", args=anim(None, frame_ms)),
+               dict(label="❚❚", method="animate", args=[[None], dict(mode="immediate", frame=dict(duration=0))])]
+    buttons += [dict(label=lab, method="animate", args=anim(None, frame_ms * k)) for lab, k in SPEEDS]
+    menus = [dict(type="buttons", direction="left", x=0, y=-0.02, xanchor="left", yanchor="top", buttons=buttons)]
+    if events:
+        menus.append(dict(type="buttons", direction="left", x=0, y=-0.12, xanchor="left", yanchor="top",
+                          buttons=[dict(label=k, method="animate", args=jump(v)) for k, v in events.items()]))
+    fig.update_layout(height=height, margin=dict(l=0, r=0, t=40, b=0), updatemenus=menus, annotations=note(frames[0]["text"]),
+                      sliders=[dict(x=0.32, len=0.68, y=-0.02, currentvalue=dict(prefix=""),
+                                    steps=[dict(method="animate", label=f["label"], args=jump(f["name"])) for f in frames])],
+                      scene=dict(aspectmode="data", xaxis_title="X [mm]", yaxis_title="Y [mm]", zaxis_title="Z [mm] (itki yönü)",
+                                 camera=dict(eye=dict(x=0.9, y=-1.3, z=0.9))))
+    if scene_ranges is not None:
+        span = scene_ranges[0][1] - scene_ranges[0][0]
+        fig.update_layout(scene=dict(aspectmode="manual", **{a + "axis": dict(range=list(r)) for a, r in zip("xyz", scene_ranges)},
+                                     aspectratio={a: (r[1] - r[0]) / span for a, r in zip("xyz", scene_ranges)}))
+    return fig
+
+
+def bem_rotation_figure(mesh, *, field=None, crange=None, rpm, thrust_n=None, torque_nm=None, power_w=None, n_frames=36,
+                        frame_ms=80):
+    """Explanatory playback of a steady BEM solution over one revolution at the solved speed: the loads do not
+    change in time (steady solution); the display is slowed down by the stated factor."""
+    period = 60.0 / rpm
+    slow = (n_frames * frame_ms / 1000.0) / period
+    frames = []
+    for k in range(n_frames):
+        t = k * period / n_frames
+        psi = 2.0 * math.pi * k / n_frames
+        frames.append({"name": str(k), "label": f"{t * 1000:.2f} ms".replace(".", ","),
+                       "transforms": default_transforms(mesh, 0.0, psi), "field": field,
+                       "text": (f"Kararlı BEM çözümünün açıklayıcı oynatması (yük zamanla değişmez) · t = "
+                                f"{_tr(t * 1000, 4)} ms · {_tr(rpm, 4)} RPM · ψ = {_tr(math.degrees(psi), 4)}° · "
+                                f"gösterim ≈ {slow:.0f}× yavaş")})
+    R = mesh.spec.tip_radius_m * 1000.0
+    return playback_figure(mesh, frames, crange=crange, frame_ms=frame_ms,
+                           static_traces=_scene_arrows(mesh.spec, thrust_n, torque_nm, power_w),
+                           scene_ranges=((-1.1 * R, 1.1 * R), (-1.1 * R, 1.1 * R), (-0.3 * R, 0.6 * R)))

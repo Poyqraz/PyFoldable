@@ -625,10 +625,20 @@ def _flow_tab(row, root):
         rui._plot(views.flow_scene_figure(row, fc, w, show_plane=show_plane), "coupled_flow_scene")
     c1, c2 = st.columns(2)
     with c1:
-        st.markdown("**Eksenel hız, y = 0 düzlemi (dust_post)**")
-        rui._plot(views.flow_plane_figure(row, fc, w), "coupled_flow_plane_fig")
-        st.caption("−w: aşağı doğru (itkiye ters) eksenel hız. Düzlem laboratuvar çerçevesinde sabittir; kanatlar her "
-                   "yarım turda içinden geçer. Kanat çizgisine çok yakın noktalarda çekirdek düzenlemesi etkilidir.")
+        st.markdown("**Hız, y = 0 düzlemi (dust_post)**")
+        comp = rui._choice(st.radio, "Bileşen", tuple(views.PLANE_COMPONENTS), key="coupled_flow_component",
+                           default="axial", horizontal=True,
+                           display={"axial": "Eksenel", "swirl": "Dönme (swirl)", "radial": "Radyal"}.__getitem__)
+        a, b = st.columns(2)
+        vectors = a.toggle("Hız vektörleri", value=False, key="coupled_flow_vectors")
+        lines = b.toggle("Akım çizgileri", value=False, key="coupled_flow_streamlines")
+        rui._plot(views.flow_plane_figure(row, fc, w, component=comp, vectors=vectors, streamlines=lines),
+                  "coupled_flow_plane_fig")
+        st.caption("dust_post’un DUST girdap modelinden hesapladığı hız (CFD değildir). −w: aşağı (itkiye ters) eksenel "
+                   "hız; dönme: +Ω yönündeki teğetsel hız; radyal: dışa. Düzlem laboratuvar çerçevesinde sabittir; "
+                   "kanatlar her yarım turda içinden geçer. Vektörler ve akım çizgileri yalnız düzlem içi (v_x, v_z) "
+                   "bileşenleriyle, anlık hız alanından çizilir; 3B parçacık yörüngesi değildir. Kanat çizgisine çok "
+                   "yakın noktalarda çekirdek düzenlemesi etkilidir.")
     with c2:
         st.markdown("**Yakın iz şiddeti, yarıçapa göre**")
         ref = flow.nearest_frame(fc, ev["release"] - 1) if "release" in ev else windows[0]

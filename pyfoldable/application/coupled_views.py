@@ -410,17 +410,46 @@ def flow_blade_scene(row, fc, window, mesh, *, fields=None, crange=None, rotor_f
                            uirevision=f"flow:{row['result_sha256']}:{rotor_fixed}")
 
 
-def flow_plane_figure(row, fc, window):
-    """Downward axial velocity −w on the meridional plane y = 0 (lab frame), from dust_post: the
-    velocity DUST's lifting lines, panel wake and particles induce, plus the free stream."""
+PLANE_COMPONENTS = {"axial": ("−w [m/s] (eksenel, aşağı)", "−w"), "swirl": ("Dönme v_θ [m/s] (+Ω yönünde)", "v_θ"),
+                    "radial": ("Radyal v_r [m/s] (dışa)", "v_r")}
+
+
+def flow_plane_figure(row, fc, window, *, component="axial", vectors=False, streamlines=False):
+    """Velocity on the meridional plane y = 0 (lab frame), from dust_post: the velocity DUST's lifting lines,
+    panel wake and particles induce, plus the free stream. ``component``: axial (−w), swirl (tangential for
+    rotation +Omega about +z: v_y sign(x)) or radial (v_x sign(x)); optional in-plane vectors and in-plane
+    streamlines (instantaneous, of the (v_x, v_z) components only)."""
     import numpy as np
     i = fc.index(window)
     vel = fc.plane_velocity[i]
-    down = -vel[:, :, 2]
-    fig = go.Figure(go.Heatmap(x=1000 * fc.plane_x, y=1000 * fc.plane_z, z=down, colorscale="RdBu_r",
-                               zmin=float(np.percentile(down, 1)), zmax=float(np.percentile(down, 99)),
-                               colorbar=dict(title="−w [m/s]"),
-                               hovertemplate="x %{x:.0f} mm · z %{y:.0f} mm · −w %{z:.2f} m/s<extra></extra>"))
+    side = np.sign(fc.plane_x)[None, :]
+    data = {"axial": -vel[:, :, 2], "swirl": vel[:, :, 1] * side, "radial": vel[:, :, 0] * side}[component]
+    title, short = PLANE_COMPONENTS[component]
+    lim = float(np.percentile(np.abs(data), 99)) if component != "axial" else None
+    fig = go.Figure(go.Heatmap(x=1000 * fc.plane_x, y=1000 * fc.plane_z, z=data, colorscale="RdBu_r",
+                               zmin=-lim if lim else float(np.percentile(data, 1)),
+                               zmax=lim if lim else float(np.percentile(data, 99)),
+                               colorbar=dict(title=title),
+                               hovertemplate="x %{x:.0f} mm · z %{y:.0f} mm · " + short + " %{z:.2f} m/s<extra></extra>"))
+    if vectors:
+        X, Z = np.meshgrid(1000 * fc.plane_x, 1000 * fc.plane_z)
+        step = max(1, len(fc.plane_x) // 18)
+        u, w = vel[::step, ::step, 0], vel[::step, ::step, 2]
+        scale = 0.6 * step * 1000 * float(fc.plane_x[1] - fc.plane_x[0]) / max(float(np.max(np.hypot(u, w))), 1e-9)
+        xs, ys = [], []
+        for x0, z0, du, dw in zip(X[::step, ::step].ravel(), Z[::step, ::step].ravel(), u.ravel(), w.ravel()):
+            xs += [x0, x0 + scale * du, None]; ys += [z0, z0 + scale * dw, None]
+        fig.add_trace(go.Scatter(x=xs, y=ys, mode="lines", line=dict(color="rgba(17,24,39,.7)", width=1),
+                                 name="Hız vektörleri (düzlem içi v_x, v_z)", hoverinfo="skip"))
+    if streamlines:
+        import plotly.figure_factory as ff
+        sl = ff.create_streamline(1000 * fc.plane_x, 1000 * fc.plane_z, vel[:, :, 0], vel[:, :, 2], density=1.0,
+                                  arrow_scale=0.02)
+        for tr in sl.data:
+            tr.update(name="Akım çizgileri (anlık, düzlem içi; 3B değil)", line=dict(color="rgba(255,255,255,.75)", width=1),
+                      showlegend=False, hoverinfo="skip")
+            fig.add_trace(tr)
+        fig.data[-1].showlegend = True
     p, v, _ = fc.particles(window)
     near = np.abs(p[:, 1] - fc.plane_y) < 0.01
     fig.add_trace(go.Scatter(x=1000 * p[near, 0], y=1000 * p[near, 2], mode="markers",

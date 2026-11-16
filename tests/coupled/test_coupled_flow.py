@@ -283,3 +283,20 @@ def test_event_detection_edge_cases():
     theta = [-5, -4, 0.2, -0.1, 0.1, -1.0, -2.0, -2.5, -1.5, -0.5, 0.1, -0.8, -1.2, -1.0]
     ev = flow.events(_series(latch, contact, theta))
     assert ev["release"] == 2 and ev["first_contact"] == 3 and ev["second_swing_min"] == 8
+
+
+def test_velocity_plane_components_vectors_and_streamlines(run):
+    row = _row(run)
+    fc = flow.load(run, row)
+    vel = fc.plane_velocity[fc.index(13)]
+    x = fc.plane_x
+    swirl = views.flow_plane_figure(row, fc, 13, component="swirl")
+    heat = swirl.data[0]
+    # tangential (swirl) velocity for rotation +Omega about +z on the y = 0 plane: v_y sign(x)
+    assert np.allclose(np.asarray(heat.z), vel[:, :, 1] * np.sign(x)[None, :])
+    assert "Dönme" in heat.colorbar.title.text
+    radial = views.flow_plane_figure(row, fc, 13, component="radial")
+    assert np.allclose(np.asarray(radial.data[0].z), vel[:, :, 0] * np.sign(x)[None, :])
+    extra = views.flow_plane_figure(row, fc, 13, vectors=True, streamlines=True)
+    names = [t.name or "" for t in extra.data]
+    assert any("Hız vektörleri" in n for n in names) and any("Akım çizgileri" in n for n in names)

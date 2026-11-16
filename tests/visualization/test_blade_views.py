@@ -95,3 +95,29 @@ def test_exports_from_explicit_transforms_equal_the_direct_exports(mesh):
     tf = bv.default_transforms(mesh, -10.0)
     assert blade_ui._stl_from_transforms(mesh, tf) == bv.stl_bytes(mesh, fold_deg=-10.0)
     assert blade_ui._vtk_from_transforms(mesh, tf, _field()) == bv.vtk_bytes(mesh, fold_deg=-10.0, field=_field())
+
+
+def test_bem_rotation_playback_turns_with_plus_omega_and_says_it_is_explanatory(mesh):
+    fig = bv.bem_rotation_figure(mesh, field=_field(), crange=(0.0, 300.0), rpm=2400.0, thrust_n=43.6,
+                                 torque_nm=3.28, power_w=824.0, n_frames=24)
+    assert len(fig.frames) == 24
+    tips = [next(t for t in f.data if t.name == "Kanat 1 ucu") for f in fig.frames]
+    angles = [math.atan2(-t.x[0], t.y[0]) for t in tips]            # psi measured from +Y toward -X (+Omega about +Z)
+    assert angles[1] > angles[0] and 0.0 < angles[6] - angles[0] < math.pi
+    text = fig.frames[6].layout.annotations[0].text
+    assert "açıklayıcı" in text and "RPM" in text and "ψ" in text and "ms" in text and "yavaş" in text
+    labels = [b.label for m in fig.layout.updatemenus for b in m.buttons]
+    assert {"▶", "❚❚", "0,25×", "1×", "2×"} <= set(labels)
+    assert len(fig.layout.sliders[0].steps) == 24
+    arrow = next(t for t in fig.data if t.name == "İtki (rotor toplamı)")
+    assert "43,6" in arrow.hovertext and "+z" in arrow.hovertext
+    spin = next(t for t in fig.data if (t.name or "").startswith("Dönüş yönü"))
+    assert "3,28" in spin.hovertext and "824" in spin.hovertext
+
+
+def test_playback_event_buttons_jump_to_named_frames(mesh):
+    frames = [{"name": str(k), "label": f"{k}", "text": f"f{k}", "transforms": bv.default_transforms(mesh, 0.0, 0.1 * k),
+               "field": None} for k in range(5)]
+    fig = bv.playback_figure(mesh, frames, events={"İlk temas": "3"})
+    jump = next(b for m in fig.layout.updatemenus for b in m.buttons if b.label == "İlk temas")
+    assert list(jump.args[0]) == ["3"]
