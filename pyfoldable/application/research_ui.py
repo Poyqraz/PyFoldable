@@ -435,6 +435,17 @@ def _navigate(page):
     st.session_state["_research_next_page"] = page
 
 
+def _prepare_matched_run(action):
+    """Preselect the profile and the data version that make the pair matched, then open Analiz."""
+    values = st.session_state.setdefault("_research_control_values", {})  # survives pages (see _seed)
+    for key, value in (("research_profile", action["profile"]),
+                       (f"research_version_{action['profile']}", action["content_sha256"])):
+        values[key] = value
+        st.session_state.get("_research_widget_seeds", {}).pop(key, None)
+        st.session_state.pop(key, None)
+    _navigate("Analiz")
+
+
 def _show_run(row, token):
     st.session_state[_ACTIVE] = (token, research.saved_result_json(row))
     st.session_state["_research_result_view"] = None
@@ -759,7 +770,18 @@ def _history(root=None):
             if result["matched_numerical_comparison"]:
                 st.success("Eşleştirilmiş sayısal karşılaştırma · farklı koordinatlar, aynı planform, koşul ve yöntem.")
             else:
-                st.info("Eşleştirilmiş sayısal çift oluşmadı. Profil koordinatları farklı; planform, koşul ve sayısal yöntem eş olmalı.")
+                st.info("Eşleştirilmiş sayısal çift oluşmadı. Profil dışındaki şu alanlar farklı:")
+                diff = [d for d in research.comparison_differences(rows) if not d["expected"]]
+                st.dataframe([{"Alan": d["field"], "Birinci": str(d["first"]), "İkinci": str(d["second"])} for d in diff],
+                             hide_index=True, use_container_width=True)
+                action = research.matching_action(rows, _repository()[0])
+                if action and action["available"]:
+                    st.button(f"Eşleşen kaydı üret: {action['profile']} · {action['version_label']} ile Analiz’e git",
+                              key="research_compare_match", on_click=_prepare_matched_run, args=(action,),
+                              help="Profil ve veri sürümü seçilir; BEM’i siz başlatırsınız. Mevcut kayıtlar değişmez.")
+                elif action:
+                    st.caption("Bu iki profil için aynı polar senaryosuna ait sürüm yok; eşleşmiş bir çift için ortak "
+                               "ızgarada yeni bir polar yakalaması gerekir.")
                 with st.expander("Karşılaştırma teknik ayrıntısı"):
                     st.json(result, expanded=False)
             summary = [{"Kayıt": display(k), "İtki [N]": _fmt(r["aerodynamics"]["thrust_n"], 3),

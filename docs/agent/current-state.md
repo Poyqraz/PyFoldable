@@ -168,7 +168,9 @@ enforced before and during runs, and a trajectory check of section Re/Mach again
 table. Demonstrated: deployment from −20° during a 2200→2400 RPM ramp (completed, inside the table);
 −20° at 2400 RPM leaves the table's Mach 0.31 in the opening swing (fail-closed). Spin-up from rest
 remains unsupported (deep stall and low Re outside the data). Evidence: `reports/coupled_deployment_20261112/`. The retained 800 mm table supports
-deployment only inside that envelope; spin-up and folded starts are not covered. A second retained
+deployment only inside that envelope; spin-up and folded starts are not covered. All six catalog profiles now
+have retained attached-flow XFOIL families (2026-11-16; [catalog polars](../../reports/catalog_polars_20261116/README.md)),
+so the BEM and the coupled preparation run for every profile. A second retained
 NACA2412 family (`research_axial_800_deploy_xfoil_v3`, locally built XFOIL 6.99, Re 100k–400k ×
 Mach 0.07–0.36, same attached α −6…8°; two failed declarations retained) lets −22.5° at 2400 RPM and
 −20° released at 1600 RPM during a 1600→2400 ramp complete; the estimated (no-induction, untested)

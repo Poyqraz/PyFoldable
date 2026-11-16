@@ -1,0 +1,130 @@
+{
+  "adapter_source_sha256": "b5a6e12c550cae3d24cba7a86d9656461c20fc2ed7aa8008c3917dd60b6c0410",
+  "airfoil_input_sha256": "1741afe9178e573592a91de9d64cb087ba3cd203f1e929ef60d1a737774dc529",
+  "artifact_class": "xfoil_subprocess_capture",
+  "capture_receipt_written": true,
+  "coordinate_sha256": "ab62d56cc86a591da4f83c1980ea5b07743c4e47bdb0eb63a8e166e190a96d42",
+  "declared_build_policy": {
+    "fortran_flags": "-O2 -fdefault-real-8 -fallow-argument-mismatch",
+    "role": "Declared build requirement only. A capture does not rebuild XFOIL and does not prove that the executable was produced from this archive or these flags.",
+    "source_archive_sha256": "5c0250643f52ce0e75d7338ae2504ce7907f2d49a30f921826717b8ac12ebe40",
+    "source_url": "https://web.mit.edu/drela/Public/web/xfoil/xfoil6.99.tgz",
+    "ubuntu_dfsg_package_allowed": false,
+    "verified_against_this_executable": false
+  },
+  "evidence_ready": true,
+  "executable_identity": {
+    "limits": "SHA-256 of the executable file immediately before and after this subprocess call. This does not prove the process image, the declared source archive, or the compiler flags.",
+    "matched": true,
+    "postlaunch": {
+      "path": "/home/poyqraz/pyf-work/xfoil/preflight/bin/xfoil",
+      "sha256": "d1076680fd8ffa5e2eaa94f601ab495ae8ce20e6b4f1b80c5729505691b136a7",
+      "unavailable_reason": null
+    },
+    "prelaunch": {
+      "path": "/home/poyqraz/pyf-work/xfoil/preflight/bin/xfoil",
+      "sha256": "d1076680fd8ffa5e2eaa94f601ab495ae8ce20e6b4f1b80c5729505691b136a7",
+      "unavailable_reason": null
+    }
+  },
+  "points": [
+    {
+      "alpha_rad": -0.10471975511965978,
+      "cd": 0.0137,
+      "cl": -0.7645,
+      "cm": 0.0177,
+      "message": "",
+      "status": "converged"
+    },
+    {
+      "alpha_rad": -0.06981317007977318,
+      "cd": 0.01091,
+      "cl": -0.5419,
+      "cm": 0.0152,
+      "message": "",
+      "status": "converged"
+    },
+    {
+      "alpha_rad": -0.03490658503988659,
+      "cd": 0.00856,
+      "cl": -0.2516,
+      "cm": 0.0018,
+      "message": "",
+      "status": "converged"
+    },
+    {
+      "alpha_rad": 0.0,
+      "cd": 0.00733,
+      "cl": 0.0,
+      "cm": -0.0,
+      "message": "",
+      "status": "converged"
+    },
+    {
+      "alpha_rad": 0.03490658503988659,
+      "cd": 0.00856,
+      "cl": 0.2516,
+      "cm": -0.0018,
+      "message": "",
+      "status": "converged"
+    },
+    {
+      "alpha_rad": 0.06981317007977318,
+      "cd": 0.01091,
+      "cl": 0.542,
+      "cm": -0.0152,
+      "message": "",
+      "status": "converged"
+    },
+    {
+      "alpha_rad": 0.10471975511965978,
+      "cd": 0.0137,
+      "cl": 0.7645,
+      "cm": -0.0177,
+      "message": "",
+      "status": "converged"
+    },
+    {
+      "alpha_rad": 0.13962634015954636,
+      "cd": 0.01776,
+      "cl": 0.8844,
+      "cm": 0.001,
+      "message": "",
+      "status": "converged"
+    }
+  ],
+  "polar_decoding_status": "decoded",
+  "polar_file": {
+    "byte_count": 1126,
+    "sha256": "be3034505cbd2ac666847a3af0798d938c1f8aae24e059221d583373ba1e9c36",
+    "status": "present"
+  },
+  "polar_parsed": true,
+  "polar_read_error": null,
+  "polar_read_status": "present",
+  "process_status": "completed",
+  "provider_identity": {
+    "adapter_version": "2",
+    "backend_name": "XFOIL",
+    "backend_version": "6.99",
+    "name": "xfoil-subprocess"
+  },
+  "pyfoldable_version": "0.3.0",
+  "request_cache_key": "034f258f6a660b87521712f7ea9c08636a80aa017aa4d9907eff94d0278b403e",
+  "request_preimage_sha256": "034f258f6a660b87521712f7ea9c08636a80aa017aa4d9907eff94d0278b403e",
+  "returncode": 0,
+  "schema_version": 1,
+  "script_sha256": "10084356311d5766da4a2a253cdc4a9240a5d3d838fae8a63eeb4ef5511eb879",
+  "solver_output_usable": true,
+  "stderr": {
+    "byte_count": 82,
+    "sha256": "2e3f2acf892f7cf131f8e30a65909726ec274c5e93c83aad9c993cc4e51b86a3",
+    "status": "present"
+  },
+  "stdout": {
+    "byte_count": 36446,
+    "sha256": "3d97f764aa16b267d5d08300bf3dec695891494429d1f31ee9d0e389cb00c19b",
+    "status": "present"
+  },
+  "stream_text_is_not_raw_bytes": true
+}

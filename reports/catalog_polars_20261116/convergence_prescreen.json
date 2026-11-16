@@ -1,0 +1,581 @@
+[
+ {
+  "profile": "NACA23012",
+  "mach": 0.07,
+  "re": 100000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA23012",
+  "mach": 0.07,
+  "re": 165000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA23012",
+  "mach": 0.07,
+  "re": 245000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA23012",
+  "mach": 0.07,
+  "re": 330000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA23012",
+  "mach": 0.07,
+  "re": 400000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA23012",
+  "mach": 0.1,
+  "re": 100000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA23012",
+  "mach": 0.1,
+  "re": 165000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA23012",
+  "mach": 0.1,
+  "re": 245000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA23012",
+  "mach": 0.1,
+  "re": 330000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA23012",
+  "mach": 0.1,
+  "re": 400000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA23012",
+  "mach": 0.31,
+  "re": 100000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA23012",
+  "mach": 0.31,
+  "re": 165000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA23012",
+  "mach": 0.31,
+  "re": 245000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA23012",
+  "mach": 0.31,
+  "re": 330000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA23012",
+  "mach": 0.31,
+  "re": 400000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA23012",
+  "mach": 0.36,
+  "re": 100000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA23012",
+  "mach": 0.36,
+  "re": 165000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA23012",
+  "mach": 0.36,
+  "re": 245000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA23012",
+  "mach": 0.36,
+  "re": 330000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA23012",
+  "mach": 0.36,
+  "re": 400000.0,
+  "complete": false,
+  "failed_alpha": [
+   -4,
+   0
+  ]
+ },
+ {
+  "profile": "NACA4415",
+  "mach": 0.07,
+  "re": 100000.0,
+  "complete": false,
+  "failed_alpha": [
+   0
+  ]
+ },
+ {
+  "profile": "NACA4415",
+  "mach": 0.07,
+  "re": 165000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4415",
+  "mach": 0.07,
+  "re": 245000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4415",
+  "mach": 0.07,
+  "re": 330000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4415",
+  "mach": 0.07,
+  "re": 400000.0,
+  "complete": false,
+  "failed_alpha": [
+   -6
+  ]
+ },
+ {
+  "profile": "NACA4415",
+  "mach": 0.1,
+  "re": 100000.0,
+  "complete": false,
+  "failed_alpha": [
+   0
+  ]
+ },
+ {
+  "profile": "NACA4415",
+  "mach": 0.1,
+  "re": 165000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4415",
+  "mach": 0.1,
+  "re": 245000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4415",
+  "mach": 0.1,
+  "re": 330000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4415",
+  "mach": 0.1,
+  "re": 400000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4415",
+  "mach": 0.31,
+  "re": 100000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4415",
+  "mach": 0.31,
+  "re": 165000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4415",
+  "mach": 0.31,
+  "re": 245000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4415",
+  "mach": 0.31,
+  "re": 330000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4415",
+  "mach": 0.31,
+  "re": 400000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4415",
+  "mach": 0.36,
+  "re": 100000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4415",
+  "mach": 0.36,
+  "re": 165000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4415",
+  "mach": 0.36,
+  "re": 245000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4415",
+  "mach": 0.36,
+  "re": 330000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4415",
+  "mach": 0.36,
+  "re": 400000.0,
+  "complete": false,
+  "failed_alpha": [
+   -2
+  ]
+ },
+ {
+  "profile": "NACA63-412",
+  "mach": 0.07,
+  "re": 100000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA63-412",
+  "mach": 0.07,
+  "re": 165000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA63-412",
+  "mach": 0.07,
+  "re": 245000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA63-412",
+  "mach": 0.07,
+  "re": 330000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA63-412",
+  "mach": 0.07,
+  "re": 400000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA63-412",
+  "mach": 0.1,
+  "re": 100000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA63-412",
+  "mach": 0.1,
+  "re": 165000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA63-412",
+  "mach": 0.1,
+  "re": 245000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA63-412",
+  "mach": 0.1,
+  "re": 330000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA63-412",
+  "mach": 0.1,
+  "re": 400000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA63-412",
+  "mach": 0.31,
+  "re": 100000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA63-412",
+  "mach": 0.31,
+  "re": 165000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA63-412",
+  "mach": 0.31,
+  "re": 245000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA63-412",
+  "mach": 0.31,
+  "re": 330000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA63-412",
+  "mach": 0.31,
+  "re": 400000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA63-412",
+  "mach": 0.36,
+  "re": 100000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA63-412",
+  "mach": 0.36,
+  "re": 165000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA63-412",
+  "mach": 0.36,
+  "re": 245000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA63-412",
+  "mach": 0.36,
+  "re": 330000.0,
+  "complete": false,
+  "failed_alpha": [
+   6
+  ]
+ },
+ {
+  "profile": "NACA63-412",
+  "mach": 0.36,
+  "re": 400000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4412",
+  "mach": 0.07,
+  "re": 100000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4412",
+  "mach": 0.07,
+  "re": 165000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4412",
+  "mach": 0.07,
+  "re": 245000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4412",
+  "mach": 0.07,
+  "re": 330000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4412",
+  "mach": 0.07,
+  "re": 400000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4412",
+  "mach": 0.1,
+  "re": 100000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4412",
+  "mach": 0.1,
+  "re": 165000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4412",
+  "mach": 0.1,
+  "re": 245000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4412",
+  "mach": 0.1,
+  "re": 330000.0,
+  "complete": false,
+  "failed_alpha": [
+   4
+  ]
+ },
+ {
+  "profile": "NACA4412",
+  "mach": 0.1,
+  "re": 400000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4412",
+  "mach": 0.31,
+  "re": 100000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4412",
+  "mach": 0.31,
+  "re": 165000.0,
+  "complete": false,
+  "failed_alpha": [
+   4
+  ]
+ },
+ {
+  "profile": "NACA4412",
+  "mach": 0.31,
+  "re": 245000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4412",
+  "mach": 0.31,
+  "re": 330000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4412",
+  "mach": 0.31,
+  "re": 400000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4412",
+  "mach": 0.36,
+  "re": 100000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4412",
+  "mach": 0.36,
+  "re": 165000.0,
+  "complete": false,
+  "failed_alpha": [
+   -6
+  ]
+ },
+ {
+  "profile": "NACA4412",
+  "mach": 0.36,
+  "re": 245000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4412",
+  "mach": 0.36,
+  "re": 330000.0,
+  "complete": true,
+  "failed_alpha": []
+ },
+ {
+  "profile": "NACA4412",
+  "mach": 0.36,
+  "re": 400000.0,
+  "complete": true,
+  "failed_alpha": []
+ }
+]

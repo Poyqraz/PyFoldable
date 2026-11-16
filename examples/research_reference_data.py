@@ -63,8 +63,8 @@ def request_grid(profile, declaration):
     return requests
 
 
-def scan_guard(design, policy):
-    """Bound the positive scan up to its first alpha <= -4 deg sample.
+def scan_guard(design, policy, negative_guard_deg=-4.0):
+    """Bound the positive scan up to its first alpha <= negative_guard_deg sample (default -4 deg).
 
     On the existing positive psi branch phi=(psi+psi0)/2 and
     W=W0*cos((psi-psi0)/2). If CL(-6,-4) is negative at all corners
@@ -82,7 +82,7 @@ def scan_guard(design, policy):
         psi0 = math.atan2(axial, tangential)
         alpha0 = station.twist_rad - psi0
         dpsi = (math.pi / 2 - policy.annulus_settings.angle_tolerance_rad - psi0) / policy.annulus_settings.bracket_samples
-        steps = math.ceil(2 * (alpha0 + math.radians(4)) / dpsi)
+        steps = math.ceil(2 * (alpha0 - math.radians(negative_guard_deg)) / dpsi)
         alpha_last = alpha0 - steps * dpsi / 2
         speed0 = math.hypot(axial, tangential)
         speed_last = speed0 * math.cos(steps * dpsi / 2)
@@ -135,7 +135,13 @@ def retain_result(result, path):
         "points": [asdict(p) for p in result.points]})
 
 
-def check_cell(request, identity, cell, executable_sha):
+def lift_signs_ok(points, negative_deg=(-6.0, -4.0), positive_deg=(4.0, 6.0, 8.0)):
+    """CL < 0 at every declared negative-lift angle and CL > 0 at every positive one (bounds the BEM scan)."""
+    return (all(points[math.radians(x)] < 0 for x in negative_deg)
+            and all(points[math.radians(x)] > 0 for x in positive_deg))
+
+
+def check_cell(request, identity, cell, executable_sha, negative_deg=(-6.0, -4.0), positive_deg=(4.0, 6.0, 8.0)):
     result = admission._result(admission._document(cell.result_json))
     binding = _bind_returned_result(request, result, identity)
     if binding["identity_mismatch"]:
@@ -147,7 +153,7 @@ def check_cell(request, identity, cell, executable_sha):
     if not result.complete:
         raise ValueError(f"Incomplete cell: {sum(p.usable for p in result.points)}/{len(request.alpha_rad)} usable")
     points = {p.alpha_rad: p.cl for p in result.points}
-    if not all(points[math.radians(x)] < 0 for x in (-6.0, -4.0)) or not all(points[math.radians(x)] > 0 for x in (4.0, 6.0, 8.0)):
+    if not lift_signs_ok(points, negative_deg, positive_deg):
         raise ValueError("Retained lift signs do not support the predeclared conditional scan")
     return result
 

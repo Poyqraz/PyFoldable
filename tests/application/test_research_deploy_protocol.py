@@ -161,7 +161,13 @@ def test_committed_store_holds_both_naca2412_families_and_the_deploy_table():
         repo = store.load_repository()
     by = {f.family_id: f for f in repo.families}
     assert set(by) == {"research_axial_800_attached_xfoil_v1:NACA0012", "research_axial_800_attached_xfoil_v1:NACA2412",
-                       "research_axial_800_deploy_xfoil_v3:NACA2412"}
+                       "research_axial_800_deploy_xfoil_v3:NACA2412",
+                       # catalog families (reports/catalog_polars_20261116)
+                       "research_axial_800_catalog_xfoil_v1_naca0012:NACA0012",
+                       "research_axial_800_catalog_xfoil_v1_naca23012:NACA23012",
+                       "research_axial_800_catalog_xfoil_v1_naca63412:NACA63-412",
+                       "research_axial_800_catalog_xfoil_v2_naca4412:NACA4412",
+                       "research_axial_800_catalog_xfoil_v2_naca4415:NACA4415"}
     old, new = by["research_axial_800_attached_xfoil_v1:NACA2412"], by["research_axial_800_deploy_xfoil_v3:NACA2412"]
     assert old.stored_version.content_sha256 == "5841e000f7885350756d73803a9a0506b1f895e2b336c7cad3a831b592ced3f0"
     assert new.stored_version.content_sha256 == "418d7d65d227df9f9bdcd9195f86531dd99fa29e6c23b8804f5223425748c222"

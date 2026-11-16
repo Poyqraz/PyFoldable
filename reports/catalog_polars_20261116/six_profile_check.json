@@ -1,0 +1,210 @@
+[
+ {
+  "family": "research_axial_800_attached_xfoil_v1:NACA0012",
+  "version": "2026-11-11-v1",
+  "profile": "NACA0012",
+  "bem_status": "success",
+  "thrust_n": 33.421707752866034,
+  "torque_nm": 2.4880853705679464,
+  "power_w": 625.3240577344399,
+  "failure": null,
+  "table_re": [
+   165000.0,
+   330000.0
+  ],
+  "table_mach": [
+   0.1,
+   0.31
+  ],
+  "alpha": [
+   -6.000000000000001,
+   8.0
+  ],
+  "coupled_re_ok": true,
+  "coupled_mach_ok": true,
+  "coupled_alpha_ok": true,
+  "swing_mach_ok": false
+ },
+ {
+  "family": "research_axial_800_attached_xfoil_v1:NACA2412",
+  "version": "2026-11-11-v1",
+  "profile": "NACA2412",
+  "bem_status": "success",
+  "thrust_n": 43.647174413635845,
+  "torque_nm": 3.277371908165304,
+  "power_w": 823.6934007818944,
+  "failure": null,
+  "table_re": [
+   165000.0,
+   330000.0
+  ],
+  "table_mach": [
+   0.1,
+   0.31
+  ],
+  "alpha": [
+   -6.000000000000001,
+   8.0
+  ],
+  "coupled_re_ok": true,
+  "coupled_mach_ok": true,
+  "coupled_alpha_ok": true,
+  "swing_mach_ok": false
+ },
+ {
+  "family": "research_axial_800_catalog_xfoil_v1_naca0012:NACA0012",
+  "version": "2026-11-16-catalog-v1-naca0012",
+  "profile": "NACA0012",
+  "bem_status": "success",
+  "thrust_n": 33.421707752866034,
+  "torque_nm": 2.4880853705679464,
+  "power_w": 625.3240577344399,
+  "failure": null,
+  "table_re": [
+   100000.0,
+   400000.0
+  ],
+  "table_mach": [
+   0.07,
+   0.31
+  ],
+  "alpha": [
+   -6.000000000000001,
+   8.0
+  ],
+  "coupled_re_ok": true,
+  "coupled_mach_ok": true,
+  "coupled_alpha_ok": true,
+  "swing_mach_ok": false
+ },
+ {
+  "family": "research_axial_800_catalog_xfoil_v1_naca23012:NACA23012",
+  "version": "2026-11-16-catalog-v1-naca23012",
+  "profile": "NACA23012",
+  "bem_status": "success",
+  "thrust_n": 39.47252277486688,
+  "torque_nm": 2.982644276124055,
+  "power_w": 749.6202676914381,
+  "failure": null,
+  "table_re": [
+   100000.0,
+   330000.0
+  ],
+  "table_mach": [
+   0.07,
+   0.36
+  ],
+  "alpha": [
+   -6.000000000000001,
+   8.0
+  ],
+  "coupled_re_ok": true,
+  "coupled_mach_ok": true,
+  "coupled_alpha_ok": true,
+  "swing_mach_ok": true
+ },
+ {
+  "family": "research_axial_800_catalog_xfoil_v1_naca63412:NACA63-412",
+  "version": "2026-11-16-catalog-v1-naca63412",
+  "profile": "NACA63-412",
+  "bem_status": "success",
+  "thrust_n": 45.43686525522447,
+  "torque_nm": 3.453368993271919,
+  "power_w": 867.9262927518273,
+  "failure": null,
+  "table_re": [
+   100000.0,
+   400000.0
+  ],
+  "table_mach": [
+   0.07,
+   0.31
+  ],
+  "alpha": [
+   -6.000000000000001,
+   8.0
+  ],
+  "coupled_re_ok": true,
+  "coupled_mach_ok": true,
+  "coupled_alpha_ok": true,
+  "swing_mach_ok": false
+ },
+ {
+  "family": "research_axial_800_catalog_xfoil_v2_naca4412:NACA4412",
+  "version": "2026-11-16-catalog-v2-naca4412",
+  "profile": "NACA4412",
+  "bem_status": "success",
+  "thrust_n": 53.878554780453754,
+  "torque_nm": 4.164178739699906,
+  "power_w": 1046.5722669500824,
+  "failure": null,
+  "table_re": [
+   100000.0,
+   400000.0
+  ],
+  "table_mach": [
+   0.07,
+   0.36
+  ],
+  "alpha": [
+   -8.0,
+   6.000000000000001
+  ],
+  "coupled_re_ok": true,
+  "coupled_mach_ok": true,
+  "coupled_alpha_ok": true,
+  "swing_mach_ok": true
+ },
+ {
+  "family": "research_axial_800_catalog_xfoil_v2_naca4415:NACA4415",
+  "version": "2026-11-16-catalog-v2-naca4415",
+  "profile": "NACA4415",
+  "bem_status": "success",
+  "thrust_n": 54.62409101602421,
+  "torque_nm": 4.253769746997405,
+  "power_w": 1069.088942978365,
+  "failure": null,
+  "table_re": [
+   165000.0,
+   400000.0
+  ],
+  "table_mach": [
+   0.07,
+   0.31
+  ],
+  "alpha": [
+   -8.0,
+   6.000000000000001
+  ],
+  "coupled_re_ok": true,
+  "coupled_mach_ok": true,
+  "coupled_alpha_ok": true,
+  "swing_mach_ok": false
+ },
+ {
+  "family": "research_axial_800_deploy_xfoil_v3:NACA2412",
+  "version": "2026-11-12-deploy-v3",
+  "profile": "NACA2412",
+  "bem_status": "success",
+  "thrust_n": 43.647174413635845,
+  "torque_nm": 3.277371908165304,
+  "power_w": 823.6934007818944,
+  "failure": null,
+  "table_re": [
+   100000.0,
+   400000.0
+  ],
+  "table_mach": [
+   0.07,
+   0.36
+  ],
+  "alpha": [
+   -6.000000000000001,
+   8.0
+  ],
+  "coupled_re_ok": true,
+  "coupled_mach_ok": true,
+  "coupled_alpha_ok": true,
+  "swing_mach_ok": true
+ }
+]

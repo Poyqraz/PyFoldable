@@ -37,6 +37,13 @@ _spec.loader.exec_module(base)
 sha = base.sha
 
 
+def lift_policy(declaration):
+    """Declared lift-sign angles (negative, positive); absent: the retained rule (-6, -4) and (4, 6, 8)."""
+    rule = declaration.get("lift_sign_check", {})
+    return (tuple(float(x) for x in rule.get("negative_deg", (-6.0, -4.0))),
+            tuple(float(x) for x in rule.get("positive_deg", (4.0, 6.0, 8.0))))
+
+
 def request_grid(profile, declaration):
     if profile not in PROFILES:
         raise ValueError("Profile is outside the frozen protocol")
@@ -58,7 +65,7 @@ def make_plan():
     declaration = base.load(PROTOCOL)
     template = ROOT / declaration["template"]
     settings = BEMRotorSettings(annulus_count=40)
-    guard = base.scan_guard(load_design_config(template), settings)
+    guard = base.scan_guard(load_design_config(template), settings, negative_guard_deg=max(lift_policy(declaration)[0]))
     for axis, values in (("alpha_rad", list(map(math.radians, declaration["alpha_deg_in_order"]))),
                          ("reynolds", declaration["reynolds"]), ("mach", declaration["mach"])):
         if not all(min(values) <= row[axis][0] <= row[axis][1] <= max(values) for row in guard):
@@ -105,7 +112,8 @@ def capture(profile, folder, plan, provider):
         try:
             result = provider.generate(request, capture_dir=raw)
             base.retain_result(result, result_path)
-            base.check_cell(request, identity, admission.read_retained_cell(result_path, raw), declaration["executable_sha256"])
+            base.check_cell(request, identity, admission.read_retained_cell(result_path, raw), declaration["executable_sha256"],
+                            *lift_policy(declaration))
         except (ValueError, KeyError, TypeError, RuntimeError, OSError) as exc:
             row.update(status="STOPPED", reason=f"{type(exc).__name__}: {exc}", ended_utc=base.utc())
             break
@@ -132,7 +140,7 @@ def install(root, profile, store_root):
     cells = tuple(admission.read_retained_cell(folder / f"result-{i:02d}.json", folder / f"capture-{i:02d}")
                   for i in range(len(requests)))
     for request, cell in zip(requests, cells):
-        base.check_cell(request, identity, cell, declaration["executable_sha256"])
+        base.check_cell(request, identity, cell, declaration["executable_sha256"], *lift_policy(declaration))
     provenance = (("plan.json", (root / "plan.json").read_bytes()),) + tuple(
         (n, (folder / n).read_bytes()) for n in ("runtime.json", "build-record.json", "outcome.json", "checksums.json"))
     family = admission.ManagedProviderFamily(

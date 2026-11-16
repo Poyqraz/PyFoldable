@@ -35,3 +35,10 @@ separately built XFOIL 6.99 (executable d1076680...136a7). Registration only add
 the coefficients are identical. The two NACA2412 versions are never mixed; the application asks
 the user to choose one. Evidence, failed declarations and the convergence map:
 reports/coupled_deploy_polars_20261112/. Unqualified numerical evidence, not experimental data.
+
+Added 2026-11-16: catalog families for all six profiles. Families
+research_axial_800_catalog_xfoil_v1_{naca0012,naca23012,naca63412}:<profile> and
+research_axial_800_catalog_xfoil_v2_{naca4412,naca4415}:<profile> (one per profile, declared grids
+chosen by convergence pre-screen, same pinned executable and settings as deploy-v3; the 4 %-camber
+profiles use alpha -8..6 deg). Registration only added files. Evidence, failed V1 declarations of
+NACA4412/NACA4415 and pre-screens: reports/catalog_polars_20261116/. Unqualified numerical evidence.

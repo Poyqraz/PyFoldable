@@ -727,6 +727,64 @@ def _provider_contract(snapshot):
             "length_order_policy": admission["geometry"].get("length_order_policy", "proximal_longer")}
 
 
+def _admission(row):
+    aero = row["aerodynamics"]
+    if not aero or aero.get("status") != "success" or not aero.get("report_text"):
+        return {}
+    return json.loads(aero["report_text"])["request"].get("provider_design_admission", {})
+
+
+def comparison_differences(results):
+    """Field-by-field differences of two BEM records, in plain Turkish; ``expected`` marks what a profile
+    comparison is meant to vary (profile and its coordinates)."""
+    a, b = results
+    ca, cb = (_provider_contract(r["aerodynamics"]) or {} for r in results)
+    ma, mb = _admission(a), _admission(b)
+
+    def levels(c, key):
+        return sorted({cell[key] for cell in c.get("grid", [])})
+    rows = [
+        ("Profil", a["inputs"]["profile"], b["inputs"]["profile"], True),
+        ("Profil koordinatları", a["aerodynamics"]["airfoil_coordinate_sha256"][:12],
+         b["aerodynamics"]["airfoil_coordinate_sha256"][:12], True),
+        ("Polar veri sürümü", (ma.get("stored_version") or {}).get("version_label"),
+         (mb.get("stored_version") or {}).get("version_label"), False),
+        ("Polar senaryosu", ma.get("family_id", ":").split(":")[0], mb.get("family_id", ":").split(":")[0], False),
+        ("XFOIL derlemesi", ",".join(s[:12] for s in ca.get("builds", [])), ",".join(s[:12] for s in cb.get("builds", [])), False),
+        ("Polar ızgarası (Re)", levels(ca, "reynolds"), levels(cb, "reynolds"), False),
+        ("Polar ızgarası (Mach)", levels(ca, "mach"), levels(cb, "mach"), False),
+        ("Sağlayıcı ayarları", ca.get("provider_policy"), cb.get("provider_policy"), False),
+        ("BEM uygulaması", ca.get("bem_implementation"), cb.get("bem_implementation"), False),
+        ("Radyal eleman sayısı", a["aerodynamics"]["annulus_count"], b["aerodynamics"]["annulus_count"], False),
+        ("Kanıt sınıfı", a["aerodynamics"]["evidence_class"], b["aerodynamics"]["evidence_class"], False),
+    ]
+    for key, label in (("diameter_mm", "Çap [mm]"), ("hub_mm", "Göbek yarıçapı [mm]"), ("root_mm", "Kök [mm]"),
+                       ("hinge_mm", "Menteşe [mm]"), ("blade_count", "Kanat sayısı"), ("chord_scale", "Kord çarpanı"),
+                       ("twist_scale", "Burulma çarpanı"), ("template_id", "Şablon"), ("rpm", "Devir [RPM]"),
+                       ("inflow_m_s", "Giriş hızı [m/s]"), ("density_kg_m3", "Yoğunluk [kg/m³]"),
+                       ("viscosity_pa_s", "Viskozite [Pa·s]"), ("temperature_k", "Sıcaklık [K]"), ("pressure_pa", "Basınç [Pa]")):
+        rows.append((label, a["inputs"].get(key), b["inputs"].get(key), False))
+    return [{"field": f, "first": x, "second": y, "expected": e} for f, x, y, e in rows if x != y]
+
+
+def matching_action(results, repository):
+    """The stored version that would turn this pair into a matched comparison (same polar scenario, so the same
+    build, grid and settings), or None when the pair already matches. ``available`` is False when no such
+    version exists for either profile (a common capture is then needed)."""
+    if compare_results(results)["matched_numerical_comparison"]:
+        return None
+    adm = [_admission(r) for r in results]
+    for target, other in ((1, 0), (0, 1)):
+        scenario = adm[other].get("family_id", ":").split(":")[0]
+        profile = results[target]["inputs"]["profile"]
+        fam = next((f for f in repository.families
+                    if f.family_id == f"{scenario}:{profile}" and f.stored_version is not None), None)
+        if fam is not None and fam.family_id != adm[target].get("family_id"):
+            return {"available": True, "record_index": target, "profile": profile, "family_id": fam.family_id,
+                    "version_label": fam.stored_version.version_label, "content_sha256": fam.stored_version.content_sha256}
+    return {"available": False}
+
+
 def compare_results(results):
     """Matched declared inputs and observed executable file identities, no ranking."""
     snapshots = [row["aerodynamics"] for row in results]
