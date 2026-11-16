@@ -345,6 +345,33 @@ def load_result(run: Path) -> dict:
 FLOW_TIMEOUT_S = 1800
 
 
+def local_run_summaries(root: Path) -> list:
+    """Readable list of the run folders on this computer, from their small request/status files only (the
+    sealed record is restored and verified when one is opened). Newest first."""
+    import json as _json
+    base = runs_root(root)
+    out = []
+    for d in sorted(base.iterdir(), reverse=True) if base.is_dir() else []:
+        try:
+            status = _json.loads((d / "status.json").read_text())
+            req = _json.loads((d / "request.json").read_text())
+        except (OSError, ValueError):
+            continue
+        adm = req.get("aero_admission")
+        adm = _json.loads(adm) if isinstance(adm, str) else (adm or {})
+        mech, ctl = req.get("mechanics", {}), req.get("controls", {})
+        inputs = req.get("research", {}).get("inputs", {})
+        out.append({"run_id": d.name, "started": status.get("started", ""), "state": status.get("state", "?"),
+                    "result_available": bool(status.get("result_available")) and (d / "result.json").is_file(),
+                    "windows": status.get("windows_accepted"), "planned": status.get("n_windows"),
+                    "profile": inputs.get("profile", "?"), "rpm": inputs.get("rpm"),
+                    "family": adm.get("family_id", "?"), "fold_deg": math.degrees(mech.get("initial_fold_rad", 0.0)),
+                    "release_s": mech.get("release_time_s"), "drive": ctl.get("drive_profile", "constant"),
+                    "ramp_start_rpm": ctl.get("ramp_start_rpm"), "mechanics_kind": mech.get("declaration_kind"),
+                    "flow": (d / "flow" / "flow_companion.json").is_file()})
+    return out
+
+
 def local_run_dir(root: Path, row: dict) -> Path | None:
     """The record's own run folder on this computer: inside the runs root, holding this very record
     (its result.json carries the same result_sha256) and its DUST outputs. Flow data lives there."""

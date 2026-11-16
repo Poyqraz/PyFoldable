@@ -138,7 +138,7 @@ def test_recorded_coupled_result_renders_every_view_and_survives_edits(tmp_path,
     assert not at.exception
     assert len(at.session_state["research_coupled_results"]) == 1
     go(at, "Karşılaştırma / kayıtlar")
-    assert any("Dinamik bağlaşık kayıtlar" in m.value for m in at.markdown)
+    assert any("Dinamik bağlaşık sonuçlar" in m.value for m in at.markdown)
 
 
 def test_compressed_coupled_record_is_recognised_for_import(tmp_path):

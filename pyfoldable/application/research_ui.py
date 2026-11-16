@@ -446,10 +446,47 @@ def _prepare_matched_run(action):
     _navigate("Analiz")
 
 
+def _local_results_panel():
+    """BEM results saved on this computer: listed and reopened without recalculation."""
+    local = research.local_results()
+    st.markdown("**Bu bilgisayarda saklanan BEM sonuçları**")
+    if error := st.session_state.pop("_research_local_store_error", None):
+        st.warning("Son sonuç yerel klasöre yazılamadı: " + error)
+    if not local:
+        st.caption(f"Henüz yok. Tamamlanan her BEM sonucu {research.results_root()} klasörüne de yazılır.")
+        return
+    import datetime
+    st.dataframe([{"Kaydedildi": datetime.datetime.fromtimestamp(r["saved"]).strftime("%Y-%m-%d %H:%M"),
+                   "Profil": r["profile"], "Devir [RPM]": _fmt(r["rpm"], 0), "Giriş [m/s]": _fmt(r["inflow_m_s"], 1),
+                   "İtki [N]": _fmt(r["thrust_n"], 3), "Tork [N·m]": _fmt(r["torque_nm"], 3)} for r in local],
+                 hide_index=True, use_container_width=True)
+    keys = tuple(r["result_sha256"] for r in local)
+    by = {r["result_sha256"]: r for r in local}
+    chosen = _choice(st.selectbox, "Saklanan sonuç", keys, key="research_local_choice", default=keys[0],
+                     display=lambda k: f"{by[k]['profile']} · {_fmt(by[k]['rpm'], 0)} RPM · {_fmt(by[k]['thrust_n'], 2)} N")
+    if st.button("Sonucu aç (yeniden hesaplanmaz)", key="research_local_open"):
+        try:
+            row = research.read_saved_result(by[chosen]["path"].read_bytes())
+        except (ValueError, OSError) as exc:
+            st.error("Saklanan sonuç doğrulanamadı: " + str(exc))
+            return
+        status = _save(row, imported=True)
+        if status == "full":
+            st.warning("Oturum en fazla 12 kayıt alır.")
+            return
+        st.session_state["_research_result_view"] = row["result_sha256"]
+        _navigate("Sonuçlar")
+        st.rerun()
+
+
 def _show_run(row, token):
     st.session_state[_ACTIVE] = (token, research.saved_result_json(row))
     st.session_state["_research_result_view"] = None
     status = _save(row)
+    try:
+        research.store_local_result(row)
+    except OSError as exc:
+        st.session_state["_research_local_store_error"] = str(exc)
     if status == "full":
         st.session_state["_research_history_full"] = True
     if row["aerodynamics"] and row["aerodynamics"]["failure_stage"] == "preflight_rejection" and status != "full":
@@ -485,15 +522,50 @@ def _bem_run_button(ready):
         return st.button("BEM’i çalıştır", type="primary", key="research_run", disabled=not ready)
 
 
+def _capability_panel(active, family, readiness, repository):
+    """What each analysis method needs for the selected case, and the next action (no calculation here)."""
+    from . import coupled_ui
+    profile = active.inputs.profile
+    versions = _families(repository, profile, active.coordinate_sha256)
+    if not versions:
+        bem = ("Polar verisi gerekli", f"{profile} için saklanan polar verisi yok; veri yakalaması operatör adımıdır "
+                                        "(examples/research_catalog_polar_data.py).")
+    elif family is None:
+        bem = ("Veri sürümü seçin", f"{profile} için {len(versions)} saklanan sürüm var; aşağıdan birini seçin.")
+    elif readiness.status != "ready":
+        bem = ("Girdiler başlangıç aralığı dışında", "Aşağıdaki hazırlık açıklamasına bakın (devir, giriş hızı veya geometri).")
+    else:
+        bem = ("Hazır", "“BEM’i çalıştır” · saniyeler; tam açık rotor, itki, tork, güç ve kesit yükleri.")
+    tool = coupled_ui.readiness_cached()
+    if tool.status != "ready":
+        dyn = ("Araç zinciri gerekli", "DUST–MBDyn–preCICE bu bilgisayarda kurulu ve bildirilmiş olmalı "
+                                       "(tools/coupled/build_toolchain.sh). Kayıtlı dinamik sonuçlar yine açılabilir.")
+    elif family is None:
+        dyn = ("Polar verisi gerekli", "Önce BEM için bir veri sürümü seçin; dinamik analiz aynı tabloyu kullanır.")
+    else:
+        dyn = ("Mekanik girdi gerekli", "Aşağıda dış parça kütlesi, kütle merkezi, atalet ve stop özelliklerini girin "
+                                        "(veya gösterim varsayımlarını doldurun), katlanma ve devir profilini seçin; "
+                                        "çalıştırma ≈ 1 saat sürebilir.")
+    st.dataframe([
+        {"Yöntem": "Kararlı BEM (tam açık, hızlı)", "Durum": bem[0], "Sonraki adım": bem[1]},
+        {"Yöntem": "Zamana bağlı dinamik analiz (katlanma, açılma, iz)", "Durum": dyn[0], "Sonraki adım": dyn[1]},
+    ], hide_index=True, use_container_width=True)
+    st.caption("Kararlı BEM tek bir açık konum ve sabit devir için çözer; katlanma, açılma ve zamanla değişen yük, "
+               "iz ve tork zamana bağlı analizden gelir. Kayıtlı sonuçlar Karşılaştırma / kayıtlar sayfasında listelenir.")
+
+
 def _analysis(active, repository, store_error, root=None):
     st.subheader("Analiz")
     if active is None:
         st.info("Önce Tasarım’da geçerli bir geometri hazırlayın.")
         return
+    summary = st.container()
     primary, scope = st.columns((1.1, 1), gap="large")
     with primary:
         st.markdown("**Aerodinamik · ideal tam açık BEM**")
         family, readiness = _readiness(active, repository, store_error)
+    with summary:
+        _capability_panel(active, family, readiness, repository)
         ready = family is not None and readiness.status == "ready"
         clicked = _bem_run_button(ready)
     with scope:
@@ -738,6 +810,7 @@ def _history(root=None):
             st.text(restore_error)
     from . import coupled_ui
     coupled_ui.render_history(root)
+    _local_results_panel()
     records = _retained()
     if not records:
         st.info("Henüz kayıt yok. Analiz çalıştırabilir veya önceki bir sonucu açabilirsiniz.")

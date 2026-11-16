@@ -683,23 +683,43 @@ def _local_runs(root: Path, limit=12):
 
 def render_history(root: Path | None = None):
     records = retained()
-    st.markdown("**Dinamik bağlaşık kayıtlar**")
-    local = _local_runs(root) if root is not None else []
+    st.markdown("**Dinamik bağlaşık sonuçlar (zamana bağlı DUST–MBDyn–preCICE)**")
+    local = [r for r in svc.local_run_summaries(root) if r["result_available"]] if root is not None else []
     if local:
-        with st.expander("Yerel çalıştırma klasöründen aç"):
-            st.caption("Bu bilgisayardaki çalıştırma klasörlerinin mühürlü sonuçları. İç tutarlılık denetlenir, çözücü çalışmaz.")
-            names = tuple(p.name for p in local)
-            chosen_run = _rui()._choice(st.selectbox, "Çalıştırma", names, key="coupled_local_run", default=names[0])
-            if st.button("Kayıtlara ekle", key="coupled_local_open"):
-                try:
-                    status = save(svc.load_result(svc.runs_root(root) / chosen_run))
-                except (ValueError, OSError) as exc:
-                    st.error("Sonuç doğrulanamadı: " + str(exc))
-                else:
-                    st.success("Kayıt eklendi." if status == "saved" else "Bu kayıt zaten oturumda.")
-                    records = retained()
+        rui = _rui()
+        st.caption("Bu bilgisayardaki tamamlanmış veya kısmi çalıştırmalar. Açmak çözücüyü çalıştırmaz; mühürlü kayıt "
+                   "doğrulanır ve dönen kanat, yükler ve akış görünümleri açılır.")
+        state = {"completed": "Tamamlandı", "failed_solver": "Çözücü durdu (kısmi)", "cancelled": "İptal (kısmi)",
+                 "timeout": "Süre aşıldı (kısmi)"}
+        st.dataframe([{"Başlangıç": r["started"][:16].replace("T", " "), "Profil": r["profile"],
+                       "Katlanma [°]": rui._fmt(r["fold_deg"], 1),
+                       "Devir": (f"{rui._fmt(r['ramp_start_rpm'], 0)}→{rui._fmt(r['rpm'], 0)} RPM" if r["drive"] == "ramp"
+                                 else f"{rui._fmt(r['rpm'], 0)} RPM"),
+                       "Durum": state.get(r["state"], r["state"]), "Pencere": f"{r['windows']}/{r['planned']}",
+                       "Akış verisi": "var" if r["flow"] else "hazırlanabilir",
+                       "Mekanik": "gösterim varsayımı" if r["mechanics_kind"] == "demonstration_assumption" else "beyan edilen"}
+                      for r in local], hide_index=True, use_container_width=True)
+        by = {r["run_id"]: r for r in local}
+        chosen_run = rui._choice(st.selectbox, "Açılacak dinamik sonuç", tuple(by), key="coupled_local_run",
+                                 default=next(iter(by)),
+                                 display=lambda k: (f"{by[k]['profile']} · {rui._fmt(by[k]['fold_deg'], 1)}° · "
+                                                    f"{state.get(by[k]['state'], by[k]['state'])} · {by[k]['started'][:16]}"))
+        if st.button("Dinamik sonucu aç (yeniden hesaplanmaz)", key="coupled_local_open"):
+            try:
+                row = svc.load_result(svc.runs_root(root) / chosen_run)
+            except (ValueError, OSError) as exc:
+                st.error("Sonuç doğrulanamadı: " + str(exc))
+            else:
+                save(row)
+                st.session_state[ACTIVE] = (None, row["result_sha256"])
+                st.session_state["_coupled_view_imported"] = False
+                st.session_state["research_results_kind"] = "Dinamik bağlaşık"
+                st.session_state["_research_next_page"] = "Sonuçlar"
+                st.rerun()
     if not records:
-        st.caption("Henüz dinamik kayıt yok.")
+        if not local:
+            st.caption("Henüz dinamik sonuç yok. Analiz sayfasındaki “Dinamik aero-mekanik analiz” bölümünden "
+                       "başlatılabilir (araç zinciri gerekir).")
         return
     options = list(records)
 

@@ -727,6 +727,44 @@ def _provider_contract(snapshot):
             "length_order_policy": admission["geometry"].get("length_order_policy", "proximal_longer")}
 
 
+RESULTS_ENV = "PYFOLDABLE_RESULTS"
+
+
+def results_root() -> Path:
+    """Local folder of saved research results (outlives the browser session)."""
+    import os
+    return Path(os.environ.get(RESULTS_ENV) or Path(__file__).resolve().parents[2] / "outputs" / "research_results")
+
+
+def store_local_result(row) -> Path:
+    """Write the sealed result once, named by its digest (atomic; an existing file is left as it is)."""
+    folder = results_root()
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / f"{row['result_sha256']}.json"
+    if not path.exists():
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(saved_result_json(row), encoding="utf-8")
+        tmp.replace(path)
+    return path
+
+
+def local_results(limit: int = 50) -> list:
+    """Summaries of the locally saved results that pass the same validation as an uploaded file (newest first)."""
+    folder = results_root()
+    out = []
+    for path in sorted(folder.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)[:limit] if folder.is_dir() else []:
+        try:
+            row = read_saved_result(path.read_bytes())
+        except (ValueError, KeyError, TypeError, OSError):
+            continue                                   # tampered, partial or foreign files are not listed
+        aero = row["aerodynamics"] or {}
+        out.append({"path": path, "result_sha256": row["result_sha256"], "profile": row["inputs"]["profile"],
+                    "rpm": row["inputs"]["rpm"], "inflow_m_s": row["inputs"]["inflow_m_s"],
+                    "status": aero.get("status", "mechanism"), "thrust_n": aero.get("thrust_n"),
+                    "torque_nm": aero.get("torque_nm"), "saved": path.stat().st_mtime})
+    return out
+
+
 def _admission(row):
     aero = row["aerodynamics"]
     if not aero or aero.get("status") != "success" or not aero.get("report_text"):
