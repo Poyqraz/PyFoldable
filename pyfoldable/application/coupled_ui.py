@@ -405,7 +405,7 @@ def render_result(row, *, imported=False, root: Path | None = None):
         _details(row)
         return
     tab = rui._choice(st.radio, "Grafik", ("Menteşe", "Yükler", "Güç", "Kapsam ve yakınsama", "Radyal", "3B oynatma",
-                                           "Akış ve tepki", "Mühendislik değerlendirmesi"),
+                                           "Akış ve tepki", "Bağlantı yükleri", "Mühendislik değerlendirmesi"),
                       key="coupled_tab", default="Menteşe", horizontal=True)
     if tab == "Menteşe":
         rui._plot(views.time_figure(row, (("theta_deg", "θ"),), "Katlanma açısı θ [°]", per_blade=True), "coupled_theta")
@@ -444,6 +444,9 @@ def render_result(row, *, imported=False, root: Path | None = None):
         _flow_tab(row, root)
     elif tab == "Mühendislik değerlendirmesi":
         _assessment_tab(row)
+    elif tab == "Bağlantı yükleri":
+        from . import fold_cycle_ui
+        fold_cycle_ui.coupled_loads_tab(row, root)
     else:
         from . import blade_ui
         blade_ui.coupled_blade_tab(row, root)

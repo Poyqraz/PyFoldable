@@ -129,7 +129,8 @@ class _Model:
 
     def to_world(self, part, p, blade, fold):
         az = 2.0 * math.pi * blade / self.spec.blade_count
-        return bs.pose_points(p, np.full(len(p), self.moving(part)), self.spec.hinge_radius_m, fold, az)
+        return bs.pose_points(p, np.full(len(p), self.moving(part)), self.spec.hinge_radius_m, fold, az,
+                              self.spec.distal_axial_offset_m)
 
     def to_body(self, part, w, blade, fold):
         az = 2.0 * math.pi * blade / self.spec.blade_count
@@ -137,6 +138,7 @@ class _Model:
         p = np.array(w, dtype=float, copy=True)
         p[:, 0], p[:, 1] = w[:, 0] * ca - w[:, 1] * sa, w[:, 0] * sa + w[:, 1] * ca
         if self.moving(part):
+            p[:, 2] -= self.spec.distal_axial_offset_m
             p = bs.pose_points(p, np.ones(len(p), bool), self.spec.hinge_radius_m, -fold)
         return p
 

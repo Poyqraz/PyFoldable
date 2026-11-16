@@ -110,3 +110,15 @@ def test_scan_step_resolves_the_thinnest_section_swept_by_the_distal_part(spec):
     t_min = min(s[1] for s in spec.stations) * 0.12               # NACA2412 max thickness at the smallest chord
     reach = spec.tip_radius_m - spec.hinge_radius_m
     assert rep.step_deg <= math.degrees(0.5 * t_min / reach) + 1e-9
+
+
+def test_an_axial_offset_of_the_distal_tang_lets_the_blade_surfaces_pass_through_the_full_travel(spec):
+    """Pin-and-lug concept: the distal segment lifted along the pin by more than both sections' axial extent folds
+    over the proximal part; a small offset still interlocks; the default (no offset) keeps the analyses' plane."""
+    lifted = fi.fold_contacts(replace(spec, distal_axial_offset_m=0.03), joint="plane", fold_min_deg=-180.0)
+    assert lifted.pair("distal_1", "proximal_1").status == "clear"
+    small = fi.fold_contacts(replace(spec, distal_axial_offset_m=0.002), joint="plane", fold_min_deg=-60.0)
+    assert small.pair("distal_1", "proximal_1").status == "contact"
+    v = np.array([[0.0, spec.hinge_radius_m + 0.05, 0.0]])
+    posed = bs.pose_points(v, np.array([True]), spec.hinge_radius_m, math.radians(-90.0), axial_offset=0.03)
+    assert posed[0] == pytest.approx([0.05, spec.hinge_radius_m, 0.03])   # folds toward +x (trailing side), lifted

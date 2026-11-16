@@ -356,3 +356,35 @@ def test_every_coupled_status_has_an_explanation():
     statuses = {"completed", "failed_aero_coverage", "failed_unconverged_coupling", "failed_geometry_envelope",
                 "cancelled", "timeout", "failed_solver", "failed_incomplete"}
     assert statuses <= set(coupled_ui._STATUS_TEXT)
+
+
+def test_connection_loads_tab_derives_mbdyn_joint_loads_on_request(tmp_path, monkeypatch):
+    store(tmp_path, monkeypatch, PROJECT_AIRFOIL_IDS)
+    bem(monkeypatch)
+    _no_toolchain(monkeypatch, tmp_path)
+    _forbid_runs(monkeypatch)
+    runs = tmp_path / "runs"
+    run = runs / "20261112T000000_fixture"
+    shutil.copytree(FIXTURE_RBF, run)
+    (run / "dust" / "Output").mkdir()          # the run folder's DUST output directory (empty in the fixture)
+    postprocess.build_result(run, participant_outcome="finished", exit_codes={}, extraction_ok=True)
+    monkeypatch.setenv("PYFOLDABLE_COUPLED_RUNS", str(runs))
+    at = go(app(), "Karşılaştırma / kayıtlar")
+    at.button(key="coupled_local_open").click().run()
+    at.radio(key="coupled_tab").set_value("Bağlantı yükleri").run()
+    assert not at.exception
+    at.button(key="coupled_hinge_loads_build").click().run()
+    assert not at.exception
+    peaks = next(d.value for d in at.dataframe if "Temasta" in d.value.columns)
+    assert len(peaks) == 6
+    checks = next(d.value for d in at.dataframe if "Denetim" in d.value.columns)
+    assert set(checks["Sonuç"]) == {"geçti"}
+    assert (run / "hinge_loads.json").is_file()
+
+
+def test_connection_loads_tab_explains_a_missing_joint_output(tmp_path, monkeypatch):
+    at = _flow_app(tmp_path, monkeypatch)
+    at.radio(key="coupled_tab").set_value("Bağlantı yükleri").run()
+    assert not at.exception
+    assert any("out.jnt" in i.value for i in at.info)
+    assert not any(b.key == "coupled_hinge_loads_build" for b in at.button)

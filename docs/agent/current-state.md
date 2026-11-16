@@ -196,7 +196,7 @@ version for the other profile. The BEM result can be played as a rotating propel
 constant, slow-motion factor shown) with thrust/rotation arrows, and a momentum-theory slipstream labelled
 as a reconstruction (not a DUST wake, not CFD); coupled playback has physical time, event jumps and speed
 buttons, and the DUST velocity plane shows axial/swirl/radial components with in-plane vectors and
-instantaneous in-plane streamlines. Browser walkthrough: `reports/app_demo_20261116/`. ADR-010 is
+instantaneous in-plane streamlines. Browser walkthrough: `reports/app_demo_20261116/`. Complete opening–closing cycle (2026-11-17): a predicted 1-DOF hinge cycle per blade with a prescribed shaft history, return spring/latch/actuator options (the passive mechanism does not refold), an exploratory aero strip model, Newton–Euler connection loads with contributions, events, contact impulse and stiffness sensitivity, energy balance, a pin-and-lug axial offset in the loft and interference scan, hand pre-checks of the clevis–tang, and MBDyn joint-reaction loads for coupled records ([fold cycle and connection loads](../fold_cycle_and_connection_loads.md)). ADR-010 is
 proposed, not accepted. `physical_qualification` remains false. Design and limits:
 [coupled dynamic analysis](../coupled_dynamic_analysis.md).
 

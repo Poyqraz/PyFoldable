@@ -33,6 +33,7 @@ class BladeSpec:
     hinge_radius_m: float
     tip_radius_m: float
     blade_count: int
+    distal_axial_offset_m: float = 0.0   # pin-and-lug concept: distal segment/tang raised along the pin (0: analyses' plane)
 
     def __post_init__(self):
         r = [s[0] for s in self.stations]
@@ -135,11 +136,15 @@ class BladeMesh:
         return pose_points(self.vertices, self.vertex_part == "distal", self.spec.hinge_radius_m, fold_rad, azimuth_rad)
 
 
-def pose_points(v, distal_mask, hinge_radius, fold_rad, azimuth_rad=0.0):
+def pose_points(v, distal_mask, hinge_radius, fold_rad, azimuth_rad=0.0, axial_offset=0.0):
+    """Fold the distal points about the pin (parallel to z at the hinge), lift them by ``axial_offset`` along the pin
+    (pin-and-lug concept; 0 keeps both segments in one plane as in the analyses), then turn by the azimuth."""
     v = np.array(v, dtype=float, copy=True)
     c, s = math.cos(fold_rad), math.sin(fold_rad)
     x, yh = v[distal_mask, 0], v[distal_mask, 1] - hinge_radius
     v[distal_mask, 0], v[distal_mask, 1] = x * c - yh * s, hinge_radius + x * s + yh * c
+    if axial_offset:
+        v[distal_mask, 2] += axial_offset
     if azimuth_rad:
         ca, sa = math.cos(azimuth_rad), math.sin(azimuth_rad)
         v[:, 0], v[:, 1] = v[:, 0] * ca - v[:, 1] * sa, v[:, 0] * sa + v[:, 1] * ca

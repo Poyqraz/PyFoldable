@@ -582,6 +582,8 @@ def _capability_panel(active, family, readiness, repository):
                                         "çalıştırma ≈ 1 saat sürebilir.")
     st.dataframe([
         {"Yöntem": "Kararlı BEM (tam açık, hızlı)", "Durum": bem[0], "Sonraki adım": bem[1]},
+        {"Yöntem": "Tam açılma–kapanma çevrimi (mekanik dinamik, açık aero modeli)", "Durum": "Hazır (keşif varsayımlarıyla)",
+         "Sonraki adım": "Aşağıda mekanizma yapılandırmasını seçin, “Çevrimi çalıştır” · ≈ 10–40 s; bağlantı kuvvet ve momentleri."},
         {"Yöntem": "Zamana bağlı dinamik analiz (katlanma, açılma, iz)", "Durum": dyn[0], "Sonraki adım": dyn[1]},
     ], hide_index=True, use_container_width=True)
     st.caption("Kararlı BEM tek bir açık konum ve sabit devir için çözer; katlanma, açılma ve zamanla değişen yük, "
@@ -621,6 +623,9 @@ def _analysis(active, repository, store_error, root=None):
         with st.spinner("Mekanizma hesabı çalışıyor…"):
             row = research.run_mechanics_only(active, options)
         _show_run(row, ("mechanics", active.identity, options))
+    st.divider()
+    from . import fold_cycle_ui
+    fold_cycle_ui.analysis_section(active)
     if root is not None:
         st.divider()
         from . import coupled_ui
@@ -845,6 +850,8 @@ def _history(root=None):
     from . import coupled_ui
     coupled_ui.render_history(root)
     _local_results_panel()
+    from . import fold_cycle_ui
+    fold_cycle_ui.saved_panel()
     records = _retained()
     if not records:
         st.info("Henüz kayıt yok. Analiz çalıştırabilir veya önceki bir sonucu açabilirsiniz.")
@@ -968,10 +975,15 @@ def render_research(root: Path):
         _invalidate(active, repository)  # A version or mechanical input could have changed in this render.
         _invalidate_coupled(active, repository)
     elif page == "Sonuçlar":
-        from . import coupled_ui
-        kinds = ("BEM / mekanizma", "Dinamik bağlaşık")
-        kind = (st.radio("Sonuç türü", kinds, horizontal=True, key="research_results_kind")
-                if coupled_ui.retained() else kinds[0])
+        from . import coupled_ui, fold_cycle_ui
+        kinds = ("BEM / mekanizma", "Dinamik bağlaşık", fold_cycle_ui.KIND)
+        offered = tuple(k for k, on in zip(kinds, (True, bool(coupled_ui.retained()), fold_cycle_ui.active_row() is not None)) if on)
+        if st.session_state.get("research_results_kind") not in offered:
+            st.session_state.pop("research_results_kind", None)
+        kind = st.radio("Sonuç türü", offered, horizontal=True, key="research_results_kind") if len(offered) > 1 else kinds[0]
+        if kind == fold_cycle_ui.KIND:
+            fold_cycle_ui.render_result(fold_cycle_ui.active_row())
+            return
         if kind == kinds[1]:
             row = coupled_ui.active_result()
             if row is None:

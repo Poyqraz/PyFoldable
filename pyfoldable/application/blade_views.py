@@ -371,12 +371,15 @@ def playback_figure(mesh, frames, *, crange=None, colorscale="Viridis", static_t
     """Client-side playback: play/pause, display speed, a slider over the frames (time selection and frame
     stepping) and event jumps. Each frame carries its own label and annotation text (time, RPM, angles).
     ``view_rotation(frame)`` gives a per-frame scene rotation (rotor-relative view)."""
-    built = [_frame_traces(mesh, f, crange, colorscale, view_rotation(f) if view_rotation else 0.0) for f in frames]
+    # per-frame extra traces (e.g. connection force/moment arrows) follow the blades; every frame has the same count
+    built = [_frame_traces(mesh, f, crange, colorscale, view_rotation(f) if view_rotation else 0.0) + list(f.get("extra", ()))
+             for f in frames]
+    moving = list(range(len(built[0])))
 
     def note(text):
         return [dict(text=text, x=0, y=1.06, xref="paper", yref="paper", showarrow=False, align="left", xanchor="left")]
     fig = go.Figure(data=built[0] + list(static_traces),
-                    frames=[go.Frame(data=traces, traces=[0, 1], name=f["name"], layout=dict(annotations=note(f["text"])))
+                    frames=[go.Frame(data=traces, traces=moving, name=f["name"], layout=dict(annotations=note(f["text"])))
                             for f, traces in zip(frames, built)])
 
     def anim(names, ms):

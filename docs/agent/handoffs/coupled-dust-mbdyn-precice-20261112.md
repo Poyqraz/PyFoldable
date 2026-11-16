@@ -289,6 +289,18 @@ lowest tested start 1600 RPM.
 * Not done: equal-power / equal-thrust matched comparison (needs a trim solve), aligned dynamic histories across
   two coupled records, a declared clevis–tang joint (the display joint zone is not a mechanism), video export.
 
+## Opening–closing cycle and connection loads (after `3241dfb`, 2026-11-17)
+
+* `pyfoldable/dynamics/fold_cycle.py` (cycle model, loads, events, contacts, sensitivity, energy, sealed records),
+  `pin_lug.py` (hand checks), `pyfoldable/coupled/hinge_loads.py` (MBDyn joint reactions, start-up transient
+  flagged), UI `fold_cycle_ui.py`/`fold_cycle_views.py`; loft/interference axial offset; design note
+  `docs/fold_cycle_and_connection_loads.md`; screenshots `reports/fold_cycle_demo_20261117/`.
+* Findings: passive mechanism does not refold; with a return spring the blade floats at ≈ −1° and only strikes the
+  open stop during the opening swing; from −179° the Euler term opens the blade during spin-up; first-impact peak
+  scales with the assumed stop stiffness, impulse ±4 %.
+* Open: deep-fold/low-speed aerodynamics for a coupled full cycle; measured mechanism properties; declared connection
+  geometry.
+
 ## Next concrete items
 
 00. (After the engineering-use increment) Measurements first: priorities 1–3 of
