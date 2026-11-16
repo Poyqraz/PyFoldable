@@ -86,3 +86,25 @@ def test_manual_colour_limits_are_kept_per_quantity(tmp_path, monkeypatch):
     assert not at.exception
     lo = at.number_input(key="research_blade_alpha_lo").value
     assert lo != -5.0                     # N/m limits never carried into degrees
+
+
+def test_coupled_geometry_stays_inspectable_when_results_cannot_be_mapped(tmp_path, monkeypatch):
+    from pyfoldable.visualization import blade_results as br
+    store(tmp_path, monkeypatch, PROJECT_AIRFOIL_IDS)
+    bem(monkeypatch)
+    _no_toolchain(monkeypatch, tmp_path)
+    _forbid_runs(monkeypatch)
+    row = _record(tmp_path, FIXTURE_RBF)
+
+    def unmappable(*a, **k):
+        raise ValueError("Element count of this window differs from the record's element layout.")
+    monkeypatch.setattr(br, "coupled_fields", unmappable)
+    at = app()
+    at.session_state["research_coupled_results"] = ((json.dumps(row, sort_keys=True, separators=(",", ":")), False),)
+    at.session_state["_coupled_active"] = (None, row["result_sha256"])
+    go(at, RESULTS)
+    at.radio(key="research_results_kind").set_value("Dinamik bağlaşık").run()
+    at.radio(key="coupled_tab").set_value("3B oynatma").run()
+    assert not at.exception
+    assert any("eşlenemedi" in e.value for e in at.error)
+    assert "yalnız geometri" in _text(at).lower()                 # blades still drawn, uncoloured

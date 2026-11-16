@@ -297,6 +297,11 @@ def coupled_blade_tab(row, root):
         fields, crange, frame = field_controls(row, "coupled_blade", w)
     except (ValueError, KeyError) as exc:
         st.error("Bu kaydın eleman sonuçları kanada eşlenemedi: " + str(exc))
+        R = 1000 * spec.tip_radius_m
+        rui._plot(bv.blade_figure(mesh, transforms=bg.node_transforms(row, w),
+                                  scene_ranges=((-1.15 * R, 1.15 * R), (-1.15 * R, 1.15 * R), (-0.35 * R, 0.35 * R))),
+                  "coupled_blade3d")
+        st.caption(f"Yalnız geometri: pencere {w}, MBDyn gövde durumlarıyla konumlanmış kanatlar (sonuç rengi yok).")
         return
     f0 = fields[0]
     crange = scale_controls("coupled_blade", crange, f0.unit, "Tüm pencerelerde sabit (bu kayıt)",
