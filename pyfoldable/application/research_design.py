@@ -742,10 +742,14 @@ def store_local_result(row) -> Path:
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / f"{row['result_sha256']}.json"
     if not path.exists():
-        tmp = path.with_suffix(".tmp")
+        import os
+        tmp = path.with_name(f"{path.stem}.{os.getpid()}.{os.urandom(4).hex()}.tmp")
         tmp.write_text(saved_result_json(row), encoding="utf-8")
         tmp.replace(path)
     return path
+
+
+_LOCAL_SUMMARIES: dict = {}   # (path, mtime_ns, size) -> summary or None; a changed file is validated again
 
 
 def local_results(limit: int = 50) -> list:
@@ -754,15 +758,26 @@ def local_results(limit: int = 50) -> list:
     out = []
     for path in sorted(folder.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)[:limit] if folder.is_dir() else []:
         try:
-            row = read_saved_result(path.read_bytes())
-        except (ValueError, KeyError, TypeError, OSError):
-            continue                                   # tampered, partial or foreign files are not listed
-        aero = row["aerodynamics"] or {}
-        out.append({"path": path, "result_sha256": row["result_sha256"], "profile": row["inputs"]["profile"],
-                    "rpm": row["inputs"]["rpm"], "inflow_m_s": row["inputs"]["inflow_m_s"],
-                    "status": aero.get("status", "mechanism"), "thrust_n": aero.get("thrust_n"),
-                    "torque_nm": aero.get("torque_nm"), "saved": path.stat().st_mtime})
+            st = path.stat()
+        except OSError:
+            continue
+        key = (str(path), st.st_mtime_ns, st.st_size)
+        if key not in _LOCAL_SUMMARIES:
+            try:
+                _LOCAL_SUMMARIES[key] = _local_summary(path, read_saved_result(path.read_bytes()), st.st_mtime)
+            except (ValueError, KeyError, TypeError, OSError):
+                _LOCAL_SUMMARIES[key] = None           # tampered, partial or foreign files are not listed
+        if _LOCAL_SUMMARIES[key] is not None:
+            out.append(_LOCAL_SUMMARIES[key])
     return out
+
+
+def _local_summary(path, row, saved):
+    aero = row["aerodynamics"] or {}
+    return {"path": path, "result_sha256": row["result_sha256"], "profile": row["inputs"]["profile"],
+            "rpm": row["inputs"]["rpm"], "inflow_m_s": row["inputs"]["inflow_m_s"],
+            "status": aero.get("status", "mechanism"), "thrust_n": aero.get("thrust_n"),
+            "torque_nm": aero.get("torque_nm"), "saved": saved}
 
 
 def _admission(row):
@@ -808,8 +823,9 @@ def comparison_differences(results):
 def matching_action(results, repository):
     """The stored version that would turn this pair into a matched comparison (same polar scenario, so the same
     build, grid and settings), or None when the pair already matches. ``available`` is False when no such
-    version exists for either profile (a common capture is then needed)."""
-    if compare_results(results)["matched_numerical_comparison"]:
+    version exists for either profile (a common capture is then needed). Also None when the data and method
+    already match and only declared inputs (e.g. the shaft speed of an equal-thrust point) differ."""
+    if compare_results(results)["matching_retained_provider_contract"]:
         return None
     adm = [_admission(r) for r in results]
     for target, other in ((1, 0), (0, 1)):
@@ -821,6 +837,49 @@ def matching_action(results, repository):
             return {"available": True, "record_index": target, "profile": profile, "family_id": fam.family_id,
                     "version_label": fam.stored_version.version_label, "content_sha256": fam.stored_version.content_sha256}
     return {"available": False}
+
+
+def match_operating_point(root, row, repository, quantity, target, *, rel_tol=1e-3, max_runs=8):
+    """Equal-thrust or equal-power operating point for a saved BEM record: secant on shaft speed (inflow, geometry
+    and data version unchanged), each step one fresh admitted BEM run. Returns {"rpm", "row", "runs"}; raises
+    ValueError when a step leaves the admitted data or the iteration does not converge (fail-closed)."""
+    from dataclasses import replace
+    key = {"thrust": "thrust_n", "power": "shaft_power_w"}[quantity]
+    admission = _admission(row)
+    version = (admission.get("stored_version") or {}).get("content_sha256")
+    family = next((f for f in repository.families if f.family_id == admission.get("family_id")
+                   and f.stored_version is not None and f.stored_version.content_sha256 == version), None)
+    if family is None or not (math.isfinite(target) and target > 0):
+        raise ValueError("BEM: the record's exact data version is not in the store, or the target is not positive.")
+    base = ResearchInputs(**row["inputs"])
+    runs = []
+
+    def solve(rpm):
+        result = run_research(build_research_design(root, replace(base, rpm=float(rpm))), family, repository, None)
+        aero = result["aerodynamics"] or {}
+        runs.append({"rpm": float(rpm), "status": aero.get("status"), key: aero.get(key)})
+        if aero.get("status") != "success":
+            raise ValueError(f"BEM did not complete at {rpm:.0f} RPM ({aero.get('failure_stage')}): this step left "
+                             "the admitted data; the matched point may lie outside it.")
+        if not isinstance(aero.get(key), (int, float)) or not math.isfinite(aero[key]):
+            raise ValueError(f"BEM returned no finite {key} at {rpm:.0f} RPM.")
+        return result, aero[key]
+
+    x0 = base.rpm
+    start, f0 = solve(x0)
+    if abs(f0 - target) <= rel_tol * target:
+        return {"rpm": x0, "row": start, "runs": runs}
+    x1 = x0 * (target / f0) ** (0.5 if quantity == "thrust" else 1 / 3) if f0 > 0 else 1.05 * x0  # ~rpm² / rpm³
+    for _ in range(max_runs - 1):
+        result, f1 = solve(x1)
+        if abs(f1 - target) <= rel_tol * target:
+            return {"rpm": x1, "row": result, "runs": runs}
+        if f1 == f0:
+            break
+        x0, f0, x1 = x1, f1, x1 - (f1 - target) * (x1 - x0) / (f1 - f0)
+        if not x1 > 0:
+            break
+    raise ValueError(f"BEM: no {quantity} match within {max_runs} runs.")
 
 
 def compare_results(results):

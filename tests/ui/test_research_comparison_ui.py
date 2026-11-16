@@ -32,9 +32,8 @@ def test_unmatched_comparison_lists_differences_and_offers_the_matched_rerun(pai
     at = app()
     at.session_state["research_saved_results"] = tuple((research.saved_result_json(r), True) for r in pair)
     go(at, RECORDS)
-    first, second = (o for o in at.selectbox(key="research_compare_first").options if o != "Kayıt seçin")
-    at.selectbox(key="research_compare_first").set_value(first).run()
-    at.selectbox(key="research_compare_second").set_value(second).run()
+    at.selectbox(key="research_compare_first").select_index(1).run()      # index works on Streamlit 1.40 and later
+    at.selectbox(key="research_compare_second").select_index(1).run()
     assert not at.exception
     table = next(d.value for d in at.dataframe if "Alan" in d.value.columns)
     assert {"Polar veri sürümü", "XFOIL derlemesi"} <= set(table["Alan"])
@@ -48,3 +47,20 @@ def test_unmatched_comparison_lists_differences_and_offers_the_matched_rerun(pai
         if f.family_id == "research_axial_800_attached_xfoil_v1:NACA2412")
     go(at, "Tasarım")
     assert at.selectbox(key="research_profile").value == "NACA2412"
+
+
+def test_second_record_can_be_moved_to_equal_thrust_and_is_saved_as_a_new_record(pair):
+    at = app()
+    at.session_state["research_saved_results"] = tuple((research.saved_result_json(r), True) for r in pair)
+    go(at, RECORDS)
+    at.selectbox(key="research_compare_first").select_index(1).run()      # index works on Streamlit 1.40 and later
+    at.selectbox(key="research_compare_second").select_index(1).run()
+    at.radio(key="research_compare_trim_quantity").set_value("thrust").run()
+    at.button(key="research_compare_trim").click().run()
+    assert not at.exception
+    assert len(at.session_state["research_saved_results"]) == 3            # originals kept, new record added
+    new = json.loads(at.session_state["research_saved_results"][-1][0])
+    target = pair[0]["aerodynamics"]["thrust_n"]
+    assert new["aerodynamics"]["thrust_n"] == pytest.approx(target, rel=2e-3)
+    assert new["inputs"]["rpm"] < 2400 and new["inputs"]["profile"] == "NACA2412"
+    assert any("eşit itki" in m.value.lower() for m in at.success)

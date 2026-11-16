@@ -83,13 +83,23 @@ centres; otherwise midpoint widths are used and the field is labelled approximat
   with the fold-contact summary. *Profil* unchanged.
 * **Sonuçlar → BEM:** "Kanat üzerinde sonuç (3B)": quantity, colour scale (this result or manual limits
   for comparing cases), inspected section r with its strip value, linked radial plot, exports.
+  *Görünüm → Dönen pervane* plays one revolution at the solved RPM (+Ω about +Z) with a thrust arrow
+  (rotor total, +z) and a rotation arrow carrying shaft torque and power; it is labelled an explanatory
+  playback of a steady solution (loads constant) with its slow-motion factor. Controls: ▶/❚❚, display
+  speed 0,25×–2×, time slider (step/seek). *Akışı göster* adds a momentum-theory slipstream (stream tubes,
+  disk and far-wake axial and swirl velocity) built from the retained BEM induction, labelled as a
+  reconstruction, not a wake solution or CFD.
 * **Sonuçlar → Dinamik bağlaşık → 3B oynatma:** accepted window, quantity, frame (*rotor-relative*:
   azimuth removed; *rotating*: laboratory), colour scale fixed over all windows of the record (or manual),
   blades posed from that window's MBDyn body states, linked radial plot and response timeline at the same
-  window, short coloured playback on request (coarse mesh). The previous uncoloured playback is kept in an
-  expander.
+  window. *Oynatma hazırla* builds a playback (coarse mesh, up to 60 evenly spaced accepted windows plus
+  the release, first contact, largest opening and second swing windows; event buttons in time order) with physical time, RPM, fold angle,
+  azimuth, thrust and aerodynamic torque per frame, event jump buttons and display speed. WebGL redraw
+  costs roughly 0.3–0.5 s per frame in a small browser pane, so playback runs slower than the nominal
+  frame time there. The previous uncoloured playback is kept in an expander.
 * **Akış ve tepki:** the 3-D scene uses the same coloured blades; blades, colours, vortex particles,
   panel wake and velocity plane belong to the same accepted window; the rotor-relative frame rotates them
-  all together.
+  all together. The y = 0 velocity plane shows the axial, swirl (+Ω direction) or radial component, with
+  optional in-plane vectors and instantaneous in-plane streamlines (not 3-D particle paths).
 * **Exports:** STL of the analysed surfaces (mm), legacy VTK with region/part/blade ids and the selected
   quantity per cell (NaN where no data) for ParaView, strip values as CSV.

@@ -10,7 +10,6 @@ annuli; a labelled reconstruction for orientation, not a computed flow field.
 """
 from __future__ import annotations
 
-import math
 
 import numpy as np
 
@@ -29,7 +28,7 @@ def slipstream(row, *, downstream_radii: float = 4.0, upstream_radii: float = 1.
         sol = el["solution"]
         r_d, a, vt = sol["radius_m"], sol["axial_induced_velocity_m_s"], sol["tangential_induced_velocity_m_s"]
         u = a * growth
-        r = r_d * np.sqrt((V + a) / (V + u))
+        r = r_d * np.sqrt(np.divide(V + a, V + u, out=np.ones_like(u), where=(V + u) > 0))  # V = a = 0: no tube
         tubes.append(r)
         axial.append(V + u)
         swirl.append(vt * growth * r_d / r)
@@ -70,9 +69,8 @@ def slipstream_figure(row, height: int = 430):
     fig.update_yaxes(title_text="z [mm] (akış −z yönüne)", row=1, col=1)
     fig.update_xaxes(title_text="r [mm] (uzak izde daralmış yarıçap)", row=1, col=2)
     fig.update_yaxes(title_text="Hız [m/s]", row=1, col=2)
-    fig.update_layout(height=height, margin=dict(l=10, r=10, t=60, b=10),
-                      title=dict(text="BEM tabanlı akış rekonstrüksiyonu (momentum teorisi)", font=dict(size=14)),
-                      legend=dict(orientation="h", y=-0.2),
-                      annotations=list(fig.layout.annotations) + [
-                          dict(text=LABEL, x=0, y=1.13, xref="paper", yref="paper", showarrow=False, font=dict(size=11))])
+    fig.update_layout(height=height, margin=dict(l=10, r=10, t=90, b=10),
+                      title=dict(text=f"BEM tabanlı akış rekonstrüksiyonu (momentum teorisi)<br><sup>{LABEL}</sup>",
+                                 font=dict(size=14), y=0.97, yanchor="top"),
+                      legend=dict(orientation="h", y=-0.2))
     return fig

@@ -390,7 +390,8 @@ def animation_figure(row, spec, key, crange, frame, max_frames=60):
                                 f"aero şaft torku {s['aero_shaft_torque_nm']:.3f} N·m").replace(".", ",")})
     R = 1000 * spec.tip_radius_m
     return bv.playback_figure(coarse, frames, crange=crange, frame_ms=120,
-                              events={names[k]: str(w) for k, w in ev.items() if k in names and w in by},
+                              events={names[k]: str(w) for k, w in sorted(ev.items(), key=lambda kv: kv[1])
+                                      if k in names and w in by},  # buttons in time order
                               view_rotation=(lambda f: -f["psi"]) if frame == "rotor" else None,
                               static_traces=bv._scene_arrows(spec),
                               scene_ranges=((-1.15 * R, 1.15 * R), (-1.15 * R, 1.15 * R), (-0.35 * R, 0.35 * R)))

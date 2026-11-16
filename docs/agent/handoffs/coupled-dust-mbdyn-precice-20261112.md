@@ -273,6 +273,22 @@ lowest tested start 1600 RPM.
   (LE on +y, twist raising it, fold toward the trailing side); GEOM-01/03/04 inherit it. Archived clearance
   reports are historical (mirrored section).
 
+## Integrated-application increment (after `3ba4a98`, 2026-11-16)
+
+* `2792d19`: catalog polar families for NACA0012, NACA23012, NACA63-412 (V1) and NACA4412, NACA4415
+  (V2, α −8…6° with a declared lift-sign rule; the V1 declarations stopped on CL(−4°) ≥ 0 and stay as failed
+  evidence). Evidence `reports/catalog_polars_20261116/`; BEM and coupled preparation checked for all six.
+* `f27b0e6`: readable comparison differences and a matched-rerun action; BEM results saved under
+  `outputs/research_results` and reopened from *Karşılaştırma / kayıtlar*; local coupled runs listed; per-method
+  capability table on *Analiz*.
+* `d6e7119`: rotating BEM playback (explanatory, constant loads), thrust/rotation arrows, coupled playback with
+  physical time and event jumps, momentum-theory slipstream, DUST plane components/vectors/streamlines.
+* Follow-up commit: tests isolated from the owner's results folder (`tests/conftest.py`; the earlier suite
+  runs had written ~50 fixture results into `outputs/research_results`, set aside, not deleted), a figure title
+  overlap and a stale records caption. Walkthrough screenshots: `reports/app_demo_20261116/`.
+* Not done: equal-power / equal-thrust matched comparison (needs a trim solve), aligned dynamic histories across
+  two coupled records, a declared clevis–tang joint (the display joint zone is not a mechanism), video export.
+
 ## Next concrete items
 
 00. (After the engineering-use increment) Measurements first: priorities 1–3 of
@@ -306,4 +322,5 @@ lowest tested start 1600 RPM.
 4. Genuine provider data for wider α/Re/Mach (declared protocol) before any larger release,
    spin-up or folded start; or a separately documented post-stall model.
 5. Torque-driven shaft option (motor law) as a distinct boundary condition.
-6. Data for the 250 mm / 7100 RPM project case and the four other profiles.
+6. Data for the 250 mm / 7100 RPM project case (the 800 mm catalog families for all six profiles exist
+   since 2026-11-16, each on its own Re/Mach grid, so cross-profile matched comparisons need a common capture).

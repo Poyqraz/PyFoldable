@@ -355,21 +355,25 @@ def local_run_summaries(root: Path) -> list:
         try:
             status = _json.loads((d / "status.json").read_text())
             req = _json.loads((d / "request.json").read_text())
-        except (OSError, ValueError):
-            continue
-        adm = req.get("aero_admission")
-        adm = _json.loads(adm) if isinstance(adm, str) else (adm or {})
-        mech, ctl = req.get("mechanics", {}), req.get("controls", {})
-        inputs = req.get("research", {}).get("inputs", {})
-        out.append({"run_id": d.name, "started": status.get("started", ""), "state": status.get("state", "?"),
+            adm = req.get("aero_admission")
+            adm = _json.loads(adm) if isinstance(adm, str) else (adm or {})
+            mech, ctl = req.get("mechanics", {}), req.get("controls", {})
+            inputs = req.get("research", {}).get("inputs", {})
+            out.append(_run_summary(d, status, adm, mech, ctl, inputs))
+        except (OSError, ValueError, TypeError, AttributeError):
+            continue                                   # malformed folders are skipped, not fatal
+    return out
+
+
+def _run_summary(d, status, adm, mech, ctl, inputs):
+    return {"run_id": d.name, "started": status.get("started", ""), "state": status.get("state", "?"),
                     "result_available": bool(status.get("result_available")) and (d / "result.json").is_file(),
                     "windows": status.get("windows_accepted"), "planned": status.get("n_windows"),
                     "profile": inputs.get("profile", "?"), "rpm": inputs.get("rpm"),
                     "family": adm.get("family_id", "?"), "fold_deg": math.degrees(mech.get("initial_fold_rad", 0.0)),
                     "release_s": mech.get("release_time_s"), "drive": ctl.get("drive_profile", "constant"),
                     "ramp_start_rpm": ctl.get("ramp_start_rpm"), "mechanics_kind": mech.get("declaration_kind"),
-                    "flow": (d / "flow" / "flow_companion.json").is_file()})
-    return out
+                    "flow": (d / "flow" / "flow_companion.json").is_file()}
 
 
 def local_run_dir(root: Path, row: dict) -> Path | None:

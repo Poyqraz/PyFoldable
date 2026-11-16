@@ -446,6 +446,40 @@ def _prepare_matched_run(action):
     _navigate("Analiz")
 
 
+def _equal_point(root, rows):
+    """Explicit action: rerun the second record at the shaft speed that gives the first record's thrust or power."""
+    st.markdown("**Eşit itki veya eşit güçte karşılaştırma**")
+    quantity = _choice(st.radio, "Eşitlenecek büyüklük", ("thrust", "power"), key="research_compare_trim_quantity",
+                       default="thrust", horizontal=True, display={"thrust": "İtki", "power": "Şaft gücü"}.__getitem__)
+    label = {"thrust": "itki", "power": "şaft gücü"}[quantity]
+    if notice := st.session_state.pop("_research_trim_notice", None):
+        st.success(notice)
+    if st.button(f"İkinci kaydı birincinin {label} değerine getir (yalnız devir değişir)", key="research_compare_trim",
+                 help="Giriş hızı, geometri ve veri sürümü aynı kalır; BEM birkaç kez çalışır. Mevcut kayıtlar değişmez."):
+        key = "thrust_n" if quantity == "thrust" else "shaft_power_w"
+        with st.spinner("Devir ayarlanıyor (her adım yeni bir BEM çözümü)…"):
+            try:
+                out = research.match_operating_point(root, rows[1], _repository()[0], quantity, rows[0]["aerodynamics"][key])
+            except ValueError as exc:
+                st.error("Eşit çalışma noktası bulunamadı: " + str(exc))
+                return
+        row = out["row"]
+        status = _save(row)
+        if status == "full":
+            st.warning("Oturum en fazla 12 kayıt alır.")
+            return
+        try:
+            research.store_local_result(row)
+        except OSError as exc:
+            st.session_state["_research_local_store_error"] = str(exc)
+        st.session_state["_research_trim_notice"] = (
+            f"Eşit {label}: {row['inputs']['profile']} {_fmt(out['rpm'], 0)} RPM’de "
+            f"{_fmt(row['aerodynamics'][key], 3)} {'N' if quantity == 'thrust' else 'W'} ({len(out['runs'])} BEM çözümü). "
+            + ("Bu sonuç listede zaten vardı." if status == "duplicate" else
+               "Yeni kayıt listeye eklendi; ikinci kayıt olarak seçip karşılaştırın."))
+        st.rerun()
+
+
 def _local_results_panel():
     """BEM results saved on this computer: listed and reopened without recalculation."""
     local = research.local_results()
@@ -559,17 +593,16 @@ def _analysis(active, repository, store_error, root=None):
     if active is None:
         st.info("Önce Tasarım’da geçerli bir geometri hazırlayın.")
         return
-    summary = st.container()
     primary, scope = st.columns((1.1, 1), gap="large")
     with primary:
         st.markdown("**Aerodinamik · ideal tam açık BEM**")
         family, readiness = _readiness(active, repository, store_error)
-    with summary:
-        _capability_panel(active, family, readiness, repository)
         ready = family is not None and readiness.status == "ready"
         clicked = _bem_run_button(ready)
     with scope:
         _analysis_scope(active, family, readiness)
+    # Full width after the columns; a container created before them and filled later breaks AppTest on Streamlit 1.40.
+    _capability_panel(active, family, readiness, repository)
     if clicked and ready:
         with st.spinner("Seçili sürüm yeniden denetleniyor ve BEM çalışıyor…"):
             fresh, error = _repository()
@@ -776,7 +809,8 @@ def _retained():
 
 def _history(root=None):
     st.subheader("Karşılaştırma / kayıtlar")
-    st.caption("Oturum kapanınca bu liste saklanmaz. Sonuç JSON’unu indirin; daha sonra buradan açabilirsiniz.")
+    st.caption("Karşılaştırma listesi bu oturuma aittir. Çalıştırılan sonuçlar ayrıca bu bilgisayarda saklanır ve "
+               "aşağıdan yeniden açılabilir; başka bir bilgisayar için sonuç JSON’unu indirin.")
     restore_error = None
     with st.expander("Önceki sonuç JSON’unu aç"):
         st.caption("Uygulamanın dışa aktardığı sonuç dosyası. İçerik tutarlılığı denetlenir, hesap başlatılmaz.")
@@ -821,6 +855,8 @@ def _history(root=None):
     def display(key):
         if key is None:
             return "Kayıt seçin"
+        if key not in records:  # Streamlit 1.40 AppTest passes the already formatted label back in
+            return str(key)
         i = records[key][0]["inputs"]
         return f"K{numbers[key]:02d} · {i['profile']} · {_fmt(i['rpm'], 0)} RPM · {_fmt(i['inflow_m_s'], 1)} m/s"
 
@@ -845,10 +881,14 @@ def _history(root=None):
             else:
                 st.info("Eşleştirilmiş sayısal çift oluşmadı. Profil dışındaki şu alanlar farklı:")
                 diff = [d for d in research.comparison_differences(rows) if not d["expected"]]
-                st.dataframe([{"Alan": d["field"], "Birinci": str(d["first"]), "İkinci": str(d["second"])} for d in diff],
+                cell = lambda v: _fmt(v, 1) if isinstance(v, float) else str(v)  # noqa: E731
+                st.dataframe([{"Alan": d["field"], "Birinci": cell(d["first"]), "İkinci": cell(d["second"])} for d in diff],
                              hide_index=True, use_container_width=True)
                 action = research.matching_action(rows, _repository()[0])
-                if action and action["available"]:
+                if action is None:
+                    st.caption("Polar verisi ve yöntem aynı; fark yalnız yukarıdaki girdilerde (ör. eşit itki veya güç için "
+                               "ayarlanmış devir). Bu durumda sonuçlar aynı veriyle, farklı çalışma noktasında karşılaştırılır.")
+                elif action["available"]:
                     st.button(f"Eşleşen kaydı üret: {action['profile']} · {action['version_label']} ile Analiz’e git",
                               key="research_compare_match", on_click=_prepare_matched_run, args=(action,),
                               help="Profil ve veri sürümü seçilir; BEM’i siz başlatırsınız. Mevcut kayıtlar değişmez.")
@@ -861,6 +901,8 @@ def _history(root=None):
                         "Şaft torku [N·m]": _fmt(r["aerodynamics"]["torque_nm"], 3),
                         "Şaft gücü [W]": _fmt(r["aerodynamics"]["shaft_power_w"], 3)} for k, r in zip(chosen, rows)]
             st.dataframe(summary, hide_index=True, use_container_width=True)
+            if root is not None:
+                _equal_point(root, rows)
             a, b = st.columns(2)
             a.download_button("Karşılaştırma JSON’u", json.dumps({
                 "schema_version": 1, "artifact_class": "pyfoldable_research_comparison",
@@ -875,8 +917,8 @@ def _history(root=None):
                     "inner_radius_m", "outer_radius_m")},
             } for r in rows]
             b.download_button("Karşılaştırma CSV’si", research.records_csv(csv_rows), "research_comparison.csv", "text/csv")
-    st.caption("Eşit devir ve giriş hızı, eşit şaft gücü demek değildir. Eşit güç için başka çalışma noktaları gerekir. "
-               "Bu karşılaştırma tasarım seçmez veya fiziksel yeterlilik göstermez.")
+    st.caption("Eşit devir ve giriş hızı, eşit şaft gücü demek değildir; eşit itki veya eşit güç için yukarıdaki devir "
+               "ayarını kullanın. Bu karşılaştırma tasarım seçmez veya fiziksel yeterlilik göstermez.")
     if failures:
         with st.expander(f"Tamamlanmayan BEM denemeleri ({len(failures)})"):
             for key in failures:

@@ -187,7 +187,16 @@ contacts screened and no interlocked pose drawn; coupled playback and the flow s
 one accepted window ([lofted 3-D blade](../blade_3d_view.md)). The 2.5-D preview and GEOM-01/03/04
 clearance now use the same section placement and fold side as the coupled model (owner decision
 2026-11-13; previously a mirrored section folding toward the leading edge; archived clearance reports
-predate it). ADR-010 is
+predate it). Integrated-app increment (2026-11-16): the *Analiz* page states per method whether steady BEM
+and the time-dependent coupled analysis are ready or what they need; every BEM result is saved locally
+(`outputs/research_results/<sha>.json`, override `PYFOLDABLE_RESULTS`; tests use a temporary folder) and
+reopens from *Karşılaştırma / kayıtlar* next to a readable list of local coupled runs; an unmatched
+comparison names each differing field and offers a matched rerun when the same scenario family has a
+version for the other profile. The BEM result can be played as a rotating propeller (explanatory, loads
+constant, slow-motion factor shown) with thrust/rotation arrows, and a momentum-theory slipstream labelled
+as a reconstruction (not a DUST wake, not CFD); coupled playback has physical time, event jumps and speed
+buttons, and the DUST velocity plane shows axial/swirl/radial components with in-plane vectors and
+instantaneous in-plane streamlines. Browser walkthrough: `reports/app_demo_20261116/`. ADR-010 is
 proposed, not accepted. `physical_qualification` remains false. Design and limits:
 [coupled dynamic analysis](../coupled_dynamic_analysis.md).
 
@@ -198,7 +207,8 @@ with a bundled PyThrust compatibility slice in the same setuptools distribution.
 There is no database, ORM/migration system, user authentication/authorization,
 REST backend, worker queue, broker, cloud storage integration or deployment IaC.
 Storage is versioned config/evidence files, ignored generated outputs, an optional
-filesystem polar cache and ephemeral UI session state. API boundaries are Python
+filesystem polar cache, ephemeral UI session state and a local folder of saved BEM results
+(`outputs/research_results`, ignored). API boundaries are Python
 functions/dataclasses and strict TOML/JSON contracts. Dependencies and runtime
 ranges: [pyproject.toml](../../pyproject.toml); UI routing:
 [dashboard](../../apps/pyfoldable_dashboard.py); CI:
