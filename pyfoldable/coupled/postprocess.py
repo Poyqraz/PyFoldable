@@ -115,18 +115,48 @@ def hinge_point(nodes, b, X, body_state) -> list[float]:
     return body_state["x"]
 
 
-def hinge_channels(mech: dict, t: float, dt: float, theta, rate, m_law) -> dict:
-    """Per-blade hinge channels of window time ``t`` from the hinge angles [rad], relative rates and the
-    moment of MBDyn's hinge-law element: declared spring/damper split, stop remainder, contact and latch."""
+def window_channels(case: dict, t: float, theta, rate, m_law, drive_mz: float, hub_wz: float) -> dict:
+    """Series channels of window time ``t`` from the hinge angles [rad], relative rates, the moments of
+    MBDyn's hinge-law and drive elements and the hub speed: declared spring/damper split, stop remainder,
+    contact, latch, drive power and the inertial hinge moments of the prescribed speed history."""
+    mech, dt = case["mechanics"], case["dt_s"]
+    jh = mech["distal_inertia_cg_kg_m2"] + mech["distal_mass_kg"] * mech["distal_cg_from_hinge_m"] ** 2
+    mrc = mech["distal_mass_kg"] * case["geometry"]["hinge_radius_m"] * mech["distal_cg_from_hinge_m"]
+    w_t, wdot_t = shaft_speed(case, t)  # prescribed (constant or ramp)
     spring = [-mech["spring_nm_per_rad"] * (th - mech["spring_rest_rad"]) for th in theta]
     damping = [-mech["hinge_damping_nm_s_per_rad"] * r for r in rate]
-    return {"theta_rate_rad_s": list(rate), "hinge_law_torque_nm": list(m_law), "hinge_spring_torque_nm": spring,
+    return {"time_s": t, "drive_torque_nm": drive_mz, "drive_power_w": drive_mz * hub_wz,
+            "theta_rate_rad_s": list(rate), "hinge_law_torque_nm": list(m_law), "hinge_spring_torque_nm": spring,
             "hinge_damping_torque_nm": damping,
             "hinge_contact_torque_nm": [ml - sp - dp for ml, sp, dp in zip(m_law, spring, damping)],
             # latched during at least part of this window (window spans t_{w-1}..t_w)
             "latch_active": (t - dt) < mech["release_time_s"] - 1e-12,
             "contact_active": [th > mech["stop_angle_rad"] + CONTACT_TOL_RAD or th < mech["fold_limit_rad"] - CONTACT_TOL_RAD
-                               for th in theta]}
+                               for th in theta],
+            "centrifugal_hinge_moment_derived_nm": [-mrc * w_t ** 2 * math.sin(th) for th in theta],
+            # rotating-frame acceleration: -(J_h + m r_h c_g cos th) dOmega/dt (zero at constant speed)
+            "frame_acceleration_hinge_moment_derived_nm": [-(jh + mrc * math.cos(th)) * wdot_t for th in theta]}
+
+
+def exchange_terms(nodes, win, states) -> dict:
+    """Window terms that need only the exchanged state: node power F.v + M.w, the largest node force and
+    moment, and the kinematic closure against MBDyn's converged ``states`` (by label). Labels missing
+    from ``states`` are skipped and reported by ``kinematics_complete``."""
+    F, M, X, V, Om, R = (win[k] for k in ("force", "moment", "position", "velocity", "angularvelocity", "rotation"))
+    p = sum(sum(F[i][k] * V[i][k] + M[i][k] * Om[i][k] for k in range(3)) for i in range(len(nodes)))
+    kin = [(i, states[nd["mbdyn_label"]]) for i, nd in enumerate(nodes) if nd["mbdyn_label"] in states]
+    return {"node_power_w": p, "max_interface_power_w": abs(p),
+            "max_node_force_n": max(math.sqrt(sum(c * c for c in f)) for f in F),
+            "max_node_moment_nm": max(math.sqrt(sum(c * c for c in m)) for m in M),
+            "kinematic_position_m": max((abs(X[i][k] - s["x"][k]) for i, s in kin for k in range(3)), default=0.0),
+            "kinematic_rotation_rad": max((abs(R[i][k] - s["phi"][k]) for i, s in kin for k in range(3)), default=0.0),
+            "kinematics_complete": len(kin) == len(nodes)}
+
+
+def coverage_verdict(lo: dict, hi: dict, envelope: dict) -> tuple[dict, bool]:
+    """Per-window (alpha, Re, Mach) span of the queried section states and whether it lies in the table."""
+    cov = {"alpha_deg": [lo["alpha"], hi["alpha"]], "reynolds": [lo["re"], hi["re"]], "mach": [lo["mach"], hi["mach"]]}
+    return cov, all(envelope[k][0] <= v[0] and v[1] <= envelope[k][1] for k, v in cov.items())
 
 
 def decide_status(participant_outcome, accepted, n_planned, first_unconverged, first_uncovered,
@@ -203,7 +233,6 @@ def build_result(run: Path, *, participant_outcome: str | None, participant_mess
     rho, mu, a = case["density_kg_m3"], case["viscosity_pa_s"], case["speed_of_sound_m_s"]
     name_to_key = {dust["geometry"][k]["name"]: k for k in dust["geometry"]} if dust else {}
     jh = mech["distal_inertia_cg_kg_m2"] + mech["distal_mass_kg"] * mech["distal_cg_from_hinge_m"] ** 2
-    mrc = mech["distal_mass_kg"] * geo["hinge_radius_m"] * mech["distal_cg_from_hinge_m"]
     env = fold_envelope(case)
     first_outside_envelope = None
     series, radial = [], []
@@ -221,10 +250,11 @@ def build_result(run: Path, *, participant_outcome: str | None, participant_mess
         row["thrust_n"] = sum(f[2] for f in F)
         m_origin_z = sum(M[i][2] + _cross(X[i], F[i])[2] for i in range(len(nodes)))
         row["aero_shaft_torque_nm"] = -m_origin_z
-        p_if = sum(sum(F[i][k] * V[i][k] + M[i][k] * Om[i][k] for k in range(3)) for i in range(len(nodes)))
+        terms = exchange_terms(nodes, win, blk)  # kinematic closure: state sent to DUST vs MBDyn's final state
+        if not terms["kinematics_complete"]:
+            raise KeyError(f"MBDyn output of window {w} lacks a coupling node state.")
+        p_if = terms["node_power_w"]
         row["aero_power_absorbed_w"] = -p_if
-        row["drive_torque_nm"] = jb[DRIVE_JOINT]["m_global"][2]
-        row["drive_power_w"] = row["drive_torque_nm"] * blk[HUB]["w"][2]
         theta, rate, m_aero_h, m_law, latch_m = [], [], [], [], []
         for b in range(nb):
             rp, rd = rotvec_to_matrix(blk[100 + b]["phi"]), rotvec_to_matrix(blk[200 + b]["phi"])
@@ -235,21 +265,13 @@ def build_result(run: Path, *, participant_outcome: str | None, participant_mess
             m_law.append(-jb[SPRING_BASE + b]["m_local"][2])
             # raw MBDyn output of the driven latch joint (zero once the driven element is inactive)
             latch_m.append(-jb[LATCH_BASE + b]["m_local"][2] if (LATCH_BASE + b) in jb else 0.0)
-        # kinematic closure: state sent to DUST vs MBDyn's final converged state
-        for i, nd in enumerate(nodes):
-            lab = nd["mbdyn_label"]
-            closure["kinematic_position_m"] = max(closure["kinematic_position_m"],
-                                                  max(abs(X[i][k] - blk[lab]["x"][k]) for k in range(3)))
-            closure["kinematic_rotation_rad"] = max(closure["kinematic_rotation_rad"],
-                                                    max(abs(win["rotation"][i][k] - blk[lab]["phi"][k]) for k in range(3)))
+        for k in ("kinematic_position_m", "kinematic_rotation_rad", "max_node_force_n", "max_node_moment_nm",
+                  "max_interface_power_w"):
+            closure[k] = max(closure[k], terms[k])
         row["theta_deg"] = [math.degrees(x) for x in theta]
         row["hinge_aero_torque_nm"] = m_aero_h
-        row.update(hinge_channels(mech, t, dt, theta, rate, m_law))
+        row.update(window_channels(case, t, theta, rate, m_law, jb[DRIVE_JOINT]["m_global"][2], blk[HUB]["w"][2]))
         row["latch_torque_nm"] = latch_m
-        w_t, wdot_t = shaft_speed(case, t)  # prescribed (constant or ramp)
-        row["centrifugal_hinge_moment_derived_nm"] = [-mrc * w_t ** 2 * math.sin(th) for th in theta]
-        # rotating-frame acceleration: -(J_h + m r_h c_g cos th) dOmega/dt (zero at constant speed)
-        row["frame_acceleration_hinge_moment_derived_nm"] = [-(jh + mrc * math.cos(th)) * wdot_t for th in theta]
         if min(math.degrees(x) for x in theta) < env["fold_limit_deg"] - 1e-9 and first_outside_envelope is None:
             first_outside_envelope = w
         # aerodynamic coverage of the queried section states (final lifting-line iterate)
@@ -300,13 +322,7 @@ def build_result(run: Path, *, participant_outcome: str | None, participant_mess
         closure["load_force_n"] = max(closure["load_force_n"], f_close)
         closure["load_moment_nm"] = max(closure["load_moment_nm"], m_close)
         closure["interface_power_w"] = max(closure["interface_power_w"], abs(p_el - p_if))
-        closure["max_node_force_n"] = max(closure["max_node_force_n"], max(math.sqrt(sum(c * c for c in f)) for f in F))
-        closure["max_node_moment_nm"] = max(closure["max_node_moment_nm"], max(math.sqrt(sum(c * c for c in m_)) for m_ in M))
-        closure["max_interface_power_w"] = max(closure["max_interface_power_w"], abs(p_if))
-        row["coverage"] = {"alpha_deg": [lo["alpha"], hi["alpha"]], "reynolds": [lo["re"], hi["re"]], "mach": [lo["mach"], hi["mach"]]}
-        covered = (envelope["alpha_deg"][0] <= lo["alpha"] and hi["alpha"] <= envelope["alpha_deg"][1]
-                   and envelope["reynolds"][0] <= lo["re"] and hi["re"] <= envelope["reynolds"][1]
-                   and envelope["mach"][0] <= lo["mach"] and hi["mach"] <= envelope["mach"][1])
+        row["coverage"], covered = coverage_verdict(lo, hi, envelope)
         row["within_admitted_table"] = covered
         if not covered and first_uncovered is None:
             first_uncovered = w

@@ -52,6 +52,15 @@ LEGACY_CONTROL_DEFAULTS = {"vortex_stretching": True, "aero_topology": "split_ri
 # Controls removed since, with the only value whose records regenerate today's case and decks exactly
 # (verified on run 20261112T064948). Any other value, or another removed key, is refused by name.
 LEGACY_REMOVED_CONTROLS = {"junction_station_merge": False}
+# check prose written by earlier generators (git history of postprocess._checks); names, values, limits and
+# verdicts are unchanged, and any other text is refused so a resealed record cannot carry its own claims
+LEGACY_CHECK_MEANINGS = {
+    "prescribed_speed_deviation_rpm": ("Hub speed vs prescribed constant speed.",),
+    "hinge_balance_relative_residual": (
+        "Independent planar hinge equation J_h th'' = M_aero + M_law - m W^2 r_h c_g sin(th), central differences, "
+        "smooth windows only (no latch or contact in the stencil); a large value would indicate double-counted "
+        "or missing inertial loads.",),
+}
 CASE_MISMATCH = "Saved case contradicts the saved draft and inputs."
 DECK_MISMATCH = "Saved decks do not match."
 RUNS_ENV = "PYFOLDABLE_COUPLED_RUNS"
@@ -354,7 +363,9 @@ FLOW_TIMEOUT_S = 1800
 def local_run_summaries(root: Path) -> list:
     """Readable list of the run folders on this computer, from their small request/status files. Each
     available record is also restored once (cached per file mtime and size) so that ``restorable`` and
-    ``restore_error`` say whether it opens before anyone tries. Newest first."""
+    ``restore_error`` say whether it opens before anyone tries. Newest first.
+    shortcut: the first call in a process fully restores every record (about 11 s for 36 local runs, growing
+    with the run count; memory cache only); verify only the selected run, or persist the verdict, if it hurts."""
     import json as _json
     base = runs_root(root)
     out = []
@@ -396,8 +407,8 @@ def _restorability(path: Path, available: bool) -> dict:
         try:
             read_saved_coupled_result(path.read_bytes())
             _RESTORE_CACHE[key] = {"restorable": True, "restore_error": None}
-        except (OSError, ValueError) as exc:
-            msg = str(exc)
+        except Exception as exc:  # only labels this row; opening still goes through read_saved_coupled_result
+            msg = str(exc) if isinstance(exc, (OSError, ValueError)) else f"{type(exc).__name__}: {exc}"
             if msg in (CASE_MISMATCH, DECK_MISMATCH):  # regenerated with today's code it differs; stays refused
                 msg = f"eski üretici sürümü — yeniden doğrulanamaz ({msg})"
             _RESTORE_CACHE[key] = {"restorable": False, "restore_error": msg}
@@ -435,9 +446,9 @@ def load_flow(root: Path, row: dict):
 
 def flow_frame_bytes_bound(row: dict) -> int:
     """Upper bound of one companion frame: float32 particle position, vorticity and core radius at the
-    declared particle cap, the velocity plane, plus margin for the panel-wake rows and offsets.
+    declared particle cap, the velocity plane, plus margin for the panel-wake rows and offsets (uncompressed).
     shortcut: worst case at the cap (recorded runs reach about a third of it), so with caps above about
-    78 000 particles even the default sampling is refused; size from the run's own particle counts if needed."""
+    340 000 particles even the default ~110-frame sampling is refused; size from the run's own particle counts if needed."""
     from pyfoldable.coupled import flow
     nx, ny, nz = flow.default_plane(row)["n_xyz"]
     return 28 * int(row["run_definition"]["case"]["controls"]["max_wake_particles"]) + 12 * nx * ny * nz + 65536
@@ -447,7 +458,7 @@ def build_flow(root: Path, row: dict, *, max_frames: int = 81, extra_windows=(),
     """Explicit action: extract the flow companion from the record's retained DUST outputs with the
     attested toolchain (coupling venv + dust_post). Never starts a solver; verifies the result.
     ``extra_windows`` adds valid-prefix windows to the sampled ones; the frame count is bounded so the
-    companion stays under ``flow.MAX_NPZ_BYTES``."""
+    uncompressed companion stays under ``flow.MAX_INFLATED_BYTES`` (flow.load bounds the actual files)."""
     from pyfoldable.coupled import flow
     d = local_run_dir(root, row)
     if d is None:
@@ -458,7 +469,7 @@ def build_flow(root: Path, row: dict, *, max_frames: int = 81, extra_windows=(),
     windows = sorted(set(flow.select_windows(row, max_frames)) | set(extra_windows))
     if not windows:
         raise flow.FlowCompanionError("no_windows", "Kabul edilen pencere yok.")
-    cap = flow.MAX_NPZ_BYTES // flow_frame_bytes_bound(row)
+    cap = flow.MAX_INFLATED_BYTES // flow_frame_bytes_bound(row)
     if len(windows) > cap:
         raise flow.FlowCompanionError("too_many_frames", f"{len(windows)} kare istendi; akış verisi boyut sınırı en çok "
                                                          f"{cap} kareye izin veriyor.")
@@ -586,14 +597,35 @@ def read_saved_coupled_result(raw: bytes) -> dict:
                  and all(isinstance(s, dict) and core <= set(s) and s == {k: g[k] for k in s} for s, g in zip(saved, regen))
                  and ("bodies" not in rd or rd["bodies"] == json.loads(json.dumps(deckmod.bodies(case)))),
                  "Saved coupling nodes or bodies do not match the case.")
-        # 4. derived channels recomputed from exchanged loads, MBDyn node states and joint outputs
+        # 4. derived channels recomputed from exchanged loads, MBDyn node states, joint outputs and the
+        # per-element table. Not re-derivable (sources not retained), so trusted as recorded: latch_torque_nm
+        # (raw latch-joint output), the element-load closures load_force_n, load_moment_nm and
+        # interface_power_w (DUST per-element moments and velocities), and for continuous_rbf the kinematic
+        # closure of the massless coupling nodes (only a lower bound from the retained body nodes is checked).
         ex = row["execution"]
+        _require(all(type(ex[k]) is int for k in ("windows_planned", "windows_accepted", "valid_prefix_windows"))
+                 and all(ex.get(k) is None or type(ex[k]) is int
+                         for k in ("first_unconverged_window", "first_uncovered_window", "first_outside_fold_envelope_window")),
+                 "Window counters must be integers.")  # views slice the series with them
         series, wins, states = row["series"], row["window_exchange"], {s["window"]: s["nodes"] for s in row["node_states"]}
-        joints, mech = row["joint_outputs"], rd["case"]["mechanics"]
+        joints, cn = row["joint_outputs"], rd["coupling_nodes"]
         _require(len(series) == len(wins) == len(joints) == ex["windows_accepted"] and ex["windows_planned"] == case.n_steps,
                  "Accepted window count mismatch.")
+        env = req["c81"]["envelope"]
+        cols = row["radial_columns"]
+        ia, ire, im, iw = cols.index("alpha_deg"), cols.index("reynolds"), cols.index("mach"), cols.index("window")
+        lo, hi = {}, {}
+        for rec in row["radial"]:
+            wl = lo.setdefault(rec[iw], {"alpha": math.inf, "re": math.inf, "mach": math.inf})
+            wh = hi.setdefault(rec[iw], {"alpha": -math.inf, "re": -math.inf, "mach": -math.inf})
+            for k, j in (("alpha", ia), ("re", ire), ("mach", im)):
+                wl[k], wh[k] = min(wl[k], rec[j]), max(wh[k], rec[j])
+        _require(set(lo) == set(range(1, len(series) + 1)), "Element table windows do not match the series.")
+        closure = dict.fromkeys(("kinematic_position_m", "kinematic_rotation_rad", "max_node_force_n", "max_node_moment_nm",
+                                 "max_interface_power_w"), 0.0)
+        kin_complete, first_bad = True, None
         for i, (r, w, jo) in enumerate(zip(series, wins, joints), start=1):
-            _require(r["window"] == w["window"] == jo["window"] == i, "Window order mismatch.")
+            _require(type(r["window"]) is int and r["window"] == w["window"] == jo["window"] == i, "Window order mismatch.")
             F, M, X = w["force"], w["moment"], w["position"]
             _require(math.isclose(r["thrust_n"], sum(f[2] for f in F), rel_tol=0, abs_tol=1e-9), "Thrust does not match exchanged loads.")
             mz = sum(M[i][2] + X[i][0] * F[i][1] - X[i][1] * F[i][0] for i in range(len(F)))
@@ -606,26 +638,31 @@ def read_saved_coupled_result(raw: bytes) -> dict:
                 th = relative_angle_about_z(rotvec_to_matrix(nodes[str(100 + b)]["phi"]), rotvec_to_matrix(nodes[str(200 + b)]["phi"]))
                 _require(abs(math.degrees(th) - r["theta_deg"][b]) < 1e-9, "Hinge angle does not match node states.")
                 theta.append(th)
-                cn = row["run_definition"]["coupling_nodes"]
                 m_h = postprocess.hinge_aero_torque(cn, b, X, F, M, postprocess.hinge_point(cn, b, X, nodes[str(200 + b)]))
                 _require(math.isclose(r["hinge_aero_torque_nm"][b], m_h, rel_tol=0, abs_tol=1e-12), "Hinge aero torque mismatch.")
             _require(abs(r["rpm"] - nodes["2"]["w"][2] * 60 / (2 * math.pi)) < 1e-9, "RPM does not match hub state.")
             rate = [nodes[str(200 + b)]["w"][2] - nodes[str(100 + b)]["w"][2] for b in range(nb)]
             m_law = [-jo["hinge_law_m_local"][b][2] for b in range(nb)]
-            derived = {**postprocess.hinge_channels(mech, i * case.dt_s, case.dt_s, theta, rate, m_law),
-                       "drive_torque_nm": jo["drive_m_global"][2]}
+            terms = postprocess.exchange_terms(cn, w, {int(k): v for k, v in nodes.items()})
+            coverage, covered = postprocess.coverage_verdict(lo[i], hi[i], env)
+            derived = {**postprocess.window_channels(rd["case"], i * case.dt_s, theta, rate, m_law, jo["drive_m_global"][2],
+                                                     nodes["2"]["w"][2]),
+                       "aero_power_absorbed_w": -terms["node_power_w"], "coupling_iterations": w["iterations"]}
             for k, v in derived.items():
-                _require(_same(r[k], v), f"{k} does not match node states and joint outputs.")
-        # 5. coverage recomputed from the per-element table and the admitted envelope
-        env = req["c81"]["envelope"]
-        cols = row["radial_columns"]
-        ia, ire, im, iw = cols.index("alpha_deg"), cols.index("reynolds"), cols.index("mach"), cols.index("window")
-        first_bad = None
-        for rec in row["radial"]:
-            ok = (env["alpha_deg"][0] <= rec[ia] <= env["alpha_deg"][1] and env["reynolds"][0] <= rec[ire] <= env["reynolds"][1]
-                  and env["mach"][0] <= rec[im] <= env["mach"][1])
-            if not ok:
-                first_bad = rec[iw] if first_bad is None else min(first_bad, rec[iw])
+                # records from before the speed ramp lack this channel; _checks reads it as zero, so it must be
+                saved = r.get(k, [0.0] * nb) if k == "frame_acceleration_hinge_moment_derived_nm" else r[k]
+                _require(_same(saved, v), f"{k} does not match node states, joint outputs and exchanged loads.")
+            _require(_same(r["coverage"], coverage) and r["within_admitted_table"] is covered,
+                     "Coverage verdict does not match element states.")
+            for k in closure:
+                closure[k] = max(closure[k], terms[k])
+            kin_complete = kin_complete and terms["kinematics_complete"]
+            if not covered and first_bad is None:
+                first_bad = i
+        for k, v in closure.items():  # without the coupling-node states only a lower bound is known
+            ok = _same(row["closure"][k], v) if kin_complete or not k.startswith("kinematic_") else row["closure"][k] >= v
+            _require(ok, f"Closure {k} does not match the exchanged window data.")
+        # 5. coverage verdict from the per-element table and the admitted envelope
         _require(first_bad == ex["first_uncovered_window"], "Coverage verdict does not match element states.")
         # 6. markers, status (postprocess decision rule), valid prefix and checks
         first_unconverged = next((r["window"] for r in series if r["coupling_converged"] is not True), None)
@@ -642,8 +679,10 @@ def read_saved_coupled_result(raw: bytes) -> dict:
         _require(ex["valid_prefix_windows"] == valid, "Valid prefix does not match the retained history.")
         checks = postprocess._checks(series, rd["case"], row["closure"], case.mechanics.hinge_inertia_kg_m2, case.dt_s)
         verdicts = lambda cs: [{k: v for k, v in c.items() if k != "meaning"} for c in cs]  # noqa: E731
-        # the explanatory prose was reworded between generator versions; names, values, limits and verdicts were not
-        _require(verdicts(row["checks"]) == verdicts(checks), "Checks do not match the retained history.")
+        _require(verdicts(row["checks"]) == verdicts(checks)
+                 and all(s["meaning"] in (c["meaning"], *LEGACY_CHECK_MEANINGS.get(c["name"], ()))
+                         for s, c in zip(row["checks"], checks)),
+                 "Checks do not match the retained history.")
         return row
     except (KeyError, IndexError, TypeError, AttributeError) as exc:
         raise ValueError(f"Malformed coupled result ({type(exc).__name__}: {exc}).") from exc
@@ -651,6 +690,8 @@ def read_saved_coupled_result(raw: bytes) -> dict:
 
 def _same(saved, derived) -> bool:
     """Saved channel equals the re-derived one: flags exactly, numbers to 1e-9."""
+    if isinstance(derived, dict):
+        return isinstance(saved, dict) and saved.keys() == derived.keys() and all(_same(saved[k], v) for k, v in derived.items())
     if isinstance(derived, list):
         return isinstance(saved, list) and len(saved) == len(derived) and all(map(_same, saved, derived))
     if isinstance(derived, bool):

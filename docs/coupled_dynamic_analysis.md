@@ -183,8 +183,12 @@ outputs, per-element radial table, checks and a raw-output manifest (sha256 per 
 `read_saved_coupled_result` re-derives without any solver: request digest, case from the
 saved draft, C81 from the saved tables, every deck file, thrust/torque/hinge moments
 from exchanged loads, θ/RPM from node states, the coverage verdict from element states,
-and status consistency, and requires the saved coupling nodes and bodies to equal those
-regenerated from the case. A saved request without `aero_topology` restores as
+the hinge, drive, power and inertial-moment channels, flags, window markers, status,
+valid prefix and check verdicts, and requires the saved coupling nodes and bodies to equal those
+regenerated from the case. Not re-derivable and therefore trusted as recorded: the latch-joint
+torque, the element-load closures (force, moment, interface power; DUST per-element moments and
+velocities are not retained) and, for `continuous_rbf`, the kinematic closure of the massless
+coupling nodes. A saved request without `aero_topology` restores as
 `split_rigid` (its declared legacy meaning, identical decks); any other missing control is
 rejected. Node states keep the ground, hub and body nodes; the kinematics of the
 continuous-line coupling nodes are in the exchanged window data. Checksums identify content;

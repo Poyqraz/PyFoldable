@@ -128,6 +128,23 @@ def _pass_all_checks(r):
             c.update(value=0.0, passed=True)
 
 
+def _recheck(r):
+    """Re-run the checks on the (edited) series and closure, as a careful forger would."""
+    case = r["run_definition"]["case"]
+    m = case["mechanics"]
+    jh = m["distal_inertia_cg_kg_m2"] + m["distal_mass_kg"] * m["distal_cg_from_hinge_m"] ** 2
+    r["checks"] = postprocess._checks(r["series"], case, r["closure"], jh, case["dt_s"])
+
+
+def _and_recheck(edit):
+    return lambda r: (edit(r), _recheck(r))
+
+
+def _zero_closure(r):
+    for k in r["closure"]:
+        r["closure"][k] = 0.0
+
+
 @pytest.mark.parametrize("mutate", [
     lambda r: _set_all(r, "latch_active", False),
     lambda r: _set_all(r, "contact_active", lambda s: [False] * len(s["contact_active"])),
@@ -142,13 +159,47 @@ def _pass_all_checks(r):
     lambda r: r["execution"].__setitem__("status", "failed_unconverged_coupling"),  # every window converged
     lambda r: r["execution"].__setitem__("windows_planned", 29),
     _pass_all_checks,
+    lambda r: r["series"][5].__setitem__("time_s", 99.0),
+    _and_recheck(lambda r: _set_all(r, "centrifugal_hinge_moment_derived_nm", lambda s: [0.0] * len(s["theta_deg"]))),
+    _and_recheck(lambda r: _set_all(r, "frame_acceleration_hinge_moment_derived_nm", lambda s: [5.0] * len(s["theta_deg"]))),
+    lambda r: r["series"][5].__setitem__("drive_power_w", 1234.0),
+    lambda r: r["series"][5].__setitem__("aero_power_absorbed_w", 1234.0),
+    lambda r: r["series"][5].__setitem__("within_admitted_table", False),
+    lambda r: r["series"][5]["coverage"].__setitem__("alpha_deg", [-90, 90]),
+    _and_recheck(_zero_closure),
+    lambda r: r["execution"].update(valid_prefix_windows=30.0, windows_accepted=30.0),
+    lambda r: r["checks"][0].__setitem__("meaning", "Passes physical qualification of the rotor."),
 ], ids=["latch", "contact", "theta_rate", "hinge_law", "contact_torque", "drive", "prefix_5", "prefix_99",
-        "first_unconverged", "first_outside", "status", "planned", "checks"])
+        "first_unconverged", "first_outside", "status", "planned", "checks", "time", "centrifugal",
+        "frame_acceleration", "drive_power", "aero_power", "within_table", "coverage", "closure", "float_counters",
+        "meaning"])
 def test_resealed_derived_fields_are_rejected(run, mutate):
     row = _build(run)
     mutate(row)
     with pytest.raises(ValueError):
         svc.read_saved_coupled_result(_bytes(_reseal(row)))
+
+
+def test_kinematic_closure_is_rederived_where_node_states_are_retained(legacy_run):
+    row = _build(legacy_run)  # split_rigid: every coupling node is a retained body node
+    row["closure"]["kinematic_position_m"] = 1.0
+    _recheck(row)
+    with pytest.raises(ValueError, match="Closure kinematic_position_m"):
+        svc.read_saved_coupled_result(_bytes(_reseal(row)))
+
+
+def test_check_text_of_an_earlier_generator_is_accepted(run):
+    row = _build(run)
+    c = next(c for c in row["checks"] if c["name"] == "prescribed_speed_deviation_rpm")
+    c["meaning"] = "Hub speed vs prescribed constant speed."
+    svc.read_saved_coupled_result(_bytes(_reseal(row)))
+
+
+def test_record_from_before_the_speed_ramp_restores_without_frame_acceleration_channel(run):
+    row = _build(run)  # constant speed: the channel is zero, which is how _checks reads its absence
+    for s in row["series"]:
+        del s["frame_acceleration_hinge_moment_derived_nm"]
+    svc.read_saved_coupled_result(_bytes(_reseal(row)))
 
 
 def test_record_without_envelope_keys_still_meets_todays_envelope(run, monkeypatch):
@@ -206,6 +257,9 @@ def test_run_list_marks_records_that_do_not_restore(tmp_path, monkeypatch):
     assert "eski üretici sürümü" in rows[old.name]["restore_error"]
     (good / "result.json").write_text("{}")  # a changed file is verified again, not served from the cache
     assert svc.local_run_summaries(tmp_path)[-1]["restorable"] is False
+    (old / "result.json").write_bytes(b"[" * 200000)  # one hostile record labels its own row only
+    rows = {r["run_id"]: r for r in svc.local_run_summaries(tmp_path)}
+    assert rows[old.name]["restorable"] is False and "RecursionError" in rows[old.name]["restore_error"]
 
 
 def test_flow_window_requests_are_validated_and_bounded(run, tmp_path, monkeypatch):
@@ -220,7 +274,12 @@ def test_flow_window_requests_are_validated_and_bounded(run, tmp_path, monkeypat
         assert err.value.code == "bad_window"
     fits = len(set(flow.select_windows(row, 2)) | {13})
     assert fits < 30
-    monkeypatch.setattr(flow, "MAX_NPZ_BYTES", fits * svc.flow_frame_bytes_bound(row))
+    big = json.loads(json.dumps(row))  # a cap the UI allows: 30 worst-case frames exceed the compressed-file
+    big["run_definition"]["case"]["controls"]["max_wake_particles"] = 500_000  # limit, not the inflated one
+    with pytest.raises(flow.FlowCompanionError) as err:
+        svc.build_flow(tmp_path, big, max_frames=30, readiness=not_ready)
+    assert err.value.code == "toolchain_missing"
+    monkeypatch.setattr(flow, "MAX_INFLATED_BYTES", fits * svc.flow_frame_bytes_bound(row))
     with pytest.raises(flow.FlowCompanionError) as err:  # every one of the 30 windows
         svc.build_flow(tmp_path, row, max_frames=30, readiness=not_ready)
     assert err.value.code == "too_many_frames"
