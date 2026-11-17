@@ -230,7 +230,9 @@ def bem_on_blade(row):
     vals = [s[2] for s in f.strips]
     crange = scale_controls("research_blade", (min(vals), max(vals)), f.unit, "Bu sonucun aralığı", ident=f.key)
     lo, hi = 1000 * f.strips[0][0], 1000 * f.strips[-1][1]
-    r_mm = rui._field(st.slider, "İncelenen kesit r [mm]", "research_blade_radius", round(0.5 * (lo + hi), 1),
+    # keyed per record: a kept value from a larger rotor would sit past this blade's tip
+    r_mm = rui._field(st.slider, "İncelenen kesit r [mm]", f"research_blade_radius_{row['result_sha256'][:8]}",
+                      round(0.5 * (lo + hi), 1),
                       min_value=round(lo, 1), max_value=round(hi, 1), step=0.5)
     hit = _strip_value(f, r_mm / 1000)
     if hit:
@@ -253,7 +255,7 @@ def bem_on_blade(row):
                                   uirevision=f"bem:{row['result_sha256']}"), "research_blade3d")
     st.caption(f"{f.note} Hesaplanan: {f.source}, tam açık rotor (0°). Yeniden oluşturulan: kanat yüzeyi "
                f"({spec.profile_id} katalog profili, kaydın taslağındaki istasyonlar). Gri yüzeyler sonuç taşımaz "
-               "(kesit uçları, yüzey verisi olmayan aralıklar).")
+               "(kesit uçları, yüzey verisi olmayan aralıklar). Camgöbeği halka ve dikey çizgi seçilen kesittir.")
     rui._plot(bv.radial_link_figure(f, selected_radius_m=r_mm / 1000, crange=crange, hinge_radius_m=spec.hinge_radius_m),
               "research_blade_radial")
     if st.toggle("Akışı göster (BEM tabanlı rekonstrüksiyon)", value=False, key="research_bem_flow"):
@@ -328,7 +330,8 @@ def coupled_blade_tab(row, root):
     crange = scale_controls("coupled_blade", crange, f0.unit, "Tüm pencerelerde sabit (bu kayıt)",
                             ident=f"{f0.key}_{row['result_sha256'][:8]}")
     lo, hi = 1000 * f0.strips[0][0], 1000 * f0.strips[-1][1]
-    r_mm = rui._field(st.slider, "İncelenen kesit r [mm]", "coupled_blade_radius", round(0.5 * (lo + hi), 1),
+    r_mm = rui._field(st.slider, "İncelenen kesit r [mm]", f"coupled_blade_radius_{row['result_sha256'][:8]}",
+                      round(0.5 * (lo + hi), 1),
                       min_value=round(lo, 1), max_value=round(hi, 1), step=0.5)
     tf = bg.node_transforms(row, w)
     psi = bg.rotor_azimuth(row, w)
@@ -346,13 +349,11 @@ def coupled_blade_tab(row, root):
     st.caption(f"{f0.note} Hesaplanan: DUST kaldırma çizgisi elemanları (bu pencere). Yeniden oluşturulan: kanat yüzeyi "
                f"({spec.profile_id} katalog profili, kaydın kesitleri) MBDyn gövde durumlarıyla konumlandı. "
                f"Çerçeve: {_FRAMES[frame]}. Eklem bölgesi yalnız gösterimdir.")
-    c1, c2 = st.columns(2)
-    with c1:
-        rui._plot(bv.radial_link_figure(f0, selected_radius_m=r_mm / 1000, crange=crange,
-                                        hinge_radius_m=spec.hinge_radius_m), "coupled_blade_radial")
-        st.caption("Kanat 1 · seçilen pencere; dikey çizgi seçilen kesit, kesikli çizgi menteşe yarıçapı (açık konum).")
-    with c2:
-        rui._plot(views.response_timeline_figure(row, w, ev), "coupled_blade_timeline")
+    rui._plot(bv.radial_link_figure(f0, selected_radius_m=r_mm / 1000, crange=crange,
+                                    hinge_radius_m=spec.hinge_radius_m), "coupled_blade_radial")
+    st.caption("Kanat 1 · seçilen pencere; camgöbeği dikey çizgi seçilen kesit, kesikli çizgi menteşe yarıçapı (açık konum).")
+    # full width: the 5-row timeline and its legend do not fit half a column
+    rui._plot(views.response_timeline_figure(row, w, ev), "coupled_blade_timeline")
     _downloads(mesh, f"pyfoldable_dinamik_{row['result_sha256'][:8]}_w{w}_{f0.key}", field=fields, transforms=tf,
                frame_note="laboratuvar çerçevesi (MBDyn durumları; rotorla birlikte görünüm dışa aktarılmaz)")
     if st.button("Oynatma hazırla (fiziksel zaman, olaylar)", key="coupled_blade_anim",

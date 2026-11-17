@@ -38,6 +38,7 @@ def slipstream(row, *, downstream_radii: float = 4.0, upstream_radii: float = 1.
 
 
 def slipstream_figure(row, height: int = 430):
+    import plotly.colors as pc
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
     s = slipstream(row)
@@ -50,8 +51,9 @@ def slipstream_figure(row, height: int = 430):
     vmax = max(float(np.max(u)) for u in s["axial_m_s"])
     for k, (r, u) in enumerate(zip(s["tube_r_m"], s["axial_m_s"])):
         fig.add_trace(go.Scatter(x=r * 1000.0, y=z, mode="markers", showlegend=False,
-                                 marker=dict(size=3, color=u, colorscale="Blues", cmin=vmin, cmax=vmax,
-                                             colorbar=dict(title="V + u [m/s]", x=0.47, len=0.9) if k == 0 else None,
+                                 # Viridis without its three darkest stops keeps >= 3:1 on the dark app background
+                                 marker=dict(size=3, color=u, colorscale=pc.sequential.Viridis[3:], cmin=vmin, cmax=vmax,
+                                             colorbar=dict(title="V + u [m/s]", x=1.02, len=0.9) if k == 0 else None,
                                              showscale=k == 0),
                                  hovertemplate="r %{x:.0f} mm · z %{y:.0f} mm · V+u %{marker.color:.2f} m/s<extra>akım tüpü</extra>"),
                       row=1, col=1)

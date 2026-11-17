@@ -42,8 +42,32 @@ def test_bem_result_is_shown_on_the_blade_with_kind_unit_and_strip_meaning(tmp_p
     assert "birim açıklık" in _text(at).lower() and "kordal basınç dağılımı değildir" in _text(at)
     at.selectbox(key="research_blade_field").set_value("thrust_element").run()
     assert not at.exception and "Eleman toplamı" in _text(at)
-    at.slider(key="research_blade_radius").set_value(300.0).run()
+    _radius_slider(at, "research_blade_radius").set_value(300.0).run()
     assert not at.exception
+
+
+def _radius_slider(at, prefix):
+    return next(s for s in at.slider if s.key.startswith(prefix))
+
+
+def test_section_radius_slider_follows_the_opened_record(tmp_path, monkeypatch):
+    from test_research_release_ui import field
+    store(tmp_path, monkeypatch, PROJECT_AIRFOIL_IDS)
+    bem(monkeypatch)
+    at = go(app(), ANALYSIS)
+    at.button(key="research_run").click().run()
+    first = _radius_slider(at, "research_blade_radius")
+    assert (first.min, first.max) == (144.0, 388.0)
+    go(at, DESIGN)
+    for label, value in (("Göbek yarıçapı [mm]", 50.0), ("Kök konumu [mm]", 60.0), ("Menteşe konumu [mm]", 160.0),
+                         ("Açık çap [mm]", 480.0), ("Devir [RPM]", 4000.0), ("Kord çarpanı", 1.6)):  # stays in coverage
+        field(at, label).set_value(value).run()
+        assert not at.exception, label
+    go(at, ANALYSIS).button(key="research_run").click().run()
+    assert not at.exception
+    second = _radius_slider(at, "research_blade_radius")
+    assert second.max <= 240.0 and second.min <= second.value <= second.max      # not stretched past the 240 mm tip
+    assert "→ şerit" in _text(at)
 
 
 def test_coupled_blade_tab_synchronises_window_quantity_and_frame(tmp_path, monkeypatch):

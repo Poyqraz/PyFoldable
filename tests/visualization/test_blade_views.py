@@ -1,5 +1,6 @@
 """3-D blade figure, linked radial plot and exports (geometry from the catalog, results as labelled strips)."""
 import math
+import sys
 from dataclasses import replace
 from pathlib import Path
 
@@ -13,6 +14,8 @@ from pyfoldable.visualization import blade_surface as bs
 from pyfoldable.visualization import fold_interference as fi
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "tests" / "application"))
+from test_figure_style import _contrast  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -38,7 +41,8 @@ def test_geometry_only_view_shows_parts_placeholders_hub_and_hinge(mesh):
     assert ph and all(t.opacity < 0.5 for t in ph)
     hub = _traces(fig, "Göbek")
     assert hub and "yalnız yarıçap" in hub[0].hovertemplate
-    assert _traces(fig, "Menteşe ekseni")
+    hinge = _traces(fig, "Menteşe ekseni")
+    assert hinge and hinge[0].line.color != bv.JOINT            # stays distinct from the joint region it crosses
     assert fig.layout.scene.aspectmode == "data"
 
 
@@ -121,3 +125,51 @@ def test_playback_event_buttons_jump_to_named_frames(mesh):
     fig = bv.playback_figure(mesh, frames, events={"İlk temas": "3"})
     jump = next(b for m in fig.layout.updatemenus for b in m.buttons if b.label == "İlk temas")
     assert list(jump.args[0]) == ["3"]
+
+
+def _hex(colour):
+    return "#" + "".join(c * 2 for c in colour[1:]) if len(colour) == 4 else colour
+
+
+def _drawn_colours(fig):
+    """Fixed line/marker colours (colour-scaled values are arrays and skipped) and cone colourscale stops."""
+    out = []
+    for t in list(fig.data) + [t for f in fig.frames for t in f.data]:
+        line, marker = getattr(t, "line", None), getattr(t, "marker", None)
+        out += [c for c in (line and line.color, marker and marker.color, marker and marker.line and marker.line.color)
+                if isinstance(c, str)]
+        if t.type == "cone":
+            out += [stop for _, stop in t.colorscale]
+    return out + [s.line.color for s in fig.layout.shapes if s.line.color]
+
+
+def test_markers_and_lines_stay_visible_on_the_dark_app_background(mesh):
+    figs = (bv.blade_figure(mesh, field=_field(), crange=(0.0, 300.0), selected_radius_m=0.30),
+            bv.radial_link_figure(_field(), selected_radius_m=0.30, crange=(0.0, 300.0), hinge_radius_m=0.27),
+            bv.bem_rotation_figure(mesh, field=_field(), crange=(0.0, 300.0), rpm=2400.0, thrust_n=43.6, n_frames=4))
+    dim = {c: round(_contrast(_hex(c)), 2) for fig in figs for c in _drawn_colours(fig) if _contrast(_hex(c)) < 3.0}
+    assert not dim
+
+
+def _frames(mesh, n=5, **extra):
+    return [{"name": str(k), "label": f"{k}", "transforms": bv.default_transforms(mesh, 0.0, 0.1 * k), "field": None,
+             "text": "Öngörülen hareket (mekanik model) · t = 0,1234 s · 2400 RPM · θ = -12,3° · θ̇ = 4,5 rad/s · "
+                     "N = 120 N · V_t = 3,4 N · M_z = 0,12 N·m · M_t = -0,075 N·m", **extra} for k in range(n)]
+
+
+def test_many_playback_events_wrap_into_rows_and_the_long_note_wraps(mesh):
+    events = {f"Olay {k}": str(k % 5) for k in range(13)}
+    fig = bv.playback_figure(mesh, _frames(mesh), events=events)
+    rows = [m for m in fig.layout.updatemenus if any(b.label.startswith("Olay") for b in m.buttons)]
+    assert len(rows) == math.ceil(13 / 5) and all(len(m.buttons) <= 5 for m in rows)
+    assert [b.label for m in rows for b in m.buttons] == list(events)          # time order kept
+    assert len({m.y for m in rows}) == len(rows) and all(m.y < -0.02 for m in rows)   # stacked below the slider
+    note = fig.layout.annotations[0].text
+    assert "<br>" in note and "M_t = -0,075 N·m" in note
+    assert "<br>" in fig.frames[2].layout.annotations[0].text
+
+
+def test_frame_mesh_opacity_is_applied_and_defaults_to_opaque(mesh):
+    see_through = bv.playback_figure(mesh, _frames(mesh, mesh_opacity=0.45))
+    assert see_through.data[0].opacity == 0.45 and all(f.data[0].opacity == 0.45 for f in see_through.frames)
+    assert bv.playback_figure(mesh, _frames(mesh)).data[0].opacity is None

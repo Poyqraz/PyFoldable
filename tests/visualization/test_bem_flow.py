@@ -1,10 +1,15 @@
 """Momentum-theory flow reconstruction from a retained BEM solution (labelled model, not a wake solution)."""
 import math
+import sys
+from pathlib import Path
 
 import numpy as np
 import pytest
 
 from pyfoldable.visualization import bem_flow
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "application"))
+from test_figure_style import _contrast  # noqa: E402
 
 
 def _row(a=(2.0, 3.0, 4.0), vt=(1.0, 0.8, 0.6), V=14.0):
@@ -43,3 +48,10 @@ def test_figure_is_labelled_as_a_momentum_reconstruction():
     fig = bem_flow.slipstream_figure(_row())
     text = " ".join(str(a.text) for a in fig.layout.annotations) + str(fig.layout.title.text)
     assert "momentum" in text.lower() and "rekonstrüksiyon" in text.lower() and "CFD değildir" in text
+
+
+def test_colour_bar_sits_outside_both_panels_with_a_dark_safe_scale():
+    fig = bem_flow.slipstream_figure(_row())
+    tube = next(t for t in fig.data if t.marker.showscale)
+    assert tube.marker.colorbar.x > 1.0
+    assert all(_contrast(c.replace(" ", "")) >= 3.0 for _, c in tube.marker.colorscale)

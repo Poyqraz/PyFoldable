@@ -2,7 +2,7 @@
 
 Geometry is reconstructed from the catalog profile and the design stations (``visualization.blade_surface``);
 analysis values are strips (``visualization.blade_results``) and are drawn only on the analysed surface.
-Units in the figures are millimetres. Kept free of Streamlit so it can be tested directly.
+Units in the figures are millimetres. No Streamlit calls (only the shared colour tokens), so it can be tested directly.
 """
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ import math
 import numpy as np
 import plotly.graph_objects as go
 
+from pyfoldable.application.figure_style import ACCENT, CONSTRUCTION, TEXT
 from pyfoldable.visualization import blade_surface as bs
 
 FIXED, MOVABLE, JOINT, NODATA, PLACEHOLDER = "#008579", "#DC671D", "#9AA7B4", "#B9C2CB", "#76889A"
@@ -161,7 +162,7 @@ def _strip_markers(fig, mesh, fields, tf, view):
     w = np.vstack(xs)
     unit = fields[0].unit
     fig.add_trace(go.Scatter3d(x=w[:, 0], y=w[:, 1], z=w[:, 2], mode="markers", name="Şerit değerleri",
-                               marker=dict(size=2.5, color="#222"), text=text, customdata=rr,
+                               marker=dict(size=2.5, color=CONSTRUCTION), text=text, customdata=rr,
                                hovertemplate="%{text} " + unit + "<br>r = %{customdata:.1f} mm (şerit merkezi, çeyrek kiriş)"
                                              "<extra></extra>"))
 
@@ -185,7 +186,7 @@ def _hub_and_hinges(fig, mesh, tf, view):
         p = view(tf[b](np.array([[0.0, spec.hinge_radius_m, 0.0]]), np.array([False])))[0] * 1000.0
         hx += [p[0], p[0], None]; hy += [p[1], p[1], None]; hz += [-zext, zext, None]
     fig.add_trace(go.Scatter3d(x=hx, y=hy, z=hz, mode="lines", name="Menteşe ekseni",
-                               line=dict(color="#333", width=4, dash="dash"),
+                               line=dict(color=TEXT, width=4, dash="dash"),  # CONSTRUCTION equals the joint mesh grey
                                hovertemplate="Menteşe ekseni: çeyrek kirişte, şafta paralel (r_h = "
                                              f"{spec.hinge_radius_m * 1000:.0f} mm); eklem geometrisi tanımlı değil<extra></extra>"))
 
@@ -198,7 +199,7 @@ def _selected_ring(fig, mesh, r, tf0, view):
     w = view(tf0(ring, moving)) * 1000.0
     w = np.vstack([w, w[:1]])
     fig.add_trace(go.Scatter3d(x=w[:, 0], y=w[:, 1], z=w[:, 2], mode="lines", name=f"Seçilen kesit r = {r * 1000:.1f} mm",
-                               line=dict(color="#000", width=6), hoverinfo="name"))
+                               line=dict(color=ACCENT, width=6), hoverinfo="name"))
 
 
 def _contact_marks(fig, rep, view, at_deg=None):
@@ -224,11 +225,11 @@ def radial_link_figure(field, *, selected_radius_m=None, crange=None, hinge_radi
         xs += [a * 1000.0, b * 1000.0, None]; ys += [v, v, None]
         mx.append(500.0 * (a + b)); my.append(v)
     lo, hi = crange if crange is not None else (min(my), max(my))
-    fig = go.Figure([go.Scatter(x=xs, y=ys, mode="lines", name="Şerit değeri", line=dict(color="#555", width=2),
+    fig = go.Figure([go.Scatter(x=xs, y=ys, mode="lines", name="Şerit değeri", line=dict(color=CONSTRUCTION, width=2),
                                 hoverinfo="skip"),
                      go.Scatter(x=mx, y=my, mode="markers", name="Şerit merkezi",
                                 marker=dict(size=8, color=my, colorscale=colorscale, cmin=lo, cmax=hi,
-                                            line=dict(color="#333", width=0.5)),
+                                            line=dict(color=CONSTRUCTION, width=0.5)),
                                 hovertemplate="r = %{x:.1f} mm<br>%{y:.4g} " + field.unit + "<extra></extra>")])
     shapes = []
     if hinge_radius_m is not None:
@@ -236,7 +237,7 @@ def radial_link_figure(field, *, selected_radius_m=None, crange=None, hinge_radi
                            line=dict(color="#888", dash="dash")))
     if selected_radius_m is not None:
         shapes.append(dict(type="line", x0=selected_radius_m * 1000, x1=selected_radius_m * 1000, y0=0, y1=1,
-                           yref="paper", line=dict(color="#000", width=2)))
+                           yref="paper", line=dict(color=ACCENT, width=2)))
     fig.update_layout(height=height, margin=dict(l=10, r=10, t=10, b=10), shapes=shapes, showlegend=False,
                       xaxis_title="r [mm] (kesikli: menteşe)", yaxis_title=f"{field.label} [{field.unit}]")
     return fig
@@ -330,10 +331,12 @@ def _frame_traces(mesh, frame, crange, colorscale, view_rotation_rad=0.0):
                   colorbar=dict(title=dict(text=f"{f0.label}<br>[{f0.unit}] · {KIND_LABEL[f0.kind]}", side="right"), len=0.7))
     else:
         kw.update(color=MOVABLE)
+    if frame.get("mesh_opacity") is not None:
+        kw.update(opacity=frame["mesh_opacity"])
     tip_body = np.array([[0.0, mesh.spec.stations[-1][0], 0.0]])
     tip = view(np.asarray(frame["transforms"][0](tip_body, np.array([True])))) * 1000.0
     return [go.Mesh3d(**kw), go.Scatter3d(x=tip[:, 0], y=tip[:, 1], z=tip[:, 2], mode="markers", name="Kanat 1 ucu",
-                                          marker=dict(size=5, color="#111"), hoverinfo="name")]
+                                          marker=dict(size=5, color=ACCENT), hoverinfo="name")]
 
 
 def _scene_arrows(spec, thrust_n=None, torque_nm=None, power_w=None):
@@ -356,14 +359,25 @@ def _scene_arrows(spec, thrust_n=None, torque_nm=None, power_w=None):
     if power_w is not None:
         txt += f", güç P = {_tr(power_w)} W"
     out.append(go.Scatter3d(x=list(-r * np.sin(th)), y=list(r * np.cos(th)), z=[0.0] * len(th), mode="lines",
-                            line=dict(color="#2C3E50", width=5), name="Dönüş yönü (+Ω)", hovertext=txt, hoverinfo="text"))
+                            line=dict(color=CONSTRUCTION, width=5), name="Dönüş yönü (+Ω)", hovertext=txt, hoverinfo="text"))
     out.append(go.Cone(x=[-r * math.sin(th[-1])], y=[r * math.cos(th[-1])], z=[0.0], u=[-math.cos(th[-1])],
-                       v=[-math.sin(th[-1])], w=[0.0], anchor="tail", colorscale=[[0, "#2C3E50"], [1, "#2C3E50"]],
+                       v=[-math.sin(th[-1])], w=[0.0], anchor="tail", colorscale=[[0, CONSTRUCTION], [1, CONSTRUCTION]],
                        showscale=False, sizemode="absolute", sizeref=0.08 * R, hoverinfo="skip", name="Dönüş oku"))
     return out
 
 
 SPEEDS = (("0,25×", 4.0), ("0,5×", 2.0), ("1×", 1.0), ("2×", 0.5))
+
+
+def _wrap(text, width=70):
+    """Break a ' · '-separated frame note into lines of about ``width`` characters (Plotly does not wrap)."""
+    lines = []
+    for part in text.split(" · "):
+        if lines and len(lines[-1]) + 3 + len(part) <= width:
+            lines[-1] += " · " + part
+        else:
+            lines.append(part)
+    return "<br>".join(lines)
 
 
 def playback_figure(mesh, frames, *, crange=None, colorscale="Viridis", static_traces=(), events=None, frame_ms=80,
@@ -375,9 +389,11 @@ def playback_figure(mesh, frames, *, crange=None, colorscale="Viridis", static_t
     built = [_frame_traces(mesh, f, crange, colorscale, view_rotation(f) if view_rotation else 0.0) + list(f.get("extra", ()))
              for f in frames]
     moving = list(range(len(built[0])))
+    lines = max(len(_wrap(f["text"]).split("<br>")) for f in frames)
 
     def note(text):
-        return [dict(text=text, x=0, y=1.06, xref="paper", yref="paper", showarrow=False, align="left", xanchor="left")]
+        return [dict(text=_wrap(text), x=0, y=1.0, xref="paper", yref="paper", showarrow=False, align="left",
+                     xanchor="left", yanchor="bottom")]
     fig = go.Figure(data=built[0] + list(static_traces),
                     frames=[go.Frame(data=traces, traces=moving, name=f["name"], layout=dict(annotations=note(f["text"])))
                             for f, traces in zip(frames, built)])
@@ -392,10 +408,12 @@ def playback_figure(mesh, frames, *, crange=None, colorscale="Viridis", static_t
                dict(label="❚❚", method="animate", args=[[None], dict(mode="immediate", frame=dict(duration=0))])]
     buttons += [dict(label=lab, method="animate", args=anim(None, frame_ms * k)) for lab, k in SPEEDS]
     menus = [dict(type="buttons", direction="left", x=0, y=-0.02, xanchor="left", yanchor="top", buttons=buttons)]
-    if events:
-        menus.append(dict(type="buttons", direction="left", x=0, y=-0.12, xanchor="left", yanchor="top",
-                          buttons=[dict(label=k, method="animate", args=jump(v)) for k, v in events.items()]))
-    fig.update_layout(height=height, margin=dict(l=0, r=0, t=40, b=0), updatemenus=menus, annotations=note(frames[0]["text"]),
+    # Plotly never wraps updatemenu buttons, so events go in rows of five stacked below the slider.
+    jumps = [dict(label=k, method="animate", args=jump(v)) for k, v in (events or {}).items()]
+    menus += [dict(type="buttons", direction="left", x=0, y=-0.16 - 0.08 * row, xanchor="left", yanchor="top",
+                   buttons=jumps[5 * row:5 * row + 5]) for row in range(math.ceil(len(jumps) / 5))]
+    fig.update_layout(height=height, margin=dict(l=0, r=0, t=10 + 18 * lines, b=0), updatemenus=menus,
+                      annotations=note(frames[0]["text"]),
                       sliders=[dict(x=0.32, len=0.68, y=-0.02, currentvalue=dict(prefix=""),
                                     steps=[dict(method="animate", label=f["label"], args=jump(f["name"])) for f in frames])],
                       scene=dict(aspectmode="data", xaxis_title="X [mm]", yaxis_title="Y [mm]", zaxis_title="Z [mm] (itki yönü)",
