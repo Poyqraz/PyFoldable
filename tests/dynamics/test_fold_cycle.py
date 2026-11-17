@@ -156,3 +156,157 @@ def test_a_self_consistent_but_malformed_record_is_refused(passive_run):
     bad["series"] = {**bad["series"], "rpm": bad["series"]["rpm"][:-1]}
     with pytest.raises(ValueError, match="lengths"):
         fc.verify(fc.seal(bad))
+
+
+# ------------------------------------------------------------------------------------- phase-1 WP1 regressions
+def _check(r, name):
+    return next(c for c in r["checks"] if c["name"] == name)
+
+
+@pytest.mark.parametrize("mech", [replace(SPRING, actuator_nm=-0.3, actuator_start_s=0.6, actuator_end_s=2.4),
+                                  replace(SPRING, stop_stiffness_nm_per_rad=1e5),
+                                  replace(SPRING, damping_nm_s_per_rad=0.0, stop_restitution=1.0)],
+                         ids=["actuator_switch", "stiff_stop", "zero_damping_rattle"])
+def test_consistency_checks_do_not_fail_on_switches_or_stiff_stops(mech):
+    r = fc.run_cycle(case(mech), sensitivity=False)
+    for name in ("pin_moment_fd_outside_contact", "energy_balance_relative"):
+        assert _check(r, name)["passed"], _check(r, name)
+
+
+def test_a_corrupted_rate_still_fails_the_consistency_checks(monkeypatch):
+    real = fc._evaluate
+
+    def corrupted(model, segments, t):
+        th, thd, lat = real(model, segments, t)
+        bump = (t >= 0.60) & (t <= 0.61)
+        return th, thd + np.where(bump, np.sin(np.pi * (t - 0.60) / 0.01), 0.0)[:, None], lat
+    monkeypatch.setattr(fc, "_evaluate", corrupted)
+    r = fc.run_cycle(case(), sensitivity=False)
+    assert _check(r, "pin_moment_fd_outside_contact")["passed"] is False
+
+
+def test_sensitivity_studies_the_governing_contact_and_reads_its_own_spreads(spring_run):
+    sens = spring_run["sensitivity"]
+    opens = [c for c in spring_run["contacts"] if c["stop"] == "open"]
+    worst = max(opens, key=lambda c: abs(c["peak_torque_nm"]))
+    assert abs(worst["peak_torque_nm"]) > abs(opens[0]["peak_torque_nm"])          # the first contact is not the governing one
+    ref = next(r for r in sens["rows"] if r["variant"] == "Referans")
+    assert ref["peak_torque_nm"] == worst["peak_torque_nm"] and sens["target"]["blade"] == worst["blade"]
+    for s in (sens, sens["stowed"]):
+        assert ("kararlı" in s["reading"]) == (min(s["impulse_spread"], s["peak_spread"]) < 0.1)
+    assert sens["stowed"]["target"]["stop"] == "stowed"
+    assert spring_run["notes"]["stop_law"] == "kelvin_voigt_tensile_at_separation"
+    assert all(c["tensile_peak_torque_nm"] * c["peak_torque_nm"] <= 0 for c in spring_run["contacts"])
+    assert any(c["tensile_peak_torque_nm"] != 0 for c in opens)
+
+
+def test_horizontal_gravity_reports_every_blade():
+    r = fc.run_cycle(fc.CycleCase(0.27, 3, FAST, PASSIVE, OFF, gravity="shaft_horizontal"), sensitivity=False)
+    s = r["series"]
+    for p in r["peaks"]:
+        x = np.array(s[f"load_{p['key']}"])
+        b = int(np.unravel_index(np.argmax(np.abs(x)), x.shape)[1])
+        assert p["blade"] == b and p["value"] == pytest.approx(x.flat[np.argmax(np.abs(x))])
+    assert len(r["outcome"]["returned_by_blade"]) == 3 and len(r["outcome"]["open_reached_by_blade"]) == 3
+    assert r["outcome"]["all_returned"] == all(r["outcome"]["returned_by_blade"])
+    assert np.array(s["energy_residual_j_by_blade"]).shape == (len(s["time_s"]), 3)
+    assert np.array(s["contrib_gravity_M_pin_by_blade"]).shape == (len(s["time_s"]), 3)
+    assert len(r["events_by_blade"]) == 3
+    # blade 1's events, plus the earliest blade that leaves the stowed stop under gravity before the shaft turns
+    assert all(e["blade"] in (None, 0) or e["key"] == "left_stowed_before_spinup" for e in r["events"])
+    assert any(e["key"] == "left_stowed_before_spinup" for e in r["events"])
+    assert {c["blade"] for c in r["contacts"]} == {0, 1, 2}
+    assert fc.verify(r) is r
+
+
+def test_identical_blades_are_integrated_once_and_replicated():
+    r = fc.run_cycle(fc.CycleCase(0.27, 3, FAST, PASSIVE, OFF), sensitivity=False)
+    th = np.array(r["series"]["theta_deg"])
+    assert np.array_equal(th[:, 0], th[:, 2]) and "energy_residual_j_by_blade" not in r["series"]
+
+
+def test_rest_inflow_zero_keeps_the_blade_stowed_until_spin_up():
+    strips = fc.strips_from_stations(STATIONS, 0.27)
+    k1 = FAST.knots[1]
+    zero = fc.run_cycle(case(PASSIVE, aero=fc.AeroModel(strips=strips, rest_inflow="zero")), sensitivity=False)
+    t, th = np.array(zero["series"]["time_s"]), np.array(zero["series"]["theta_deg"])[:, 0]
+    assert th[t < k1].max() < math.degrees(PASSIVE.stowed_stop_rad) + 0.1
+    assert "left_stowed_before_spinup" not in [e["key"] for e in zero["events"]]
+    design = fc.run_cycle(case(PASSIVE, aero=fc.AeroModel(strips=strips)), sensitivity=False)
+    ev = next(e for e in design["events"] if e["key"] == "left_stowed_before_spinup")
+    assert ev["time_s"] < k1
+    with pytest.raises(ValueError):
+        fc.AeroModel(strips=strips, rest_inflow="sometimes")
+
+
+def test_latch_and_actuator_inputs_are_validated():
+    with pytest.raises(ValueError, match="actuator"):
+        replace(SPRING, actuator_nm=-0.3, actuator_start_s=2.0, actuator_end_s=1.0)
+    with pytest.raises(ValueError, match="latch"):
+        replace(SPRING, latch_release_s=-0.1)
+    with pytest.raises(ValueError, match="capture"):
+        replace(SPRING, latch_capture_rad=-0.01)
+    replace(SPRING, actuator_nm=0.0, actuator_start_s=2.0, actuator_end_s=1.0)        # inactive window stays allowed
+
+
+def test_a_capture_band_lets_the_latch_engage_against_the_aerodynamic_moment():
+    mech = replace(PASSIVE, open_latch=True, latch_release_s=FAST.knots[3] + 0.05, actuator_nm=-0.3,
+                   actuator_start_s=FAST.knots[3] + 0.05, actuator_end_s=FAST.knots[-1], latch_capture_rad=math.radians(1.0))
+    r = fc.run_cycle(case(mech, aero=fc.AeroModel(strips=fc.strips_from_stations(STATIONS, 0.27))), sensitivity=False)
+    assert any(e["kind"] == "latch_engaged" for e in r["latch_events"])
+    assert all(c["passed"] in (True, None) for c in r["checks"]), r["checks"]      # the snap is not a consistency failure
+
+
+def test_an_early_latch_release_is_not_reported_as_retraction_during_spin_up():
+    r = fc.run_cycle(case(replace(PASSIVE, open_latch=True, latch_release_s=0.15)), sensitivity=False)
+    assert all(e["time_s"] >= FAST.knots[2] for e in r["events"] if e["key"] == "retraction_start")
+
+
+def test_every_contact_peak_of_a_rattle_is_resolved_in_the_stored_series():
+    mech = replace(SPRING, damping_nm_s_per_rad=0.0, stop_restitution=1.0, stop_stiffness_nm_per_rad=1e4)
+    r = fc.run_cycle(case(mech), sensitivity=False)
+    s = r["series"]
+    t = np.array(s["time_s"])
+    worst = max(r["contacts"], key=lambda c: abs(c["peak_torque_nm"]))
+    tau = np.array(s[f"hinge_{worst['stop']}_stop_nm"])[:, worst["blade"]]
+    win = (t >= worst["t_in_s"]) & (t <= worst["t_out_s"])
+    assert np.abs(tau[win]).max() >= 0.95 * abs(worst["peak_torque_nm"])
+    assert len(t) < 20000
+
+
+def test_contact_refinement_fails_closed_beyond_its_budget(monkeypatch):
+    monkeypatch.setattr(fc, "MAX_FINE_SAMPLES", 5)
+    contacts = [{"blade": 0, "stop": "open", "t_in_s": 0.3, "t_out_s": 0.302}]
+    with pytest.raises(ValueError, match="budget"):
+        fc._sample_times(case(), contacts, [])
+
+
+def test_schedules_longer_than_the_cap_are_rejected():
+    with pytest.raises(ValueError, match="cycle duration"):
+        replace(FAST, hold_s=fc.MAX_CYCLE_DURATION_S)
+
+
+def test_declared_product_of_inertia_adds_the_centrifugal_twisting_moment():
+    sched = replace(FAST, spindown_s=0.01, end_rest_s=0.0)
+    i_tz = 2e-6
+    r0 = fc.run_cycle(case(PASSIVE, schedule=sched), sensitivity=False)
+    r1 = fc.run_cycle(case(replace(PASSIVE, inertia_tz_kg_m2=i_tz), schedule=sched), sensitivity=False)
+    t = np.array(r0["series"]["time_s"])
+    i = int(np.argmin(np.abs(t - (sched.knots[2] + 0.4))))
+    om = 2400 * fc.RPM + r0["series"]["theta_rate_rad_s"][i][0]
+    dm = r1["series"]["load_M_torsion"][i][0] - r0["series"]["load_M_torsion"][i][0]
+    assert dm == pytest.approx(-om ** 2 * i_tz, rel=1e-3)
+    assert r1["series"]["load_M_pin"][i][0] == pytest.approx(r0["series"]["load_M_pin"][i][0], abs=1e-5)
+    j = int(np.argmin(np.abs(t - 0.12)))                                   # spin-up: I_tz·(Ω̇ + θ̈) about e_t
+    s0 = r0["series"]
+    dmb = r1["series"]["load_M_bending"][j][0] - s0["load_M_bending"][j][0]
+    assert dmb == pytest.approx(i_tz * (s0["omega_dot_rad_s2"][j] + s0["theta_acc_rad_s2"][j][0]), rel=2e-3, abs=2e-5)
+
+
+def test_an_older_schema_record_still_verifies(passive_run):
+    assert passive_run["schema_version"] == fc.SCHEMA_VERSION == 2
+    old = {k: v for k, v in passive_run.items() if k != "result_sha256"}
+    old["schema_version"] = 1
+    old["case"] = {**old["case"], "schedule": {**old["case"]["schedule"], "hold_s": 30.0}}   # predates the duration cap
+    old = fc.seal(old)
+    assert fc.verify(old) is old
