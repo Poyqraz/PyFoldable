@@ -123,6 +123,8 @@ def test_cycle_rpm_follows_the_design_unless_overridden():
     go(at, DESIGN).number_input(key="research_axial_800_rpm").set_value(3000.0).run()
     go(at, ANALYSIS)
     assert at.number_input(key="cycle_rpm").value == 3000.0
+    # Streamlit 1.40 would show its English widget-state duplication warning in the page (shown once per process)
+    assert not [w.value for w in at.warning if "Session State" in w.value]
     at.number_input(key="cycle_rpm").set_value(2800.0).run()
     go(at, DESIGN).number_input(key="research_axial_800_rpm").set_value(3200.0).run()
     go(at, ANALYSIS)
@@ -130,6 +132,7 @@ def test_cycle_rpm_follows_the_design_unless_overridden():
     assert any("3200" in w.value for w in at.warning)
     at.button(key="cycle_rpm_from_design").click().run()
     assert at.number_input(key="cycle_rpm").value == 3200.0
+    assert not [w.value for w in at.warning if "Session State" in w.value]
     # the browser keeps its own value unless told: Streamlit 1.65 keys the widget id on the key alone
     assert at.number_input(key="cycle_rpm").proto.set_value
 

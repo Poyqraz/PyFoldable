@@ -402,6 +402,13 @@ def _integrate(case: CycleCase, t_end=None):
                     engage.append((up[0][0], b))
         if engage:
             t_stop = min(e[0] for e in engage)
+        # the one-sided latch switches at its target: cut there so LSODA restarts at the switch (as at engagement)
+        switch = [(*c, b) for b in np.flatnonzero(latched)
+                  for c in _crossings(sol.sol, t, t_stop, b, m.latch_target_rad, N + b) if c[0] > t + 1e-9]
+        switch = min(switch) if switch else None
+        if switch and switch[0] < t_stop:
+            t_stop = switch[0]
+            latch_events.append({"kind": "latch_switch", "blade": int(switch[2]), "time_s": switch[0], "rate_rad_s": switch[1]})
         segments.append((t, t_stop, sol.sol, lat_now))
         for b in range(N):
             for kind, ang in (("open", m.open_stop_rad), ("stowed", m.stowed_stop_rad)):
@@ -734,10 +741,14 @@ def run_cycle(case: CycleCase, *, sensitivity: bool = True, extra: dict | None =
     if m.actuator_nm:
         marks += [(m.actuator_start_s, None), (m.actuator_end_s, None)]
     sw = np.array([x for x, _ in marks])
+    latch_hp = math.pi * math.sqrt(J_h / m.latch_stiffness_nm_per_rad)
+    # a blade falling back onto the latch target meets the stiff latch spring: an impact like a stop contact
+    hits = [e for e in latch_events if e["kind"] == "latch_switch" and e["rate_rad_s"] < 0 and e["blade"] < nb]
     # check grid: uniform at dt_f, both sides of every switch (a trapezoid straddling a power step is the dominant
-    # quadrature error) and a twentieth of the stop half-period inside every contact impact (stiff stops)
+    # quadrature error) and a twentieth of the stop (latch) half-period inside every contact (latch) impact
     tf =np.unique(np.round(np.concatenate([np.arange(0.0, kn[-1] + 0.5 * dt_f, dt_f), sw - 1e-9, sw + 1e-9,
-                                            _impact_samples(case, contacts, min(dt_f, _stop_half_period(m) / 20.0))]), 12))
+                                            _impact_samples(case, contacts, min(dt_f, _stop_half_period(m) / 20.0)),
+                                            *(np.arange(e["time_s"], e["time_s"] + 2.0 * latch_hp, latch_hp / 20.0) for e in hits)]), 12))
     tf = tf[(tf >= 0) & (tf <= kn[-1])]
     ck =model if horiz else _Model(replace(case, blade_count=1))
     thf, thdf, latf = (a[:, :nb] for a in _evaluate(model, segments, tf))
@@ -751,9 +762,8 @@ def run_cycle(case: CycleCase, *, sensitivity: bool = True, extra: dict | None =
     for c in contacts:
         if c["blade"] < nb:
             contact_f[:, c["blade"]] |= (tf >= c["t_in_s"] - 3e-4) & (tf <= c["t_out_s"] + 3e-4)
-    latch_hp = math.pi * math.sqrt(J_h / m.latch_stiffness_nm_per_rad)
     engaged = [e for e in latch_events if e["kind"] == "latch_engaged" and e["blade"] < nb]
-    for e in engaged:                                       # the latch snap is a stiff transient, excluded like a contact
+    for e in engaged + hits:                                # the latch snap is a stiff transient, excluded like a contact
         contact_f[:, e["blade"]] |= (tf >= e["time_s"] - 3e-4) & (tf <= e["time_s"] + 2.0 * latch_hp + 3e-4)
     # a central difference straddling a θ̈ step is not an integration error: ±2 grid samples around each switch are
     # excluded as the contacts are
@@ -761,9 +771,6 @@ def run_cycle(case: CycleCase, *, sensitivity: bool = True, extra: dict | None =
         if b is None or b < nb:
             i = int(np.searchsorted(tf, x))
             contact_f[max(0, i - 3):i + 3, slice(None) if b is None else b] = True
-    si, sb = np.nonzero(np.diff(latf & (thf < m.latch_target_rad), axis=0))   # the one-sided latch damper switches on/off
-    for k in range(-2, 4):
-        contact_f[np.clip(si + k, 0, len(tf) - 1), sb] = True
     el_f = sum(resf[k] for k in ELEMENTS)
     free_scale = max(1e-3, float(np.abs(el_f)[~contact_f].max()) if (~contact_f).any() else 1e-3)
     W_in = _cumtrapz(resf["drive_power"] + resf["aero_power"] + resf["gravity_power"] + resf["actuator_power"]

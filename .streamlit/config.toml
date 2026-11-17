@@ -1,3 +1,7 @@
+[global]
+# fold_cycle_ui._reset sets a widget value through Session State; Streamlit 1.40 would show an English warning in the page
+disableWidgetStateDuplicationWarning = true
+
 [theme]
 base = "dark"
 primaryColor = "#22D3EE"

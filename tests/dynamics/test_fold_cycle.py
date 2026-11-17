@@ -381,3 +381,12 @@ def test_a_capture_band_does_not_hold_a_blade_off_the_open_stop():
     assert r1["outcome"]["operating_theta_deg"] == pytest.approx(r0["outcome"]["operating_theta_deg"], abs=0.1)
     assert min(c["t_in_s"] for c in r1["contacts"] if c["stop"] == "open") < base.latch_release_s
     assert all(c["passed"] in (True, None) for c in r1["checks"]), r1["checks"]
+
+
+@pytest.mark.parametrize("band_deg", [0.0, 3.0])
+def test_a_spring_return_with_the_open_latch_passes_its_consistency_checks(band_deg):
+    # the one-sided latch damper switches at the latch target: the integration restarts there
+    mech = replace(SPRING, open_latch=True, latch_release_s=FAST.knots[3] + 0.05, latch_capture_rad=math.radians(band_deg))
+    r = fc.run_cycle(case(mech), sensitivity=False)
+    assert any(e["kind"] == "latch_engaged" for e in r["latch_events"])
+    assert all(c["passed"] in (True, None) for c in r["checks"]), r["checks"]
