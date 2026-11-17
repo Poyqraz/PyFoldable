@@ -25,7 +25,8 @@ environment's NumPy/PyArrow binaries.
 | --- | --- |
 | Full CI-equivalent test invocation | `./venv/bin/python -m pytest tests/ -q` |
 | Focused tests | Same command with the affected test paths instead of `tests/` |
-| Workspace | `./venv/bin/python -m streamlit run apps/pyfoldable_dashboard.py` |
+| Research workspace (owner's entry point) | `./venv/bin/python -m streamlit run apps/pyfoldable_research.py` |
+| Legacy engineering dashboard | `./venv/bin/python -m streamlit run apps/pyfoldable_dashboard.py` |
 | Syntax check | `./venv/bin/python -m compileall -q pyfoldable pythrust apps examples tests` |
 | Whitespace check | `git diff --check` |
 | Package build when packaging changes | `./venv/bin/python -m pip wheel --no-deps --wheel-dir outputs/wheels .` (PEP 517 setuptools backend from `pyproject.toml`; not a required ordinary CI step) |
@@ -47,6 +48,10 @@ workspace execution: configs/reports/test fixtures/apps are not all wheel data.
 | Mechanism equations/first contact | `tests/dynamics/test_mechanism_transient*.py`, `tests/application/test_mechanism_binding.py`, transient service tests |
 | Draft, station, source identity | `tests/application/test_design_draft.py`, `test_blade_stations.py`, service tests and related `tests/ui/` |
 | Mesh/clearance/hardware | `tests/geometry/`, `tests/visualization/test_propeller_25d.py`, hardware/clearance service tests, corresponding UI tests |
+| Research workspace, BEM records, comparison | `tests/application/test_research_*.py`, `tests/ui/test_research_release_ui.py`, `test_research_comparison_ui.py`, `test_local_results_ui.py` |
+| Fold cycle, pin-and-lug, coupled hinge loads | `tests/dynamics/test_fold_cycle.py`, `test_pin_lug.py`, `tests/coupled/test_coupled_hinge_loads.py`, `tests/application/test_fold_cycle_views.py`, `tests/ui/test_fold_cycle_ui.py` |
+| Lofted blade, *Görseller* gallery | `tests/visualization/test_blade_surface.py`, `test_fold_interference.py`, `test_blade_views.py`, `tests/application/test_gallery_figures.py`, `tests/ui/test_blade3d_ui.py`, `test_gallery_ui.py` |
+| Coupled DUST–MBDyn–preCICE route | `tests/coupled/`, `tests/ui/test_coupled_ui.py` (see the toolchain section below) |
 | Streamlit lifecycle | Relevant `tests/ui/`; include navigation and source-change invalidation, not just initial render |
 | Licensing/package metadata | `tests/test_license_policy.py`; build only when packaging changes |
 | Documentation only | Verify every new path/link, command evidence, state/claim against code; inspect diff for accidental behavior or archived-report changes |
@@ -117,6 +122,8 @@ The following names belong to solver discovery or workflows, not a new app confi
 | `GITHUB_SHA`, `RUNNER_TEMP`, `GITHUB_ENV`, `GITHUB_PATH` | GitHub runner metadata/paths used by qualification setup; absent locally unless caller supplies them |
 | `FIRST_RUN_ID`, `SECOND_RUN_ID` | Reproducibility workflow inputs, required and validated distinct numeric IDs |
 | `STEPS_JSON`, `SOURCE_REVISION`, `WORKFLOW_RUN_ID`, `WORKFLOW_RUN_ATTEMPT` | Failure-evidence metadata inside the qualification workflow |
+| `PYFOLDABLE_PROVIDER_STORE` | Research workspace polar store; the app defaults to `data/research_reference/axial_800_store`; a missing/corrupt override fails without fallback |
+| `PYFOLDABLE_RESULTS`, `PYFOLDABLE_CYCLES` | Folders of saved BEM results and fold cycles (default `outputs/research_results`, `outputs/fold_cycles`); tests use temporary folders |
 
 `${{ github.token }}` is runner-supplied for artifact download; never persist or
 print it. Source configs use explicit policy fields, not a feature-flag service.
@@ -154,6 +161,14 @@ Streamlit starts. Treat execution/configuration access as trusted operator acces
   it is not a universal ANSYS/raw-measurement importer.
 - XFOIL uses an argument-list subprocess, an isolated temporary directory and
   timeout (`providers/xfoil.py`); executable selection remains trusted code/config.
+- The coupled route starts external processes only from the operator manifest
+  (`coupled/toolchain.py`), under a detached supervisor with a wall-clock budget and
+  cancel file, in fresh run folders under `PYFOLDABLE_COUPLED_RUNS`. Uploaded records are
+  bounded and re-verified, and they never supply solver commands. A run folder is used only
+  when it lies inside the runs root and holds the very record (`application/coupled_analysis.py`).
+- The *Görseller* gallery lists `reports/` read-only behind a containment check, and the legacy
+  example generators run with their root in a temporary folder (`application/gallery_ui.py`,
+  `gallery_figures.py`).
 - Cache JSON and OS locks have atomicity/ownership/symlink checks
   (`core/polar_cache.py`, `polar_cache_lock.py`). Do not replace them with ad-hoc
   file writes or swallow cache errors into a successful fallback.

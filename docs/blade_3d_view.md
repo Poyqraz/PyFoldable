@@ -65,6 +65,12 @@ crossings smaller than the sampling can still be missed: this is screening.
   contact is shown at the last clear angle of the bisection, with a warning and the contact points marked.
   Placeholders and the hub do not clamp the pose (their contacts are only possible).
 * This is display screening, not GEOM-03/04 qualification evidence.
+* *Added 2026-11-17:* `BladeSpec.distal_axial_offset_m` (default 0, so the text above still describes
+  the default) lifts the distal part along the pin in the loft and in this scan through the full travel.
+  The fold cycle uses it for the pin-and-lug joint. 30 mm clears −180° for the 800 mm NACA2412 design,
+  while 2 mm still interlocks. It is a concept parameter, not a declared joint: pin, clevis plates and
+  tang are not scanned. See [fold cycle and connection loads](fold_cycle_and_connection_loads.md) §3
+  (geometry) and §6 (pin-and-lug pre-check).
 
 ## Results on the surface (`pyfoldable/visualization/blade_results.py`)
 

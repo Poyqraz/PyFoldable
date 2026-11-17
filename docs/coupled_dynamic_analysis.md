@@ -194,6 +194,15 @@ rejected. Node states keep the ground, hub and body nodes; the kinematics of the
 continuous-line coupling nodes are in the exchanged window data. Checksums identify content;
 they do not prove physical validity.
 
+*Local run list.* *Karşılaştırma / kayıtlar* restores every local run record once (cached per file
+mtime and size; `coupled_analysis.local_run_summaries`). Its *Açılabilir* column reads *evet*, or
+*hayır —* with the reason. A record whose case or deck differs when regenerated with today's code
+reads *eski üretici sürümü — yeniden doğrulanamaz*. It stays refused, and no open action is offered
+(phase-1 one-off check of the 36 local runs: 26 restore). Companions in the run folder are
+bound to the record and re-checked on load. The hinge-load companion also carries its
+`extractor_version` (now 3), and companions from an older extractor are ignored until they are
+derived again ([fold cycle note §4](fold_cycle_and_connection_loads.md)).
+
 **Storage bound vs simulated duration.** The record keeps every accepted window (no thinning),
 so its size grows linearly with the number of windows. The canonical record is bounded at
 24 MiB because restoration parses and re-verifies the whole record and the session keeps it
@@ -324,12 +333,28 @@ released, step or spacing studies) share the bias; absolute levels carry it.
 
 Supported: 800 mm research template (and other templates whose hinge lies inside the
 station span, axis ∥ shaft), any catalog profile with a complete admitted stored
-version (today NACA0012 and NACA2412; NACA2412 in two versions), prescribed shaft speed (constant
-or ramp), releases inside the fold envelope and the admitted table envelope (§13). Not supported / not claimed: spin-up from rest,
+version, prescribed shaft speed (constant or ramp), and releases inside the fold envelope
+and the admitted table envelope (§13). Since 2026-11-16 all six catalog profiles have one,
+each on its own grid ([data README](../data/research_reference/README.md),
+`reports/catalog_polars_20261116/`):
+
+| Profile | Admitted version(s) | Re × Mach | α |
+|---|---|---|---|
+| NACA0012 | `2026-11-11-v1`; `2026-11-16-catalog-v1-naca0012` | 165k–330k × 0.10, 0.31; 100k–400k × 0.07, 0.10, 0.31 | −6…8° |
+| NACA2412 | `2026-11-11-v1`; `2026-11-12-deploy-v3` | 165k–330k × 0.10, 0.31; 100k–400k × 0.07–0.36 | −6…8° |
+| NACA23012 | `2026-11-16-catalog-v1-naca23012` | 100k–330k × 0.07–0.36 | −6…8° |
+| NACA63-412 | `2026-11-16-catalog-v1-naca63412` | 100k–400k × 0.07, 0.10, 0.31 | −6…8° |
+| NACA4412 | `2026-11-16-catalog-v2-naca4412` | 100k, 165k, 245k, 400k × 0.07, 0.10, 0.36 | −8…6° |
+| NACA4415 | `2026-11-16-catalog-v2-naca4415` | 165k–400k × 0.07, 0.10, 0.31 | −8…6° |
+
+For the four newer profiles, coupled preparation (C81 table and envelope) was checked through the
+services; the executed coupled runs are NACA2412 (one early NACA0012 run). Two versions of one profile are never mixed; the
+user picks one. The grids differ, so cross-profile results are not matched on one polar grid.
+Not supported / not claimed: spin-up from rest,
 fully folded start, torque-driven shaft, dry friction, applied hinge torque, joint loss,
 gap aerodynamics, CFD pressure fields, structural stress, fatigue, clevis–tang strength,
-manufacturability, latching or seating beyond the declared penalty law, the 250 mm /
-7100 RPM case (no admitted data), the four profiles without data. Contact phases need
+manufacturability, latching or seating beyond the declared penalty law, and the 250 mm /
+7100 RPM case (no admitted data). Contact phases need
 ≥ 8 steps per contact half-period (reported as a diagnostic).
 
 What the current evidence supports, and what it does not:

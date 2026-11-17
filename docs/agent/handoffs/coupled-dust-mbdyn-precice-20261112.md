@@ -286,8 +286,13 @@ lowest tested start 1600 RPM.
 * Follow-up commit: tests isolated from the owner's results folder (`tests/conftest.py`; the earlier suite
   runs had written ~50 fixture results into `outputs/research_results`, set aside, not deleted), a figure title
   overlap and a stale records caption. Walkthrough screenshots: `reports/app_demo_20261116/`.
-* Not done: equal-power / equal-thrust matched comparison (needs a trim solve), aligned dynamic histories across
+* Not done at the time: equal-power / equal-thrust matched comparison (needs a trim solve), aligned dynamic histories across
   two coupled records, a declared clevis–tang joint (the display joint zone is not a mechanism), video export.
+  *Update 2026-11-17:* the equal-thrust/equal-power comparison is done (`3241dfb`
+  `research_design.match_operating_point`; robust fail-closed trim in phase-1 WP9 `dfae478`), and the *Görseller*
+  gallery aligns coupled histories on release or first contact (WP10 `283997a`). A declared clevis–tang
+  geometry and video export remain open (the axial offset and the pin-and-lug pre-check exist; see
+  `docs/fold_cycle_and_connection_loads.md` §3/§6).
 
 ## Opening–closing cycle and connection loads (after `3241dfb`, 2026-11-17)
 
@@ -297,7 +302,8 @@ lowest tested start 1600 RPM.
   `docs/fold_cycle_and_connection_loads.md`; screenshots `reports/fold_cycle_demo_20261117/`.
 * Findings: passive mechanism does not refold; with a return spring the blade floats at ≈ −1° and only strikes the
   open stop during the opening swing; from −179° the Euler term opens the blade during spin-up; first-impact peak
-  scales with the assumed stop stiffness, impulse ±4 %.
+  scales with the assumed stop stiffness, impulse ±4 % (that run only; the cycle now reports the spread it computed,
+  design note §5).
 * Open: deep-fold/low-speed aerodynamics for a coupled full cycle; measured mechanism properties; declared connection
   geometry.
 
@@ -316,12 +322,16 @@ lowest tested start 1600 RPM.
    identify and validate a post-stall treatment; a torque-driven shaft needs a measured motor
    torque–speed law, controller behaviour and rotor/hub inertia; and the hinge mechanics (mass, CG,
    inertia, stop stiffness, restitution) are demonstration assumptions that dominate the impact
-   rates and rebound. Earlier list (still valid): (a) kinematic check of the RBF junction elements at large fold angles (no solver);
+   rates and rebound. Earlier list: (a) *done* in `ae5cd35`: the kinematic check of the RBF junction
+   elements is `pyfoldable/coupled/envelope.py` (analytical bound 1 − cos(θ/2), mesh measurements quoted, enforced
+   as the −23° envelope in `model.py`); a junction refinement study with the solver is still open (item 00);
    (b) genuine wide-α / low-Re polar data or a separately declared post-stall model, because
    DUST stops outside the admitted table (the −15° start failed at window 1); (c) torque-driven
    shaft (motor law) instead of prescribed speed; (d) measure the rbf velocity-point bias during
-   motion before trusting large fold rates; then a staged campaign −10°, −20°, −45° with ≥ 8
-   steps per contact.
+   motion before trusting large fold rates. A staged campaign −10°, −20°, −45° with ≥ 8 steps per
+   contact is possible only after the envelope is extended by a validated large-fold aerodynamic
+   representation (item 00): today the code refuses any fold beyond −23°
+   (`fold_outside_geometry_envelope`).
 1. The ≈ 1.4 % offset is located (design doc §9 "Located"): DUST's rbf branch evaluates the
    lifting-line body velocity at `loc_cen` (leading line). Options, none taken here: report
    upstream with the diagnostic patch and evidence; measure the bias during fold motion with a

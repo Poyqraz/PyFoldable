@@ -231,7 +231,8 @@ version. Prepare freshly; no stale active reuse.
 |---|---|
 | Software | Single-screen no-upload route,persistent provider data,explicit modules,immutable export/import and comparison implemented |
 | Genuine numerical execution | Two matched captured-provider/BEM reference runs observed; pending Astra-B review of this release |
-| Other four profiles /250mm/7100RPM | Selectable geometry; no corresponding genuine numerical completion established |
+| Other four profiles (since 2026-11-16) | Retained attached-flow XFOIL families, each on its own grid: NACA23012 and NACA63-412 V1 (α −6…8°), NACA4412 and NACA4415 V2 (α −8…6°); BEM and coupled preparation checked through the services ([coupled note §10](coupled_dynamic_analysis.md), `reports/catalog_polars_20261116/`). Grids differ, so cross-profile results are not matched on one polar grid |
+| 250mm/7100RPM | Selectable geometry; no root declaration and no admitted polar data; no genuine numerical completion established |
 | Reference agreement | NOT_ASSESSED; no matched measurements or independent solver agreement |
 | Joint loss | NOT_MODELED; hinge alone does not modify ideal open BEM |
 | Physical qualification | false |
@@ -246,3 +247,13 @@ When an operator has installed the pinned DUST–MBDyn–preCICE toolchain, **An
 *Dinamik bağlaşık*. It uses the same design, profile and stored polar version as the BEM
 above; without the toolchain it only explains that it is not installed. Inputs, model,
 coverage limits and verification: [coupled dynamic analysis](coupled_dynamic_analysis.md).
+The local run list on **Karşılaştırma / kayıtlar** states for each run whether it opens
+(*Açılabilir*) and, if not, why; records from an older generator are listed but not opened.
+
+**Analiz** also offers *Tam açılma–kapanma çevrimi ve bağlantı yükleri* (predicted 1-DOF
+hinge cycle with a prescribed shaft history, connection loads and pin-and-lug pre-checks; saved
+under `outputs/fold_cycles`, override `PYFOLDABLE_CYCLES`):
+[fold cycle and connection loads](fold_cycle_and_connection_loads.md). A fifth page,
+**Görseller**, builds figure cards only on request. Each card names its source and evidence
+class, and a failed build stays visible. `reports/` files are listed read-only, and the legacy
+example generators run in a temporary folder.

@@ -3,7 +3,9 @@
 **Audited 2026-09-17. Code baseline:**
 `ca81d2d2b19622d65453e269d7bfcb48e70aec32` (merged GEOM-04 PR #63).
 This is a dated snapshot, not a claim that the branch never advances. Recheck git
-before starting.
+before starting. The dated entries below continue to 2026-11-17. The reality summary and
+capability inventory were last aligned with code at `7e14ab2` (2026-11-17, phase-1 work
+packages WP0–WP10 on `feature/dust-mbdyn-precice-coupling`).
 
 **2026-09-19 documentation reconciliation** at main `d7afc391d5f41b15259826b99a5ed7560153439e`
 (no application change): an independent re-audit of the 2026-09-17 snapshot
@@ -202,15 +204,18 @@ proposed, not accepted. `physical_qualification` remains false. Design and limit
 
 ## Reality summary
 
-The project is a Python scientific library plus one Streamlit engineering app,
-with a bundled PyThrust compatibility slice in the same setuptools distribution.
+The project is a Python scientific library plus two Streamlit apps: the research workspace
+`apps/pyfoldable_research.py` (the owner's entry point) and the older engineering dashboard. A
+bundled PyThrust compatibility slice is in the same setuptools distribution.
 There is no database, ORM/migration system, user authentication/authorization,
 REST backend, worker queue, broker, cloud storage integration or deployment IaC.
 Storage is versioned config/evidence files, ignored generated outputs, an optional
-filesystem polar cache, ephemeral UI session state and a local folder of saved BEM results
-(`outputs/research_results`, ignored). API boundaries are Python
+filesystem polar cache, ephemeral UI session state and ignored local folders of saved BEM results
+(`outputs/research_results`), fold cycles (`outputs/fold_cycles`) and coupled run folders
+(`outputs/coupled_runs`). API boundaries are Python
 functions/dataclasses and strict TOML/JSON contracts. Dependencies and runtime
 ranges: [pyproject.toml](../../pyproject.toml); UI routing:
+[research workspace](../../apps/pyfoldable_research.py) and
 [dashboard](../../apps/pyfoldable_dashboard.py); CI:
 [workflows](../../.github/workflows).
 
@@ -230,8 +235,13 @@ ranges: [pyproject.toml](../../pyproject.toml); UI routing:
 | Current | Source-bound CMM-2 screening service and sealed deterministic report were independently reviewed and merged in PR #78. ADR-008 accepts that software slice only | `pyfoldable/application/cmm2_coupled_transient_service.py`, [CMM-2 PR-B](../cmm2_source_bound_production_binding.md) |
 | Partial | No merged or accepted PR-C verification implementation exists. Draft PR #81 contains a blocked evidence implementation attempt and is unmerged; its C2V-02 and C2V-03 trajectory results remain FAIL. Prior reviewed contract head `613072514f793f2a1bc65704f9158f536210707f`. Reviewed amended technical head `b840ec55b4d1dd57197b97e91e1a48a7fbe7da0d`. Status is REVIEWED / FROZEN FOR IMPLEMENTATION WITH C2V-02 ARITHMETIC AMENDMENT. The amendment changes only initial-acceleration accounting. Ordinary Q2 remains required. The trajectory acceptance policy was never reopened. Implementation against this amended contract has not started. Independent CMM-2 numerical verification is not established. ADR-009 is absent. `physical_qualification` is false | [CMM-2 PR-C contract](../cmm2_numerical_verification_contract.md) |
 | Partial | Full workspace coverage: Motor–Pervane, Doğrulama ve Kanıtlar, Raporlar are placeholder pages despite lower-layer APIs | `apps/pyfoldable_dashboard.py::main`, `_render_planned_page` |
+| Current | Research workspace: pages Tasarım, Analiz, Sonuçlar, Karşılaştırma / kayıtlar, Görseller; six catalog profiles with retained attached-flow families, each on its own grid; explicit BEM saved locally and reopened; matched and equal-thrust/equal-power comparison (fail-closed trim) | `apps/pyfoldable_research.py`; `pyfoldable/application/research_ui.py`, `research_design.py`; [research application](../research_application.md), `tests/ui/test_research_release_ui.py`, `tests/application/test_research_comparison.py` |
+| Partial | Optional DUST–MBDyn–preCICE route (external processes, run folders): prescribed constant or ramped shaft speed, opening from small folds inside the −23° envelope and the admitted table, stop contact, rebound and latch release under the declared penalty law; sealed records re-derived on restore; no closing, spin-up from rest or torque-driven shaft | `pyfoldable/coupled/`; `pyfoldable/application/coupled_analysis.py`, `coupled_ui.py`; [coupled analysis](../coupled_dynamic_analysis.md), `tests/coupled/`, `tests/ui/test_coupled_ui.py` |
+| Partial | Screening open–close cycle per blade (prescribed shaft, exploratory aero strips): Newton–Euler connection loads, stop impacts, restitution, latch, actuator, contact sensitivity, energy check; pin-and-lug hand pre-checks; MBDyn joint-reaction loads of coupled records. Mechanics are exploratory declarations | `pyfoldable/dynamics/fold_cycle.py`, `pin_lug.py`; `pyfoldable/coupled/hinge_loads.py`; [fold cycle](../fold_cycle_and_connection_loads.md), `tests/dynamics/test_fold_cycle.py`, `tests/ui/test_fold_cycle_ui.py` |
+| Current | Lofted 3-D blade (catalog profile, declared stations, coupled-model fold convention, optional distal axial offset) with results on the surface and a fold-contact interference scan | `pyfoldable/visualization/blade_surface.py`, `fold_interference.py`, `blade_results.py`; [lofted blade](../blade_3d_view.md), `tests/visualization/test_fold_interference.py`, `tests/ui/test_blade3d_ui.py` |
+| Current | *Görseller* gallery: figure cards built on request, with source and evidence class named and failures visible; read-only `reports/` listing; legacy generators in a temporary folder | `pyfoldable/application/gallery_ui.py`, `gallery_figures.py`; `tests/ui/test_gallery_ui.py`, `tests/application/test_gallery_figures.py` |
 | Planned / evidence-dependent | PY-06D2 identifiable parameter fitting, E structural correlation, F consolidated comparison UI, physically supported Pareto recommendations | [PY-06 plan](../py06_calibration_uncertainty_plan.md), [Python roadmap](../python_research_execution_plan.md) |
-| Not delivered | Qualified project rotor/structure/deployment; general CAD solids, asynchronous folding, impact/bounce/latch and full BEM–motor–hinge feedback | [validation roadmap](../validation_and_development_roadmap.md), [PY-05 limits](../py05_completion.md), [GEOM-04 limits](../geom04_surface_hardware.md) |
+| Not delivered | Qualified project rotor/structure/deployment, including qualified impact, bounce and latch loads (screening versions exist in the rows above); general CAD solids, asynchronous folding and full BEM–motor–hinge feedback | [validation roadmap](../validation_and_development_roadmap.md), [PY-05 limits](../py05_completion.md), [GEOM-04 limits](../geom04_surface_hardware.md) |
 
 Short implementation filenames within a row share its preceding directory.
 Stages named PR-07/PR-09/PR-10 are roadmap labels, not necessarily GitHub PR numbers.
@@ -786,6 +796,8 @@ project250 template retains proximal-longer; no root is inferred from hub/first
 station. Historic text and250mm/7100RPM,APC13in and330mm housing scenarios survive.
 That250mm case and four other profiles' real numerical readiness remain unresolved.
 Complete retained data are bundled for the two reference profiles only.
+(Superseded 2026-11-16: all six profiles have retained families; see the 2026-11-12 entry above
+and [coupled analysis §10](../coupled_dynamic_analysis.md).)
 
 See [operator/owner walkthrough and model scope](../research_application.md)
 and reports/research_release_20261111/observed-results.json. Software delivery,
