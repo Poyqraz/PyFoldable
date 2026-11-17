@@ -292,6 +292,9 @@ def test_solver_failure_names_axis_value_limit_and_direction():
     assert "devri artırın" in text and "r/R=0,368" in text
     plain = research_ui._failure_summary({"failure_stage": "solver_invocation", "failure_reason": "other"})
     assert plain == "Çözücü tamamlanamadı; kısmi toplam yayımlanmadı."
+    # failure_reason comes from an uploaded snapshot: malformed numbers must not raise.
+    malformed = reason.replace("r/R=0.367625", "r/R=0..3")
+    assert research_ui._failure_summary({"failure_stage": "solver_invocation", "failure_reason": malformed}) == plain
 
 
 def test_every_workspace_figure_keeps_full_hover_names(monkeypatch):

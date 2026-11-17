@@ -78,7 +78,7 @@ def test_second_record_is_moved_to_the_first_records_thrust_or_power_by_shaft_sp
 
 def test_a_target_outside_the_admitted_data_fails_closed(runs):
     r, repo = runs
-    with pytest.raises(ValueError, match="veri"):
+    with pytest.raises(ValueError, match="kabul edilen veri içinde ulaşılamıyor"):
         research.match_operating_point(ROOT, r["b_v1"], repo, "thrust", 20 * r["a"]["aerodynamics"]["thrust_n"])
 
 

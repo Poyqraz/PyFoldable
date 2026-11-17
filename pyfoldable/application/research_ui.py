@@ -708,7 +708,7 @@ def _radial(rows):
             for label, digits in _RADIAL_COLUMNS.values()})
 
 
-_NUM = r"(-?[\d.]+(?:[eE][-+]?\d+)?)"
+_NUM = r"(-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?)"  # strict: the reason may come from an uploaded snapshot
 _OUTSIDE = re.compile(rf"Annulus (\d+) at r/R={_NUM} failed: Requested (alpha_rad|reynolds|mach) {_NUM} "
                       rf"is outside \[{_NUM}, {_NUM}\]")
 # Which way to move: lower α means a steeper inflow angle (more inflow per blade speed).
