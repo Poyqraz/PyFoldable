@@ -125,6 +125,8 @@ def test_playback_event_buttons_jump_to_named_frames(mesh):
     fig = bv.playback_figure(mesh, frames, events={"İlk temas": "3"})
     jump = next(b for m in fig.layout.updatemenus for b in m.buttons if b.label == "İlk temas")
     assert list(jump.args[0]) == ["3"]
+    # Plotly paints the active button near-white under the light dark-theme label: no button may be drawn active
+    assert all(m.showactive is False for m in fig.layout.updatemenus)
 
 
 def _hex(colour):

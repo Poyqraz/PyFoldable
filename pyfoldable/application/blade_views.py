@@ -417,8 +417,9 @@ def playback_figure(mesh, frames, *, crange=None, colorscale="Viridis", static_t
     gap, slider_px, row_px = 8, 100, 36
     top, bottom = 10 + 18 * lines, gap + slider_px + row_px * rows + gap
     plot_h = height - top - gap - slider_px - gap
-    menus = [dict(type="buttons", direction="left", x=0, y=-gap / plot_h, xanchor="left", yanchor="top", buttons=buttons)]
-    menus += [dict(type="buttons", direction="left", x=0, y=-(gap + slider_px + row_px * row) / plot_h, xanchor="left",
+    menus = [dict(type="buttons", showactive=False, direction="left", x=0, y=-gap / plot_h, xanchor="left", yanchor="top",
+                  buttons=buttons)]
+    menus += [dict(type="buttons", showactive=False, direction="left", x=0, y=-(gap + slider_px + row_px * row) / plot_h, xanchor="left",
                    yanchor="top", buttons=jumps[5 * row:5 * row + 5]) for row in range(rows)]
     fig.update_layout(height=height + row_px * rows, margin=dict(l=0, r=0, t=top, b=bottom), updatemenus=menus,
                       annotations=note(frames[0]["text"]),
