@@ -66,6 +66,44 @@ def test_apply_follows_plotly_single_trace_legend_rule():
     assert fs.apply(go.Figure([go.Scatter(x=[0], y=[0], name="Tek iz", showlegend=True)])).layout.margin.b
 
 
+@pytest.mark.parametrize("traces", [
+    [go.Scatter3d(x=[0], y=[0], z=[0], name="Kuvvet"), go.Cone(x=[0], y=[0], z=[0], u=[1], v=[0], w=[0], name="Kuvvet")],
+    [go.Surface(z=[[0, 1], [1, 0]], name="Kanat"), go.Scatter3d(x=[0], y=[0], z=[0], name="Seçili kesit")],
+    [go.Mesh3d(x=[0, 1, 0], y=[0, 0, 1], z=[0, 0, 0], name="Kanatlar"), go.Heatmap(z=[[0]], name="Alan"),
+     go.Scatter(x=[0], y=[0], name="Tek iz")],
+    [go.Scatter(x=[0], y=[0], name="Gizli", visible=False), go.Scatter(x=[0], y=[0], name="Tek iz")],
+])
+def test_apply_counts_only_traces_plotly_puts_in_the_legend(traces):
+    # Cone/Surface/Mesh3d/Heatmap default to showlegend=false and hidden traces are skipped, so one entry: no legend.
+    assert fs.apply(go.Figure(traces)).layout.margin.b is None
+
+
+def test_apply_lays_out_grouped_traces_flat_like_the_margin_assumes():
+    fig = fs.apply(go.Figure([go.Scatter(x=[0], y=[0], name=f"İz {i}", legendgroup=f"g{i}") for i in range(6)]))
+    assert fig.layout.legend.traceorder == "normal"
+
+
+def test_apply_uses_fewer_columns_for_long_names():
+    from pyfoldable.application.fold_cycle_views import CONTRIB_LABEL
+
+    def margin_and_width(names):
+        fig = fs.apply(go.Figure([go.Scatter(x=[0], y=[0], name=n) for n in names]))
+        return fig.layout.margin.b, fig.layout.legend.entrywidth
+
+    short_margin, short_width = margin_and_width(["A", "B", "C", "D", "E"])
+    long_margin, long_width = margin_and_width(CONTRIB_LABEL.values())
+    assert long_width > short_width and long_margin > short_margin
+
+
+def test_particle_scale_meets_contrast_at_the_opacity_particle_traces_use():
+    opacity = 0.6  # coupled_views particle markers; alpha-blend each stop onto the page
+    bg = [int(BACKGROUND[i:i + 2], 16) for i in (1, 3, 5)]
+    for _, stop in fs.PARTICLE_SCALE:
+        rgb = [int(v) for v in stop[stop.index("(") + 1:-1].split(",")]
+        blended = "rgb({},{},{})".format(*(round(opacity * c + (1 - opacity) * b) for c, b in zip(rgb, bg)))
+        assert _contrast(blended) >= 3.0
+
+
 @pytest.mark.parametrize("modern", [False, True])
 def test_width_kwargs_follow_installed_plotly_chart_signature(monkeypatch, modern):
     def legacy(figure, use_container_width=False):
