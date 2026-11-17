@@ -28,6 +28,7 @@ from pyfoldable.coupled import c81 as c81mod
 from pyfoldable.coupled import deck as deckmod
 from pyfoldable.coupled import postprocess
 from pyfoldable.coupled import toolchain as tcmod
+from pyfoldable.coupled.envelope import fold_envelope
 from pyfoldable.coupled.model import CoupledCase, CoupledCaseError, CoupledControls, CoupledMechanics, build_case
 from pyfoldable.coupled.postprocess import digest
 
@@ -48,6 +49,11 @@ XZ_PRESET = 6  # ~3.6x on recorded runs; the 720-window main record is 4.60 MB (
 # A saved record lacking such a field is restored with exactly this value (identical decks).
 LEGACY_CONTROL_DEFAULTS = {"vortex_stretching": True, "aero_topology": "split_rigid", "drive_profile": "constant",
                            "ramp_start_rpm": 0.0, "ramp_start_s": 0.0, "ramp_duration_s": 0.0}
+# Controls removed since, with the only value whose records regenerate today's case and decks exactly
+# (verified on run 20261112T064948). Any other value, or another removed key, is refused by name.
+LEGACY_REMOVED_CONTROLS = {"junction_station_merge": False}
+CASE_MISMATCH = "Saved case contradicts the saved draft and inputs."
+DECK_MISMATCH = "Saved decks do not match."
 RUNS_ENV = "PYFOLDABLE_COUPLED_RUNS"
 
 
@@ -346,8 +352,9 @@ FLOW_TIMEOUT_S = 1800
 
 
 def local_run_summaries(root: Path) -> list:
-    """Readable list of the run folders on this computer, from their small request/status files only (the
-    sealed record is restored and verified when one is opened). Newest first."""
+    """Readable list of the run folders on this computer, from their small request/status files. Each
+    available record is also restored once (cached per file mtime and size) so that ``restorable`` and
+    ``restore_error`` say whether it opens before anyone tries. Newest first."""
     import json as _json
     base = runs_root(root)
     out = []
@@ -373,7 +380,28 @@ def _run_summary(d, status, adm, mech, ctl, inputs):
                     "family": adm.get("family_id", "?"), "fold_deg": math.degrees(mech.get("initial_fold_rad", 0.0)),
                     "release_s": mech.get("release_time_s"), "drive": ctl.get("drive_profile", "constant"),
                     "ramp_start_rpm": ctl.get("ramp_start_rpm"), "mechanics_kind": mech.get("declaration_kind"),
-                    "flow": (d / "flow" / "flow_companion.json").is_file()}
+                    "flow": (d / "flow" / "flow_companion.json").is_file(),
+                    **_restorability(d / "result.json", bool(status.get("result_available")))}
+
+
+_RESTORE_CACHE: dict = {}
+
+
+def _restorability(path: Path, available: bool) -> dict:
+    if not available or not path.is_file():
+        return {"restorable": False, "restore_error": None}
+    st = path.stat()
+    key = (str(path), st.st_mtime_ns, st.st_size)
+    if key not in _RESTORE_CACHE:
+        try:
+            read_saved_coupled_result(path.read_bytes())
+            _RESTORE_CACHE[key] = {"restorable": True, "restore_error": None}
+        except (OSError, ValueError) as exc:
+            msg = str(exc)
+            if msg in (CASE_MISMATCH, DECK_MISMATCH):  # regenerated with today's code it differs; stays refused
+                msg = f"eski üretici sürümü — yeniden doğrulanamaz ({msg})"
+            _RESTORE_CACHE[key] = {"restorable": False, "restore_error": msg}
+    return _RESTORE_CACHE[key]
 
 
 def local_run_dir(root: Path, row: dict) -> Path | None:
@@ -405,20 +433,39 @@ def load_flow(root: Path, row: dict):
     return flow.load(d, row)
 
 
-def build_flow(root: Path, row: dict, *, max_frames: int = 81, readiness: tcmod.Readiness | None = None):
+def flow_frame_bytes_bound(row: dict) -> int:
+    """Upper bound of one companion frame: float32 particle position, vorticity and core radius at the
+    declared particle cap, the velocity plane, plus margin for the panel-wake rows and offsets.
+    shortcut: worst case at the cap (recorded runs reach about a third of it), so with caps above about
+    78 000 particles even the default sampling is refused; size from the run's own particle counts if needed."""
+    from pyfoldable.coupled import flow
+    nx, ny, nz = flow.default_plane(row)["n_xyz"]
+    return 28 * int(row["run_definition"]["case"]["controls"]["max_wake_particles"]) + 12 * nx * ny * nz + 65536
+
+
+def build_flow(root: Path, row: dict, *, max_frames: int = 81, extra_windows=(), readiness: tcmod.Readiness | None = None):
     """Explicit action: extract the flow companion from the record's retained DUST outputs with the
-    attested toolchain (coupling venv + dust_post). Never starts a solver; verifies the result."""
+    attested toolchain (coupling venv + dust_post). Never starts a solver; verifies the result.
+    ``extra_windows`` adds valid-prefix windows to the sampled ones; the frame count is bounded so the
+    companion stays under ``flow.MAX_NPZ_BYTES``."""
     from pyfoldable.coupled import flow
     d = local_run_dir(root, row)
     if d is None:
         raise flow.FlowCompanionError("no_run_folder", "Bu kaydın çalıştırma klasörü bu bilgisayarda yok.")
+    last = int(row["execution"]["valid_prefix_windows"])
+    if any(type(w) is not int or not 1 <= w <= last for w in extra_windows):
+        raise flow.FlowCompanionError("bad_window", f"Eklenen pencereler 1–{last} geçerli önek aralığında tam sayı olmalı.")
+    windows = sorted(set(flow.select_windows(row, max_frames)) | set(extra_windows))
+    if not windows:
+        raise flow.FlowCompanionError("no_windows", "Kabul edilen pencere yok.")
+    cap = flow.MAX_NPZ_BYTES // flow_frame_bytes_bound(row)
+    if len(windows) > cap:
+        raise flow.FlowCompanionError("too_many_frames", f"{len(windows)} kare istendi; akış verisi boyut sınırı en çok "
+                                                         f"{cap} kareye izin veriyor.")
     readiness = readiness or tcmod.readiness(hash_executables=True)
     if readiness.status != "ready":
         raise flow.FlowCompanionError("toolchain_" + readiness.status, readiness.message)
     tc = readiness.toolchain
-    windows = flow.select_windows(row, max_frames)
-    if not windows:
-        raise flow.FlowCompanionError("no_windows", "Kabul edilen pencere yok.")
     missing = [w for w in windows if f"dust/Output/run_res_{w:04d}.h5" not in row["raw_outputs"]["files"]]
     if missing:
         raise flow.FlowCompanionError("source_missing", f"Kayıtta listelenmeyen DUST çıktısı: pencere {missing[0]}.")
@@ -474,10 +521,16 @@ def _case_from_request(req: dict, overrides: dict | None = None):
     root = None if rs["root"] is None else RootDatum(**rs["root"])
     active = _ActiveLike(inputs, design, root, rs["length_order_policy"])
     mech = CoupledMechanics(**req["mechanics"])
-    missing = set(asdict(CoupledControls())) - set(req["controls"])
+    known = set(asdict(CoupledControls()))
+    missing = known - set(req["controls"])
     _require(missing <= set(LEGACY_CONTROL_DEFAULTS),
              "Saved controls lack a field without a declared legacy meaning.")
-    ctrl = CoupledControls(**{**{k: LEGACY_CONTROL_DEFAULTS[k] for k in missing}, **req["controls"], **(overrides or {})})
+    for k in sorted(set(req["controls"]) - known):
+        v, eq = req["controls"][k], LEGACY_REMOVED_CONTROLS.get(k)
+        _require(k in LEGACY_REMOVED_CONTROLS and type(v) is type(eq) and v == eq,
+                 f"Saved control '{k}' = {v!r} was removed and has no equivalent in the current generator.")
+    current = {k: v for k, v in req["controls"].items() if k in known}
+    ctrl = CoupledControls(**{**{k: LEGACY_CONTROL_DEFAULTS[k] for k in missing}, **current, **(overrides or {})})
     return build_case(active, mech, ctrl), inputs
 
 
@@ -514,7 +567,8 @@ def read_saved_coupled_result(raw: bytes) -> dict:
         case, inputs = _case_from_request(req)
         recorded = case.as_dict()
         recorded["controls"] = {k: v for k, v in recorded["controls"].items() if k in req["controls"]}
-        _require(digest(recorded) == req["case_sha256"], "Saved case contradicts the saved draft and inputs.")
+        recorded["controls"].update({k: req["controls"][k] for k in LEGACY_REMOVED_CONTROLS if k in req["controls"]})
+        _require(digest(recorded) == req["case_sha256"], CASE_MISMATCH)
         _require(digest(recorded) == digest(row["run_definition"]["case"]), "Run definition case mismatch.")
         # 2. aerodynamic table regenerated from the retained admitted tables
         table = c81mod.build_c81(req["aero_admission"]["tables"])
@@ -522,7 +576,7 @@ def read_saved_coupled_result(raw: bytes) -> dict:
         _require(all(t["airfoil_id"] == inputs.profile for t in req["aero_admission"]["tables"]), "Table profile mismatch.")
         # 3. decks regenerated
         files = deckmod.generate_deck(case, table.text, coupled=True)
-        _require(deckmod.deck_manifest(files) == req["deck"] == row["run_definition"]["deck"], "Saved decks do not match.")
+        _require(deckmod.deck_manifest(files) == req["deck"] == row["run_definition"]["deck"], DECK_MISMATCH)
         # coupling nodes and bodies drive the hinge moment, element labels and 3-D placement
         rd = row["run_definition"]
         regen = json.loads(json.dumps(deckmod.coupling_nodes(case)))
@@ -532,25 +586,36 @@ def read_saved_coupled_result(raw: bytes) -> dict:
                  and all(isinstance(s, dict) and core <= set(s) and s == {k: g[k] for k in s} for s, g in zip(saved, regen))
                  and ("bodies" not in rd or rd["bodies"] == json.loads(json.dumps(deckmod.bodies(case)))),
                  "Saved coupling nodes or bodies do not match the case.")
-        # 4. derived channels recomputed from exchanged loads and MBDyn node states
+        # 4. derived channels recomputed from exchanged loads, MBDyn node states and joint outputs
         ex = row["execution"]
         series, wins, states = row["series"], row["window_exchange"], {s["window"]: s["nodes"] for s in row["node_states"]}
-        _require(len(series) == len(wins) == ex["windows_accepted"], "Accepted window count mismatch.")
-        W = case.omega_rad_s
-        for r, w in zip(series, wins):
-            _require(r["window"] == w["window"], "Window order mismatch.")
+        joints, mech = row["joint_outputs"], rd["case"]["mechanics"]
+        _require(len(series) == len(wins) == len(joints) == ex["windows_accepted"] and ex["windows_planned"] == case.n_steps,
+                 "Accepted window count mismatch.")
+        for i, (r, w, jo) in enumerate(zip(series, wins, joints), start=1):
+            _require(r["window"] == w["window"] == jo["window"] == i, "Window order mismatch.")
             F, M, X = w["force"], w["moment"], w["position"]
             _require(math.isclose(r["thrust_n"], sum(f[2] for f in F), rel_tol=0, abs_tol=1e-9), "Thrust does not match exchanged loads.")
             mz = sum(M[i][2] + X[i][0] * F[i][1] - X[i][1] * F[i][0] for i in range(len(F)))
             _require(math.isclose(r["aero_shaft_torque_nm"], -mz, rel_tol=0, abs_tol=1e-9), "Aero torque does not match exchanged loads.")
             nodes = states[r["window"]]
-            for b in range(case.geometry.blade_count):
+            nb = case.geometry.blade_count
+            _require(len(r["theta_deg"]) == nb, "Hinge angle does not match node states.")
+            theta = []
+            for b in range(nb):
                 th = relative_angle_about_z(rotvec_to_matrix(nodes[str(100 + b)]["phi"]), rotvec_to_matrix(nodes[str(200 + b)]["phi"]))
                 _require(abs(math.degrees(th) - r["theta_deg"][b]) < 1e-9, "Hinge angle does not match node states.")
+                theta.append(th)
                 cn = row["run_definition"]["coupling_nodes"]
                 m_h = postprocess.hinge_aero_torque(cn, b, X, F, M, postprocess.hinge_point(cn, b, X, nodes[str(200 + b)]))
                 _require(math.isclose(r["hinge_aero_torque_nm"][b], m_h, rel_tol=0, abs_tol=1e-12), "Hinge aero torque mismatch.")
             _require(abs(r["rpm"] - nodes["2"]["w"][2] * 60 / (2 * math.pi)) < 1e-9, "RPM does not match hub state.")
+            rate = [nodes[str(200 + b)]["w"][2] - nodes[str(100 + b)]["w"][2] for b in range(nb)]
+            m_law = [-jo["hinge_law_m_local"][b][2] for b in range(nb)]
+            derived = {**postprocess.hinge_channels(mech, i * case.dt_s, case.dt_s, theta, rate, m_law),
+                       "drive_torque_nm": jo["drive_m_global"][2]}
+            for k, v in derived.items():
+                _require(_same(r[k], v), f"{k} does not match node states and joint outputs.")
         # 5. coverage recomputed from the per-element table and the admitted envelope
         env = req["c81"]["envelope"]
         cols = row["radial_columns"]
@@ -562,17 +627,33 @@ def read_saved_coupled_result(raw: bytes) -> dict:
             if not ok:
                 first_bad = rec[iw] if first_bad is None else min(first_bad, rec[iw])
         _require(first_bad == ex["first_uncovered_window"], "Coverage verdict does not match element states.")
-        # 6. status consistency
-        conv_ok = all(r["coupling_converged"] for r in series)
-        if ex["status"] == "completed":
-            _require(conv_ok and first_bad is None and ex["windows_accepted"] == ex["windows_planned"]
-                     and ex["participant_outcome"] == "finished", "A completed status contradicts the retained history.")
-        if ex["status"] == "completed" and "fold_envelope" in ex:
-            lim = ex["fold_envelope"]["fold_limit_deg"]
-            _require(all(min(r["theta_deg"]) >= lim - 1e-9 for r in series), "A completed status contradicts the fold envelope.")
-        _require(ex["status"] in {"completed", "failed_aero_coverage", "failed_unconverged_coupling", "failed_geometry_envelope",
-                                  "cancelled",
-                                  "timeout", "failed_solver", "failed_incomplete"}, "Unknown coupled status.")
+        # 6. markers, status (postprocess decision rule), valid prefix and checks
+        first_unconverged = next((r["window"] for r in series if r["coupling_converged"] is not True), None)
+        env = fold_envelope(rd["case"])
+        first_outside = next((r["window"] for r in series if min(r["theta_deg"]) < env["fold_limit_deg"] - 1e-9), None)
+        # records written before the envelope rule carry neither key; today's rule still decides their status
+        if "fold_envelope" in ex or "first_outside_fold_envelope_window" in ex:
+            _require(ex["fold_envelope"] == env and ex["first_outside_fold_envelope_window"] == first_outside,
+                     "Fold envelope verdict does not match the hinge angles.")
+        status, valid = postprocess.decide_status(ex["participant_outcome"], ex["windows_accepted"], case.n_steps,
+                                                  first_unconverged, first_bad, first_outside)
+        _require(ex["status"] == status, f"A {ex['status']} status contradicts the retained history.")
+        _require(ex["first_unconverged_window"] == first_unconverged, "First unconverged window mismatch.")
+        _require(ex["valid_prefix_windows"] == valid, "Valid prefix does not match the retained history.")
+        checks = postprocess._checks(series, rd["case"], row["closure"], case.mechanics.hinge_inertia_kg_m2, case.dt_s)
+        verdicts = lambda cs: [{k: v for k, v in c.items() if k != "meaning"} for c in cs]  # noqa: E731
+        # the explanatory prose was reworded between generator versions; names, values, limits and verdicts were not
+        _require(verdicts(row["checks"]) == verdicts(checks), "Checks do not match the retained history.")
         return row
     except (KeyError, IndexError, TypeError, AttributeError) as exc:
-        raise ValueError("Malformed coupled result.") from exc
+        raise ValueError(f"Malformed coupled result ({type(exc).__name__}: {exc}).") from exc
+
+
+def _same(saved, derived) -> bool:
+    """Saved channel equals the re-derived one: flags exactly, numbers to 1e-9."""
+    if isinstance(derived, list):
+        return isinstance(saved, list) and len(saved) == len(derived) and all(map(_same, saved, derived))
+    if isinstance(derived, bool):
+        return saved is derived
+    return (isinstance(saved, (int, float)) and not isinstance(saved, bool)
+            and math.isclose(saved, derived, rel_tol=0, abs_tol=1e-9))

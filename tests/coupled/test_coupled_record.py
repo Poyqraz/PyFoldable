@@ -112,6 +112,123 @@ def test_resealed_contradictions_are_rejected(run, mutate, message):
         svc.read_saved_coupled_result(_bytes(_reseal(row)))
 
 
+def _set_all(r, key, value):
+    for s in r["series"]:
+        s[key] = value(s) if callable(value) else value
+
+
+def _zero_first(key):
+    """Zero blade 0 in the window where the channel is largest (it is 0 in many windows)."""
+    return lambda r: max(r["series"], key=lambda s: abs(s[key][0]))[key].__setitem__(0, 0.0)
+
+
+def _pass_all_checks(r):
+    for c in r["checks"]:
+        if c["limit"] is not None:
+            c.update(value=0.0, passed=True)
+
+
+@pytest.mark.parametrize("mutate", [
+    lambda r: _set_all(r, "latch_active", False),
+    lambda r: _set_all(r, "contact_active", lambda s: [False] * len(s["contact_active"])),
+    _zero_first("theta_rate_rad_s"),
+    _zero_first("hinge_law_torque_nm"),
+    lambda r: r["series"][12]["hinge_contact_torque_nm"].__setitem__(0, 1.0),
+    lambda r: r["series"][5].__setitem__("drive_torque_nm", 0.0),
+    lambda r: r["execution"].__setitem__("valid_prefix_windows", 5),
+    lambda r: r["execution"].__setitem__("valid_prefix_windows", 99),
+    lambda r: r["execution"].__setitem__("first_unconverged_window", 3),
+    lambda r: r["execution"].__setitem__("first_outside_fold_envelope_window", 7),
+    lambda r: r["execution"].__setitem__("status", "failed_unconverged_coupling"),  # every window converged
+    lambda r: r["execution"].__setitem__("windows_planned", 29),
+    _pass_all_checks,
+], ids=["latch", "contact", "theta_rate", "hinge_law", "contact_torque", "drive", "prefix_5", "prefix_99",
+        "first_unconverged", "first_outside", "status", "planned", "checks"])
+def test_resealed_derived_fields_are_rejected(run, mutate):
+    row = _build(run)
+    mutate(row)
+    with pytest.raises(ValueError):
+        svc.read_saved_coupled_result(_bytes(_reseal(row)))
+
+
+def test_record_without_envelope_keys_still_meets_todays_envelope(run, monkeypatch):
+    row = _build(run)
+    for key in ("fold_envelope", "first_outside_fold_envelope_window"):
+        del row["execution"][key]
+    resealed = _bytes(_reseal(row))
+    svc.read_saved_coupled_result(resealed)  # how records written before the envelope rule look
+    monkeypatch.setattr(svc, "fold_envelope", lambda case: {"fold_limit_deg": 1.0})  # every window outside
+    with pytest.raises(ValueError, match="completed status"):
+        svc.read_saved_coupled_result(resealed)
+
+
+def _with_control(row, key, value):
+    """Record as a legacy generator wrote it: the control is part of the request, case and its digest."""
+    tampered = json.loads(json.dumps(row))
+    req, case = tampered["request"], tampered["run_definition"]["case"]
+    req["controls"][key] = case["controls"][key] = value
+    req["case_sha256"] = digest(case)
+    req["request_sha256"] = digest({k: v for k, v in req.items() if k != "request_sha256"})
+    return _reseal(tampered)
+
+
+def test_removed_control_restores_only_at_its_legacy_equivalent_value(legacy_run):
+    row = _build(legacy_run)
+    svc.read_saved_coupled_result(_bytes(_with_control(row, "junction_station_merge", False)))
+    for key, value in (("junction_station_merge", True), ("junction_station_merge", 0),
+                       ("coupling_load_relative_tol", 1e-4)):
+        with pytest.raises(ValueError, match=key):
+            svc.read_saved_coupled_result(_bytes(_with_control(row, key, value)))
+
+
+def test_malformed_record_names_the_underlying_exception(run):
+    row = _build(run)
+    del row["joint_outputs"]
+    with pytest.raises(ValueError, match="Malformed coupled result.*KeyError.*joint_outputs"):
+        svc.read_saved_coupled_result(_bytes(_reseal(row)))
+
+
+def test_run_list_marks_records_that_do_not_restore(tmp_path, monkeypatch):
+    monkeypatch.setenv(svc.RUNS_ENV, str(tmp_path))
+    good = shutil.copytree(FIXTURE, tmp_path / "20990101T000001_good")
+    old = shutil.copytree(FIXTURE, tmp_path / "20990101T000002_old")
+    for d in (good, old):
+        _build(d)
+        (d / "status.json").write_text(json.dumps({"state": "completed", "result_available": True}))
+    row = json.loads((old / "result.json").read_text())
+    row["request"]["case_sha256"] = "0" * 64  # what a record of an older case generator looks like
+    req = row["request"]
+    req["request_sha256"] = digest({k: v for k, v in req.items() if k != "request_sha256"})
+    (old / "result.json").write_text(json.dumps(_reseal(row)))
+    rows = {r["run_id"]: r for r in svc.local_run_summaries(tmp_path)}
+    assert rows[good.name]["restorable"] is True and rows[good.name]["restore_error"] is None
+    assert rows[old.name]["restorable"] is False
+    assert "eski üretici sürümü" in rows[old.name]["restore_error"]
+    (good / "result.json").write_text("{}")  # a changed file is verified again, not served from the cache
+    assert svc.local_run_summaries(tmp_path)[-1]["restorable"] is False
+
+
+def test_flow_window_requests_are_validated_and_bounded(run, tmp_path, monkeypatch):
+    from pyfoldable.coupled import flow
+    monkeypatch.setenv(svc.RUNS_ENV, str(tmp_path))
+    row = _build(run)
+    (run / "dust" / "Output").mkdir(parents=True, exist_ok=True)
+    not_ready = type("R", (), {"status": "missing", "message": "no toolchain"})()
+    for extra in ([0], [31], [True], ["5"]):
+        with pytest.raises(flow.FlowCompanionError) as err:
+            svc.build_flow(tmp_path, row, extra_windows=extra, readiness=not_ready)
+        assert err.value.code == "bad_window"
+    fits = len(set(flow.select_windows(row, 2)) | {13})
+    assert fits < 30
+    monkeypatch.setattr(flow, "MAX_NPZ_BYTES", fits * svc.flow_frame_bytes_bound(row))
+    with pytest.raises(flow.FlowCompanionError) as err:  # every one of the 30 windows
+        svc.build_flow(tmp_path, row, max_frames=30, readiness=not_ready)
+    assert err.value.code == "too_many_frames"
+    with pytest.raises(flow.FlowCompanionError) as err:  # within bounds, it reaches the toolchain gate
+        svc.build_flow(tmp_path, row, max_frames=2, extra_windows=[13], readiness=not_ready)
+    assert err.value.code == "toolchain_missing"
+
+
 def test_legacy_record_without_later_control_restores_but_unknown_omission_is_rejected(legacy_run):
     row = _build(legacy_run)
     assert "vortex_stretching" not in row["request"]["controls"]  # fixture predates the control

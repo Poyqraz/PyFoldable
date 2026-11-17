@@ -115,6 +115,44 @@ def hinge_point(nodes, b, X, body_state) -> list[float]:
     return body_state["x"]
 
 
+def hinge_channels(mech: dict, t: float, dt: float, theta, rate, m_law) -> dict:
+    """Per-blade hinge channels of window time ``t`` from the hinge angles [rad], relative rates and the
+    moment of MBDyn's hinge-law element: declared spring/damper split, stop remainder, contact and latch."""
+    spring = [-mech["spring_nm_per_rad"] * (th - mech["spring_rest_rad"]) for th in theta]
+    damping = [-mech["hinge_damping_nm_s_per_rad"] * r for r in rate]
+    return {"theta_rate_rad_s": list(rate), "hinge_law_torque_nm": list(m_law), "hinge_spring_torque_nm": spring,
+            "hinge_damping_torque_nm": damping,
+            "hinge_contact_torque_nm": [ml - sp - dp for ml, sp, dp in zip(m_law, spring, damping)],
+            # latched during at least part of this window (window spans t_{w-1}..t_w)
+            "latch_active": (t - dt) < mech["release_time_s"] - 1e-12,
+            "contact_active": [th > mech["stop_angle_rad"] + CONTACT_TOL_RAD or th < mech["fold_limit_rad"] - CONTACT_TOL_RAD
+                               for th in theta]}
+
+
+def decide_status(participant_outcome, accepted, n_planned, first_unconverged, first_uncovered,
+                  first_outside_envelope) -> tuple[str, int]:
+    """Status (module docstring rule; never promotes a failure) and the valid prefix length."""
+    if participant_outcome in ("cancelled", "timeout"):
+        status = participant_outcome
+    elif participant_outcome != "finished":
+        status = "failed_solver"
+    elif first_unconverged is not None:
+        status = "failed_unconverged_coupling"
+    elif accepted < n_planned:
+        status = "failed_incomplete"
+    elif first_uncovered is not None:
+        status = "failed_aero_coverage"
+    elif first_outside_envelope is not None:
+        status = "failed_geometry_envelope"
+    else:
+        status = "completed"
+    valid_until = accepted
+    for marker in (first_unconverged, first_uncovered, first_outside_envelope):
+        if marker is not None:
+            valid_until = min(valid_until, marker - 1)
+    return status, valid_until
+
+
 RESULT_FIXED_BYTES = 400_000  # request, decks, C81 text, definitions, checks (measured, with margin)
 
 
@@ -187,7 +225,7 @@ def build_result(run: Path, *, participant_outcome: str | None, participant_mess
         row["aero_power_absorbed_w"] = -p_if
         row["drive_torque_nm"] = jb[DRIVE_JOINT]["m_global"][2]
         row["drive_power_w"] = row["drive_torque_nm"] * blk[HUB]["w"][2]
-        theta, rate, m_aero_h, m_law, contact, latch_m = [], [], [], [], [], []
+        theta, rate, m_aero_h, m_law, latch_m = [], [], [], [], []
         for b in range(nb):
             rp, rd = rotvec_to_matrix(blk[100 + b]["phi"]), rotvec_to_matrix(blk[200 + b]["phi"])
             th = relative_angle_about_z(rp, rd)
@@ -195,7 +233,6 @@ def build_result(run: Path, *, participant_outcome: str | None, participant_mess
             rate.append(blk[200 + b]["w"][2] - blk[100 + b]["w"][2])
             m_aero_h.append(hinge_aero_torque(nodes, b, X, F, M, hinge_point(nodes, b, X, blk[200 + b])))
             m_law.append(-jb[SPRING_BASE + b]["m_local"][2])
-            contact.append(th > mech["stop_angle_rad"] + CONTACT_TOL_RAD or th < mech["fold_limit_rad"] - CONTACT_TOL_RAD)
             # raw MBDyn output of the driven latch joint (zero once the driven element is inactive)
             latch_m.append(-jb[LATCH_BASE + b]["m_local"][2] if (LATCH_BASE + b) in jb else 0.0)
         # kinematic closure: state sent to DUST vs MBDyn's final converged state
@@ -206,16 +243,9 @@ def build_result(run: Path, *, participant_outcome: str | None, participant_mess
             closure["kinematic_rotation_rad"] = max(closure["kinematic_rotation_rad"],
                                                     max(abs(win["rotation"][i][k] - blk[lab]["phi"][k]) for k in range(3)))
         row["theta_deg"] = [math.degrees(x) for x in theta]
-        row["theta_rate_rad_s"] = rate
         row["hinge_aero_torque_nm"] = m_aero_h
-        row["hinge_law_torque_nm"] = m_law
-        row["hinge_spring_torque_nm"] = [-mech["spring_nm_per_rad"] * (th - mech["spring_rest_rad"]) for th in theta]
-        row["hinge_damping_torque_nm"] = [-mech["hinge_damping_nm_s_per_rad"] * r for r in rate]
-        row["hinge_contact_torque_nm"] = [ml - sp - dp for ml, sp, dp in zip(m_law, row["hinge_spring_torque_nm"], row["hinge_damping_torque_nm"])]
+        row.update(hinge_channels(mech, t, dt, theta, rate, m_law))
         row["latch_torque_nm"] = latch_m
-        # latched during at least part of this window (window spans t_{w-1}..t_w)
-        row["latch_active"] = (t - dt) < mech["release_time_s"] - 1e-12
-        row["contact_active"] = contact
         w_t, wdot_t = shaft_speed(case, t)  # prescribed (constant or ramp)
         row["centrifugal_hinge_moment_derived_nm"] = [-mrc * w_t ** 2 * math.sin(th) for th in theta]
         # rotating-frame acceleration: -(J_h + m r_h c_g cos th) dOmega/dt (zero at constant speed)
@@ -291,24 +321,8 @@ def build_result(run: Path, *, participant_outcome: str | None, participant_mess
             first_unconverged = row["window"]
     checks = _checks(series, case, closure, jh, dt)
     dust_abort = _dust_abort_reason(run)
-    if participant_outcome in ("cancelled", "timeout"):
-        status = participant_outcome
-    elif participant_outcome != "finished":
-        status = "failed_solver"
-    elif first_unconverged is not None:
-        status = "failed_unconverged_coupling"
-    elif accepted < n_planned:
-        status = "failed_incomplete"
-    elif first_uncovered is not None:
-        status = "failed_aero_coverage"
-    elif first_outside_envelope is not None:
-        status = "failed_geometry_envelope"
-    else:
-        status = "completed"
-    valid_until = accepted
-    for marker in (first_unconverged, first_uncovered, first_outside_envelope):
-        if marker is not None:
-            valid_until = min(valid_until, marker - 1)
+    status, valid_until = decide_status(participant_outcome, accepted, n_planned, first_unconverged, first_uncovered,
+                                        first_outside_envelope)
     execution = {"status": status, "participant_outcome": participant_outcome, "message": participant_message,
                  "dust_abort_reason": dust_abort, "exit_codes": exit_codes or {}, "windows_planned": n_planned,
                  "windows_accepted": accepted, "first_unconverged_window": first_unconverged,
