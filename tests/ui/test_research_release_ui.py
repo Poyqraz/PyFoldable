@@ -260,6 +260,51 @@ def test_mechanics_action_is_independent_of_missing_aerodynamic_data(tmp_path, m
     assert any("bağımsız mekanizma kaydı" in c.value for c in records.caption)
 
 
+def test_local_result_list_states_the_status_of_each_record(tmp_path, monkeypatch):
+    monkeypatch.setenv("PYFOLDABLE_RESULTS", str(tmp_path / "results"))
+    store(tmp_path, monkeypatch, ("NACA2412",))
+    bem(monkeypatch, fail=True)
+    at = go(app(), ANALYSIS)
+    at.button(key="research_run").click().run()
+    at = go(app(), RECORDS)
+    table = next(d.value for d in at.dataframe if "Devir [RPM]" in d.value.columns and "Profil" in d.value.columns)
+    assert list(table["Durum"]) == ["başarısız"]
+
+
+def test_result_kind_survives_a_page_round_trip():
+    from test_fold_cycle_ui import _fast
+    at = go(app(), ANALYSIS)
+    _fast(at)
+    at.button(key="cycle_run").click().run()
+    assert at.radio(key="research_results_kind").value == "Açılma–kapanma çevrimi"
+    go(at, RECORDS)
+    go(at, RESULTS)
+    assert at.radio(key="research_results_kind").value == "Açılma–kapanma çevrimi"
+
+
+def test_solver_failure_names_axis_value_limit_and_direction():
+    from pyfoldable.application import research_ui
+    reason = ("Active-design BEM failed without partial totals: Annulus 0 at r/R=0.367625 failed: "
+              "Requested alpha_rad -0.106506 is outside [-0.10472, 0.139626].")
+    text = research_ui._failure_summary({"failure_stage": "solver_invocation", "failure_reason": reason})
+    assert "kısmi toplam yayımlanmadı" in text
+    assert "α" in text and "-6,10" in text and "-6,00" in text and "alt sınır" in text
+    assert "devri artırın" in text and "r/R=0,368" in text
+    plain = research_ui._failure_summary({"failure_stage": "solver_invocation", "failure_reason": "other"})
+    assert plain == "Çözücü tamamlanamadı; kısmi toplam yayımlanmadı."
+
+
+def test_every_workspace_figure_keeps_full_hover_names(monkeypatch):
+    import plotly.graph_objects as go_
+    from pyfoldable.application import research_ui
+    shown = []
+    monkeypatch.setattr(research_ui.st, "plotly_chart", lambda fig, **kw: shown.append((fig, kw)))
+    research_ui._plot(go_.Figure(go_.Scatter(x=[0], y=[0], name="Eksenel çekme N [N]")), "k")
+    fig, kwargs = shown[0]
+    assert fig.layout.hoverlabel.namelength == -1 and "key" in kwargs
+    assert set(kwargs) - {"key", "config"} in ({"width"}, {"use_container_width"})
+
+
 def test_source_summary_names_the_retained_research_families():
     from types import SimpleNamespace
     from pyfoldable.application import research_ui

@@ -226,12 +226,20 @@ def initial_query_ranges(active):
     return tuple((min(col), max(col)) for col in zip(*rows))
 
 
+def _declared_grid(family):
+    return (tuple(set.intersection(*(set(r.alpha_rad) for r in family.requests))),
+            tuple(r.reynolds for r in family.requests), tuple(r.mach for r in family.requests))
+
+
 def declared_grid_covers_initial(family, initial):
     """A readiness hint for the declared grid, not admission or proof of trial coverage."""
-    grid = (tuple(set.intersection(*(set(r.alpha_rad) for r in family.requests))),
-            tuple(r.reynolds for r in family.requests), tuple(r.mach for r in family.requests))
     return all(values and min(values) <= lo <= hi <= max(values)
-               for values, (lo, hi) in zip(grid, initial))
+               for values, (lo, hi) in zip(_declared_grid(family), initial))
+
+
+def grid_margins(family, initial):
+    """(below, above) distance of the no-induction queries to the declared grid edges: α [rad], Re, Mach."""
+    return tuple((lo - min(values), max(values) - hi) for values, (lo, hi) in zip(_declared_grid(family), initial))
 
 
 _MECHANISM_SCOPE = "one_planar_rigid_tip_prescribed_rpm_first_contact_no_aero_feedback"
@@ -614,6 +622,17 @@ def _check_mechanism(mech, active, unique):
     check_mechanism_history(doc["result"], binding.request)
 
 
+def _check_operating_point_match(row):
+    """The trim record must agree with the result it travels with (the target itself is caller-declared)."""
+    match, aero = row["operating_point_match"], row["aerodynamics"]
+    key = _TRIM_KEYS[match["quantity"]]
+    target, tol, runs = _number(match["target"]), _number(match["rel_tol"]), match["runs"]
+    if (set(match) != {"quantity", "target", "rel_tol", "runs"} or aero["status"] != "success" or target <= 0
+            or not 0 < tol < 1 or abs(aero[key] - target) > tol * target or not isinstance(runs, list) or not runs
+            or runs[-1]["rpm"] != float(row["inputs"]["rpm"]) or runs[-1][key] != aero[key]):
+        raise ValueError("Saved operating-point match contradicts the retained result.")
+
+
 def read_saved_result(raw):
     """Recover a read-only snapshot from retained content, without a solver or current defaults."""
     if not isinstance(raw, bytes) or not 0 < len(raw) <= MAX_SAVED_RESULT_BYTES:
@@ -672,6 +691,8 @@ def read_saved_result(raw):
             context = snapshot if snapshot["failure_stage"] == "preflight_rejection" else snapshot["provider_design_admission"]
             active, attempted = _restore_design(row, snapshot, context)
             _check_failure(snapshot, active, attempted)
+        if "operating_point_match" in row:
+            _check_operating_point_match(row)
         _check_mechanism(row["mechanism"], active, unique)
         return row
     except (KeyError, IndexError, TypeError, AttributeError, OverflowError, RecursionError) as exc:
@@ -721,8 +742,8 @@ def _provider_contract(snapshot):
         return None
     return {"provider_policy": admission["provider_policy"], "builds": sorted(builds),
             "bem_implementation": report["request"]["implementation"],
-            "grid": [{k: c["returned_document"]["request"][k] for k in ("alpha_rad", "mach", "reynolds", "scenario_id")}
-                     for c in cells],
+            # scenario_id is a per-profile label in the catalog families; it stays visible in comparison_differences.
+            "grid": [{k: c["returned_document"]["request"][k] for k in ("alpha_rad", "mach", "reynolds")} for c in cells],
             "root": admission["geometry"]["root"], "template": admission["geometry"]["template"],
             "length_order_policy": admission["geometry"].get("length_order_policy", "proximal_longer")}
 
@@ -756,7 +777,9 @@ def local_results(limit: int = 50) -> list:
     """Summaries of the locally saved results that pass the same validation as an uploaded file (newest first)."""
     folder = results_root()
     out = []
-    for path in sorted(folder.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)[:limit] if folder.is_dir() else []:
+    for path in sorted(folder.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True) if folder.is_dir() else []:
+        if len(out) >= limit:
+            break
         try:
             st = path.stat()
         except OSError:
@@ -820,66 +843,168 @@ def comparison_differences(results):
     return [{"field": f, "first": x, "second": y, "expected": e} for f, x, y, e in rows if x != y]
 
 
+def _contract_key(policy, builds, grid):
+    return managed._json({"provider_policy": policy, "builds": sorted(builds), "grid": sorted(managed._json(g) for g in grid)})
+
+
+def _family_contract_key(family):
+    """Declared policy, retained build and grid of a stored family, comparable with a record's contract."""
+    if family.stored_version is None or not family.cells or not all(isinstance(c, managed.RetainedCell) for c in family.cells):
+        return None
+    try:
+        builds = {json.loads(dict(c.capture_files)["capture.json"])["executable_identity"]["prelaunch"]["sha256"]
+                  for c in family.cells}
+    except (KeyError, TypeError, ValueError):
+        return None
+    return _contract_key(managed.request_policy(family.requests[0], family.provider), builds,
+                         [{"alpha_rad": r.alpha_rad, "mach": r.mach, "reynolds": r.reynolds} for r in family.requests])
+
+
 def matching_action(results, repository):
-    """The stored version that would turn this pair into a matched comparison (same polar scenario, so the same
-    build, grid and settings), or None when the pair already matches. ``available`` is False when no such
+    """The stored version that would turn this pair into a matched comparison (same build, grid and settings
+    as the other record), or None when the pair already matches. ``available`` is False when no such
     version exists for either profile (a common capture is then needed). Also None when the data and method
     already match and only declared inputs (e.g. the shaft speed of an equal-thrust point) differ."""
     if compare_results(results)["matching_retained_provider_contract"]:
         return None
     adm = [_admission(r) for r in results]
+    contracts = [_provider_contract(r["aerodynamics"]) for r in results]
     for target, other in ((1, 0), (0, 1)):
-        scenario = adm[other].get("family_id", ":").split(":")[0]
+        if contracts[other] is None:
+            continue
+        wanted = _contract_key(contracts[other]["provider_policy"], contracts[other]["builds"], contracts[other]["grid"])
         profile = results[target]["inputs"]["profile"]
+        coordinate = results[target]["aerodynamics"]["airfoil_coordinate_sha256"]
         fam = next((f for f in repository.families
-                    if f.family_id == f"{scenario}:{profile}" and f.stored_version is not None), None)
-        if fam is not None and fam.family_id != adm[target].get("family_id"):
+                    if f.requests and f.requests[0].airfoil.id == profile and f.family_id != adm[target].get("family_id")
+                    and airfoil_coordinate_sha256(f.requests[0].airfoil) == coordinate
+                    and _family_contract_key(f) == wanted), None)
+        if fam is not None:
             return {"available": True, "record_index": target, "profile": profile, "family_id": fam.family_id,
                     "version_label": fam.stored_version.version_label, "content_sha256": fam.stored_version.content_sha256}
     return {"available": False}
 
 
-def match_operating_point(root, row, repository, quantity, target, *, rel_tol=1e-3, max_runs=8):
-    """Equal-thrust or equal-power operating point for a saved BEM record: secant on shaft speed (inflow, geometry
-    and data version unchanged), each step one fresh admitted BEM run. Returns {"rpm", "row", "runs"}; raises
-    ValueError when a step leaves the admitted data or the iteration does not converge (fail-closed)."""
+_TRIM_KEYS = {"thrust": "thrust_n", "power": "shaft_power_w"}
+_EDGE_REL = 0.01   # a failed and a successful step this close (relative rpm) locate the data edge
+
+
+def match_operating_point(root, row, repository, quantity, target, *, rel_tol=1e-3, max_runs=16):
+    """Equal-thrust or equal-power operating point for a saved BEM record by shaft speed only (inflow, geometry
+    and data version unchanged), each step one fresh admitted BEM run. Secant steps; a step that leaves the
+    admitted data is bisected back toward the last successful one; once the target is bracketed, Illinois
+    regula falsi. Returns {"rpm", "row", "runs"}, the row carrying ``operating_point_match``; raises ValueError
+    (Turkish) when the data edge is located before the target or the iteration does not converge."""
     from dataclasses import replace
-    key = {"thrust": "thrust_n", "power": "shaft_power_w"}[quantity]
+    key = _TRIM_KEYS[quantity]
+    label, unit = {"thrust": ("itki", "N"), "power": ("şaft gücü", "W")}[quantity]
     admission = _admission(row)
     version = (admission.get("stored_version") or {}).get("content_sha256")
     family = next((f for f in repository.families if f.family_id == admission.get("family_id")
                    and f.stored_version is not None and f.stored_version.content_sha256 == version), None)
     if family is None or not (math.isfinite(target) and target > 0):
-        raise ValueError("BEM: the record's exact data version is not in the store, or the target is not positive.")
+        raise ValueError("Kaydın tam veri sürümü depoda yok veya hedef pozitif değil.")
     base = ResearchInputs(**row["inputs"])
     runs = []
 
     def solve(rpm):
         result = run_research(build_research_design(root, replace(base, rpm=float(rpm))), family, repository, None)
         aero = result["aerodynamics"] or {}
-        runs.append({"rpm": float(rpm), "status": aero.get("status"), key: aero.get(key)})
+        runs.append({"rpm": float(rpm), "status": aero.get("status"), "failure_stage": aero.get("failure_stage"),
+                     key: aero.get(key)})
         if aero.get("status") != "success":
-            raise ValueError(f"BEM did not complete at {rpm:.0f} RPM ({aero.get('failure_stage')}): this step left "
-                             "the admitted data; the matched point may lie outside it.")
+            return None, None
         if not isinstance(aero.get(key), (int, float)) or not math.isfinite(aero[key]):
-            raise ValueError(f"BEM returned no finite {key} at {rpm:.0f} RPM.")
-        return result, aero[key]
+            raise ValueError(f"BEM {rpm:.0f} RPM’de sonlu bir {label} değeri vermedi.")
+        return result, aero[key] - target
 
+    def done(rpm, result):
+        body = {k: v for k, v in result.items() if k != "result_sha256"}
+        body["operating_point_match"] = {"quantity": quantity, "target": target, "rel_tol": rel_tol, "runs": runs}
+        return {"rpm": rpm, "row": json.loads(managed._json({**body, "result_sha256": _digest(body)})), "runs": runs}
+
+    tol = rel_tol * target
     x0 = base.rpm
-    start, f0 = solve(x0)
-    if abs(f0 - target) <= rel_tol * target:
-        return {"rpm": x0, "row": start, "runs": runs}
-    x1 = x0 * (target / f0) ** (0.5 if quantity == "thrust" else 1 / 3) if f0 > 0 else 1.05 * x0  # ~rpm² / rpm³
-    for _ in range(max_runs - 1):
-        result, f1 = solve(x1)
-        if abs(f1 - target) <= rel_tol * target:
-            return {"rpm": x1, "row": result, "runs": runs}
-        if f1 == f0:
-            break
-        x0, f0, x1 = x1, f1, x1 - (f1 - target) * (x1 - x0) / (f1 - f0)
-        if not x1 > 0:
-            break
-    raise ValueError(f"BEM: no {quantity} match within {max_runs} runs.")
+    result, g0 = solve(x0)
+    if result is None:
+        raise ValueError(f"BEM kaydın kendi devrinde ({x0:.0f} RPM) tamamlanmadı ({runs[-1]['failure_stage']}).")
+    if abs(g0) <= tol:
+        return done(x0, result)
+    f0 = g0 + target
+    x = x0 * (target / f0) ** (0.5 if quantity == "thrust" else 1 / 3) if f0 > 0 else 1.05 * x0  # ~rpm² / rpm³
+    if x > x0:
+        active = build_research_design(root, base)
+        b, c = active.design.blade, active.design.operating_conditions[0]
+        tangential = (max(r.mach for r in family.requests) * math.sqrt(1.4 * 287.05 * c.temperature_k)) ** 2 \
+            - c.forward_speed_m_s ** 2
+        cap = math.sqrt(tangential) / (b.stations[-1].r_over_R * b.radius_m) * 30 / math.pi if tangential > 0 else x
+        if cap > x0:   # first step stops where the outer station reaches the grid's highest Mach
+            x = min(x, cap)
+    good, prev, failed, bracket = (x0, g0), None, None, None
+    while len(runs) < max_runs and x is not None and x > 0:
+        result, g = solve(x)
+        if result is None:
+            if bracket:
+                raise ValueError(f"BEM {x:.0f} RPM’de tamamlanmadı ({runs[-1]['failure_stage']}); hedef iki başarılı "
+                                 "çözümün arasında olduğu hâlde bu ara adım veri dışına çıktı.")
+            failed = x
+        else:
+            if abs(g) <= tol:
+                return done(x, result)
+            if bracket:
+                (a, ga), (bx, gb) = bracket
+                bracket = [(bx, gb), (x, g)] if g * gb < 0 else [(a, ga / 2), (x, g)]   # Illinois
+            elif g * good[1] < 0:
+                bracket = [good, (x, g)]
+            prev, good = good, (x, g)
+        if bracket:
+            (a, ga), (bx, gb) = bracket
+            x = bx - gb * (bx - a) / (gb - ga)
+            continue
+        x = None if prev is None or good[1] == prev[1] else good[0] - good[1] * (good[0] - prev[0]) / (good[1] - prev[1])
+        if failed is not None and (x is None or (x - good[0]) * (failed - good[0]) > 0
+                                   and abs(x - good[0]) >= abs(failed - good[0])):
+            if abs(failed - good[0]) <= _EDGE_REL * good[0]:
+                tr = lambda v: f"{v:.4g}".replace(".", ",")  # noqa: E731  (Turkish decimal comma)
+                raise ValueError(
+                    f"Hedef {tr(target)} {unit} kabul edilen veri içinde ulaşılamıyor: veri içindeki son çözüm "
+                    f"{good[0]:.0f} RPM’de {tr(good[1] + target)} {unit}; {failed:.0f} RPM’de çözüm verinin dışına çıktı.")
+            x = (good[0] + failed) / 2
+    raise ValueError(f"{len(runs)} BEM çözümünde eşit {label} noktası bulunamadı.")
+
+
+def _equal_point_class(results, assessment):
+    """'equal_thrust'/'equal_power' when only the shaft speed differs and one record was trimmed to the other's value."""
+    if (assessment["mismatch_reasons"] != ["record_1_condition_sha256"] or assessment["profile_reasons"]
+            or any(results[0]["inputs"][k] != results[1]["inputs"][k]
+                   for k in ("inflow_m_s", "density_kg_m3", "viscosity_pa_s", "temperature_k", "pressure_pa"))):
+        return None
+    for trimmed, other in (results, results[::-1]):
+        match = trimmed.get("operating_point_match")
+        if match:
+            key = _TRIM_KEYS[match["quantity"]]
+            if (match["target"] == other["aerodynamics"][key]
+                    and abs(trimmed["aerodynamics"][key] - match["target"]) <= match["rel_tol"] * match["target"]):
+                return "equal_" + match["quantity"]
+    return None
+
+
+def comparison_exports(rows, result):
+    """JSON and CSV text of a two-record comparison, including its class and any trim record."""
+    document = json.dumps({"schema_version": 1, "artifact_class": "pyfoldable_research_comparison",
+                           "assessment": result, "results": rows}, ensure_ascii=False, allow_nan=False)
+    table = records_csv([{
+        "result_sha256": r["result_sha256"], "profile": r["inputs"]["profile"],
+        "rpm": r["inputs"]["rpm"], "inflow_m_s": r["inputs"]["inflow_m_s"],
+        "matched_numerical_comparison": result["matched_numerical_comparison"],
+        "comparison_class": result["comparison_class"],
+        "trim_quantity": (r.get("operating_point_match") or {}).get("quantity"),
+        "trim_target": (r.get("operating_point_match") or {}).get("target"),
+        **{field: r["aerodynamics"][field] for field in
+           ("airfoil_coordinate_sha256", "report_sha256", "thrust_n", "torque_nm", "shaft_power_w",
+            "inner_radius_m", "outer_radius_m")},
+    } for r in rows])
+    return document, table
 
 
 def compare_results(results):
@@ -888,7 +1013,10 @@ def compare_results(results):
     assessment = assess_comparison(snapshots)
     contracts = [_provider_contract(row) for row in snapshots]
     matched_records = len(contracts) == 2 and contracts[0] is not None and contracts[0] == contracts[1]
+    matched = assessment["software_controlled_comparison"] and matched_records
     return {**assessment, "matching_retained_provider_contract": matched_records,
-            "matched_numerical_comparison": assessment["software_controlled_comparison"] and matched_records,
+            "matched_numerical_comparison": matched,
+            "comparison_class": "matched" if matched else
+            matched_records and _equal_point_class(results, assessment) or "unmatched",
             "reference_agreement": "NOT_ASSESSED", "joint_loss_model": "NOT_MODELED",
             "identity_scope": "Content consistency only; no process attestation or experimental agreement."}

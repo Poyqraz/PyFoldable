@@ -171,6 +171,7 @@ def test_profile_switch_keeps_the_saved_comparison_and_does_not_solve(monkeypatc
     assert any(item.label == "Karşılaştırmayı JSON indir" for item in app.download_button)
     assert any(item.label == "Karşılaştırmayı CSV indir" for item in app.download_button)
     assert any("BLOCKED" in item.value for item in app.warning)
+    assert not any("polar demeti yoktur" in item.value for item in app.warning)   # no fixed claim about the repository
 
 
 def test_bem_failure_stays_active_until_inputs_change_and_can_be_saved(monkeypatch):
@@ -318,7 +319,7 @@ def test_profile_cycle_rejects_wrong_polar_and_exports_the_saved_rows(monkeypatc
     document = json.loads(next(data for label, data in reversed(exported) if label == "Karşılaştırmayı JSON indir"))
     csv_payload = next(data for label, data in reversed(exported) if label == "Karşılaştırmayı CSV indir")
     assert document["performance_comparison"] is False
-    assert document["genuine_comparison_status"] == "BLOCKED_no_matching_real_provider_polar_bundle"
+    assert document["genuine_comparison_status"] == "BLOCKED_no_shared_retained_provider_contract"
     assert document["physical_qualification"] is False
     assert document["qualified_winner"] is None
     assert document["records"][0]["radial_elements"]
@@ -326,7 +327,7 @@ def test_profile_cycle_rejects_wrong_polar_and_exports_the_saved_rows(monkeypatc
     assert document["records"][0]["record_sha256"] == alpha["record_sha256"]
     assert "propulsive_efficiency" not in csv_payload
     assert "shaft_power_w" in csv_payload
-    assert "BLOCKED_no_matching_real_provider_polar_bundle" in csv_payload
+    assert "BLOCKED_no_shared_retained_provider_contract" in csv_payload
     assert str(document["records"][0]["thrust_n"]) in csv_payload
     assert calls["n"] == 4
 

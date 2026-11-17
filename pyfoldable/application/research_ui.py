@@ -3,16 +3,19 @@ from dataclasses import dataclass, replace
 import json
 import math
 from pathlib import Path
+import re
 
 import streamlit as st
 
 from pyfoldable.core.airfoil import airfoil_coordinate_sha256
 from pyfoldable.core.profile_catalog import PROJECT_AIRFOIL_IDS, load_project_airfoil
 
-from . import provider_design_analysis as managed, research_design as research, research_views as views
+from . import figure_style, provider_design_analysis as managed, research_design as research, research_views as views
 
 _HISTORY = "research_saved_results"
 _ACTIVE = "research_active"
+_KIND = "research_results_kind"
+_BEM_KIND = "BEM / mekanizma"
 _PAGE = "research_page"
 _PAGES = ("Tasarım", "Analiz", "Sonuçlar", "Karşılaştırma / kayıtlar")
 _MAX_HISTORY = 12
@@ -75,8 +78,8 @@ def _inventory(repository, error, profile):
 
 
 def _plot(fig, key):
-    st.plotly_chart(fig, use_container_width=True, key=key,
-                    config={"displaylogo": False, "scrollZoom": False})
+    st.plotly_chart(figure_style.apply(fig), key=key, config={"displaylogo": False, "scrollZoom": False},
+                    **figure_style.width_kwargs())
 
 
 def _reset_camera():
@@ -121,7 +124,7 @@ def _geometry(active):
     with st.expander("Kord ve burulma istasyonları"):
         st.dataframe([{"Yarıçap [mm]": 1000*s.r_over_R*d.blade.radius_m, "r/R": s.r_over_R,
                        "Kord [mm]": 1000*s.chord_m, "Burulma [°]": math.degrees(s.twist_rad)}
-                      for s in d.blade.stations], hide_index=True, use_container_width=True)
+                      for s in d.blade.stations], hide_index=True, **figure_style.dataframe_width_kwargs())
 
 
 def _edit_design(root, repository, store_error):
@@ -131,7 +134,7 @@ def _edit_design(root, repository, store_error):
     st.caption(f"**{profile}:** {_inventory(repository, store_error, profile)}.")
     with st.expander("Tüm profillerin veri durumu"):
         st.dataframe([{"Profil": name, "Depodaki durum": _inventory(repository, store_error, name)}
-                      for name in PROJECT_AIRFOIL_IDS], hide_index=True, use_container_width=True)
+                      for name in PROJECT_AIRFOIL_IDS], hide_index=True, **figure_style.dataframe_width_kwargs())
         st.caption("Bu liste kayıt envanteridir. Seçilen sürüm ve girdiler Analiz’de denetlenir.")
     template = _choice(st.selectbox, "Kord / burulma şablonu", tuple(research.TEMPLATES),
                        key="research_template", default="axial_800", display=_TEMPLATE_LABELS.__getitem__)
@@ -335,6 +338,12 @@ def _readiness(active, repository, store_error):
         st.warning("Hazırlık reddedildi. " + _rejection_message(status.diagnostic))
     elif status.status == "ready":
         st.success("Hazırlık tamamlandı. BEM’i siz başlatabilirsiniz.")
+        if family is not None:
+            (a_lo, a_hi), (r_lo, r_hi), (m_lo, m_hi) = research.grid_margins(family, initial)
+            st.caption(f"İlk sorguların veri kenarına payı: α alt {_fmt(math.degrees(a_lo))}° / üst "
+                       f"{_fmt(math.degrees(a_hi))}° · Re alt {_fmt(r_lo, 0)} / üst {_fmt(r_hi, 0)} · Mach alt "
+                       f"{_fmt(m_lo, 3)} / üst {_fmt(m_hi, 3)}. İndüksiyon iç kesitlerde α’yı düşürür; alt α payı "
+                       "küçükse çözüm veri dışına çıkabilir.")
     return family, status
 
 
@@ -431,8 +440,10 @@ def _save(row, *, imported=False):
     return "saved"
 
 
-def _navigate(page):
+def _navigate(page, kind=None):
     st.session_state["_research_next_page"] = page
+    if kind is not None:   # the remembered result type would otherwise hide the result just opened
+        st.session_state[_KIND] = kind
 
 
 def _prepare_matched_run(action):
@@ -487,17 +498,21 @@ def _local_results_panel():
     if error := st.session_state.pop("_research_local_store_error", None):
         st.warning("Son sonuç yerel klasöre yazılamadı: " + error)
     if not local:
-        st.caption(f"Henüz yok. Tamamlanan her BEM sonucu {research.results_root()} klasörüne de yazılır.")
+        st.caption(f"Henüz yok. Her BEM ve mekanizma çalıştırması (tamamlanmayan denemeler dahil) "
+                   f"{research.results_root()} klasörüne de yazılır.")
         return
     import datetime
+    state = {"success": "başarılı", "failure": "başarısız", "mechanism": "mekanizma"}.get
     st.dataframe([{"Kaydedildi": datetime.datetime.fromtimestamp(r["saved"]).strftime("%Y-%m-%d %H:%M"),
+                   "Durum": state(r["status"], r["status"]),
                    "Profil": r["profile"], "Devir [RPM]": _fmt(r["rpm"], 0), "Giriş [m/s]": _fmt(r["inflow_m_s"], 1),
                    "İtki [N]": _fmt(r["thrust_n"], 3), "Tork [N·m]": _fmt(r["torque_nm"], 3)} for r in local],
-                 hide_index=True, use_container_width=True)
+                 hide_index=True, **figure_style.dataframe_width_kwargs())
     keys = tuple(r["result_sha256"] for r in local)
     by = {r["result_sha256"]: r for r in local}
     chosen = _choice(st.selectbox, "Saklanan sonuç", keys, key="research_local_choice", default=keys[0],
-                     display=lambda k: f"{by[k]['profile']} · {_fmt(by[k]['rpm'], 0)} RPM · {_fmt(by[k]['thrust_n'], 2)} N")
+                     display=lambda k: f"{by[k]['profile']} · {_fmt(by[k]['rpm'], 0)} RPM · {_fmt(by[k]['thrust_n'], 2)} N"
+                                       f" · {state(by[k]['status'], by[k]['status'])}")
     if st.button("Sonucu aç (yeniden hesaplanmaz)", key="research_local_open"):
         try:
             row = research.read_saved_result(by[chosen]["path"].read_bytes())
@@ -509,7 +524,7 @@ def _local_results_panel():
             st.warning("Oturum en fazla 12 kayıt alır.")
             return
         st.session_state["_research_result_view"] = row["result_sha256"]
-        _navigate("Sonuçlar")
+        _navigate("Sonuçlar", _BEM_KIND)
         st.rerun()
 
 
@@ -527,7 +542,7 @@ def _show_run(row, token):
         # A race-time rejection remains inspectable even when the selected
         # version cannot remain active after the fresh store read.
         st.session_state["_research_result_view"] = row["result_sha256"]
-    _navigate("Sonuçlar")
+    _navigate("Sonuçlar", _BEM_KIND)
     st.rerun()
 
 
@@ -585,7 +600,7 @@ def _capability_panel(active, family, readiness, repository):
         {"Yöntem": "Tam açılma–kapanma çevrimi (mekanik dinamik, açık aero modeli)", "Durum": "Hazır (keşif varsayımlarıyla)",
          "Sonraki adım": "Aşağıda mekanizma yapılandırmasını seçin, “Çevrimi çalıştır” · ≈ 10–40 s; bağlantı kuvvet ve momentleri."},
         {"Yöntem": "Zamana bağlı dinamik analiz (katlanma, açılma, iz)", "Durum": dyn[0], "Sonraki adım": dyn[1]},
-    ], hide_index=True, use_container_width=True)
+    ], hide_index=True, **figure_style.dataframe_width_kwargs())
     st.caption("Kararlı BEM tek bir açık konum ve sabit devir için çözer; katlanma, açılma ve zamanla değişen yük, "
                "iz ve tork zamana bağlı analizden gelir. Kayıtlı sonuçlar Karşılaştırma / kayıtlar sayfasında listelenir.")
 
@@ -688,14 +703,41 @@ def _radial(rows):
     with st.expander("Radyal veri tablosu"):
         table = [{label: (1000*r[field] if field == "radius_m" else r[field])
                   for field, (label, _) in _RADIAL_COLUMNS.items()} for r in rows]
-        st.dataframe(table, hide_index=True, use_container_width=True, column_config={
+        st.dataframe(table, hide_index=True, **figure_style.dataframe_width_kwargs(), column_config={
             label: st.column_config.NumberColumn(format=f"%.{digits}f")
             for label, digits in _RADIAL_COLUMNS.values()})
 
 
+_NUM = r"(-?[\d.]+(?:[eE][-+]?\d+)?)"
+_OUTSIDE = re.compile(rf"Annulus (\d+) at r/R={_NUM} failed: Requested (alpha_rad|reynolds|mach) {_NUM} "
+                      rf"is outside \[{_NUM}, {_NUM}\]")
+# Which way to move: lower α means a steeper inflow angle (more inflow per blade speed).
+_OUTSIDE_HINT = {
+    ("alpha_rad", "alt"): "devri artırın veya giriş hızını düşürün", ("alpha_rad", "üst"): "devri düşürün veya giriş hızını artırın",
+    ("reynolds", "alt"): "devri artırın", ("reynolds", "üst"): "devri düşürün",
+    ("mach", "alt"): "devri artırın", ("mach", "üst"): "devri düşürün",
+}
+
+
+def _solver_hint(reason):
+    """Turkish reading of the retained solver reason: element, axis, value, limit and the direction to move."""
+    found = _OUTSIDE.search(reason or "")
+    if found is None:
+        return None
+    element, ratio, axis, value, lo, hi = found.groups()
+    value, lo, hi = float(value), float(lo), float(hi)
+    side, limit = ("alt", lo) if value < lo else ("üst", hi)
+    name, show = {"alpha_rad": ("hücum açısı α", lambda v: f"{_fmt(math.degrees(v))}°"),
+                  "reynolds": ("Reynolds sayısı", lambda v: _fmt(v, 0)),
+                  "mach": ("Mach sayısı", lambda v: _fmt(v, 3))}[axis]
+    return (f"Eleman {element} (r/R={_fmt(float(ratio), 3)}): {name} {show(value)}, verinin {side} sınırı "
+            f"{show(limit)} dışında kaldı. Öneri: {_OUTSIDE_HINT[axis, side]}.")
+
+
 def _failure_summary(aero):
     if aero["failure_stage"] == "solver_invocation":
-        return "Çözücü tamamlanamadı; kısmi toplam yayımlanmadı."
+        hint = _solver_hint(aero.get("failure_reason"))
+        return "Çözücü tamamlanamadı; kısmi toplam yayımlanmadı." + (" " + hint if hint else "")
     return "Hazırlık reddedildi. " + _rejection_message(aero.get("failure_reason"))
 
 
@@ -750,7 +792,7 @@ def _results(row, *, archived=False, imported=False):
                        "Merkezkaç momenti [N·m]": s["centrifugal_torque_nm"],
                        "Euler momenti [N·m]": s["euler_torque_nm"],
                        "Kuru sürtünme [N·m]": s["dry_friction_torque_nm"]} for s in doc["samples"]],
-                     hide_index=True, use_container_width=True)
+                     hide_index=True, **figure_style.dataframe_width_kwargs())
     elif mech["status"] == "blocked_or_failed":
         st.warning("Mekanizma tamamlanamadı. Girdi ve tanıyı teknik ayrıntıda inceleyin.")
     elif mech.get("requested", "inputs" in mech):
@@ -885,12 +927,16 @@ def _history(root=None):
             result = research.compare_results(rows)
             if result["matched_numerical_comparison"]:
                 st.success("Eşleştirilmiş sayısal karşılaştırma · farklı koordinatlar, aynı planform, koşul ve yöntem.")
+            elif result["comparison_class"] != "unmatched":
+                label = {"equal_thrust": "itki", "equal_power": "şaft gücü"}[result["comparison_class"]]
+                st.success(f"Eşit {label} karşılaştırması · aynı polar verisi, planform ve yöntem; yalnız devir, "
+                           f"{label} eşitlensin diye ayarlandı.")
             else:
                 st.info("Eşleştirilmiş sayısal çift oluşmadı. Profil dışındaki şu alanlar farklı:")
                 diff = [d for d in research.comparison_differences(rows) if not d["expected"]]
                 cell = lambda v: _fmt(v, 1) if isinstance(v, float) else str(v)  # noqa: E731
                 st.dataframe([{"Alan": d["field"], "Birinci": cell(d["first"]), "İkinci": cell(d["second"])} for d in diff],
-                             hide_index=True, use_container_width=True)
+                             hide_index=True, **figure_style.dataframe_width_kwargs())
                 action = research.matching_action(rows, _repository()[0])
                 if action is None:
                     st.caption("Polar verisi ve yöntem aynı; fark yalnız yukarıdaki girdilerde (ör. eşit itki veya güç için "
@@ -900,30 +946,20 @@ def _history(root=None):
                               key="research_compare_match", on_click=_prepare_matched_run, args=(action,),
                               help="Profil ve veri sürümü seçilir; BEM’i siz başlatırsınız. Mevcut kayıtlar değişmez.")
                 elif action:
-                    st.caption("Bu iki profil için aynı polar senaryosuna ait sürüm yok; eşleşmiş bir çift için ortak "
-                               "ızgarada yeni bir polar yakalaması gerekir.")
+                    st.caption("Bu iki profil için aynı XFOIL derlemesi, ızgara ve ayarlarla saklanan sürüm yok; "
+                               "eşleşmiş bir çift için ortak ızgarada yeni bir polar yakalaması gerekir.")
                 with st.expander("Karşılaştırma teknik ayrıntısı"):
                     st.json(result, expanded=False)
             summary = [{"Kayıt": display(k), "İtki [N]": _fmt(r["aerodynamics"]["thrust_n"], 3),
                         "Şaft torku [N·m]": _fmt(r["aerodynamics"]["torque_nm"], 3),
                         "Şaft gücü [W]": _fmt(r["aerodynamics"]["shaft_power_w"], 3)} for k, r in zip(chosen, rows)]
-            st.dataframe(summary, hide_index=True, use_container_width=True)
+            st.dataframe(summary, hide_index=True, **figure_style.dataframe_width_kwargs())
             if root is not None:
                 _equal_point(root, rows)
             a, b = st.columns(2)
-            a.download_button("Karşılaştırma JSON’u", json.dumps({
-                "schema_version": 1, "artifact_class": "pyfoldable_research_comparison",
-                "assessment": result, "results": rows,
-            }, ensure_ascii=False, allow_nan=False), "research_comparison.json", "application/json")
-            csv_rows = [{
-                "result_sha256": r["result_sha256"], "profile": r["inputs"]["profile"],
-                "rpm": r["inputs"]["rpm"], "inflow_m_s": r["inputs"]["inflow_m_s"],
-                "matched_numerical_comparison": result["matched_numerical_comparison"],
-                **{field: r["aerodynamics"][field] for field in
-                   ("airfoil_coordinate_sha256", "report_sha256", "thrust_n", "torque_nm", "shaft_power_w",
-                    "inner_radius_m", "outer_radius_m")},
-            } for r in rows]
-            b.download_button("Karşılaştırma CSV’si", research.records_csv(csv_rows), "research_comparison.csv", "text/csv")
+            document, table = research.comparison_exports(rows, result)
+            a.download_button("Karşılaştırma JSON’u", document, "research_comparison.json", "application/json")
+            b.download_button("Karşılaştırma CSV’si", table, "research_comparison.csv", "text/csv")
     st.caption("Eşit devir ve giriş hızı, eşit şaft gücü demek değildir; eşit itki veya eşit güç için yukarıdaki devir "
                "ayarını kullanın. Bu karşılaştırma tasarım seçmez veya fiziksel yeterlilik göstermez.")
     if failures:
@@ -937,7 +973,7 @@ def _history(root=None):
                      default=None, display=display)
     if st.button("Kaydı Sonuçlar’da aç", disabled=chosen is None) and chosen is not None:
         st.session_state["_research_result_view"] = chosen
-        _navigate("Sonuçlar")
+        _navigate("Sonuçlar", _BEM_KIND)
         st.rerun()
 
 
@@ -976,11 +1012,17 @@ def render_research(root: Path):
         _invalidate_coupled(active, repository)
     elif page == "Sonuçlar":
         from . import coupled_ui, fold_cycle_ui
-        kinds = ("BEM / mekanizma", "Dinamik bağlaşık", fold_cycle_ui.KIND)
+        kinds = (_BEM_KIND, "Dinamik bağlaşık", fold_cycle_ui.KIND)
         offered = tuple(k for k, on in zip(kinds, (True, bool(coupled_ui.retained()), fold_cycle_ui.active_row() is not None)) if on)
-        if st.session_state.get("research_results_kind") not in offered:
-            st.session_state.pop("research_results_kind", None)
-        kind = st.radio("Sonuç türü", offered, horizontal=True, key="research_results_kind") if len(offered) > 1 else kinds[0]
+        if st.session_state.get(_KIND) not in offered:
+            st.session_state.pop(_KIND, None)
+        # Streamlit drops the radio's state on pages where it is not drawn; restore the last choice. Other modules
+        # write the key directly to open their result, so this mirror is used instead of _choice's seeded index.
+        values = st.session_state.setdefault("_research_control_values", {})
+        if _KIND not in st.session_state and values.get(_KIND) in offered:
+            st.session_state[_KIND] = values[_KIND]
+        kind = st.radio("Sonuç türü", offered, horizontal=True, key=_KIND) if len(offered) > 1 else kinds[0]
+        values[_KIND] = kind
         if kind == fold_cycle_ui.KIND:
             fold_cycle_ui.render_result(fold_cycle_ui.active_row())
             return
