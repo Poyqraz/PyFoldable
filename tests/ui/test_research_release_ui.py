@@ -258,3 +258,91 @@ def test_mechanics_action_is_independent_of_missing_aerodynamic_data(tmp_path, m
     go(records, RECORDS)
     assert not any(box.label == "Birinci BEM kaydı" for box in records.selectbox)
     assert any("bağımsız mekanizma kaydı" in c.value for c in records.caption)
+
+
+def test_local_result_list_states_the_status_of_each_record(tmp_path, monkeypatch):
+    monkeypatch.setenv("PYFOLDABLE_RESULTS", str(tmp_path / "results"))
+    store(tmp_path, monkeypatch, ("NACA2412",))
+    bem(monkeypatch, fail=True)
+    at = go(app(), ANALYSIS)
+    at.button(key="research_run").click().run()
+    at = go(app(), RECORDS)
+    table = next(d.value for d in at.dataframe if "Devir [RPM]" in d.value.columns and "Profil" in d.value.columns)
+    assert list(table["Durum"]) == ["başarısız"]
+
+
+def test_result_kind_survives_a_page_round_trip():
+    from test_fold_cycle_ui import _fast
+    at = go(app(), ANALYSIS)
+    _fast(at)
+    at.button(key="cycle_run").click().run()
+    assert at.radio(key="research_results_kind").value == "Açılma–kapanma çevrimi"
+    go(at, RECORDS)
+    go(at, RESULTS)
+    assert at.radio(key="research_results_kind").value == "Açılma–kapanma çevrimi"
+
+
+def test_solver_failure_names_axis_value_limit_and_direction():
+    from pyfoldable.application import research_ui
+    reason = ("Active-design BEM failed without partial totals: Annulus 0 at r/R=0.367625 failed: "
+              "Requested alpha_rad -0.106506 is outside [-0.10472, 0.139626].")
+    text = research_ui._failure_summary({"failure_stage": "solver_invocation", "failure_reason": reason})
+    assert "kısmi toplam yayımlanmadı" in text
+    assert "α" in text and "-6,10" in text and "-6,00" in text and "alt sınır" in text
+    assert "devri artırın" in text and "r/R=0,368" in text
+    plain = research_ui._failure_summary({"failure_stage": "solver_invocation", "failure_reason": "other"})
+    assert plain == "Çözücü tamamlanamadı; kısmi toplam yayımlanmadı."
+    # failure_reason comes from an uploaded snapshot: malformed numbers must not raise.
+    malformed = reason.replace("r/R=0.367625", "r/R=0..3")
+    assert research_ui._failure_summary({"failure_stage": "solver_invocation", "failure_reason": malformed}) == plain
+
+
+def test_every_workspace_figure_keeps_full_hover_names(monkeypatch):
+    import plotly.graph_objects as go_
+    from pyfoldable.application import research_ui
+    shown = []
+    monkeypatch.setattr(research_ui.st, "plotly_chart", lambda fig, **kw: shown.append((fig, kw)))
+    research_ui._plot(go_.Figure(go_.Scatter(x=[0], y=[0], name="Eksenel çekme N [N]")), "k")
+    fig, kwargs = shown[0]
+    assert fig.layout.hoverlabel.namelength == -1 and "key" in kwargs
+    assert set(kwargs) - {"key", "config"} in ({"width"}, {"use_container_width"})
+
+
+def test_source_summary_names_the_retained_research_families():
+    from types import SimpleNamespace
+    from pyfoldable.application import research_ui
+    family = lambda fid, src="operator-captured numerical records; plan_sha256:x": SimpleNamespace(  # noqa: E731
+        family_id=fid, source_identity=src)
+    assert research_ui._source_summary(family("research_axial_800_attached_xfoil_v1:NACA2412")) == \
+        "800 mm eksenel referansın saklanan sağlayıcı çıktıları"
+    deploy = research_ui._source_summary(family("research_axial_800_deploy_xfoil_v3:NACA2412"))
+    assert "açılma" in deploy and "Re 100k–400k" in deploy and "Mach 0,07–0,36" in deploy and "ekli akış" in deploy
+    assert research_ui._source_summary(family("other:X", "caller source; detail")) == "caller source"
+
+
+def test_deploy_family_shows_the_convergence_prescreen_caveat():
+    from types import SimpleNamespace
+    from pyfoldable.application import research_ui
+    deploy = research_ui._source_note(SimpleNamespace(family_id="research_axial_800_deploy_xfoil_v3:NACA2412"))
+    assert "ön tarama" in deploy and "130k" in deploy and "ara değer" in deploy and "ayrılmış akış" in deploy
+    assert research_ui._source_note(SimpleNamespace(family_id="research_axial_800_attached_xfoil_v1:NACA2412")) is None
+
+
+def test_comparison_of_two_records_draws_their_radial_overlay(monkeypatch):
+    from dataclasses import replace
+    from pyfoldable.application import provider_design_analysis as managed
+    root = Path(__file__).resolve().parents[2]
+    monkeypatch.setenv("PYFOLDABLE_PROVIDER_STORE", str(root / "data/research_reference/axial_800_store"))
+    repo = managed.application_provider_repository()
+    fam = {f.family_id: f for f in repo.families}
+    rows = [research.run_research(research.build_research_design(root, replace(research.defaults(root), profile=p)),
+                                  fam[f"research_axial_800_attached_xfoil_v1:{p}"], repo, None)
+            for p in ("NACA0012", "NACA2412")]
+    at = app()
+    at.session_state["research_saved_results"] = tuple((research.saved_result_json(r), True) for r in rows)
+    go(at, RECORDS)
+    before = len(at.get("plotly_chart"))
+    at.selectbox(key="research_compare_first").select_index(1).run()      # index works on Streamlit 1.40 and later
+    at.selectbox(key="research_compare_second").select_index(1).run()
+    assert not at.exception
+    assert len(at.get("plotly_chart")) == before + 1

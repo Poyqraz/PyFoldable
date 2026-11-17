@@ -1,7 +1,8 @@
 # Architecture, data and critical flows
 
 Code baseline: `ca81d2d2b19622d65453e269d7bfcb48e70aec32` (GEOM-04, PR #63),
-inspected 2026-09-17. See [current state](../agent/current-state.md) for maturity
+inspected 2026-09-17. The research workspace, coupled, fold-cycle and gallery rows and flows 7–9
+were added 2026-11-17 at `7e14ab2`. See [current state](../agent/current-state.md) for maturity
 and [decisions](decisions.md) for constraints. Paths below are repository-relative;
 implementation paths beginning `core/`, `application/`, `geometry/`, `dynamics/`
 or `visualization/` are under `pyfoldable/`.
@@ -53,6 +54,10 @@ semantics. The UI also imports domain value types.
 | `core/experiment_contract.py`, `fea_contract.py`, `measurement_comparison.py`, `motor_rotor_correlation.py`, `mechanism_observation.py` | Manifests, runs, calibration and observations → comparisons and acceptance records | Matched revision/run/condition, uncertainty, no target fitting; corresponding core tests |
 | `application/dashboard.py`, `evidence_import.py`; `apps/pyfoldable_dashboard.py` | Archive + session inputs → Turkish workspace, diagnostics/downloads | Manifest/evidence agreement, session-only imports, invalidation; dashboard/import tests and `tests/ui/` |
 | `pyfoldable/models.py`, `integration.py`, `performance.py`; `pythrust/` | Legacy JSON/CSV and reference operating points → V1/V2 outputs | Distinct models/conventions; `tests/test_integration.py`, `test_reference_scaled_thrust.py`, `tests/dynamics/` |
+| `apps/pyfoldable_research.py`; `application/research_ui.py`, `research_design.py` | Catalog profile + declared geometry/conditions + bundled provider store → explicit BEM → saved records, comparison, exports | Owner's entry point; store override fails without fallback; restore re-verifies without solving; `tests/ui/test_research_release_ui.py`, `tests/application/test_research_*.py` |
+| `pyfoldable/coupled/`; `application/coupled_analysis.py`, `coupled_ui.py` | Same design and admitted polar version → case/decks → detached supervisor running DUST, MBDyn, preCICE → sealed record, companions | External processes from the operator manifest only; per-window table audit; labelled valid prefix; restore re-derives; `tests/coupled/`, `tests/ui/test_coupled_ui.py` |
+| `dynamics/fold_cycle.py`, `pin_lug.py`; `application/fold_cycle_ui.py`, `fold_cycle_views.py` | Design stations + declared mechanism + shaft schedule → predicted cycle, connection loads, checks → sealed cycle record | Fail-closed budgets; Kelvin–Voigt parity; schema-1 records verify read-only; `tests/dynamics/test_fold_cycle.py`, `test_pin_lug.py`, `tests/ui/test_fold_cycle_ui.py` |
+| `visualization/blade_surface.py`, `fold_interference.py`; `application/gallery_ui.py`, `gallery_figures.py` | Loft and fold-contact scan; on-request figure cards from session, records and `reports/` | Display screening, not clearance qualification; read-only archive containment; `tests/visualization/test_fold_interference.py`, `tests/ui/test_gallery_ui.py` |
 
 Short filenames in each table row share the preceding directory. Test filenames
 without a full prefix share that row's preceding test directory.
@@ -112,6 +117,19 @@ contracts, not one Boolean validation flag. Hashes bind content, not authenticit
    Dedicated CI captures real-backend bundles, compares independent runs and
    checks the explicitly promoted baseline. Unit-test doubles do not replace this.
    See [real-backend qualification](../polar_real_backend_qualification.md).
+7. **Research workspace:** `render_research()` → Tasarım (design, retained catalog
+   coordinates) → Analiz (readiness per method; explicit BEM on the selected stored version) →
+   Sonuçlar → Karşılaştırma / kayıtlar (local BEM records under `outputs/research_results`,
+   local coupled runs and fold cycles, matched or equal-thrust/equal-power comparison) →
+   Görseller (figure cards on request). See [research application](../research_application.md).
+8. **Coupled route (optional toolchain):** Analiz → `prepare` (case, C81 from the admission,
+   decks, envelope and duration bounds) → explicit start → detached supervisor under
+   `outputs/coupled_runs/<run>` → poll/cancel → sealed record → restore. Companions (flow,
+   hinge loads) are derived on request from the run folder and bound to the record. See
+   [coupled analysis](../coupled_dynamic_analysis.md).
+9. **Fold cycle:** Analiz → declared mechanism, schedule and aero model → explicit run
+   (`run_cycle`, synchronous) → sealed record under `outputs/fold_cycles` → Sonuçlar views and
+   pin-and-lug pre-check. See [fold cycle](../fold_cycle_and_connection_loads.md).
 
 No background queue, broker, payment/email integration or analytics service is
 implemented. Streamlit supplies its transport; there is no application-specific

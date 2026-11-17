@@ -1,0 +1,823 @@
+{
+ "schema_version": 1,
+ "artifact_class": "pyfoldable_coupled_run_definition",
+ "model_id": "pyfoldable_dust_mbdyn_precice_segmented_rigid_v1",
+ "case": {
+  "geometry": {
+   "blade_count": 2,
+   "tip_radius_m": 0.4,
+   "hub_radius_m": 0.09,
+   "root_radius_m": 0.1,
+   "hinge_radius_m": 0.27,
+   "first_aero_radius_m": 0.144,
+   "last_aero_radius_m": 0.388,
+   "proximal_sections": [
+    {
+     "radius_m": 0.144,
+     "chord_m": 0.07,
+     "twist_rad": 0.4563723796700396,
+     "source": "station"
+    },
+    {
+     "radius_m": 0.17600000000000002,
+     "chord_m": 0.066,
+     "twist_rad": 0.39379248609085005,
+     "source": "station"
+    },
+    {
+     "radius_m": 0.22000000000000003,
+     "chord_m": 0.061,
+     "twist_rad": 0.33525559819023176,
+     "source": "station"
+    },
+    {
+     "radius_m": 0.27,
+     "chord_m": 0.056192307692307694,
+     "twist_rad": 0.291037027076127,
+     "source": "hinge_interpolated"
+    }
+   ],
+   "distal_sections": [
+    {
+     "radius_m": 0.27,
+     "chord_m": 0.056192307692307694,
+     "twist_rad": 0.291037027076127,
+     "source": "hinge_interpolated"
+    },
+    {
+     "radius_m": 0.272,
+     "chord_m": 0.056,
+     "twist_rad": 0.2892682842315628,
+     "source": "station"
+    },
+    {
+     "radius_m": 0.328,
+     "chord_m": 0.05,
+     "twist_rad": 0.2554913607205244,
+     "source": "station"
+    },
+    {
+     "radius_m": 0.388,
+     "chord_m": 0.044,
+     "twist_rad": 0.22985969908449366,
+     "source": "station"
+    }
+   ],
+   "profile": "NACA2412"
+  },
+  "mechanics": {
+   "distal_mass_kg": 0.03,
+   "distal_cg_from_hinge_m": 0.055,
+   "distal_inertia_cg_kg_m2": 3e-05,
+   "spring_nm_per_rad": 0.0,
+   "spring_rest_rad": 0.0,
+   "hinge_damping_nm_s_per_rad": 0.0,
+   "stop_angle_rad": 0.0,
+   "stop_stiffness_nm_per_rad": 250.0,
+   "stop_restitution": 0.5,
+   "fold_limit_rad": -2.9670597283903604,
+   "initial_fold_rad": -0.08726646259971647,
+   "initial_rate_rad_s": 0.0,
+   "release_time_s": 0.001,
+   "proximal_mass_kg": 0.05,
+   "hub_mass_kg": 0.1,
+   "source": "Demonstration assumption: 30 g distal segment, CG 55 mm from hinge, J_cg 3e-5 kg m^2; compliant penalty stop; not measured hardware",
+   "declaration_kind": "demonstration_assumption"
+  },
+  "controls": {
+   "azimuth_step_deg": 5.0,
+   "duration_s": 0.0104,
+   "elements_per_segment": 8,
+   "n_wake_panels": 1,
+   "max_wake_particles": 60000,
+   "wake_box_axial_m": 1.6,
+   "wake_box_radial_factor": 1.6,
+   "coupling_max_iterations": 30,
+   "coupling_position_tol_m": 1e-06,
+   "coupling_rotation_tol_rad": 1e-06,
+   "coupling_velocity_tol_m_s": 0.001,
+   "coupling_angular_velocity_tol_rad_s": 0.001,
+   "aitken_initial_relaxation": 0.5,
+   "mbdyn_tolerance": 1e-06,
+   "mbdyn_max_iterations": 50,
+   "mbdyn_spectral_radius": 0.6,
+   "ll_tol": 1e-06,
+   "ll_max_iter": 200,
+   "ll_damp": 25.0,
+   "fmm": false,
+   "vortex_stretching": true,
+   "aero_topology": "continuous_rbf",
+   "wall_timeout_s": 3600.0
+  },
+  "rpm": 2400.0,
+  "omega_rad_s": 251.32741228718345,
+  "inflow_m_s": 14.0,
+  "density_kg_m3": 1.225,
+  "viscosity_pa_s": 1.81e-05,
+  "temperature_k": 288.15,
+  "speed_of_sound_m_s": 340.29228686527705,
+  "drive": "prescribed_constant_speed",
+  "dt_s": 0.00034722222222222224,
+  "n_steps": 30,
+  "final_time_s": 0.010416666666666668,
+  "derived": {
+   "hinge_inertia_kg_m2": 0.00012075,
+   "stop_damping_nm_s_per_rad": 0.07486824472436916
+  },
+  "meta": {
+   "speed_of_sound_model": "sqrt(1.4*287.05*T), matching research initial_query_ranges"
+  }
+ },
+ "coupling_nodes": [
+  {
+   "blade": 0,
+   "segment": "proximal",
+   "mbdyn_label": 1000,
+   "dust_component": "blade1",
+   "body_label": 100,
+   "local": [
+    0.0,
+    0.140375,
+    0.0
+   ],
+   "global": [
+    0.0,
+    0.140375,
+    0.0
+   ]
+  },
+  {
+   "blade": 0,
+   "segment": "proximal",
+   "mbdyn_label": 1001,
+   "dust_component": "blade1",
+   "body_label": 100,
+   "local": [
+    0.0,
+    0.155625,
+    0.0
+   ],
+   "global": [
+    0.0,
+    0.155625,
+    0.0
+   ]
+  },
+  {
+   "blade": 0,
+   "segment": "proximal",
+   "mbdyn_label": 1002,
+   "dust_component": "blade1",
+   "body_label": 100,
+   "local": [
+    0.0,
+    0.170875,
+    0.0
+   ],
+   "global": [
+    0.0,
+    0.170875,
+    0.0
+   ]
+  },
+  {
+   "blade": 0,
+   "segment": "proximal",
+   "mbdyn_label": 1003,
+   "dust_component": "blade1",
+   "body_label": 100,
+   "local": [
+    0.0,
+    0.186125,
+    0.0
+   ],
+   "global": [
+    0.0,
+    0.186125,
+    0.0
+   ]
+  },
+  {
+   "blade": 0,
+   "segment": "proximal",
+   "mbdyn_label": 1004,
+   "dust_component": "blade1",
+   "body_label": 100,
+   "local": [
+    0.0,
+    0.20137500000000003,
+    0.0
+   ],
+   "global": [
+    0.0,
+    0.20137500000000003,
+    0.0
+   ]
+  },
+  {
+   "blade": 0,
+   "segment": "proximal",
+   "mbdyn_label": 1005,
+   "dust_component": "blade1",
+   "body_label": 100,
+   "local": [
+    0.0,
+    0.216625,
+    0.0
+   ],
+   "global": [
+    0.0,
+    0.216625,
+    0.0
+   ]
+  },
+  {
+   "blade": 0,
+   "segment": "proximal",
+   "mbdyn_label": 1006,
+   "dust_component": "blade1",
+   "body_label": 100,
+   "local": [
+    0.0,
+    0.231875,
+    0.0
+   ],
+   "global": [
+    0.0,
+    0.231875,
+    0.0
+   ]
+  },
+  {
+   "blade": 0,
+   "segment": "proximal",
+   "mbdyn_label": 1007,
+   "dust_component": "blade1",
+   "body_label": 100,
+   "local": [
+    0.0,
+    0.247125,
+    0.0
+   ],
+   "global": [
+    0.0,
+    0.247125,
+    0.0
+   ]
+  },
+  {
+   "blade": 0,
+   "segment": "proximal",
+   "mbdyn_label": 1008,
+   "dust_component": "blade1",
+   "body_label": 100,
+   "local": [
+    0.0,
+    0.262375,
+    0.0
+   ],
+   "global": [
+    0.0,
+    0.262375,
+    0.0
+   ]
+  },
+  {
+   "blade": 0,
+   "segment": "distal",
+   "mbdyn_label": 1009,
+   "dust_component": "blade1",
+   "body_label": 200,
+   "local": [
+    0.0,
+    0.277625,
+    0.0
+   ],
+   "global": [
+    0.0,
+    0.277625,
+    0.0
+   ]
+  },
+  {
+   "blade": 0,
+   "segment": "distal",
+   "mbdyn_label": 1010,
+   "dust_component": "blade1",
+   "body_label": 200,
+   "local": [
+    0.0,
+    0.292875,
+    0.0
+   ],
+   "global": [
+    0.0,
+    0.292875,
+    0.0
+   ]
+  },
+  {
+   "blade": 0,
+   "segment": "distal",
+   "mbdyn_label": 1011,
+   "dust_component": "blade1",
+   "body_label": 200,
+   "local": [
+    0.0,
+    0.30812500000000004,
+    0.0
+   ],
+   "global": [
+    0.0,
+    0.30812500000000004,
+    0.0
+   ]
+  },
+  {
+   "blade": 0,
+   "segment": "distal",
+   "mbdyn_label": 1012,
+   "dust_component": "blade1",
+   "body_label": 200,
+   "local": [
+    0.0,
+    0.323375,
+    0.0
+   ],
+   "global": [
+    0.0,
+    0.323375,
+    0.0
+   ]
+  },
+  {
+   "blade": 0,
+   "segment": "distal",
+   "mbdyn_label": 1013,
+   "dust_component": "blade1",
+   "body_label": 200,
+   "local": [
+    0.0,
+    0.338625,
+    0.0
+   ],
+   "global": [
+    0.0,
+    0.338625,
+    0.0
+   ]
+  },
+  {
+   "blade": 0,
+   "segment": "distal",
+   "mbdyn_label": 1014,
+   "dust_component": "blade1",
+   "body_label": 200,
+   "local": [
+    0.0,
+    0.35387500000000005,
+    0.0
+   ],
+   "global": [
+    0.0,
+    0.35387500000000005,
+    0.0
+   ]
+  },
+  {
+   "blade": 0,
+   "segment": "distal",
+   "mbdyn_label": 1015,
+   "dust_component": "blade1",
+   "body_label": 200,
+   "local": [
+    0.0,
+    0.36912500000000004,
+    0.0
+   ],
+   "global": [
+    0.0,
+    0.36912500000000004,
+    0.0
+   ]
+  },
+  {
+   "blade": 0,
+   "segment": "distal",
+   "mbdyn_label": 1016,
+   "dust_component": "blade1",
+   "body_label": 200,
+   "local": [
+    0.0,
+    0.384375,
+    0.0
+   ],
+   "global": [
+    0.0,
+    0.384375,
+    0.0
+   ]
+  },
+  {
+   "blade": 1,
+   "segment": "proximal",
+   "mbdyn_label": 1100,
+   "dust_component": "blade2",
+   "body_label": 101,
+   "local": [
+    0.0,
+    0.140375,
+    0.01
+   ],
+   "global": [
+    -1.719097944303097e-17,
+    -0.140375,
+    0.01
+   ]
+  },
+  {
+   "blade": 1,
+   "segment": "proximal",
+   "mbdyn_label": 1101,
+   "dust_component": "blade2",
+   "body_label": 101,
+   "local": [
+    0.0,
+    0.155625,
+    0.01
+   ],
+   "global": [
+    -1.9058565811730687e-17,
+    -0.155625,
+    0.01
+   ]
+  },
+  {
+   "blade": 1,
+   "segment": "proximal",
+   "mbdyn_label": 1102,
+   "dust_component": "blade2",
+   "body_label": 101,
+   "local": [
+    0.0,
+    0.170875,
+    0.01
+   ],
+   "global": [
+    -2.09261521804304e-17,
+    -0.170875,
+    0.01
+   ]
+  },
+  {
+   "blade": 1,
+   "segment": "proximal",
+   "mbdyn_label": 1103,
+   "dust_component": "blade2",
+   "body_label": 101,
+   "local": [
+    0.0,
+    0.186125,
+    0.01
+   ],
+   "global": [
+    -2.2793738549130112e-17,
+    -0.186125,
+    0.01
+   ]
+  },
+  {
+   "blade": 1,
+   "segment": "proximal",
+   "mbdyn_label": 1104,
+   "dust_component": "blade2",
+   "body_label": 101,
+   "local": [
+    0.0,
+    0.20137500000000003,
+    0.01
+   ],
+   "global": [
+    -2.4661324917829828e-17,
+    -0.20137500000000003,
+    0.01
+   ]
+  },
+  {
+   "blade": 1,
+   "segment": "proximal",
+   "mbdyn_label": 1105,
+   "dust_component": "blade2",
+   "body_label": 101,
+   "local": [
+    0.0,
+    0.216625,
+    0.01
+   ],
+   "global": [
+    -2.652891128652954e-17,
+    -0.216625,
+    0.01
+   ]
+  },
+  {
+   "blade": 1,
+   "segment": "proximal",
+   "mbdyn_label": 1106,
+   "dust_component": "blade2",
+   "body_label": 101,
+   "local": [
+    0.0,
+    0.231875,
+    0.01
+   ],
+   "global": [
+    -2.839649765522925e-17,
+    -0.231875,
+    0.01
+   ]
+  },
+  {
+   "blade": 1,
+   "segment": "proximal",
+   "mbdyn_label": 1107,
+   "dust_component": "blade2",
+   "body_label": 101,
+   "local": [
+    0.0,
+    0.247125,
+    0.01
+   ],
+   "global": [
+    -3.026408402392897e-17,
+    -0.247125,
+    0.01
+   ]
+  },
+  {
+   "blade": 1,
+   "segment": "proximal",
+   "mbdyn_label": 1108,
+   "dust_component": "blade2",
+   "body_label": 101,
+   "local": [
+    0.0,
+    0.262375,
+    0.01
+   ],
+   "global": [
+    -3.213167039262868e-17,
+    -0.262375,
+    0.01
+   ]
+  },
+  {
+   "blade": 1,
+   "segment": "distal",
+   "mbdyn_label": 1109,
+   "dust_component": "blade2",
+   "body_label": 201,
+   "local": [
+    0.0,
+    0.277625,
+    0.01
+   ],
+   "global": [
+    -3.3999256761328394e-17,
+    -0.277625,
+    0.01
+   ]
+  },
+  {
+   "blade": 1,
+   "segment": "distal",
+   "mbdyn_label": 1110,
+   "dust_component": "blade2",
+   "body_label": 201,
+   "local": [
+    0.0,
+    0.292875,
+    0.01
+   ],
+   "global": [
+    -3.5866843130028106e-17,
+    -0.292875,
+    0.01
+   ]
+  },
+  {
+   "blade": 1,
+   "segment": "distal",
+   "mbdyn_label": 1111,
+   "dust_component": "blade2",
+   "body_label": 201,
+   "local": [
+    0.0,
+    0.30812500000000004,
+    0.01
+   ],
+   "global": [
+    -3.7734429498727825e-17,
+    -0.30812500000000004,
+    0.01
+   ]
+  },
+  {
+   "blade": 1,
+   "segment": "distal",
+   "mbdyn_label": 1112,
+   "dust_component": "blade2",
+   "body_label": 201,
+   "local": [
+    0.0,
+    0.323375,
+    0.01
+   ],
+   "global": [
+    -3.960201586742754e-17,
+    -0.323375,
+    0.01
+   ]
+  },
+  {
+   "blade": 1,
+   "segment": "distal",
+   "mbdyn_label": 1113,
+   "dust_component": "blade2",
+   "body_label": 201,
+   "local": [
+    0.0,
+    0.338625,
+    0.01
+   ],
+   "global": [
+    -4.146960223612725e-17,
+    -0.338625,
+    0.01
+   ]
+  },
+  {
+   "blade": 1,
+   "segment": "distal",
+   "mbdyn_label": 1114,
+   "dust_component": "blade2",
+   "body_label": 201,
+   "local": [
+    0.0,
+    0.35387500000000005,
+    0.01
+   ],
+   "global": [
+    -4.333718860482697e-17,
+    -0.35387500000000005,
+    0.01
+   ]
+  },
+  {
+   "blade": 1,
+   "segment": "distal",
+   "mbdyn_label": 1115,
+   "dust_component": "blade2",
+   "body_label": 201,
+   "local": [
+    0.0,
+    0.36912500000000004,
+    0.01
+   ],
+   "global": [
+    -4.520477497352668e-17,
+    -0.36912500000000004,
+    0.01
+   ]
+  },
+  {
+   "blade": 1,
+   "segment": "distal",
+   "mbdyn_label": 1116,
+   "dust_component": "blade2",
+   "body_label": 201,
+   "local": [
+    0.0,
+    0.384375,
+    0.01
+   ],
+   "global": [
+    -4.7072361342226394e-17,
+    -0.384375,
+    0.01
+   ]
+  }
+ ],
+ "bodies": [
+  {
+   "blade": 0,
+   "segment": "proximal",
+   "mbdyn_label": 100,
+   "local": [
+    0.0,
+    0.1,
+    0.0
+   ],
+   "global": [
+    0.0,
+    0.1,
+    0.0
+   ]
+  },
+  {
+   "blade": 0,
+   "segment": "distal",
+   "mbdyn_label": 200,
+   "local": [
+    0.0,
+    0.27,
+    0.0
+   ],
+   "global": [
+    0.0,
+    0.27,
+    0.0
+   ]
+  },
+  {
+   "blade": 1,
+   "segment": "proximal",
+   "mbdyn_label": 101,
+   "local": [
+    0.0,
+    0.1,
+    0.01
+   ],
+   "global": [
+    -1.2246467991473533e-17,
+    -0.1,
+    0.01
+   ]
+  },
+  {
+   "blade": 1,
+   "segment": "distal",
+   "mbdyn_label": 201,
+   "local": [
+    0.0,
+    0.27,
+    0.01
+   ],
+   "global": [
+    -3.306546357697854e-17,
+    -0.27,
+    0.01
+   ]
+  }
+ ],
+ "deck": {
+  "files": {
+   "dust/References.in": {
+    "sha256": "354c7bdddfd9056b8a1251a748e1c217b7c37a95de87df746e270dbbc5d8f1ff",
+    "bytes": 349
+   },
+   "dust/airfoil/NACA2412.c81": {
+    "sha256": "4df4ba024bfe0888864a29ac28ee1d1b5dd4a25c20034f9af89b6bfd020e7837",
+    "bytes": 1973
+   },
+   "dust/comps/blade1.in": {
+    "sha256": "3fff7934bf459fcde5ee3f02daa409039d6db9c4912b8219a3002c51ead21472",
+    "bytes": 1344
+   },
+   "dust/comps/blade1_nodes.in": {
+    "sha256": "310b573d00ad92c71ff4aab694dbaf7ed1868c0cd913f1894d7eed6e71a2d2e0",
+    "bytes": 333
+   },
+   "dust/comps/blade2.in": {
+    "sha256": "4b835d9c89c5086f60b64e1b64ca94f0a2d233735c5a564a25abecd5bb4ea852",
+    "bytes": 1344
+   },
+   "dust/comps/blade2_nodes.in": {
+    "sha256": "d5f094668f1f4129804521de46dbfffdfcfe699c4f02346cad22c2b1269020f6",
+    "bytes": 350
+   },
+   "dust/dust.in": {
+    "sha256": "35ed97fb5cc2b254a87e3a6c7f2960ee7a18935bec80b1c0c1b2ca249c667a99",
+    "bytes": 828
+   },
+   "dust/dust_pre.in": {
+    "sha256": "7abf0f1a6ce385aca10a17529cabeaf88c77bd20f8f79bd7536ee45b8761560c",
+    "bytes": 157
+   },
+   "precice-config.xml": {
+    "sha256": "5a7c38723300b7bf0e6018de952ac6c2795c0572b735452fa814545526d65427",
+    "bytes": 3796
+   },
+   "structure/adapter_config.json": {
+    "sha256": "ca4616cf3cd0bdbbecaddd9a49aa77615bd7b271b0cd3670795b985e472c2802",
+    "bytes": 2446
+   },
+   "structure/rotor.mbd": {
+    "sha256": "ee8770306a9f676cc15fd037dc84640de5e71019c92546e488e64b9d4d8c8486",
+    "bytes": 29746
+   }
+  },
+  "deck_sha256": "3c1d49a5b369ade6f02f71b34f4a4443b8448c2cec05b1d14c441413e7463854"
+ },
+ "request_sha256": "2a6ad5bd144d73e83a7a7b414d677c1d7690af3c90fe267faf2be5030d2e68a8"
+}

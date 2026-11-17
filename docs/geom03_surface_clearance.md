@@ -7,6 +7,11 @@ witness violates that clearance), and `unknown` (bounds or work budgets cannot
 resolve the question). It never promotes open meshes to CAD solids or physical
 qualification. `full_propeller_clearance` is always null.
 
+*Convention note (2026-11-13):* the blade surfaces come from the 2.5-D preview builder, which now uses the
+coupled model's section placement (leading edge on +y, positive twist raising it toward +z, the thrust
+direction); a negative fold turns the distal part back toward the trailing side. Results produced before
+that date used a mirrored section (fold toward the leading edge) and remain historical evidence.
+
 ## Method and scope
 
 The distinction between discrete collision, distance/tolerance queries and

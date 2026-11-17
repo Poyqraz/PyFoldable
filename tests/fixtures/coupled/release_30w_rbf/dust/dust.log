@@ -1,0 +1,40 @@
+Elapsed wall time:     8.606
+Assembled linear system in:     0.000 s.
+Solved linear system in:     0.000 s.
+ iterations:           89
+ diff   1.1596443705297332E-006
+ diff/max_mag_ll:   9.3120881128242859E-007
+
+--> Step    30 of    32 simulation time:    0.0101
+Elapsed wall time:     8.697
+Assembled linear system in:     0.000 s.
+Solved linear system in:     0.000 s.
+ iterations:           89
+ diff   1.1601878626699147E-006
+ diff/max_mag_ll:   9.3164601504020628E-007
+
+--> Step    30 of    32 simulation time:    0.0101
+Elapsed wall time:     8.785
+Assembled linear system in:     0.000 s.
+Solved linear system in:     0.000 s.
+ iterations:           89
+ diff   1.1601878626699147E-006
+ diff/max_mag_ll:   9.3164601504029627E-007
+Updated wake in:     0.017 s.
+Updated geometry in:     0.000 s.
+
+--> Step    31 of    32 simulation time:    0.0104
+Elapsed wall time:     8.808
+Assembled linear system in:     0.000 s.
+Solved linear system in:     0.000 s.
+ iterations:           94
+ diff   1.2231813202312480E-006
+ diff/max_mag_ll:   9.8320469370364694E-007
+Updated wake in:     0.017 s.
+Updated geometry in:     0.000 s.
+
+\\\\\\\\\\  Computations Finished \\\\\\\\\\
+Completed all computations in     8.884 s
+
+<<<<<< DUST end <<<<<<
+

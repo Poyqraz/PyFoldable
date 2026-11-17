@@ -117,6 +117,13 @@ when one exists, and `report_sha256`. It does not repeat radial elements.
 Radial elements and their query envelopes remain in the JSON record, so the
 report reference survives after the active session result is cleared.
 
+`genuine_comparison_status` is derived when the document is exported, not
+stored in the snapshot. Since WP9 it is `MATCHED_RETAINED_PROVIDER_CONTRACT`
+when all records share one admitted retained-provider build, polar grid and
+settings, otherwise `BLOCKED_no_shared_retained_provider_contract` (earlier
+exports wrote `BLOCKED_no_matching_real_provider_polar_bundle`). Re-exporting
+an archived snapshot therefore changes only that column.
+
 A preflight rejection has no executed solver request. A structurally valid
 foreign bundle keeps its declared profile, coordinate hash, and raw-byte hash,
 separate from the attempted draft. An uninspectable upload keeps only the

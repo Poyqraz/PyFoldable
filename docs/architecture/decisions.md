@@ -266,6 +266,48 @@ Evidence: `pyfoldable/application/cmm2_coupled_transient_service.py`,
 `tests/application/test_cmm2_coupled_transient_service.py`,
 [CMM-2 source-bound production binding](../cmm2_source_bound_production_binding.md).
 
+## ADR-010 — Optional external DUST–MBDyn–preCICE dynamic route
+
+**Status: proposed — implemented on `feature/dust-mbdyn-precice-coupling`, not
+independently reviewed.** (ADR-009 stays reserved for CMM-2 PR-C.)
+
+Decision: add an optional dynamic aero-mechanical route that runs pinned external
+solvers (DUST 3b1d2e61 with preCICE 2.5.0, MBDyn develop 55c86cc6 through DUST's
+socket adapter route) as separate processes under a detached supervisor, bound to the
+same `ResearchDesign` and retained-provider admission as the fully deployed BEM. The
+application never imports solver bindings; without the operator toolchain manifest the
+route reports "not installed" and nothing else changes. Structural model: prescribed
+shaft speed (constant or ramp), rigid proximal and distal segments, ideal in-plane revolute fold
+hinge with a declared spring/damper/penalty-stop law, optional release latch.
+Aerodynamics: one continuous DUST lifting line per blade, RBF-coupled to massless MBDyn
+nodes rigidly attached to both segments (per-segment lifting lines left a spurious vortex
+pair at the hinge at any non-zero fold; kept only as `split_rigid` for restoring earlier
+records), with C81 tables written from the admitted cells without
+modification; every accepted window is audited against the admitted envelope (DUST
+aborts outside α/Mach but extrapolates in Re). Coupling: preCICE serial-implicit with
+Aitken; unconverged, uncovered, failed, cancelled or timed-out runs keep only a labelled
+valid prefix and can never become completed results. Records are restored by
+regenerating case, table and decks and re-deriving channels from retained exchanged
+loads and node states, without solvers. Every accepted window is kept; the record size bound
+(24 MiB canonical JSON, bounded gzip transport) is surfaced before a run as a supported
+duration and never thins samples. DUST's rbf lifting-line branch evaluates the body velocity
+at the leading line (≈ −1.4 % thrust vs standalone at 5°, located, not corrected). Flow data
+(particles, panel wake, dust_post velocity planes) is a separate run-folder companion bound to
+the sealed record by raw-file sha256, extracted only on explicit request. Shaft acceleration is a
+prescribed speed history (constant or smooth ramp) until measured motor data exist; folds are bounded
+by a lifting-line geometry envelope enforced on every window. Wider polar coverage enters as a
+separate retained family captured under a declared protocol with its own pinned executable (no
+cells mixed across executables or families; failed declarations retained); the user selects the
+version, and the angle range stays attached flow.
+
+Not covered: spin-up from rest, fully folded start, torque-driven shaft, friction,
+joint loss, CFD fields, structural stress or strength, contact beyond the declared
+penalty law, physical validation. `physical_qualification` stays false.
+
+Evidence: [coupled dynamic analysis](../coupled_dynamic_analysis.md), `pyfoldable/coupled/`,
+`pyfoldable/application/coupled_*.py`, `tests/coupled/`, `tests/ui/test_coupled_ui.py`,
+[handoff](../agent/handoffs/coupled-dust-mbdyn-precice-20261112.md).
+
 ## Future records
 
 An unproven architectural interpretation must say **inferred — requires

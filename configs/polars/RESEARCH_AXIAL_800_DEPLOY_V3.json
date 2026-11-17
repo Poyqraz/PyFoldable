@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "scenario_id": "research_axial_800_deploy_xfoil_v3",
+  "template": "configs/designs/RESEARCH_AXIAL_800_V1.toml",
+  "root": {
+    "value": 100.0,
+    "unit": "mm",
+    "meaning": "Declared physical blade start of this study layout; independent of the 90 mm hub radius and 144 mm first aerodynamic station",
+    "source_identity": "RESEARCH_AXIAL_800_V1 dimensional declaration",
+    "declaration_kind": "study_assumption"
+  },
+  "length_order_policy": "either_order",
+  "profiles_in_order": ["NACA2412"],
+  "reynolds": [100000.0, 165000.0, 245000.0, 330000.0, 400000.0],
+  "mach": [0.07, 0.1, 0.31, 0.36],
+  "alpha_deg_in_order": [-6, -4, -2, 0, 2, 4, 6, 8],
+  "n_crit": 9.0,
+  "xtr_upper": 1.0,
+  "xtr_lower": 1.0,
+  "max_iterations": 160,
+  "timeout_s": 30.0,
+  "options": {"repanel": true},
+  "provider": {"name":"xfoil-subprocess","adapter_version":"2","backend_name":"XFOIL","backend_version":"6.99"},
+  "executable_sha256": "d1076680fd8ffa5e2eaa94f601ab495ae8ce20e6b4f1b80c5729505691b136a7",
+  "osmap_sha256": "2f6b3c63461d71da9b6cb9ca1340d77cff0cfbe767679d15b5b8556b45d948c4",
+  "preflight_archive_sha256": "0dba0ec6bf7660048f448be489816b5ef672777a8eaa900c182e922413c915b0",
+  "build_record_sha256": "da2c4a20efa8c40dff633b97b53ef84fb04bdc13e2dacfbd21d9a4c61dd22121",
+  "bem": {"annulus_count": 40, "bounds": "error", "radial_domain": "station_span"},
+  "budget": {
+    "max_provider_calls": 20,
+    "max_attempts_per_cell": 1,
+    "max_reference_bem_calls": 0,
+    "cell_order": "Mach ascending, then Reynolds ascending; cold process per cell, ALFA ascending",
+    "stop": "Stop after any incomplete, timeout, execution, provenance or persistence failure. No retry, fallback, cell substitution or re-gridding; a failed cell is retained and ends this protocol version."
+  },
+  "deployment_targets": {
+    "purpose": "Section states of the coupled deployment cases this grid is sized for (no-induction estimates from pyfoldable.application.coupled_analysis, 14 m/s, demonstration-assumption mechanics)",
+    "cases": [
+      "fold -22.5 deg released at constant 2400 RPM: swing tip Mach <= 0.354, Re <= 3.59e5 (energy estimate)",
+      "fold -20 deg released at 1600 RPM during a 1600->2400 RPM ramp: alpha >= -3.98 deg, root Re >= 1.32e5, root Mach >= 0.082"
+    ],
+    "alpha_policy": "Same attached-flow angle grid as research_axial_800_attached_xfoil_v1; no post-stall extension"
+  },
+  "supersedes": {
+    "failed_declarations": [
+      {"protocol": "configs/polars/RESEARCH_AXIAL_800_DEPLOY_V1.json", "outcome": "Stopped at cell 4 (Mach 0.05, Re 330k): alpha 6 deg not converged within 160 iterations; alpha 4 and 8 deg converged."},
+      {"protocol": "configs/polars/RESEARCH_AXIAL_800_DEPLOY_V2.json", "outcome": "Same grid with 300 iterations: stopped at the same point; the iteration cap was not the cause."}
+    ],
+    "diagnostic": "A non-retained convergence map of this executable (reports/coupled_deploy_polars_20261112/convergence_map.json) found isolated single-angle non-convergence of the cold ascending sweep at Mach 0.05/Re 330k, Mach 0.10/Re 130k, Mach 0.20/Re 165k and Mach 0.20/Re 400k (2-deg sequence, 160 iterations); 1-deg steps fail at other points. XFOIL is deterministic for a fixed executable and input.",
+    "change": "Grid levels chosen to avoid those non-converging states while covering the declared targets: Mach 0.05/0.20 and Re 130k removed, Mach 0.07 added; 160 iterations as in research_axial_800_attached_xfoil_v1. Selection is by solver convergence only, not by coefficient values; failed records stay retained."
+  },
+  "relation_to_v1": "Separate family. The v1 Re 165k/245k/330k x Mach 0.10/0.31 cells are repeated with this build so the two executables can be compared; no v1 cell is reused or mixed into this table.",
+  "scope": "Attached-flow NACA2412 section grid widened in Reynolds and Mach for coupled deployment cases of the 800 mm research layout. Unqualified numerical evidence; more XFOIL coverage does not establish validity in separated flow.",
+  "physical_qualification": false
+}

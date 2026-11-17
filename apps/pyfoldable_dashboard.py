@@ -186,11 +186,6 @@ def _render_profile_comparison(
         "eski kaydın profilini değiştirmez. Şaft gücü elektrik gücü değildir. "
         "Hover itki verimi sıralama ölçütü olarak kullanılmaz."
     )
-    st.warning(
-        "Gerçek provider karşılaştırması BLOCKED. Depoda katalog profilleri için "
-        "eşleşmiş gerçek polar demeti yoktur. Bu tablo yazılım akışını ve yüklenen "
-        "tabloları kaydeder; physical_qualification=false."
-    )
     result = st.session_state.get(POLAR_RESULT_KEY)
     failure = st.session_state.get(POLAR_FAILURE_KEY)
     if isinstance(result, DesignAnalysisArtifact) and st.button("Aktif sonucu karşılaştırmaya ekle"):
@@ -212,6 +207,15 @@ def _render_profile_comparison(
         st.info("Karşılaştırma kaydı yok. Profil seçmek veya sayfayı yenilemek BEM çalıştırmaz.")
         return
     document = comparison_document(records, evidence_class="caller_supplied_unqualified")
+    if document["genuine_comparison_status"] == "MATCHED_RETAINED_PROVIDER_CONTRACT":
+        st.caption("Kayıtlar aynı saklanan sağlayıcı derlemesini, polar ızgarasını ve ayarlarını paylaşıyor. "
+                   "Yalnız sayısal karşılaştırmadır; physical_qualification=false.")
+    else:
+        st.warning(
+            "Gerçek provider karşılaştırması BLOCKED: kayıtlar aynı saklanan sağlayıcı derlemesini, polar "
+            "ızgarasını ve ayarlarını paylaşmıyor. Bu tablo yazılım akışını ve yüklenen tabloları kaydeder; "
+            "physical_qualification=false."
+        )
     if document["mismatch_reasons"] == ["fewer_than_two_records"]:
         st.caption(
             "Tek kayıt kontrollü bir karşılaştırma değildir. "
@@ -228,13 +232,9 @@ def _render_profile_comparison(
             "Bu kayıtlar tekrarlı çalışma kanıtı olarak durabilir. Aynı koordinat "
             "kimliğinin tekrarı, eksik koordinat veya başarısız kayıt A+B profil "
             "karşılaştırması değildir: " + ", ".join(document["profile_reasons"])
-            + ". Gerçek provider kabulü BLOCKED."
         )
     else:
-        st.caption(
-            "Yazılım politikası uyumlu ve koordinat kimlikleri farklı. "
-            "Gerçek provider kabulü yine BLOCKED."
-        )
+        st.caption("Yazılım politikası uyumlu ve koordinat kimlikleri farklı.")
     _render_markdown_table([
         {
             "Profil": row["airfoil_id"],

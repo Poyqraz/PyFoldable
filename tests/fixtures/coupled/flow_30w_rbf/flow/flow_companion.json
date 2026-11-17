@@ -1,0 +1,135 @@
+{
+ "artifact_class": "pyfoldable_coupled_flow_companion",
+ "auxiliary_sources": [
+  {
+   "file": "dust/Output/run_geo.h5",
+   "sha256": "474be8ff49eea710db6caf6456f4f675636a250dd90ec80ab0a1137db40de7f9"
+  }
+ ],
+ "computed": [
+  "vortex-particle positions, vorticity vectors and core radii (DUST)",
+  "implicit panel-wake rows (DUST)",
+  "induced plus free-stream velocity on a meridional plane (dust_post, DUST kernels)"
+ ],
+ "dust_post": {
+  "elapsed_s": 0.39,
+  "executable": "dust_post",
+  "input": "basename = Postpro/ff\ndata_basename = Output/run\nanalysis = {\n  type = flow_field\n  name = ff0\n  start_res = 1\n  end_res = 28\n  step_res = 3\n  format = vtk\n  average = F\n  variable = Velocity\n  n_xyz = (/ 21, 1, 21 /)\n  min_xyz = (/ -0.5044, 0.0, -0.776 /)\n  max_xyz = (/ 0.5044, 0.0, 0.194 /)\n}\nanalysis = {\n  type = flow_field\n  name = ff1\n  start_res = 29\n  end_res = 30\n  step_res = 1\n  format = vtk\n  average = F\n  variable = Velocity\n  n_xyz = (/ 21, 1, 21 /)\n  min_xyz = (/ -0.5044, 0.0, -0.776 /)\n  max_xyz = (/ 0.5044, 0.0, 0.194 /)\n}\n",
+  "sha256": "0b5eaff2c1720d17421a90c35da1475596f4a0553c71c7b87a611300e8e2ddce"
+ },
+ "extractor_sha256": "ea7c3069d39259e9184e400ce94ba3f2307c4ddf2bfb15f211b43fd3a19879e9",
+ "npz": {
+  "bytes": 191957,
+  "file": "flow_companion.npz",
+  "sha256": "82912bb4d1a3ea4ad4a09092488aac3a7113dcaa85522ba07ec0572180ed21a9"
+ },
+ "particles_total": 6144,
+ "plane": {
+  "max_xyz": [
+   0.5044,
+   0.0,
+   0.194
+  ],
+  "min_xyz": [
+   -0.5044,
+   0.0,
+   -0.776
+  ],
+  "n_xyz": [
+   21,
+   1,
+   21
+  ]
+ },
+ "result_sha256": "777765a414044893eace9b3c2d99ccb315d7ee86870c554e8828e1469342aa56",
+ "run_id": "20261112T074237_2a6ad5bd14",
+ "schema_version": 1,
+ "sources": [
+  {
+   "bytes": 61272,
+   "file": "dust/Output/run_res_0001.h5",
+   "sha256": "fa74a98e866711cc9cdcf813851b5212866847e24b6a4ca3968713c86a364f8a",
+   "window": 1
+  },
+  {
+   "bytes": 70488,
+   "file": "dust/Output/run_res_0004.h5",
+   "sha256": "fd949b9c22bc9142c77843fa7bb24f75a8fd82143f0dfddc60551ca46d1b4b88",
+   "window": 4
+  },
+  {
+   "bytes": 79704,
+   "file": "dust/Output/run_res_0007.h5",
+   "sha256": "3683203947037e2110fb9a0c17d8dda9a7826a26cb00de58af18fc1dfd1ebff5",
+   "window": 7
+  },
+  {
+   "bytes": 88920,
+   "file": "dust/Output/run_res_0010.h5",
+   "sha256": "01521fe5f126f8dcba018f5dfe12b1092ab7dfb51656ebd0303096ecf013e722",
+   "window": 10
+  },
+  {
+   "bytes": 98136,
+   "file": "dust/Output/run_res_0013.h5",
+   "sha256": "8a666cfe080b16fbe614e2442d29744215272f5d2d42795198da0c4b3c9beb55",
+   "window": 13
+  },
+  {
+   "bytes": 107352,
+   "file": "dust/Output/run_res_0016.h5",
+   "sha256": "656fc7a30940ab342cf87a7a79b49f57f443999a5f09663466ec74ad1ef7ff38",
+   "window": 16
+  },
+  {
+   "bytes": 116568,
+   "file": "dust/Output/run_res_0019.h5",
+   "sha256": "64452c29386c6dd882990328b4a6bef2b91125d7bb0bc730af0a57105db859f8",
+   "window": 19
+  },
+  {
+   "bytes": 125784,
+   "file": "dust/Output/run_res_0022.h5",
+   "sha256": "778d3a428c3ca08b8de94856e4063916c86b821868601591dc3440b9aae93039",
+   "window": 22
+  },
+  {
+   "bytes": 135000,
+   "file": "dust/Output/run_res_0025.h5",
+   "sha256": "3efbbf70327eefd86042bb20c89927f54da41654ce2f708e66ff8d34a39cfae8",
+   "window": 25
+  },
+  {
+   "bytes": 144216,
+   "file": "dust/Output/run_res_0028.h5",
+   "sha256": "aaa1bfde14b45a03ca05afbb85ea006a73f9009f9ed6d1974c76ececf2c7cf7e",
+   "window": 28
+  },
+  {
+   "bytes": 147288,
+   "file": "dust/Output/run_res_0029.h5",
+   "sha256": "c229b453da89eec4aafdd9fd0b21a342c40acba29442e93acf982616458f9794",
+   "window": 29
+  },
+  {
+   "bytes": 150360,
+   "file": "dust/Output/run_res_0030.h5",
+   "sha256": "f3b7aeacd5adfba853c326ce61ad730906540ec558990e28e6a1ed0ded18687d",
+   "window": 30
+  }
+ ],
+ "windows": [
+  1,
+  4,
+  7,
+  10,
+  13,
+  16,
+  19,
+  22,
+  25,
+  28,
+  29,
+  30
+ ]
+}

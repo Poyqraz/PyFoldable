@@ -464,6 +464,10 @@ def comparison_document(
     for record in records:
         rows = add_record(rows, record)
     assessment = assess_comparison(rows)
+    from .research_design import _provider_contract  # research_design imports this module
+    contracts = [_provider_contract(row) for row in rows]
+    matched = (assessment["software_controlled_comparison"] and contracts[0] is not None
+               and all(c == contracts[0] for c in contracts))
     return {
         "schema_version": 2,
         "artifact_class": "catalog_profile_bem_comparison",
@@ -472,11 +476,13 @@ def comparison_document(
         "ranking_metric": None,
         "evidence_class": _evidence(evidence_class),
         "evidence_note": "Inert or caller-supplied coefficients exercise the software workflow only.",
-        "genuine_comparison_status": "BLOCKED_no_matching_real_provider_polar_bundle",
+        "genuine_comparison_status": "MATCHED_RETAINED_PROVIDER_CONTRACT" if matched
+        else "BLOCKED_no_shared_retained_provider_contract",
         "genuine_comparison_note": (
-            "This repository does not contain matching real-provider polar bundles "
-            "for a controlled catalog comparison. Inert or caller-supplied tables "
-            "exercise the software workflow only."
+            "The records share one admitted retained-provider build, polar grid and settings; a numerical "
+            "comparison only, without physical qualification." if matched else
+            "These records do not share one admitted retained-provider build, polar grid and settings. "
+            "Inert or caller-supplied tables exercise the software workflow only."
         ),
         "settings_compatible": assessment["settings_compatible"],
         "software_controlled_comparison": assessment["software_controlled_comparison"],

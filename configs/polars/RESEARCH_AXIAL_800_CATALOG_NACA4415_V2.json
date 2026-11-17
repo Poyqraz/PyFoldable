@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "scenario_id": "research_axial_800_catalog_xfoil_v2_naca4415",
+  "template": "configs/designs/RESEARCH_AXIAL_800_V1.toml",
+  "root": {
+    "value": 100.0,
+    "unit": "mm",
+    "meaning": "Declared physical blade start of this study layout; independent of the 90 mm hub radius and 144 mm first aerodynamic station",
+    "source_identity": "RESEARCH_AXIAL_800_V1 dimensional declaration",
+    "declaration_kind": "study_assumption"
+  },
+  "length_order_policy": "either_order",
+  "profiles_in_order": [
+    "NACA4415"
+  ],
+  "reynolds": [
+    165000.0,
+    245000.0,
+    330000.0,
+    400000.0
+  ],
+  "mach": [
+    0.07,
+    0.1,
+    0.31
+  ],
+  "alpha_deg_in_order": [
+    -8,
+    -6,
+    -4,
+    -2,
+    0,
+    2,
+    4,
+    6
+  ],
+  "n_crit": 9.0,
+  "xtr_upper": 1.0,
+  "xtr_lower": 1.0,
+  "max_iterations": 160,
+  "timeout_s": 30.0,
+  "options": {
+    "repanel": true
+  },
+  "provider": {
+    "name": "xfoil-subprocess",
+    "adapter_version": "2",
+    "backend_name": "XFOIL",
+    "backend_version": "6.99"
+  },
+  "executable_sha256": "d1076680fd8ffa5e2eaa94f601ab495ae8ce20e6b4f1b80c5729505691b136a7",
+  "osmap_sha256": "2f6b3c63461d71da9b6cb9ca1340d77cff0cfbe767679d15b5b8556b45d948c4",
+  "preflight_archive_sha256": "0dba0ec6bf7660048f448be489816b5ef672777a8eaa900c182e922413c915b0",
+  "build_record_sha256": "da2c4a20efa8c40dff633b97b53ef84fb04bdc13e2dacfbd21d9a4c61dd22121",
+  "bem": {
+    "annulus_count": 40,
+    "bounds": "error",
+    "radial_domain": "station_span"
+  },
+  "budget": {
+    "max_provider_calls": 12,
+    "max_attempts_per_cell": 1,
+    "max_reference_bem_calls": 0,
+    "cell_order": "Mach ascending, then Reynolds ascending; cold process per cell, ALFA ascending",
+    "stop": "Stop after any incomplete, timeout, execution, provenance or persistence failure. No retry, fallback, cell substitution or re-gridding; a failed cell is retained and ends this protocol version."
+  },
+  "relation_to_v1": "Separate family per profile; same executable, settings and angle sequence as deploy-v3.",
+  "scope": "Attached-flow NACA4415 section grid for the 800 mm research layout. Unqualified numerical evidence; more XFOIL coverage does not establish validity in separated flow.",
+  "physical_qualification": false,
+  "install_version": "2026-11-16-catalog-v2-naca4415",
+  "grid_selection": "Levels chosen from the convergence pre-screen of this executable with the shifted sequence (reports/catalog_polars_20261116/convergence_prescreen_high_camber_shifted.json).",
+  "lift_sign_check": {
+    "negative_deg": [
+      -8,
+      -6
+    ],
+    "positive_deg": [
+      2,
+      4,
+      6
+    ]
+  },
+  "supersedes": {
+    "failed_declarations": [
+      {
+        "protocol": "configs/polars/RESEARCH_AXIAL_800_CATALOG_NACA4415_V1.json",
+        "outcome": "stopped at cell index 1: CL(-4 deg) >= 0 (zero-lift angle near -4 deg) violates the retained lift-sign rule"
+      }
+    ]
+  }
+}

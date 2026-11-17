@@ -21,12 +21,15 @@ Evidence precedence: code → tests → schemas → CI → runtime configuration
 ## Repository map and boundaries
 
 - `pyfoldable/core/`: SI design schema, polars/BEM, motor coupling, evidence contracts.
-- `pyfoldable/application/`: source-bound requests, budgets, reports and UI services.
+- `pyfoldable/application/`: source-bound requests, budgets, reports and UI services;
+  `figure_style.py` (shared dark-safe figure style) and the on-request *Görseller*
+  gallery (`gallery_ui.py`, `gallery_figures.py`).
 - `pyfoldable/geometry/`: bounded surface/solid distance and continuous clearance.
 - `pyfoldable/dynamics/`: legacy dynamics and the separate PY-05 transient workflow.
 - `pyfoldable/visualization/`: schematics and 2.5D previews; not CAD/CFD results.
 - `pythrust/`: bundled legacy propeller/propulsion compatibility slice.
-- `apps/pyfoldable_dashboard.py`: Streamlit presentation and session state.
+- `apps/pyfoldable_dashboard.py`, `apps/pyfoldable_research.py`: Streamlit
+  presentation and session state; the research app holds the *Görseller* page.
 - `configs/`, `data/`, `tests/fixtures/`, `reports/`: distinct configuration,
   source, test and archived evidence roles. Examples also use ignored `outputs/`.
 

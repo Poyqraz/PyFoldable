@@ -1,0 +1,1344 @@
+{
+ "runs": {
+  "-5 deg, 2400 RPM": {
+   "run_id": "20261112T071200_20d4a1092d",
+   "status": "completed",
+   "contact_events": [
+    {
+     "blade": 0,
+     "release_window": 289,
+     "first_contact_window": 309,
+     "contact_windows": 9,
+     "release_to_contact_s": 0.0034722222222222238,
+     "release_fold_deg": -5.000000000000006,
+     "rpm_at_contact": 2399.9999999999995,
+     "impact_rate_rad_s": 38.791646160045616,
+     "rebound_rate_rad_s": -19.94056752193569,
+     "apparent_restitution": 0.514042828697328,
+     "declared_restitution": 0.5,
+     "impact_energy_j": 0.09085180563779822,
+     "centrifugal_energy_bound_j": 0.10708201790372181,
+     "energy_ratio": 0.8484319535282172,
+     "hinge_angular_momentum_change_n_m_s": -0.0070919148020992424,
+     "hinge_impulse_n_m_s": -0.007083874727300346,
+     "impulse_balance_relative_residual": 0.0011336959091099484,
+     "peak_stop_torque_nm": 7.786847527527947,
+     "penalty_peak_estimate_nm": 9.531621354092819
+    },
+    {
+     "blade": 1,
+     "release_window": 289,
+     "first_contact_window": 309,
+     "contact_windows": 9,
+     "release_to_contact_s": 0.0034722222222222238,
+     "release_fold_deg": -5.000000000000008,
+     "rpm_at_contact": 2399.9999999999995,
+     "impact_rate_rad_s": 38.791785448614206,
+     "rebound_rate_rad_s": -19.940627530464013,
+     "apparent_restitution": 0.514042529877324,
+     "declared_restitution": 0.5,
+     "impact_energy_j": 0.09085245807933824,
+     "centrifugal_energy_bound_j": 0.10708201790372181,
+     "energy_ratio": 0.8484380464423478,
+     "hinge_angular_momentum_change_n_m_s": -0.007091938867223695,
+     "hinge_impulse_n_m_s": -0.0070838985157676,
+     "impulse_balance_relative_residual": 0.0011337310722254815,
+     "peak_stop_torque_nm": 7.786938742989854,
+     "penalty_peak_estimate_nm": 9.531655579139347
+    }
+   ],
+   "shaft_exchange": {
+    "from_window": 308,
+    "to_window": 318,
+    "exchange_duration_s": 0.0017361111111111112,
+    "angular_impulse_n_m_s": -0.06643862316443556,
+    "distal_momentum_change_n_m_s": -0.06651628256383835,
+    "swing_impulse_n_m_s": 0.04556638324037708,
+    "swing_duration_s": 0.0034722222222222225,
+    "momentum_balance_relative_residual": 0.0011675246482430763,
+    "speed_change_rpm": 0.0,
+    "equivalent_mean_torque_nm": -38.26864694271488,
+    "peak_drive_torque_nm": 75.16986341359359,
+    "time_step_s": 0.00017361111111111112
+   },
+   "pointwise_contact_residual": 0.1876556537653557,
+   "outputs": [
+    {
+     "key": "thrust_last_rev_n",
+     "label": "Son devir itkisi (145 pencere, 1.01 devir)",
+     "value": 36.76196842657643,
+     "unit": "N",
+     "class": "comparative",
+     "governed_by": "Polar tablosu, DUST kald\u0131rma \u00e7izgisi (rbf yanl\u0131l\u0131\u011f\u0131 \u2248 \u2212%1,4; BEM\u2019e g\u00f6re y\u00f6ntem fark\u0131), k\u0131sa pencere"
+    },
+    {
+     "key": "hinge_pin_centrifugal_load_n",
+     "label": "Mente\u015fe pimi merkezka\u00e7 y\u00fck\u00fc (son pencere)",
+     "value": 615.8595482619247,
+     "unit": "N",
+     "class": "preliminary",
+     "governed_by": "m \u03a9\u00b2 r_cg (kanat 1, son penceredeki a\u00e7\u0131da): k\u00fctle ve k\u00fctle merkezi belirler; aerodinamik y\u00fck ve stop darbe tepkisi hari\u00e7; beyan: demonstration_assumption"
+    },
+    {
+     "key": "thrust_latched_rev_n",
+     "label": "Katl\u0131 (kilitli) devir itkisi (145 pencere, 1.01 devir)",
+     "value": 36.37211447873604,
+     "unit": "N",
+     "class": "comparative",
+     "governed_by": "Kesit durumlar\u0131 ve polar tablosu; katl\u0131 d\u0131\u015f par\u00e7an\u0131n 2B polar temsili (s\u00fcp\u00fcrme a\u00e7\u0131s\u0131)"
+    },
+    {
+     "key": "release_to_contact_s",
+     "label": "Serbest b\u0131rakmadan stop temas\u0131na s\u00fcre (kanat 1)",
+     "value": 0.0034722222222222238,
+     "unit": "s",
+     "class": "preliminary",
+     "governed_by": "m\u00b7c_g, J_h, \u03a9, r_h, ba\u015flang\u0131\u00e7 katlanmas\u0131; aerodinamik moment k\u00fc\u00e7\u00fck katk\u0131"
+    },
+    {
+     "key": "impact_rate_rad_s",
+     "label": "Temas \u00f6ncesi a\u00e7\u0131lma h\u0131z\u0131 \u03b8\u0307 (kanat 1)",
+     "value": 38.791646160045616,
+     "unit": "rad/s",
+     "class": "preliminary",
+     "governed_by": "\u03a9 \u221a(2 m r_h c_g (1 \u2212 cos \u03b8\u2080) / J_h) ile \u00f6l\u00e7eklenir; aerodinamik ve s\u00f6n\u00fcm k\u00fc\u00e7\u00fck katk\u0131"
+    },
+    {
+     "key": "incoming_hinge_momentum_n_m_s",
+     "label": "Temas \u00f6ncesi mente\u015fe a\u00e7\u0131sal momentumu J_h\u03b8\u0307",
+     "value": 0.004684091273825508,
+     "unit": "N\u00b7m\u00b7s",
+     "class": "preliminary",
+     "governed_by": "J_h ve \u00e7arpma h\u0131z\u0131; geri sekme katsay\u0131s\u0131ndan ba\u011f\u0131ms\u0131z"
+    },
+    {
+     "key": "impact_energy_j",
+     "label": "Stop \u00e7arpma enerjisi \u00bdJ_h\u03b8\u0307\u00b2",
+     "value": 0.09085180563779822,
+     "unit": "J",
+     "class": "preliminary",
+     "governed_by": "Merkezka\u00e7 potansiyeli m \u03a9\u00b2 r_h c_g (1 \u2212 cos \u03b8\u2080): J_h\u2019den ba\u011f\u0131ms\u0131z; statik moment m\u00b7c_g belirler"
+    },
+    {
+     "key": "energy_ratio",
+     "label": "\u00c7arpma enerjisi / merkezka\u00e7 s\u0131n\u0131r\u0131",
+     "value": 0.8484319535282172,
+     "unit": "-",
+     "class": "preliminary",
+     "governed_by": "Aerodinamik, s\u00f6n\u00fcm ve rampa katk\u0131s\u0131 (1\u2019den fark)"
+    },
+    {
+     "key": "hinge_angular_momentum_change_n_m_s",
+     "label": "Temasta mente\u015fe a\u00e7\u0131sal momentum de\u011fi\u015fimi",
+     "value": -0.0070919148020992424,
+     "unit": "N\u00b7m\u00b7s",
+     "class": "illustrative",
+     "governed_by": "(1 + e)\u00b7J_h\u03b8\u0307: varsay\u0131lan geri sekme katsay\u0131s\u0131 e \u00e7arpan\u0131 belirler"
+    },
+    {
+     "key": "peak_stop_torque_nm",
+     "label": "Tepe stop momenti",
+     "value": 7.786847527527947,
+     "unit": "N\u00b7m",
+     "class": "illustrative",
+     "governed_by": "Varsay\u0131lan stop rijitli\u011fi ve s\u00f6n\u00fcm\u00fc (\u2248 |\u03b8\u0307|\u221a(kJ_h) = 9.5 N\u00b7m s\u00f6n\u00fcms\u00fcz)"
+    },
+    {
+     "key": "rebound_rate_rad_s",
+     "label": "Geri sekme h\u0131z\u0131",
+     "value": -19.94056752193569,
+     "unit": "rad/s",
+     "class": "illustrative",
+     "governed_by": "Varsay\u0131lan geri sekme katsay\u0131s\u0131 e = 0.5"
+    },
+    {
+     "key": "impulse_balance_relative_residual",
+     "label": "Temas boyunca itme dengesi kal\u0131nt\u0131s\u0131",
+     "value": 0.0011336959091099484,
+     "unit": "-",
+     "class": "numerical_check",
+     "governed_by": "J_h\u0394\u03b8\u0307 = \u222b\u03a3M dt (temas aral\u0131\u011f\u0131); noktasal kal\u0131nt\u0131dan farkl\u0131 olarak s\u0131\u00e7ramay\u0131 t\u00fcrevlemez"
+    },
+    {
+     "key": "swing_impulse_n_m_s",
+     "label": "A\u00e7\u0131lma sal\u0131n\u0131m\u0131nda mile aktar\u0131lan a\u00e7\u0131sal itme",
+     "value": 0.04556638324037708,
+     "unit": "N\u00b7m\u00b7s",
+     "class": "preliminary",
+     "governed_by": "D\u0131\u015f par\u00e7alar\u0131n d\u0131\u015fa a\u00e7\u0131lmas\u0131 (m, c_g, r_h, \u03a9, \u03b8\u2080); geri sekmeden ba\u011f\u0131ms\u0131z; temastaki itmeyle z\u0131t i\u015faretli"
+    },
+    {
+     "key": "angular_impulse_n_m_s",
+     "label": "Temas boyunca mile aktar\u0131lan a\u00e7\u0131sal itme",
+     "value": -0.06643862316443556,
+     "unit": "N\u00b7m\u00b7s",
+     "class": "illustrative",
+     "governed_by": "\u2248 (1 + e)\u00b7\u03a3(J_h + m r_h c_g)\u03b8\u0307: varsay\u0131lan geri sekme katsay\u0131s\u0131 \u00e7arpan\u0131 belirler; ger\u00e7ek tahrikte devir d\u00fc\u015f\u00fc\u015f\u00fc/burulma y\u00fck\u00fc girdisi"
+    },
+    {
+     "key": "peak_drive_torque_nm",
+     "label": "Tepe tahrik torku",
+     "value": 75.16986341359359,
+     "unit": "N\u00b7m",
+     "class": "illustrative",
+     "governed_by": "Sonsuz rijit \u00f6ng\u00f6r\u00fclen devir ve varsay\u0131lan stop (temas s\u00fcresi); zaman ad\u0131m\u0131na ba\u011f\u0131ml\u0131l\u0131\u011f\u0131 s\u0131nanmad\u0131; mil y\u00fck\u00fc tahmini de\u011fildir"
+    },
+    {
+     "key": "momentum_balance_relative_residual",
+     "label": "Mil a\u00e7\u0131sal momentum dengesi kal\u0131nt\u0131s\u0131",
+     "value": 0.0011675246482430763,
+     "unit": "-",
+     "class": "numerical_check",
+     "governed_by": "Net tahrik itmesi = d\u0131\u015f par\u00e7alar\u0131n mil etraf\u0131ndaki momentum de\u011fi\u015fimi; g\u00f6bek ataleti dahil de\u011fil (temas boyunca devir de\u011fi\u015fimi 0.0 RPM)"
+    },
+    {
+     "key": "pointwise_contact_residual",
+     "label": "Noktasal temas faz\u0131 kal\u0131nt\u0131s\u0131 (tan\u0131)",
+     "value": 0.1876556537653557,
+     "unit": "-",
+     "class": "numerical_check",
+     "governed_by": "Merkezi fark, t\u00fcrevlenemeyen penalt\u0131 yasas\u0131n\u0131n s\u0131\u00e7ramas\u0131n\u0131 kapsar; temas \u00e7\u00f6z\u00fcn\u00fcrl\u00fc\u011f\u00fcn\u00fc itme dengesi g\u00f6sterir"
+    }
+   ]
+  },
+  "-20 deg, 2400 RPM (stopped, retained table)": {
+   "run_id": "20261112T191618_02b58b9c61",
+   "status": "failed_solver",
+   "contact_events": [],
+   "shaft_exchange": null,
+   "pointwise_contact_residual": 0.0,
+   "outputs": [
+    {
+     "key": "thrust_last_rev_n",
+     "label": "Son devir itkisi (145 pencere, 1.01 devir)",
+     "value": 30.99464833241642,
+     "unit": "N",
+     "class": "comparative",
+     "governed_by": "Polar tablosu, DUST kald\u0131rma \u00e7izgisi (rbf yanl\u0131l\u0131\u011f\u0131 \u2248 \u2212%1,4; BEM\u2019e g\u00f6re y\u00f6ntem fark\u0131), k\u0131sa pencere"
+    },
+    {
+     "key": "hinge_pin_centrifugal_load_n",
+     "label": "Mente\u015fe pimi merkezka\u00e7 y\u00fck\u00fc (son pencere)",
+     "value": 612.3727725702333,
+     "unit": "N",
+     "class": "preliminary",
+     "governed_by": "m \u03a9\u00b2 r_cg (kanat 1, son penceredeki a\u00e7\u0131da): k\u00fctle ve k\u00fctle merkezi belirler; aerodinamik y\u00fck ve stop darbe tepkisi hari\u00e7; beyan: demonstration_assumption"
+    },
+    {
+     "key": "thrust_latched_rev_n",
+     "label": "Katl\u0131 (kilitli) devir itkisi (145 pencere, 1.01 devir)",
+     "value": 30.746450979502924,
+     "unit": "N",
+     "class": "comparative",
+     "governed_by": "Kesit durumlar\u0131 ve polar tablosu; katl\u0131 d\u0131\u015f par\u00e7an\u0131n 2B polar temsili (s\u00fcp\u00fcrme a\u00e7\u0131s\u0131)"
+    },
+    {
+     "key": "pointwise_contact_residual",
+     "label": "Noktasal temas faz\u0131 kal\u0131nt\u0131s\u0131 (tan\u0131)",
+     "value": 0.0,
+     "unit": "-",
+     "class": "numerical_check",
+     "governed_by": "Merkezi fark, t\u00fcrevlenemeyen penalt\u0131 yasas\u0131n\u0131n s\u0131\u00e7ramas\u0131n\u0131 kapsar; temas \u00e7\u00f6z\u00fcn\u00fcrl\u00fc\u011f\u00fcn\u00fc itme dengesi g\u00f6sterir"
+    }
+   ]
+  },
+  "-15 deg, ramp 2200->2400": {
+   "run_id": "20261112T203052_6971a5d10d",
+   "status": "completed",
+   "contact_events": [
+    {
+     "blade": 0,
+     "release_window": 289,
+     "first_contact_window": 310,
+     "contact_windows": 9,
+     "release_to_contact_s": 0.0036458333333333343,
+     "release_fold_deg": -14.99999999999992,
+     "rpm_at_contact": 2202.6123020722607,
+     "impact_rate_rad_s": 111.228557919775,
+     "rebound_rate_rad_s": -57.55713795569167,
+     "apparent_restitution": 0.5174672676886226,
+     "declared_restitution": 0.5,
+     "impact_energy_j": 0.7469469478511068,
+     "centrifugal_energy_bound_j": 0.8076187599365495,
+     "energy_ratio": 0.9248756776152532,
+     "hinge_angular_momentum_change_n_m_s": -0.0203808727769626,
+     "hinge_impulse_n_m_s": -0.020366153937598535,
+     "impulse_balance_relative_residual": 0.0007221888642915277,
+     "peak_stop_torque_nm": 21.74517324471727,
+     "penalty_peak_estimate_nm": 27.33033018188962
+    },
+    {
+     "blade": 1,
+     "release_window": 289,
+     "first_contact_window": 310,
+     "contact_windows": 9,
+     "release_to_contact_s": 0.0036458333333333343,
+     "release_fold_deg": -14.999999999999986,
+     "rpm_at_contact": 2202.6123020722607,
+     "impact_rate_rad_s": 111.2286799795072,
+     "rebound_rate_rad_s": -57.557198072592,
+     "apparent_restitution": 0.5174672403124477,
+     "declared_restitution": 0.5,
+     "impact_energy_j": 0.7469485872177615,
+     "centrifugal_energy_bound_j": 0.8076187599365574,
+     "energy_ratio": 0.9248777074921317,
+     "hinge_angular_momentum_change_n_m_s": -0.020380894774790978,
+     "hinge_impulse_n_m_s": -0.02036617570389424,
+     "impulse_balance_relative_residual": 0.0007221994450874479,
+     "peak_stop_torque_nm": 21.74525140697208,
+     "penalty_peak_estimate_nm": 27.33036017358281
+    }
+   ],
+   "shaft_exchange": {
+    "from_window": 309,
+    "to_window": 319,
+    "exchange_duration_s": 0.0017361111111111112,
+    "angular_impulse_n_m_s": -0.1878930214561003,
+    "distal_momentum_change_n_m_s": -0.18909393444075095,
+    "swing_impulse_n_m_s": 0.14298364105098424,
+    "swing_duration_s": 0.0036458333333333334,
+    "momentum_balance_relative_residual": 0.006350880519792392,
+    "speed_change_rpm": 3.0509478487556407,
+    "equivalent_mean_torque_nm": -108.22638035871375,
+    "peak_drive_torque_nm": 210.3152061693532,
+    "time_step_s": 0.00017361111111111112
+   },
+   "pointwise_contact_residual": 0.17443930701379068,
+   "outputs": [
+    {
+     "key": "thrust_last_rev_n",
+     "label": "Son devir itkisi (145 pencere, 1.01 devir)",
+     "value": 36.933618088987295,
+     "unit": "N",
+     "class": "comparative",
+     "governed_by": "Polar tablosu, DUST kald\u0131rma \u00e7izgisi (rbf yanl\u0131l\u0131\u011f\u0131 \u2248 \u2212%1,4; BEM\u2019e g\u00f6re y\u00f6ntem fark\u0131), k\u0131sa pencere"
+    },
+    {
+     "key": "hinge_pin_centrifugal_load_n",
+     "label": "Mente\u015fe pimi merkezka\u00e7 y\u00fck\u00fc (son pencere)",
+     "value": 615.863310839158,
+     "unit": "N",
+     "class": "preliminary",
+     "governed_by": "m \u03a9\u00b2 r_cg (kanat 1, son penceredeki a\u00e7\u0131da): k\u00fctle ve k\u00fctle merkezi belirler; aerodinamik y\u00fck ve stop darbe tepkisi hari\u00e7; beyan: demonstration_assumption"
+    },
+    {
+     "key": "thrust_latched_rev_n",
+     "label": "Katl\u0131 (kilitli) devir itkisi (158 pencere, 1.01 devir)",
+     "value": 23.96838170858186,
+     "unit": "N",
+     "class": "comparative",
+     "governed_by": "Kesit durumlar\u0131 ve polar tablosu; katl\u0131 d\u0131\u015f par\u00e7an\u0131n 2B polar temsili (s\u00fcp\u00fcrme a\u00e7\u0131s\u0131)"
+    },
+    {
+     "key": "release_to_contact_s",
+     "label": "Serbest b\u0131rakmadan stop temas\u0131na s\u00fcre (kanat 1)",
+     "value": 0.0036458333333333343,
+     "unit": "s",
+     "class": "preliminary",
+     "governed_by": "m\u00b7c_g, J_h, \u03a9, r_h, ba\u015flang\u0131\u00e7 katlanmas\u0131; aerodinamik moment k\u00fc\u00e7\u00fck katk\u0131"
+    },
+    {
+     "key": "impact_rate_rad_s",
+     "label": "Temas \u00f6ncesi a\u00e7\u0131lma h\u0131z\u0131 \u03b8\u0307 (kanat 1)",
+     "value": 111.228557919775,
+     "unit": "rad/s",
+     "class": "preliminary",
+     "governed_by": "\u03a9 \u221a(2 m r_h c_g (1 \u2212 cos \u03b8\u2080) / J_h) ile \u00f6l\u00e7eklenir; aerodinamik ve s\u00f6n\u00fcm k\u00fc\u00e7\u00fck katk\u0131"
+    },
+    {
+     "key": "incoming_hinge_momentum_n_m_s",
+     "label": "Temas \u00f6ncesi mente\u015fe a\u00e7\u0131sal momentumu J_h\u03b8\u0307",
+     "value": 0.013430848368812831,
+     "unit": "N\u00b7m\u00b7s",
+     "class": "preliminary",
+     "governed_by": "J_h ve \u00e7arpma h\u0131z\u0131; geri sekme katsay\u0131s\u0131ndan ba\u011f\u0131ms\u0131z"
+    },
+    {
+     "key": "impact_energy_j",
+     "label": "Stop \u00e7arpma enerjisi \u00bdJ_h\u03b8\u0307\u00b2",
+     "value": 0.7469469478511068,
+     "unit": "J",
+     "class": "preliminary",
+     "governed_by": "Merkezka\u00e7 potansiyeli m \u03a9\u00b2 r_h c_g (1 \u2212 cos \u03b8\u2080): J_h\u2019den ba\u011f\u0131ms\u0131z; statik moment m\u00b7c_g belirler"
+    },
+    {
+     "key": "energy_ratio",
+     "label": "\u00c7arpma enerjisi / merkezka\u00e7 s\u0131n\u0131r\u0131",
+     "value": 0.9248756776152532,
+     "unit": "-",
+     "class": "preliminary",
+     "governed_by": "Aerodinamik, s\u00f6n\u00fcm ve rampa katk\u0131s\u0131 (1\u2019den fark)"
+    },
+    {
+     "key": "hinge_angular_momentum_change_n_m_s",
+     "label": "Temasta mente\u015fe a\u00e7\u0131sal momentum de\u011fi\u015fimi",
+     "value": -0.0203808727769626,
+     "unit": "N\u00b7m\u00b7s",
+     "class": "illustrative",
+     "governed_by": "(1 + e)\u00b7J_h\u03b8\u0307: varsay\u0131lan geri sekme katsay\u0131s\u0131 e \u00e7arpan\u0131 belirler"
+    },
+    {
+     "key": "peak_stop_torque_nm",
+     "label": "Tepe stop momenti",
+     "value": 21.74517324471727,
+     "unit": "N\u00b7m",
+     "class": "illustrative",
+     "governed_by": "Varsay\u0131lan stop rijitli\u011fi ve s\u00f6n\u00fcm\u00fc (\u2248 |\u03b8\u0307|\u221a(kJ_h) = 27.3 N\u00b7m s\u00f6n\u00fcms\u00fcz)"
+    },
+    {
+     "key": "rebound_rate_rad_s",
+     "label": "Geri sekme h\u0131z\u0131",
+     "value": -57.55713795569167,
+     "unit": "rad/s",
+     "class": "illustrative",
+     "governed_by": "Varsay\u0131lan geri sekme katsay\u0131s\u0131 e = 0.5"
+    },
+    {
+     "key": "impulse_balance_relative_residual",
+     "label": "Temas boyunca itme dengesi kal\u0131nt\u0131s\u0131",
+     "value": 0.0007221888642915277,
+     "unit": "-",
+     "class": "numerical_check",
+     "governed_by": "J_h\u0394\u03b8\u0307 = \u222b\u03a3M dt (temas aral\u0131\u011f\u0131); noktasal kal\u0131nt\u0131dan farkl\u0131 olarak s\u0131\u00e7ramay\u0131 t\u00fcrevlemez"
+    },
+    {
+     "key": "swing_impulse_n_m_s",
+     "label": "A\u00e7\u0131lma sal\u0131n\u0131m\u0131nda mile aktar\u0131lan a\u00e7\u0131sal itme",
+     "value": 0.14298364105098424,
+     "unit": "N\u00b7m\u00b7s",
+     "class": "preliminary",
+     "governed_by": "D\u0131\u015f par\u00e7alar\u0131n d\u0131\u015fa a\u00e7\u0131lmas\u0131 (m, c_g, r_h, \u03a9, \u03b8\u2080); geri sekmeden ba\u011f\u0131ms\u0131z; temastaki itmeyle z\u0131t i\u015faretli"
+    },
+    {
+     "key": "angular_impulse_n_m_s",
+     "label": "Temas boyunca mile aktar\u0131lan a\u00e7\u0131sal itme",
+     "value": -0.1878930214561003,
+     "unit": "N\u00b7m\u00b7s",
+     "class": "illustrative",
+     "governed_by": "\u2248 (1 + e)\u00b7\u03a3(J_h + m r_h c_g)\u03b8\u0307: varsay\u0131lan geri sekme katsay\u0131s\u0131 \u00e7arpan\u0131 belirler; ger\u00e7ek tahrikte devir d\u00fc\u015f\u00fc\u015f\u00fc/burulma y\u00fck\u00fc girdisi"
+    },
+    {
+     "key": "peak_drive_torque_nm",
+     "label": "Tepe tahrik torku",
+     "value": 210.3152061693532,
+     "unit": "N\u00b7m",
+     "class": "illustrative",
+     "governed_by": "Sonsuz rijit \u00f6ng\u00f6r\u00fclen devir ve varsay\u0131lan stop (temas s\u00fcresi); zaman ad\u0131m\u0131na ba\u011f\u0131ml\u0131l\u0131\u011f\u0131 s\u0131nanmad\u0131; mil y\u00fck\u00fc tahmini de\u011fildir"
+    },
+    {
+     "key": "momentum_balance_relative_residual",
+     "label": "Mil a\u00e7\u0131sal momentum dengesi kal\u0131nt\u0131s\u0131",
+     "value": 0.006350880519792392,
+     "unit": "-",
+     "class": "numerical_check",
+     "governed_by": "Net tahrik itmesi = d\u0131\u015f par\u00e7alar\u0131n mil etraf\u0131ndaki momentum de\u011fi\u015fimi; g\u00f6bek ataleti dahil de\u011fil (temas boyunca devir de\u011fi\u015fimi 3.1 RPM)"
+    },
+    {
+     "key": "pointwise_contact_residual",
+     "label": "Noktasal temas faz\u0131 kal\u0131nt\u0131s\u0131 (tan\u0131)",
+     "value": 0.17443930701379068,
+     "unit": "-",
+     "class": "numerical_check",
+     "governed_by": "Merkezi fark, t\u00fcrevlenemeyen penalt\u0131 yasas\u0131n\u0131n s\u0131\u00e7ramas\u0131n\u0131 kapsar; temas \u00e7\u00f6z\u00fcn\u00fcrl\u00fc\u011f\u00fcn\u00fc itme dengesi g\u00f6sterir"
+    }
+   ]
+  },
+  "-20 deg, ramp 2200->2400": {
+   "run_id": "20261112T203049_d66ad5cd8d",
+   "status": "completed",
+   "contact_events": [
+    {
+     "blade": 0,
+     "release_window": 289,
+     "first_contact_window": 310,
+     "contact_windows": 9,
+     "release_to_contact_s": 0.0036458333333333343,
+     "release_fold_deg": -19.999999999999833,
+     "rpm_at_contact": 2202.6123020722666,
+     "impact_rate_rad_s": 149.1166751641686,
+     "rebound_rate_rad_s": -77.1109304968258,
+     "apparent_restitution": 0.5171180916683613,
+     "declared_restitution": 0.5,
+     "impact_energy_j": 1.3424853872754767,
+     "centrifugal_energy_bound_j": 1.4293925724831924,
+     "energy_ratio": 0.9391999182864527,
+     "hinge_angular_momentum_change_n_m_s": -0.027316983383565075,
+     "hinge_impulse_n_m_s": -0.027298993143347744,
+     "impulse_balance_relative_residual": 0.0006585734583034055,
+     "peak_stop_torque_nm": 29.33483640855704,
+     "penalty_peak_estimate_nm": 36.63994251190191
+    },
+    {
+     "blade": 1,
+     "release_window": 289,
+     "first_contact_window": 310,
+     "contact_windows": 9,
+     "release_to_contact_s": 0.0036458333333333343,
+     "release_fold_deg": -20.000000000000004,
+     "rpm_at_contact": 2202.6123020722666,
+     "impact_rate_rad_s": 149.1168001664418,
+     "rebound_rate_rad_s": -77.11099304766668,
+     "apparent_restitution": 0.5171180776518582,
+     "declared_restitution": 0.5,
+     "impact_energy_j": 1.3424876380471666,
+     "centrifugal_energy_bound_j": 1.4293925724832186,
+     "energy_ratio": 0.939201492921517,
+     "hinge_angular_momentum_change_n_m_s": -0.027317006030603597,
+     "hinge_impulse_n_m_s": -0.027299015562303044,
+     "impulse_balance_relative_residual": 0.0006585812618117303,
+     "peak_stop_torque_nm": 29.33491517739156,
+     "penalty_peak_estimate_nm": 36.6399732266164
+    }
+   ],
+   "shaft_exchange": {
+    "from_window": 309,
+    "to_window": 319,
+    "exchange_duration_s": 0.0017361111111111112,
+    "angular_impulse_n_m_s": -0.25296715061076164,
+    "distal_momentum_change_n_m_s": -0.25413875675190223,
+    "swing_impulse_n_m_s": 0.1967742539922562,
+    "swing_duration_s": 0.0036458333333333334,
+    "momentum_balance_relative_residual": 0.0046101041655930795,
+    "speed_change_rpm": 3.050947848749729,
+    "equivalent_mean_torque_nm": -145.7090787517987,
+    "peak_drive_torque_nm": 284.591097415433,
+    "time_step_s": 0.00017361111111111112
+   },
+   "pointwise_contact_residual": 0.17635041432183438,
+   "outputs": [
+    {
+     "key": "thrust_last_rev_n",
+     "label": "Son devir itkisi (145 pencere, 1.01 devir)",
+     "value": 36.90601908449531,
+     "unit": "N",
+     "class": "comparative",
+     "governed_by": "Polar tablosu, DUST kald\u0131rma \u00e7izgisi (rbf yanl\u0131l\u0131\u011f\u0131 \u2248 \u2212%1,4; BEM\u2019e g\u00f6re y\u00f6ntem fark\u0131), k\u0131sa pencere"
+    },
+    {
+     "key": "hinge_pin_centrifugal_load_n",
+     "label": "Mente\u015fe pimi merkezka\u00e7 y\u00fck\u00fc (son pencere)",
+     "value": 615.8612519606038,
+     "unit": "N",
+     "class": "preliminary",
+     "governed_by": "m \u03a9\u00b2 r_cg (kanat 1, son penceredeki a\u00e7\u0131da): k\u00fctle ve k\u00fctle merkezi belirler; aerodinamik y\u00fck ve stop darbe tepkisi hari\u00e7; beyan: demonstration_assumption"
+    },
+    {
+     "key": "thrust_latched_rev_n",
+     "label": "Katl\u0131 (kilitli) devir itkisi (158 pencere, 1.01 devir)",
+     "value": 22.154513357584783,
+     "unit": "N",
+     "class": "comparative",
+     "governed_by": "Kesit durumlar\u0131 ve polar tablosu; katl\u0131 d\u0131\u015f par\u00e7an\u0131n 2B polar temsili (s\u00fcp\u00fcrme a\u00e7\u0131s\u0131)"
+    },
+    {
+     "key": "release_to_contact_s",
+     "label": "Serbest b\u0131rakmadan stop temas\u0131na s\u00fcre (kanat 1)",
+     "value": 0.0036458333333333343,
+     "unit": "s",
+     "class": "preliminary",
+     "governed_by": "m\u00b7c_g, J_h, \u03a9, r_h, ba\u015flang\u0131\u00e7 katlanmas\u0131; aerodinamik moment k\u00fc\u00e7\u00fck katk\u0131"
+    },
+    {
+     "key": "impact_rate_rad_s",
+     "label": "Temas \u00f6ncesi a\u00e7\u0131lma h\u0131z\u0131 \u03b8\u0307 (kanat 1)",
+     "value": 149.1166751641686,
+     "unit": "rad/s",
+     "class": "preliminary",
+     "governed_by": "\u03a9 \u221a(2 m r_h c_g (1 \u2212 cos \u03b8\u2080) / J_h) ile \u00f6l\u00e7eklenir; aerodinamik ve s\u00f6n\u00fcm k\u00fc\u00e7\u00fck katk\u0131"
+    },
+    {
+     "key": "incoming_hinge_momentum_n_m_s",
+     "label": "Temas \u00f6ncesi mente\u015fe a\u00e7\u0131sal momentumu J_h\u03b8\u0307",
+     "value": 0.018005838526073358,
+     "unit": "N\u00b7m\u00b7s",
+     "class": "preliminary",
+     "governed_by": "J_h ve \u00e7arpma h\u0131z\u0131; geri sekme katsay\u0131s\u0131ndan ba\u011f\u0131ms\u0131z"
+    },
+    {
+     "key": "impact_energy_j",
+     "label": "Stop \u00e7arpma enerjisi \u00bdJ_h\u03b8\u0307\u00b2",
+     "value": 1.3424853872754767,
+     "unit": "J",
+     "class": "preliminary",
+     "governed_by": "Merkezka\u00e7 potansiyeli m \u03a9\u00b2 r_h c_g (1 \u2212 cos \u03b8\u2080): J_h\u2019den ba\u011f\u0131ms\u0131z; statik moment m\u00b7c_g belirler"
+    },
+    {
+     "key": "energy_ratio",
+     "label": "\u00c7arpma enerjisi / merkezka\u00e7 s\u0131n\u0131r\u0131",
+     "value": 0.9391999182864527,
+     "unit": "-",
+     "class": "preliminary",
+     "governed_by": "Aerodinamik, s\u00f6n\u00fcm ve rampa katk\u0131s\u0131 (1\u2019den fark)"
+    },
+    {
+     "key": "hinge_angular_momentum_change_n_m_s",
+     "label": "Temasta mente\u015fe a\u00e7\u0131sal momentum de\u011fi\u015fimi",
+     "value": -0.027316983383565075,
+     "unit": "N\u00b7m\u00b7s",
+     "class": "illustrative",
+     "governed_by": "(1 + e)\u00b7J_h\u03b8\u0307: varsay\u0131lan geri sekme katsay\u0131s\u0131 e \u00e7arpan\u0131 belirler"
+    },
+    {
+     "key": "peak_stop_torque_nm",
+     "label": "Tepe stop momenti",
+     "value": 29.33483640855704,
+     "unit": "N\u00b7m",
+     "class": "illustrative",
+     "governed_by": "Varsay\u0131lan stop rijitli\u011fi ve s\u00f6n\u00fcm\u00fc (\u2248 |\u03b8\u0307|\u221a(kJ_h) = 36.6 N\u00b7m s\u00f6n\u00fcms\u00fcz)"
+    },
+    {
+     "key": "rebound_rate_rad_s",
+     "label": "Geri sekme h\u0131z\u0131",
+     "value": -77.1109304968258,
+     "unit": "rad/s",
+     "class": "illustrative",
+     "governed_by": "Varsay\u0131lan geri sekme katsay\u0131s\u0131 e = 0.5"
+    },
+    {
+     "key": "impulse_balance_relative_residual",
+     "label": "Temas boyunca itme dengesi kal\u0131nt\u0131s\u0131",
+     "value": 0.0006585734583034055,
+     "unit": "-",
+     "class": "numerical_check",
+     "governed_by": "J_h\u0394\u03b8\u0307 = \u222b\u03a3M dt (temas aral\u0131\u011f\u0131); noktasal kal\u0131nt\u0131dan farkl\u0131 olarak s\u0131\u00e7ramay\u0131 t\u00fcrevlemez"
+    },
+    {
+     "key": "swing_impulse_n_m_s",
+     "label": "A\u00e7\u0131lma sal\u0131n\u0131m\u0131nda mile aktar\u0131lan a\u00e7\u0131sal itme",
+     "value": 0.1967742539922562,
+     "unit": "N\u00b7m\u00b7s",
+     "class": "preliminary",
+     "governed_by": "D\u0131\u015f par\u00e7alar\u0131n d\u0131\u015fa a\u00e7\u0131lmas\u0131 (m, c_g, r_h, \u03a9, \u03b8\u2080); geri sekmeden ba\u011f\u0131ms\u0131z; temastaki itmeyle z\u0131t i\u015faretli"
+    },
+    {
+     "key": "angular_impulse_n_m_s",
+     "label": "Temas boyunca mile aktar\u0131lan a\u00e7\u0131sal itme",
+     "value": -0.25296715061076164,
+     "unit": "N\u00b7m\u00b7s",
+     "class": "illustrative",
+     "governed_by": "\u2248 (1 + e)\u00b7\u03a3(J_h + m r_h c_g)\u03b8\u0307: varsay\u0131lan geri sekme katsay\u0131s\u0131 \u00e7arpan\u0131 belirler; ger\u00e7ek tahrikte devir d\u00fc\u015f\u00fc\u015f\u00fc/burulma y\u00fck\u00fc girdisi"
+    },
+    {
+     "key": "peak_drive_torque_nm",
+     "label": "Tepe tahrik torku",
+     "value": 284.591097415433,
+     "unit": "N\u00b7m",
+     "class": "illustrative",
+     "governed_by": "Sonsuz rijit \u00f6ng\u00f6r\u00fclen devir ve varsay\u0131lan stop (temas s\u00fcresi); zaman ad\u0131m\u0131na ba\u011f\u0131ml\u0131l\u0131\u011f\u0131 s\u0131nanmad\u0131; mil y\u00fck\u00fc tahmini de\u011fildir"
+    },
+    {
+     "key": "momentum_balance_relative_residual",
+     "label": "Mil a\u00e7\u0131sal momentum dengesi kal\u0131nt\u0131s\u0131",
+     "value": 0.0046101041655930795,
+     "unit": "-",
+     "class": "numerical_check",
+     "governed_by": "Net tahrik itmesi = d\u0131\u015f par\u00e7alar\u0131n mil etraf\u0131ndaki momentum de\u011fi\u015fimi; g\u00f6bek ataleti dahil de\u011fil (temas boyunca devir de\u011fi\u015fimi 3.1 RPM)"
+    },
+    {
+     "key": "pointwise_contact_residual",
+     "label": "Noktasal temas faz\u0131 kal\u0131nt\u0131s\u0131 (tan\u0131)",
+     "value": 0.17635041432183438,
+     "unit": "-",
+     "class": "numerical_check",
+     "governed_by": "Merkezi fark, t\u00fcrevlenemeyen penalt\u0131 yasas\u0131n\u0131n s\u0131\u00e7ramas\u0131n\u0131 kapsar; temas \u00e7\u00f6z\u00fcn\u00fcrl\u00fc\u011f\u00fcn\u00fc itme dengesi g\u00f6sterir"
+    }
+   ]
+  },
+  "-22.5 deg, 2400 RPM (deploy-v3)": {
+   "run_id": "20261112T220252_1f1a7bf962",
+   "status": "completed",
+   "contact_events": [
+    {
+     "blade": 0,
+     "release_window": 289,
+     "first_contact_window": 308,
+     "contact_windows": 9,
+     "release_to_contact_s": 0.0032986111111111133,
+     "release_fold_deg": -22.500000000000075,
+     "rpm_at_contact": 2399.9999999999995,
+     "impact_rate_rad_s": 183.88006806652558,
+     "rebound_rate_rad_s": -94.8606007503677,
+     "apparent_restitution": 0.515882997802939,
+     "declared_restitution": 0.5,
+     "impact_energy_j": 2.041392220716061,
+     "centrifugal_energy_bound_j": 2.1420464023589534,
+     "energy_ratio": 0.9530102702107454,
+     "hinge_angular_momentum_change_n_m_s": -0.033657935759639865,
+     "hinge_impulse_n_m_s": -0.03364657936403443,
+     "impulse_balance_relative_residual": 0.00033740618220123137,
+     "peak_stop_torque_nm": 34.73384320869551,
+     "penalty_peak_estimate_nm": 45.18176867627098
+    },
+    {
+     "blade": 1,
+     "release_window": 289,
+     "first_contact_window": 308,
+     "contact_windows": 9,
+     "release_to_contact_s": 0.0032986111111111133,
+     "release_fold_deg": -22.499999999999964,
+     "rpm_at_contact": 2399.9999999999995,
+     "impact_rate_rad_s": 183.8802203956699,
+     "rebound_rate_rad_s": -94.8606714724082,
+     "apparent_restitution": 0.5158829550469802,
+     "declared_restitution": 0.5,
+     "impact_energy_j": 2.0413956029603932,
+     "centrifugal_energy_bound_j": 2.1420464023589347,
+     "energy_ratio": 0.9530118491888413,
+     "hinge_angular_momentum_change_n_m_s": -0.03365796269307043,
+     "hinge_impulse_n_m_s": -0.033646606049498505,
+     "impulse_balance_relative_residual": 0.00033741327945140717,
+     "peak_stop_torque_nm": 34.73393507677849,
+     "penalty_peak_estimate_nm": 45.181806105559716
+    }
+   ],
+   "shaft_exchange": {
+    "from_window": 307,
+    "to_window": 317,
+    "exchange_duration_s": 0.0017361111111111112,
+    "angular_impulse_n_m_s": -0.31612988077643933,
+    "distal_momentum_change_n_m_s": -0.3155435056903442,
+    "swing_impulse_n_m_s": 0.24298564537515527,
+    "swing_duration_s": 0.003298611111111111,
+    "momentum_balance_relative_residual": 0.0018583018681125794,
+    "speed_change_rpm": 0.0,
+    "equivalent_mean_torque_nm": -182.09081132722903,
+    "peak_drive_torque_nm": 340.0790252491391,
+    "time_step_s": 0.00017361111111111112
+   },
+   "pointwise_contact_residual": 0.15868001234997967,
+   "outputs": [
+    {
+     "key": "thrust_last_rev_n",
+     "label": "Son devir itkisi (145 pencere, 1.01 devir)",
+     "value": 36.75429393726762,
+     "unit": "N",
+     "class": "comparative",
+     "governed_by": "Polar tablosu, DUST kald\u0131rma \u00e7izgisi (rbf yanl\u0131l\u0131\u011f\u0131 \u2248 \u2212%1,4; BEM\u2019e g\u00f6re y\u00f6ntem fark\u0131), k\u0131sa pencere"
+    },
+    {
+     "key": "hinge_pin_centrifugal_load_n",
+     "label": "Mente\u015fe pimi merkezka\u00e7 y\u00fck\u00fc (son pencere)",
+     "value": 615.8558095771665,
+     "unit": "N",
+     "class": "preliminary",
+     "governed_by": "m \u03a9\u00b2 r_cg (kanat 1, son penceredeki a\u00e7\u0131da): k\u00fctle ve k\u00fctle merkezi belirler; aerodinamik y\u00fck ve stop darbe tepkisi hari\u00e7; beyan: demonstration_assumption"
+    },
+    {
+     "key": "thrust_latched_rev_n",
+     "label": "Katl\u0131 (kilitli) devir itkisi (145 pencere, 1.01 devir)",
+     "value": 29.48781371398557,
+     "unit": "N",
+     "class": "comparative",
+     "governed_by": "Kesit durumlar\u0131 ve polar tablosu; katl\u0131 d\u0131\u015f par\u00e7an\u0131n 2B polar temsili (s\u00fcp\u00fcrme a\u00e7\u0131s\u0131)"
+    },
+    {
+     "key": "release_to_contact_s",
+     "label": "Serbest b\u0131rakmadan stop temas\u0131na s\u00fcre (kanat 1)",
+     "value": 0.0032986111111111133,
+     "unit": "s",
+     "class": "preliminary",
+     "governed_by": "m\u00b7c_g, J_h, \u03a9, r_h, ba\u015flang\u0131\u00e7 katlanmas\u0131; aerodinamik moment k\u00fc\u00e7\u00fck katk\u0131"
+    },
+    {
+     "key": "impact_rate_rad_s",
+     "label": "Temas \u00f6ncesi a\u00e7\u0131lma h\u0131z\u0131 \u03b8\u0307 (kanat 1)",
+     "value": 183.88006806652558,
+     "unit": "rad/s",
+     "class": "preliminary",
+     "governed_by": "\u03a9 \u221a(2 m r_h c_g (1 \u2212 cos \u03b8\u2080) / J_h) ile \u00f6l\u00e7eklenir; aerodinamik ve s\u00f6n\u00fcm k\u00fc\u00e7\u00fck katk\u0131"
+    },
+    {
+     "key": "incoming_hinge_momentum_n_m_s",
+     "label": "Temas \u00f6ncesi mente\u015fe a\u00e7\u0131sal momentumu J_h\u03b8\u0307",
+     "value": 0.022203518219032964,
+     "unit": "N\u00b7m\u00b7s",
+     "class": "preliminary",
+     "governed_by": "J_h ve \u00e7arpma h\u0131z\u0131; geri sekme katsay\u0131s\u0131ndan ba\u011f\u0131ms\u0131z"
+    },
+    {
+     "key": "impact_energy_j",
+     "label": "Stop \u00e7arpma enerjisi \u00bdJ_h\u03b8\u0307\u00b2",
+     "value": 2.041392220716061,
+     "unit": "J",
+     "class": "preliminary",
+     "governed_by": "Merkezka\u00e7 potansiyeli m \u03a9\u00b2 r_h c_g (1 \u2212 cos \u03b8\u2080): J_h\u2019den ba\u011f\u0131ms\u0131z; statik moment m\u00b7c_g belirler"
+    },
+    {
+     "key": "energy_ratio",
+     "label": "\u00c7arpma enerjisi / merkezka\u00e7 s\u0131n\u0131r\u0131",
+     "value": 0.9530102702107454,
+     "unit": "-",
+     "class": "preliminary",
+     "governed_by": "Aerodinamik, s\u00f6n\u00fcm ve rampa katk\u0131s\u0131 (1\u2019den fark)"
+    },
+    {
+     "key": "hinge_angular_momentum_change_n_m_s",
+     "label": "Temasta mente\u015fe a\u00e7\u0131sal momentum de\u011fi\u015fimi",
+     "value": -0.033657935759639865,
+     "unit": "N\u00b7m\u00b7s",
+     "class": "illustrative",
+     "governed_by": "(1 + e)\u00b7J_h\u03b8\u0307: varsay\u0131lan geri sekme katsay\u0131s\u0131 e \u00e7arpan\u0131 belirler"
+    },
+    {
+     "key": "peak_stop_torque_nm",
+     "label": "Tepe stop momenti",
+     "value": 34.73384320869551,
+     "unit": "N\u00b7m",
+     "class": "illustrative",
+     "governed_by": "Varsay\u0131lan stop rijitli\u011fi ve s\u00f6n\u00fcm\u00fc (\u2248 |\u03b8\u0307|\u221a(kJ_h) = 45.2 N\u00b7m s\u00f6n\u00fcms\u00fcz)"
+    },
+    {
+     "key": "rebound_rate_rad_s",
+     "label": "Geri sekme h\u0131z\u0131",
+     "value": -94.8606007503677,
+     "unit": "rad/s",
+     "class": "illustrative",
+     "governed_by": "Varsay\u0131lan geri sekme katsay\u0131s\u0131 e = 0.5"
+    },
+    {
+     "key": "impulse_balance_relative_residual",
+     "label": "Temas boyunca itme dengesi kal\u0131nt\u0131s\u0131",
+     "value": 0.00033740618220123137,
+     "unit": "-",
+     "class": "numerical_check",
+     "governed_by": "J_h\u0394\u03b8\u0307 = \u222b\u03a3M dt (temas aral\u0131\u011f\u0131); noktasal kal\u0131nt\u0131dan farkl\u0131 olarak s\u0131\u00e7ramay\u0131 t\u00fcrevlemez"
+    },
+    {
+     "key": "swing_impulse_n_m_s",
+     "label": "A\u00e7\u0131lma sal\u0131n\u0131m\u0131nda mile aktar\u0131lan a\u00e7\u0131sal itme",
+     "value": 0.24298564537515527,
+     "unit": "N\u00b7m\u00b7s",
+     "class": "preliminary",
+     "governed_by": "D\u0131\u015f par\u00e7alar\u0131n d\u0131\u015fa a\u00e7\u0131lmas\u0131 (m, c_g, r_h, \u03a9, \u03b8\u2080); geri sekmeden ba\u011f\u0131ms\u0131z; temastaki itmeyle z\u0131t i\u015faretli"
+    },
+    {
+     "key": "angular_impulse_n_m_s",
+     "label": "Temas boyunca mile aktar\u0131lan a\u00e7\u0131sal itme",
+     "value": -0.31612988077643933,
+     "unit": "N\u00b7m\u00b7s",
+     "class": "illustrative",
+     "governed_by": "\u2248 (1 + e)\u00b7\u03a3(J_h + m r_h c_g)\u03b8\u0307: varsay\u0131lan geri sekme katsay\u0131s\u0131 \u00e7arpan\u0131 belirler; ger\u00e7ek tahrikte devir d\u00fc\u015f\u00fc\u015f\u00fc/burulma y\u00fck\u00fc girdisi"
+    },
+    {
+     "key": "peak_drive_torque_nm",
+     "label": "Tepe tahrik torku",
+     "value": 340.0790252491391,
+     "unit": "N\u00b7m",
+     "class": "illustrative",
+     "governed_by": "Sonsuz rijit \u00f6ng\u00f6r\u00fclen devir ve varsay\u0131lan stop (temas s\u00fcresi); zaman ad\u0131m\u0131na ba\u011f\u0131ml\u0131l\u0131\u011f\u0131 s\u0131nanmad\u0131; mil y\u00fck\u00fc tahmini de\u011fildir"
+    },
+    {
+     "key": "momentum_balance_relative_residual",
+     "label": "Mil a\u00e7\u0131sal momentum dengesi kal\u0131nt\u0131s\u0131",
+     "value": 0.0018583018681125794,
+     "unit": "-",
+     "class": "numerical_check",
+     "governed_by": "Net tahrik itmesi = d\u0131\u015f par\u00e7alar\u0131n mil etraf\u0131ndaki momentum de\u011fi\u015fimi; g\u00f6bek ataleti dahil de\u011fil (temas boyunca devir de\u011fi\u015fimi 0.0 RPM)"
+    },
+    {
+     "key": "pointwise_contact_residual",
+     "label": "Noktasal temas faz\u0131 kal\u0131nt\u0131s\u0131 (tan\u0131)",
+     "value": 0.15868001234997967,
+     "unit": "-",
+     "class": "numerical_check",
+     "governed_by": "Merkezi fark, t\u00fcrevlenemeyen penalt\u0131 yasas\u0131n\u0131n s\u0131\u00e7ramas\u0131n\u0131 kapsar; temas \u00e7\u00f6z\u00fcn\u00fcrl\u00fc\u011f\u00fcn\u00fc itme dengesi g\u00f6sterir"
+    }
+   ]
+  },
+  "-20 deg, ramp 1600->2400 (deploy-v3)": {
+   "run_id": "20261112T220255_14fc6eaab8",
+   "status": "completed",
+   "contact_events": [
+    {
+     "blade": 0,
+     "release_window": 289,
+     "first_contact_window": 318,
+     "contact_windows": 9,
+     "release_to_contact_s": 0.005034722222222225,
+     "release_fold_deg": -20.00000000000001,
+     "rpm_at_contact": 1613.8185264384695,
+     "impact_rate_rad_s": 105.00764748793011,
+     "rebound_rate_rad_s": -54.96555088499599,
+     "apparent_restitution": 0.5234433129388399,
+     "declared_restitution": 0.5,
+     "impact_energy_j": 0.6657313391185697,
+     "centrifugal_energy_bound_j": 0.7673346214527678,
+     "energy_ratio": 0.8675893417374598,
+     "hinge_angular_momentum_change_n_m_s": -0.019316763703530828,
+     "hinge_impulse_n_m_s": -0.01930312320542106,
+     "impulse_balance_relative_residual": 0.000706148209871937,
+     "peak_stop_torque_nm": 20.13784061657373,
+     "penalty_peak_estimate_nm": 25.801770077236363
+    },
+    {
+     "blade": 1,
+     "release_window": 289,
+     "first_contact_window": 318,
+     "contact_windows": 9,
+     "release_to_contact_s": 0.005034722222222225,
+     "release_fold_deg": -19.99999999999983,
+     "rpm_at_contact": 1613.8185264384695,
+     "impact_rate_rad_s": 105.00768999126569,
+     "rebound_rate_rad_s": -54.96557797896929,
+     "apparent_restitution": 0.5234433590867603,
+     "declared_restitution": 0.5,
+     "impact_energy_j": 0.6657318780470938,
+     "centrifugal_energy_bound_j": 0.7673346214527536,
+     "energy_ratio": 0.8675900440758156,
+     "hinge_angular_momentum_change_n_m_s": -0.019316772107405875,
+     "hinge_impulse_n_m_s": -0.019303131506720018,
+     "impulse_balance_relative_residual": 0.0007061532128666467,
+     "peak_stop_torque_nm": 20.1378710338629,
+     "penalty_peak_estimate_nm": 25.801780520868977
+    }
+   ],
+   "shaft_exchange": {
+    "from_window": 317,
+    "to_window": 327,
+    "exchange_duration_s": 0.0017361111111111112,
+    "angular_impulse_n_m_s": -0.1692994196787036,
+    "distal_momentum_change_n_m_s": -0.1737452837947031,
+    "swing_impulse_n_m_s": 0.15202070098470902,
+    "swing_duration_s": 0.0050347222222222225,
+    "momentum_balance_relative_residual": 0.02558840170449017,
+    "speed_change_rpm": 11.056184491633076,
+    "equivalent_mean_torque_nm": -97.51646573493326,
+    "peak_drive_torque_nm": 189.7539012910537,
+    "time_step_s": 0.00017361111111111112
+   },
+   "pointwise_contact_residual": 0.16844961007744888,
+   "outputs": [
+    {
+     "key": "thrust_last_rev_n",
+     "label": "Son devir itkisi (145 pencere, 1.01 devir)",
+     "value": 36.92211894066926,
+     "unit": "N",
+     "class": "comparative",
+     "governed_by": "Polar tablosu, DUST kald\u0131rma \u00e7izgisi (rbf yanl\u0131l\u0131\u011f\u0131 \u2248 \u2212%1,4; BEM\u2019e g\u00f6re y\u00f6ntem fark\u0131), k\u0131sa pencere"
+    },
+    {
+     "key": "hinge_pin_centrifugal_load_n",
+     "label": "Mente\u015fe pimi merkezka\u00e7 y\u00fck\u00fc (son pencere)",
+     "value": 615.8555061649917,
+     "unit": "N",
+     "class": "preliminary",
+     "governed_by": "m \u03a9\u00b2 r_cg (kanat 1, son penceredeki a\u00e7\u0131da): k\u00fctle ve k\u00fctle merkezi belirler; aerodinamik y\u00fck ve stop darbe tepkisi hari\u00e7; beyan: demonstration_assumption"
+    },
+    {
+     "key": "thrust_latched_rev_n",
+     "label": "Katl\u0131 (kilitli) devir itkisi (216 pencere, 1.00 devir)",
+     "value": 2.2566688389138254,
+     "unit": "N",
+     "class": "comparative",
+     "governed_by": "Kesit durumlar\u0131 ve polar tablosu; katl\u0131 d\u0131\u015f par\u00e7an\u0131n 2B polar temsili (s\u00fcp\u00fcrme a\u00e7\u0131s\u0131)"
+    },
+    {
+     "key": "release_to_contact_s",
+     "label": "Serbest b\u0131rakmadan stop temas\u0131na s\u00fcre (kanat 1)",
+     "value": 0.005034722222222225,
+     "unit": "s",
+     "class": "preliminary",
+     "governed_by": "m\u00b7c_g, J_h, \u03a9, r_h, ba\u015flang\u0131\u00e7 katlanmas\u0131; aerodinamik moment k\u00fc\u00e7\u00fck katk\u0131"
+    },
+    {
+     "key": "impact_rate_rad_s",
+     "label": "Temas \u00f6ncesi a\u00e7\u0131lma h\u0131z\u0131 \u03b8\u0307 (kanat 1)",
+     "value": 105.00764748793011,
+     "unit": "rad/s",
+     "class": "preliminary",
+     "governed_by": "\u03a9 \u221a(2 m r_h c_g (1 \u2212 cos \u03b8\u2080) / J_h) ile \u00f6l\u00e7eklenir; aerodinamik ve s\u00f6n\u00fcm k\u00fc\u00e7\u00fck katk\u0131"
+    },
+    {
+     "key": "incoming_hinge_momentum_n_m_s",
+     "label": "Temas \u00f6ncesi mente\u015fe a\u00e7\u0131sal momentumu J_h\u03b8\u0307",
+     "value": 0.012679673434167562,
+     "unit": "N\u00b7m\u00b7s",
+     "class": "preliminary",
+     "governed_by": "J_h ve \u00e7arpma h\u0131z\u0131; geri sekme katsay\u0131s\u0131ndan ba\u011f\u0131ms\u0131z"
+    },
+    {
+     "key": "impact_energy_j",
+     "label": "Stop \u00e7arpma enerjisi \u00bdJ_h\u03b8\u0307\u00b2",
+     "value": 0.6657313391185697,
+     "unit": "J",
+     "class": "preliminary",
+     "governed_by": "Merkezka\u00e7 potansiyeli m \u03a9\u00b2 r_h c_g (1 \u2212 cos \u03b8\u2080): J_h\u2019den ba\u011f\u0131ms\u0131z; statik moment m\u00b7c_g belirler"
+    },
+    {
+     "key": "energy_ratio",
+     "label": "\u00c7arpma enerjisi / merkezka\u00e7 s\u0131n\u0131r\u0131",
+     "value": 0.8675893417374598,
+     "unit": "-",
+     "class": "preliminary",
+     "governed_by": "Aerodinamik, s\u00f6n\u00fcm ve rampa katk\u0131s\u0131 (1\u2019den fark)"
+    },
+    {
+     "key": "hinge_angular_momentum_change_n_m_s",
+     "label": "Temasta mente\u015fe a\u00e7\u0131sal momentum de\u011fi\u015fimi",
+     "value": -0.019316763703530828,
+     "unit": "N\u00b7m\u00b7s",
+     "class": "illustrative",
+     "governed_by": "(1 + e)\u00b7J_h\u03b8\u0307: varsay\u0131lan geri sekme katsay\u0131s\u0131 e \u00e7arpan\u0131 belirler"
+    },
+    {
+     "key": "peak_stop_torque_nm",
+     "label": "Tepe stop momenti",
+     "value": 20.13784061657373,
+     "unit": "N\u00b7m",
+     "class": "illustrative",
+     "governed_by": "Varsay\u0131lan stop rijitli\u011fi ve s\u00f6n\u00fcm\u00fc (\u2248 |\u03b8\u0307|\u221a(kJ_h) = 25.8 N\u00b7m s\u00f6n\u00fcms\u00fcz)"
+    },
+    {
+     "key": "rebound_rate_rad_s",
+     "label": "Geri sekme h\u0131z\u0131",
+     "value": -54.96555088499599,
+     "unit": "rad/s",
+     "class": "illustrative",
+     "governed_by": "Varsay\u0131lan geri sekme katsay\u0131s\u0131 e = 0.5"
+    },
+    {
+     "key": "impulse_balance_relative_residual",
+     "label": "Temas boyunca itme dengesi kal\u0131nt\u0131s\u0131",
+     "value": 0.000706148209871937,
+     "unit": "-",
+     "class": "numerical_check",
+     "governed_by": "J_h\u0394\u03b8\u0307 = \u222b\u03a3M dt (temas aral\u0131\u011f\u0131); noktasal kal\u0131nt\u0131dan farkl\u0131 olarak s\u0131\u00e7ramay\u0131 t\u00fcrevlemez"
+    },
+    {
+     "key": "swing_impulse_n_m_s",
+     "label": "A\u00e7\u0131lma sal\u0131n\u0131m\u0131nda mile aktar\u0131lan a\u00e7\u0131sal itme",
+     "value": 0.15202070098470902,
+     "unit": "N\u00b7m\u00b7s",
+     "class": "preliminary",
+     "governed_by": "D\u0131\u015f par\u00e7alar\u0131n d\u0131\u015fa a\u00e7\u0131lmas\u0131 (m, c_g, r_h, \u03a9, \u03b8\u2080); geri sekmeden ba\u011f\u0131ms\u0131z; temastaki itmeyle z\u0131t i\u015faretli"
+    },
+    {
+     "key": "angular_impulse_n_m_s",
+     "label": "Temas boyunca mile aktar\u0131lan a\u00e7\u0131sal itme",
+     "value": -0.1692994196787036,
+     "unit": "N\u00b7m\u00b7s",
+     "class": "illustrative",
+     "governed_by": "\u2248 (1 + e)\u00b7\u03a3(J_h + m r_h c_g)\u03b8\u0307: varsay\u0131lan geri sekme katsay\u0131s\u0131 \u00e7arpan\u0131 belirler; ger\u00e7ek tahrikte devir d\u00fc\u015f\u00fc\u015f\u00fc/burulma y\u00fck\u00fc girdisi"
+    },
+    {
+     "key": "peak_drive_torque_nm",
+     "label": "Tepe tahrik torku",
+     "value": 189.7539012910537,
+     "unit": "N\u00b7m",
+     "class": "illustrative",
+     "governed_by": "Sonsuz rijit \u00f6ng\u00f6r\u00fclen devir ve varsay\u0131lan stop (temas s\u00fcresi); zaman ad\u0131m\u0131na ba\u011f\u0131ml\u0131l\u0131\u011f\u0131 s\u0131nanmad\u0131; mil y\u00fck\u00fc tahmini de\u011fildir"
+    },
+    {
+     "key": "momentum_balance_relative_residual",
+     "label": "Mil a\u00e7\u0131sal momentum dengesi kal\u0131nt\u0131s\u0131",
+     "value": 0.02558840170449017,
+     "unit": "-",
+     "class": "numerical_check",
+     "governed_by": "Net tahrik itmesi = d\u0131\u015f par\u00e7alar\u0131n mil etraf\u0131ndaki momentum de\u011fi\u015fimi; g\u00f6bek ataleti dahil de\u011fil (temas boyunca devir de\u011fi\u015fimi 11.1 RPM)"
+    },
+    {
+     "key": "pointwise_contact_residual",
+     "label": "Noktasal temas faz\u0131 kal\u0131nt\u0131s\u0131 (tan\u0131)",
+     "value": 0.16844961007744888,
+     "unit": "-",
+     "class": "numerical_check",
+     "governed_by": "Merkezi fark, t\u00fcrevlenemeyen penalt\u0131 yasas\u0131n\u0131n s\u0131\u00e7ramas\u0131n\u0131 kapsar; temas \u00e7\u00f6z\u00fcn\u00fcrl\u00fc\u011f\u00fcn\u00fc itme dengesi g\u00f6sterir"
+    }
+   ]
+  },
+  "-20 deg, ramp 2200->2400 control (deploy-v3)": {
+   "run_id": "20261112T220258_0bb5c02ad8",
+   "status": "completed",
+   "contact_events": [
+    {
+     "blade": 0,
+     "release_window": 289,
+     "first_contact_window": 310,
+     "contact_windows": 9,
+     "release_to_contact_s": 0.0036458333333333343,
+     "release_fold_deg": -19.999999999999833,
+     "rpm_at_contact": 2202.6123020722666,
+     "impact_rate_rad_s": 149.1166751641686,
+     "rebound_rate_rad_s": -77.1109304968258,
+     "apparent_restitution": 0.5171180916683613,
+     "declared_restitution": 0.5,
+     "impact_energy_j": 1.3424853872754767,
+     "centrifugal_energy_bound_j": 1.4293925724831924,
+     "energy_ratio": 0.9391999182864527,
+     "hinge_angular_momentum_change_n_m_s": -0.027316983383565075,
+     "hinge_impulse_n_m_s": -0.027298993143347744,
+     "impulse_balance_relative_residual": 0.0006585734583034055,
+     "peak_stop_torque_nm": 29.33483640855704,
+     "penalty_peak_estimate_nm": 36.63994251190191
+    },
+    {
+     "blade": 1,
+     "release_window": 289,
+     "first_contact_window": 310,
+     "contact_windows": 9,
+     "release_to_contact_s": 0.0036458333333333343,
+     "release_fold_deg": -20.000000000000004,
+     "rpm_at_contact": 2202.6123020722666,
+     "impact_rate_rad_s": 149.1168001664418,
+     "rebound_rate_rad_s": -77.11099304766668,
+     "apparent_restitution": 0.5171180776518582,
+     "declared_restitution": 0.5,
+     "impact_energy_j": 1.3424876380471666,
+     "centrifugal_energy_bound_j": 1.4293925724832186,
+     "energy_ratio": 0.939201492921517,
+     "hinge_angular_momentum_change_n_m_s": -0.027317006030603597,
+     "hinge_impulse_n_m_s": -0.027299015562303044,
+     "impulse_balance_relative_residual": 0.0006585812618117303,
+     "peak_stop_torque_nm": 29.33491517739156,
+     "penalty_peak_estimate_nm": 36.6399732266164
+    }
+   ],
+   "shaft_exchange": {
+    "from_window": 309,
+    "to_window": 319,
+    "exchange_duration_s": 0.0017361111111111112,
+    "angular_impulse_n_m_s": -0.25296715061076164,
+    "distal_momentum_change_n_m_s": -0.25413875675190223,
+    "swing_impulse_n_m_s": 0.1967742539922562,
+    "swing_duration_s": 0.0036458333333333334,
+    "momentum_balance_relative_residual": 0.0046101041655930795,
+    "speed_change_rpm": 3.050947848749729,
+    "equivalent_mean_torque_nm": -145.7090787517987,
+    "peak_drive_torque_nm": 284.591097415433,
+    "time_step_s": 0.00017361111111111112
+   },
+   "pointwise_contact_residual": 0.17635041432183438,
+   "outputs": [
+    {
+     "key": "thrust_last_rev_n",
+     "label": "Son devir itkisi (145 pencere, 1.01 devir)",
+     "value": 36.90601908449531,
+     "unit": "N",
+     "class": "comparative",
+     "governed_by": "Polar tablosu, DUST kald\u0131rma \u00e7izgisi (rbf yanl\u0131l\u0131\u011f\u0131 \u2248 \u2212%1,4; BEM\u2019e g\u00f6re y\u00f6ntem fark\u0131), k\u0131sa pencere"
+    },
+    {
+     "key": "hinge_pin_centrifugal_load_n",
+     "label": "Mente\u015fe pimi merkezka\u00e7 y\u00fck\u00fc (son pencere)",
+     "value": 615.8612519606038,
+     "unit": "N",
+     "class": "preliminary",
+     "governed_by": "m \u03a9\u00b2 r_cg (kanat 1, son penceredeki a\u00e7\u0131da): k\u00fctle ve k\u00fctle merkezi belirler; aerodinamik y\u00fck ve stop darbe tepkisi hari\u00e7; beyan: demonstration_assumption"
+    },
+    {
+     "key": "thrust_latched_rev_n",
+     "label": "Katl\u0131 (kilitli) devir itkisi (158 pencere, 1.01 devir)",
+     "value": 22.154513357584783,
+     "unit": "N",
+     "class": "comparative",
+     "governed_by": "Kesit durumlar\u0131 ve polar tablosu; katl\u0131 d\u0131\u015f par\u00e7an\u0131n 2B polar temsili (s\u00fcp\u00fcrme a\u00e7\u0131s\u0131)"
+    },
+    {
+     "key": "release_to_contact_s",
+     "label": "Serbest b\u0131rakmadan stop temas\u0131na s\u00fcre (kanat 1)",
+     "value": 0.0036458333333333343,
+     "unit": "s",
+     "class": "preliminary",
+     "governed_by": "m\u00b7c_g, J_h, \u03a9, r_h, ba\u015flang\u0131\u00e7 katlanmas\u0131; aerodinamik moment k\u00fc\u00e7\u00fck katk\u0131"
+    },
+    {
+     "key": "impact_rate_rad_s",
+     "label": "Temas \u00f6ncesi a\u00e7\u0131lma h\u0131z\u0131 \u03b8\u0307 (kanat 1)",
+     "value": 149.1166751641686,
+     "unit": "rad/s",
+     "class": "preliminary",
+     "governed_by": "\u03a9 \u221a(2 m r_h c_g (1 \u2212 cos \u03b8\u2080) / J_h) ile \u00f6l\u00e7eklenir; aerodinamik ve s\u00f6n\u00fcm k\u00fc\u00e7\u00fck katk\u0131"
+    },
+    {
+     "key": "incoming_hinge_momentum_n_m_s",
+     "label": "Temas \u00f6ncesi mente\u015fe a\u00e7\u0131sal momentumu J_h\u03b8\u0307",
+     "value": 0.018005838526073358,
+     "unit": "N\u00b7m\u00b7s",
+     "class": "preliminary",
+     "governed_by": "J_h ve \u00e7arpma h\u0131z\u0131; geri sekme katsay\u0131s\u0131ndan ba\u011f\u0131ms\u0131z"
+    },
+    {
+     "key": "impact_energy_j",
+     "label": "Stop \u00e7arpma enerjisi \u00bdJ_h\u03b8\u0307\u00b2",
+     "value": 1.3424853872754767,
+     "unit": "J",
+     "class": "preliminary",
+     "governed_by": "Merkezka\u00e7 potansiyeli m \u03a9\u00b2 r_h c_g (1 \u2212 cos \u03b8\u2080): J_h\u2019den ba\u011f\u0131ms\u0131z; statik moment m\u00b7c_g belirler"
+    },
+    {
+     "key": "energy_ratio",
+     "label": "\u00c7arpma enerjisi / merkezka\u00e7 s\u0131n\u0131r\u0131",
+     "value": 0.9391999182864527,
+     "unit": "-",
+     "class": "preliminary",
+     "governed_by": "Aerodinamik, s\u00f6n\u00fcm ve rampa katk\u0131s\u0131 (1\u2019den fark)"
+    },
+    {
+     "key": "hinge_angular_momentum_change_n_m_s",
+     "label": "Temasta mente\u015fe a\u00e7\u0131sal momentum de\u011fi\u015fimi",
+     "value": -0.027316983383565075,
+     "unit": "N\u00b7m\u00b7s",
+     "class": "illustrative",
+     "governed_by": "(1 + e)\u00b7J_h\u03b8\u0307: varsay\u0131lan geri sekme katsay\u0131s\u0131 e \u00e7arpan\u0131 belirler"
+    },
+    {
+     "key": "peak_stop_torque_nm",
+     "label": "Tepe stop momenti",
+     "value": 29.33483640855704,
+     "unit": "N\u00b7m",
+     "class": "illustrative",
+     "governed_by": "Varsay\u0131lan stop rijitli\u011fi ve s\u00f6n\u00fcm\u00fc (\u2248 |\u03b8\u0307|\u221a(kJ_h) = 36.6 N\u00b7m s\u00f6n\u00fcms\u00fcz)"
+    },
+    {
+     "key": "rebound_rate_rad_s",
+     "label": "Geri sekme h\u0131z\u0131",
+     "value": -77.1109304968258,
+     "unit": "rad/s",
+     "class": "illustrative",
+     "governed_by": "Varsay\u0131lan geri sekme katsay\u0131s\u0131 e = 0.5"
+    },
+    {
+     "key": "impulse_balance_relative_residual",
+     "label": "Temas boyunca itme dengesi kal\u0131nt\u0131s\u0131",
+     "value": 0.0006585734583034055,
+     "unit": "-",
+     "class": "numerical_check",
+     "governed_by": "J_h\u0394\u03b8\u0307 = \u222b\u03a3M dt (temas aral\u0131\u011f\u0131); noktasal kal\u0131nt\u0131dan farkl\u0131 olarak s\u0131\u00e7ramay\u0131 t\u00fcrevlemez"
+    },
+    {
+     "key": "swing_impulse_n_m_s",
+     "label": "A\u00e7\u0131lma sal\u0131n\u0131m\u0131nda mile aktar\u0131lan a\u00e7\u0131sal itme",
+     "value": 0.1967742539922562,
+     "unit": "N\u00b7m\u00b7s",
+     "class": "preliminary",
+     "governed_by": "D\u0131\u015f par\u00e7alar\u0131n d\u0131\u015fa a\u00e7\u0131lmas\u0131 (m, c_g, r_h, \u03a9, \u03b8\u2080); geri sekmeden ba\u011f\u0131ms\u0131z; temastaki itmeyle z\u0131t i\u015faretli"
+    },
+    {
+     "key": "angular_impulse_n_m_s",
+     "label": "Temas boyunca mile aktar\u0131lan a\u00e7\u0131sal itme",
+     "value": -0.25296715061076164,
+     "unit": "N\u00b7m\u00b7s",
+     "class": "illustrative",
+     "governed_by": "\u2248 (1 + e)\u00b7\u03a3(J_h + m r_h c_g)\u03b8\u0307: varsay\u0131lan geri sekme katsay\u0131s\u0131 \u00e7arpan\u0131 belirler; ger\u00e7ek tahrikte devir d\u00fc\u015f\u00fc\u015f\u00fc/burulma y\u00fck\u00fc girdisi"
+    },
+    {
+     "key": "peak_drive_torque_nm",
+     "label": "Tepe tahrik torku",
+     "value": 284.591097415433,
+     "unit": "N\u00b7m",
+     "class": "illustrative",
+     "governed_by": "Sonsuz rijit \u00f6ng\u00f6r\u00fclen devir ve varsay\u0131lan stop (temas s\u00fcresi); zaman ad\u0131m\u0131na ba\u011f\u0131ml\u0131l\u0131\u011f\u0131 s\u0131nanmad\u0131; mil y\u00fck\u00fc tahmini de\u011fildir"
+    },
+    {
+     "key": "momentum_balance_relative_residual",
+     "label": "Mil a\u00e7\u0131sal momentum dengesi kal\u0131nt\u0131s\u0131",
+     "value": 0.0046101041655930795,
+     "unit": "-",
+     "class": "numerical_check",
+     "governed_by": "Net tahrik itmesi = d\u0131\u015f par\u00e7alar\u0131n mil etraf\u0131ndaki momentum de\u011fi\u015fimi; g\u00f6bek ataleti dahil de\u011fil (temas boyunca devir de\u011fi\u015fimi 3.1 RPM)"
+    },
+    {
+     "key": "pointwise_contact_residual",
+     "label": "Noktasal temas faz\u0131 kal\u0131nt\u0131s\u0131 (tan\u0131)",
+     "value": 0.17635041432183438,
+     "unit": "-",
+     "class": "numerical_check",
+     "governed_by": "Merkezi fark, t\u00fcrevlenemeyen penalt\u0131 yasas\u0131n\u0131n s\u0131\u00e7ramas\u0131n\u0131 kapsar; temas \u00e7\u00f6z\u00fcn\u00fcrl\u00fc\u011f\u00fcn\u00fc itme dengesi g\u00f6sterir"
+    }
+   ]
+  }
+ },
+ "mechanics_sensitivity": {
+  "declared": {
+   "mass_kg": 0.03,
+   "cg_m": 0.055,
+   "inertia_cg_kg_m2": 3e-05,
+   "J_h_kg_m2": 0.00012075,
+   "stop_stiffness_nm_per_rad": 500.0,
+   "restitution": 0.5,
+   "hinge_radius_m": 0.27
+  },
+  "share_of_J_h_from_m_cg2": 0.7515527950310559,
+  "elasticities": {
+   "impact_energy (= eta m c_g W^2 r_h (1 - cos th0))": {
+    "mass": 1.0,
+    "cg": 1.0,
+    "inertia_cg": 0.0,
+    "stop_stiffness": 0.0,
+    "restitution": 0.0,
+    "shaft_speed": 2.0
+   },
+   "impact_rate (sqrt(2E/J_h))": {
+    "mass": 0.12422360248447206,
+    "cg": -0.2515527950310559,
+    "inertia_cg": -0.12422360248447206,
+    "stop_stiffness": 0.0,
+    "restitution": 0.0,
+    "shaft_speed": 1.0
+   },
+   "release_to_contact_time (~ sqrt(J_h/(m r_h c_g))/W)": {
+    "mass": -0.12422360248447206,
+    "cg": 0.2515527950310559,
+    "inertia_cg": 0.12422360248447206,
+    "stop_stiffness": 0.0,
+    "restitution": 0.0,
+    "shaft_speed": -1.0
+   },
+   "peak_stop_torque (~ sqrt(2 E k) f(e))": {
+    "mass": 0.5,
+    "cg": 0.5,
+    "inertia_cg": 0.0,
+    "stop_stiffness": 0.5,
+    "restitution": "f(e): damping set from e",
+    "shaft_speed": 1.0
+   },
+   "shaft_angular_impulse (~ (1+e)(J_h + m r_h c_g) th_dot)": {
+    "mass": 1.0712434700341409,
+    "cg": 0.8557319731808646,
+    "inertia_cg": -0.07124347003414094,
+    "stop_stiffness": 0.0,
+    "restitution": 0.3333333333333333,
+    "shaft_speed": 1.0
+   }
+  },
+  "note": "Log-derivatives of the scaling laws at the declared values; eta = energy ratio observed in the runs. Friction is not modelled: a hinge friction moment M_f removes about M_f |th0| of impact energy.",
+  "observed_eta_range": [
+   0.8484319535282172,
+   0.9530102702107454
+  ]
+ },
+ "fold_representation_limits": {
+  "chord_tolerance_to_fold_deg": {
+   "0.02": -22.956681909067157,
+   "0.05": -36.38974467753357,
+   "0.10": -51.68386552633425
+  },
+  "sweep_limit_to_fold_deg": {
+   "25": -30.2,
+   "35": -42.2,
+   "45": -53.800000000000004
+  },
+  "at_fold": {
+   "-23": {
+    "junction_chord": 0.02007529537917041,
+    "distal_sweep_deg": 18.934043599208355
+   },
+   "-30": {
+    "junction_chord": 0.03407417371093169,
+    "distal_sweep_deg": 24.75080183093674
+   },
+   "-45": {
+    "junction_chord": 0.07612046748871326,
+    "distal_sweep_deg": 37.377054414900115
+   },
+   "-60": {
+    "junction_chord": 0.1339745962155613,
+    "distal_sweep_deg": 50.31839763809365
+   },
+   "-90": {
+    "junction_chord": 0.2928932188134524,
+    "distal_sweep_deg": 77.67357057621504
+   }
+  }
+ }
+}

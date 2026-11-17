@@ -1,0 +1,70 @@
+{
+ "case": "release from -5 deg at 0.01 s, 2.5 deg steps, 259 windows, 8 elements per segment (fixed); node spacing scaled by a diagnostic-only driver override (records do not restore by design)",
+ "runs": {
+  "0.5": {
+   "closure": {
+    "interface_power_w": 0.0026585175737636746,
+    "kinematic_position_m": 4.2495766544581315e-08,
+    "kinematic_rotation_rad": 3.783042399341241e-07,
+    "load_force_n": 6.315827296710097e-06,
+    "load_moment_nm": 2.6525915446801163e-08,
+    "max_interface_power_w": 2974.2286375059116,
+    "max_node_force_n": 5.471712073298053,
+    "max_node_moment_nm": 0.02462020583041339
+   },
+   "coupling_nodes": 66,
+   "run_id": "20261112T104306_fc454dbf5a",
+   "status": "completed"
+  },
+  "1.0": {
+   "closure": {
+    "interface_power_w": 0.0026487858358450467,
+    "kinematic_position_m": 4.112787740928603e-08,
+    "kinematic_rotation_rad": 3.7833225841055196e-07,
+    "load_force_n": 6.277273886468038e-06,
+    "load_moment_nm": 2.7711830812710003e-08,
+    "max_interface_power_w": 2974.642625881502,
+    "max_node_force_n": 5.907034676958682,
+    "max_node_moment_nm": 0.02646283434887954
+   },
+   "coupling_nodes": 34,
+   "run_id": "20261112T104303_5d5d234081",
+   "status": "completed"
+  },
+  "2.0": {
+   "closure": {
+    "interface_power_w": 0.002634386468798766,
+    "kinematic_position_m": 3.844788362683538e-08,
+    "kinematic_rotation_rad": 3.789483354332823e-07,
+    "load_force_n": 1.2001817982110197e-05,
+    "load_moment_nm": 5.175032482401809e-08,
+    "max_interface_power_w": 2974.9406116603986,
+    "max_node_force_n": 10.9843015822263,
+    "max_node_moment_nm": 0.04976056799328211
+   },
+   "coupling_nodes": 18,
+   "run_id": "20261112T104309_3578a648d8",
+   "status": "completed"
+  }
+ },
+ "vs_default": {
+  "0.5": {
+   "last_rev_mean_thrust_rel": 3.7068197151768345e-06,
+   "max_abs_daero_torque_nm": 0.001646625640489674,
+   "max_abs_dhinge_aero_moment_nm": 0.000835425318868821,
+   "max_abs_dtheta_deg": 0.0015058508836137963,
+   "max_abs_dthrust_latched_n": 0.018910604865226333,
+   "max_abs_dthrust_n": 0.018910604865226333,
+   "max_abs_hinge_aero_moment_default_nm": 0.5377346983862278
+  },
+  "2.0": {
+   "last_rev_mean_thrust_rel": -1.992095862968224e-05,
+   "max_abs_daero_torque_nm": 0.0011902154195642112,
+   "max_abs_dhinge_aero_moment_nm": 0.005065363350046814,
+   "max_abs_dtheta_deg": 0.01093943577061332,
+   "max_abs_dthrust_latched_n": 0.012560003704464862,
+   "max_abs_dthrust_n": 0.017871446053341344,
+   "max_abs_hinge_aero_moment_default_nm": 0.5377346983862278
+  }
+ }
+}

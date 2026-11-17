@@ -1,0 +1,512 @@
+{
+ "schema_version": 1,
+ "artifact_class": "pyfoldable_coupled_request",
+ "model_id": "pyfoldable_dust_mbdyn_precice_segmented_rigid_v1",
+ "research": {
+  "input_sha256": "da1337737d0a75fc5925de42b6c60c697bcd52cd1aadebe7f79da9175cf6a5d5",
+  "inputs": {
+   "template_id": "axial_800",
+   "profile": "NACA2412",
+   "diameter_mm": 800.0,
+   "hub_mm": 90.0,
+   "root_mm": 100.0,
+   "root_meaning": "Declared physical blade start of this study layout; independent of the 90 mm hub radius and 144 mm first aerodynamic station",
+   "root_source": "RESEARCH_AXIAL_800_V1 dimensional declaration",
+   "root_kind": "study_assumption",
+   "hinge_mm": 270.0,
+   "blade_count": 2,
+   "chord_scale": 1.0,
+   "twist_scale": 1.0,
+   "fold_deg": -110.0,
+   "stow_limit_deg": -180.0,
+   "stowed_target_mm": 600.0,
+   "rpm": 2400.0,
+   "inflow_m_s": 14.0,
+   "density_kg_m3": 1.225,
+   "viscosity_pa_s": 1.81e-05,
+   "temperature_k": 288.15,
+   "pressure_pa": 101325.0,
+   "annulus_count": 40
+  },
+  "draft_toml": "schema_version = 1\n\n[design]\nid = \"RESEARCH_AXIAL_800_V1_DRAFT\"\ndescription = \"Unqualified UI draft derived from RESEARCH_AXIAL_800_V1\"\n\n[blade]\ndiameter = \"800.0 mm\"\nhub_radius = \"90.0 mm\"\nblade_count = 2\n\n[[blade.stations]]\nr_over_R = 0.36\nchord = \"70.0 mm\"\ntwist = \"26.14821124143528 deg\"\nairfoil = \"NACA2412\"\n\n[[blade.stations]]\nr_over_R = 0.44\nchord = \"66.0 mm\"\ntwist = \"22.56264745696988 deg\"\nairfoil = \"NACA2412\"\n\n[[blade.stations]]\nr_over_R = 0.55\nchord = \"61.0 mm\"\ntwist = \"19.20873083443404 deg\"\nairfoil = \"NACA2412\"\n\n[[blade.stations]]\nr_over_R = 0.68\nchord = \"56.0 mm\"\ntwist = \"16.57385183345925 deg\"\nairfoil = \"NACA2412\"\n\n[[blade.stations]]\nr_over_R = 0.82\nchord = \"50.0 mm\"\ntwist = \"14.638576671340548 deg\"\nairfoil = \"NACA2412\"\n\n[[blade.stations]]\nr_over_R = 0.97\nchord = \"44.0 mm\"\ntwist = \"13.1699906376886 deg\"\nairfoil = \"NACA2412\"\n\n[[airfoils]]\nid = \"NACA2412\"\nsource = \"https://www.pdas.com/sections45.html\"\ncoordinates = [[1.0, 0.001275], [0.95, 0.011341], [0.9, 0.020711], [0.85, 0.029422], [0.8, 0.037497], [0.75, 0.044949], [0.7, 0.051778], [0.65, 0.057972], [0.6, 0.063506], [0.55, 0.068341], [0.5, 0.072425], [0.45, 0.075685], [0.4, 0.07803], [0.35, 0.079163], [0.3, 0.078785], [0.25, 0.076695], [0.2, 0.072607], [0.15, 0.066074], [0.1, 0.056291], [0.075, 0.049677], [0.05, 0.041304], [0.025, 0.029863], [0.0125, 0.021606], [0.0075, 0.01709], [0.005, 0.014269], [0.0, 0.0], [0.005, -0.010396], [0.0075, -0.012852], [0.0125, -0.016513], [0.025, -0.022684], [0.05, -0.030054], [0.075, -0.03458], [0.1, -0.037608], [0.15, -0.041022], [0.2, -0.042278], [0.25, -0.042209], [0.3, -0.041286], [0.35, -0.039819], [0.4, -0.03803], [0.45, -0.035931], [0.5, -0.033462], [0.55, -0.03072], [0.6, -0.027784], [0.65, -0.02471], [0.7, -0.02154], [0.75, -0.018305], [0.8, -0.015017], [0.85, -0.011681], [0.9, -0.008289], [0.95, -0.004821], [1.0, -0.001251]]\n[airfoils.metadata]\nairfoil_coordinate_sha256 = \"3f84aba0f9234ed6e9fe4eedebe88ae8701a19ae181d70e21a02b0704916999a\"\ncanonical_order = \"upper_TE_to_LE_to_lower_TE\"\ncatalog_schema_version = 1\ncatalog_sha256 = \"18951dba6dc59215c1b196f33637265d9ae01332244809a82d6592bcd077dcd0\"\nconsecutive_duplicates_removed = 0\ncoordinate_format = \"lednicer\"\ngeometry_evidence_class = \"reference_coordinate_realization_not_manufactured_geometry\"\ninput_name = \"NACA2412 PDAS common-x table; transcribed 2026-09-01\"\ninput_point_count = 51\nmaximum_thickness_ratio = 0.120071\nminimum_interior_thickness_ratio = 0.0030714400000000012\nnormalized_to_unit_chord = true\nphysical_qualification = false\npoint_count = 51\nsource_sha256 = \"598edb7d31e3dc039e993a1cdd6ad3412796e9c762ed5a1bbb41e1e928c8e5ef\"\nsource_table = \"NACA Section 2412, first/common-x table, 26 rows; percent chord divided by 100\"\ntrailing_edge = \"open\"\ntrailing_edge_gap_ratio = 0.002526\n\n[[operating_conditions]]\nid = \"axial_800_2400_rpm_14_m_s\"\nangular_speed = \"2400.0 rpm\"\nforward_speed = \"14.0 m/s\"\nair_density = \"1.225 kg/m^3\"\ndynamic_viscosity = \"1.81e-05 Pa*s\"\ntemperature = \"288.15 K\"\npressure = \"101325.0 Pa\"\n\n[hinge]\nradius = \"270.0 mm\"\naxial_offset = \"0.0 mm\"\ntangential_offset = \"0.0 mm\"\naxis_azimuth = \"0.0 deg\"\naxis_elevation = \"90.0 deg\"\nstowed_angle = \"-180.0 deg\"\ndeployed_angle = \"0.0 deg\"\nstop_angle = \"0.0 deg\"\n\n[metadata]\nartifact_class = \"unqualified_design_draft\"\nnote = \"Independent study geometry and fluid declaration; no measured rotor or structural qualification.\"\npreview_fold_angle = \"0 deg\"\npreview_fold_angle_semantics = \"UI preview pose; not a hinge stop or a physical result\"\nproject = \"PyFoldable\"\nsource_design_id = \"RESEARCH_AXIAL_800_V1\"\nsource_design_sha256 = \"2a0413b7433a66862ce2c8da61f7930161788e8bc13ef2ec585d8e73c367230a\"\nstowed_envelope_requirement = \"0.59999999999999998 m\"\n",
+  "draft_sha256": "73570550782253ca8d418c1442f6da4ff3b6b10aeab8ef7d8589a29caa65cdb0",
+  "draft_source_sha256": "2a0413b7433a66862ce2c8da61f7930161788e8bc13ef2ec585d8e73c367230a",
+  "template_toml": "schema_version = 1\n\n[design]\nid = \"RESEARCH_AXIAL_800_V1\"\ndescription = \"Declared research reference, 800 mm axial-flow rotor; no prototype or benchmark\"\n\n[blade]\ndiameter = \"800 mm\"\nhub_radius = \"90 mm\"\nblade_count = 2\n\n[[blade.stations]]\nr_over_R = 0.36\nchord = \"70 mm\"\ntwist = \"26.14821124143528 deg\"\nairfoil = \"NACA2412\"\n\n[[blade.stations]]\nr_over_R = 0.44\nchord = \"66 mm\"\ntwist = \"22.56264745696988 deg\"\nairfoil = \"NACA2412\"\n\n[[blade.stations]]\nr_over_R = 0.55\nchord = \"61 mm\"\ntwist = \"19.20873083443404 deg\"\nairfoil = \"NACA2412\"\n\n[[blade.stations]]\nr_over_R = 0.68\nchord = \"56 mm\"\ntwist = \"16.57385183345925 deg\"\nairfoil = \"NACA2412\"\n\n[[blade.stations]]\nr_over_R = 0.82\nchord = \"50 mm\"\ntwist = \"14.63857667134055 deg\"\nairfoil = \"NACA2412\"\n\n[[blade.stations]]\nr_over_R = 0.97\nchord = \"44 mm\"\ntwist = \"13.1699906376886 deg\"\nairfoil = \"NACA2412\"\n\n[[airfoils]]\nid = \"NACA2412\"\nsource = \"analytic_naca_4_digit\"\n\n[[operating_conditions]]\nid = \"axial_800_2400_rpm_14_m_s\"\nangular_speed = \"2400 rpm\"\nforward_speed = \"14 m/s\"\nair_density = \"1.225 kg/m^3\"\ndynamic_viscosity = \"1.81e-5 Pa*s\"\ntemperature = \"288.15 K\"\npressure = \"101325 Pa\"\n\n[hinge]\nradius = \"270 mm\"\naxial_offset = \"0 mm\"\ntangential_offset = \"0 mm\"\naxis_azimuth = \"0 deg\"\naxis_elevation = \"90 deg\"\nstowed_angle = \"-180 deg\"\ndeployed_angle = \"0 deg\"\nstop_angle = \"0 deg\"\n\n[metadata]\nproject = \"PyFoldable\"\nstowed_envelope_requirement = \"600 mm\"\nnote = \"Independent study geometry and fluid declaration; no measured rotor or structural qualification.\"\n",
+  "template_identity": "repository:configs/designs/RESEARCH_AXIAL_800_V1.toml",
+  "length_order_policy": "either_order",
+  "root": {
+   "value": 100.0,
+   "unit": "mm",
+   "meaning": "Declared physical blade start of this study layout; independent of the 90 mm hub radius and 144 mm first aerodynamic station",
+   "source_identity": "RESEARCH_AXIAL_800_V1 dimensional declaration",
+   "declaration_kind": "study_assumption"
+  },
+  "coordinate_sha256": "3f84aba0f9234ed6e9fe4eedebe88ae8701a19ae181d70e21a02b0704916999a"
+ },
+ "aero_admission": {
+  "request_sha256": "716aeb671e48bd88bffc8ebfff89e1536fd0b9fffb39ac6f3a82dad8defab43b",
+  "family_id": "research_axial_800_attached_xfoil_v1:NACA2412",
+  "stored_version_sha256": "5841e000f7885350756d73803a9a0506b1f895e2b336c7cad3a831b592ced3f0",
+  "evidence_class": "caller_supplied_unqualified",
+  "provider_policy": {
+   "max_iterations": 160,
+   "n_crit": 9.0,
+   "options": {
+    "repanel": true
+   },
+   "provider": {
+    "adapter_version": "2",
+    "backend_name": "XFOIL",
+    "backend_version": "6.99",
+    "name": "xfoil-subprocess"
+   },
+   "timeout_s": 30.0,
+   "xtr_lower": 1.0,
+   "xtr_upper": 1.0
+  },
+  "source_identity": "operator-captured numerical records; plan_sha256:8505fa362136496d83340123a3f65045caffdcf94843e7e27d427a192090cab2",
+  "tables": [
+   {
+    "airfoil_id": "NACA2412",
+    "reynolds": 165000.0,
+    "mach": 0.1,
+    "alpha_rad": [
+     -0.10471975511965978,
+     -0.06981317007977318,
+     -0.03490658503988659,
+     0.0,
+     0.03490658503988659,
+     0.06981317007977318,
+     0.10471975511965978,
+     0.13962634015954636
+    ],
+    "cl": [
+     -0.576,
+     -0.3308,
+     -0.0229,
+     0.3247,
+     0.5225,
+     0.7122,
+     0.8956,
+     1.0364
+    ],
+    "cd": [
+     0.02092,
+     0.01634,
+     0.01272,
+     0.01135,
+     0.01112,
+     0.01248,
+     0.01446,
+     0.01999
+    ],
+    "cm": [
+     -0.0273,
+     -0.0347,
+     -0.0521,
+     -0.0696,
+     -0.0629,
+     -0.0546,
+     -0.0456,
+     -0.0321
+    ]
+   },
+   {
+    "airfoil_id": "NACA2412",
+    "reynolds": 245000.0,
+    "mach": 0.1,
+    "alpha_rad": [
+     -0.10471975511965978,
+     -0.06981317007977318,
+     -0.03490658503988659,
+     0.0,
+     0.03490658503988659,
+     0.06981317007977318,
+     0.10471975511965978,
+     0.13962634015954636
+    ],
+    "cl": [
+     -0.5583,
+     -0.2515,
+     0.0221,
+     0.2525,
+     0.5211,
+     0.7103,
+     0.8958,
+     1.0489
+    ],
+    "cd": [
+     0.01737,
+     0.01326,
+     0.00989,
+     0.00881,
+     0.00926,
+     0.01057,
+     0.01257,
+     0.01789
+    ],
+    "cm": [
+     -0.0303,
+     -0.0488,
+     -0.0582,
+     -0.0531,
+     -0.0615,
+     -0.0538,
+     -0.0458,
+     -0.0347
+    ]
+   },
+   {
+    "airfoil_id": "NACA2412",
+    "reynolds": 330000.0,
+    "mach": 0.1,
+    "alpha_rad": [
+     -0.10471975511965978,
+     -0.06981317007977318,
+     -0.03490658503988659,
+     0.0,
+     0.03490658503988659,
+     0.06981317007977318,
+     0.10471975511965978,
+     0.13962634015954636
+    ],
+    "cl": [
+     -0.5012,
+     -0.2082,
+     0.0284,
+     0.2336,
+     0.5203,
+     0.71,
+     0.8973,
+     1.0603
+    ],
+    "cd": [
+     0.01481,
+     0.01134,
+     0.00859,
+     0.00746,
+     0.00828,
+     0.0095,
+     0.01156,
+     0.01647
+    ],
+    "cm": [
+     -0.0414,
+     -0.0563,
+     -0.0577,
+     -0.0492,
+     -0.0611,
+     -0.0538,
+     -0.0464,
+     -0.0369
+    ]
+   },
+   {
+    "airfoil_id": "NACA2412",
+    "reynolds": 165000.0,
+    "mach": 0.31,
+    "alpha_rad": [
+     -0.10471975511965978,
+     -0.06981317007977318,
+     -0.03490658503988659,
+     0.0,
+     0.03490658503988659,
+     0.06981317007977318,
+     0.10471975511965978,
+     0.13962634015954636
+    ],
+    "cl": [
+     -0.6169,
+     -0.336,
+     -0.0142,
+     0.308,
+     0.5482,
+     0.7456,
+     0.9311,
+     1.0511
+    ],
+    "cd": [
+     0.02385,
+     0.01733,
+     0.01318,
+     0.01157,
+     0.01158,
+     0.01315,
+     0.0155,
+     0.02306
+    ],
+    "cm": [
+     -0.0305,
+     -0.0406,
+     -0.0571,
+     -0.065,
+     -0.0647,
+     -0.0548,
+     -0.0424,
+     -0.023
+    ]
+   },
+   {
+    "airfoil_id": "NACA2412",
+    "reynolds": 245000.0,
+    "mach": 0.31,
+    "alpha_rad": [
+     -0.10471975511965978,
+     -0.06981317007977318,
+     -0.03490658503988659,
+     0.0,
+     0.03490658503988659,
+     0.06981317007977318,
+     0.10471975511965978,
+     0.13962634015954636
+    ],
+    "cl": [
+     -0.5758,
+     -0.2561,
+     0.0259,
+     0.2524,
+     0.5478,
+     0.7442,
+     0.9324,
+     1.0694
+    ],
+    "cd": [
+     0.01929,
+     0.01391,
+     0.01027,
+     0.00897,
+     0.00967,
+     0.01113,
+     0.01359,
+     0.02045
+    ],
+    "cm": [
+     -0.0378,
+     -0.0541,
+     -0.0615,
+     -0.0527,
+     -0.0635,
+     -0.0541,
+     -0.043,
+     -0.026
+    ]
+   },
+   {
+    "airfoil_id": "NACA2412",
+    "reynolds": 330000.0,
+    "mach": 0.31,
+    "alpha_rad": [
+     -0.10471975511965978,
+     -0.06981317007977318,
+     -0.03490658503988659,
+     0.0,
+     0.03490658503988659,
+     0.06981317007977318,
+     0.10471975511965978,
+     0.13962634015954636
+    ],
+    "cl": [
+     -0.5203,
+     -0.2118,
+     0.03,
+     0.2421,
+     0.5476,
+     0.744,
+     0.9346,
+     1.0869
+    ],
+    "cd": [
+     0.01629,
+     0.01178,
+     0.009,
+     0.00766,
+     0.00865,
+     0.01,
+     0.01259,
+     0.01874
+    ],
+    "cm": [
+     -0.0481,
+     -0.0615,
+     -0.0604,
+     -0.0509,
+     -0.0632,
+     -0.0541,
+     -0.0437,
+     -0.0288
+    ]
+   }
+  ]
+ },
+ "c81": {
+  "sha256": "4df4ba024bfe0888864a29ac28ee1d1b5dd4a25c20034f9af89b6bfd020e7837",
+  "envelope": {
+   "alpha_deg": [
+    -6.000000000000001,
+    8.0
+   ],
+   "mach": [
+    0.1,
+    0.31
+   ],
+   "reynolds": [
+    165000.0,
+    330000.0
+   ],
+   "alpha_mach_outside": "dust_aborts",
+   "reynolds_outside": "dust_linear_extrapolation_audited_by_pyfoldable"
+  },
+  "text": "3 0 0\n0 1\n0.158 0.158\nCOMMENT#1\n165000.0 0.000\nNACA2412                      020802080208\n0.1 0.31\n-6.000000000000001 -0.576 -0.6169\n-4.0 -0.3308 -0.336\n-2.0 -0.0229 -0.0142\n0.0 0.3247 0.308\n2.0 0.5225 0.5482\n4.0 0.7122 0.7456\n6.000000000000001 0.8956 0.9311\n8.0 1.0364 1.0511\n0.1 0.31\n-6.000000000000001 0.02092 0.02385\n-4.0 0.01634 0.01733\n-2.0 0.01272 0.01318\n0.0 0.01135 0.01157\n2.0 0.01112 0.01158\n4.0 0.01248 0.01315\n6.000000000000001 0.01446 0.0155\n8.0 0.01999 0.02306\n0.1 0.31\n-6.000000000000001 -0.0273 -0.0305\n-4.0 -0.0347 -0.0406\n-2.0 -0.0521 -0.0571\n0.0 -0.0696 -0.065\n2.0 -0.0629 -0.0647\n4.0 -0.0546 -0.0548\n6.000000000000001 -0.0456 -0.0424\n8.0 -0.0321 -0.023\nCOMMENT#1\n245000.0 0.000\nNACA2412                      020802080208\n0.1 0.31\n-6.000000000000001 -0.5583 -0.5758\n-4.0 -0.2515 -0.2561\n-2.0 0.0221 0.0259\n0.0 0.2525 0.2524\n2.0 0.5211 0.5478\n4.0 0.7103 0.7442\n6.000000000000001 0.8958 0.9324\n8.0 1.0489 1.0694\n0.1 0.31\n-6.000000000000001 0.01737 0.01929\n-4.0 0.01326 0.01391\n-2.0 0.00989 0.01027\n0.0 0.00881 0.00897\n2.0 0.00926 0.00967\n4.0 0.01057 0.01113\n6.000000000000001 0.01257 0.01359\n8.0 0.01789 0.02045\n0.1 0.31\n-6.000000000000001 -0.0303 -0.0378\n-4.0 -0.0488 -0.0541\n-2.0 -0.0582 -0.0615\n0.0 -0.0531 -0.0527\n2.0 -0.0615 -0.0635\n4.0 -0.0538 -0.0541\n6.000000000000001 -0.0458 -0.043\n8.0 -0.0347 -0.026\nCOMMENT#1\n330000.0 0.000\nNACA2412                      020802080208\n0.1 0.31\n-6.000000000000001 -0.5012 -0.5203\n-4.0 -0.2082 -0.2118\n-2.0 0.0284 0.03\n0.0 0.2336 0.2421\n2.0 0.5203 0.5476\n4.0 0.71 0.744\n6.000000000000001 0.8973 0.9346\n8.0 1.0603 1.0869\n0.1 0.31\n-6.000000000000001 0.01481 0.01629\n-4.0 0.01134 0.01178\n-2.0 0.00859 0.009\n0.0 0.00746 0.00766\n2.0 0.00828 0.00865\n4.0 0.0095 0.01\n6.000000000000001 0.01156 0.01259\n8.0 0.01647 0.01874\n0.1 0.31\n-6.000000000000001 -0.0414 -0.0481\n-4.0 -0.0563 -0.0615\n-2.0 -0.0577 -0.0604\n0.0 -0.0492 -0.0509\n2.0 -0.0611 -0.0632\n4.0 -0.0538 -0.0541\n6.000000000000001 -0.0464 -0.0437\n8.0 -0.0369 -0.0288\n",
+  "source_table_sha256": [
+   "fec27d9232fe31f4d8a12b15db553a82c9b5035fa7bead749fdf4d7dffb10203",
+   "426d93798257dc803b60b93b2773041e9d08e0e6d7d7bda72ff5bbe2187345ac",
+   "fd89539299e373c9859dd9e06b826204ef8c32e991c79172f68bdc25415f47e1",
+   "39fb58a4f2a3dee3594f7ea3e1d3b96cdc98ee8466a5c8374eaaf895bff88605",
+   "d60775e151a077f4987bf1f9989613aca381155f6779ab66cc15e0a6a34181f6",
+   "34ddf1dfc88bd77d6ae3c6095d80a5e058bd6a7bac80813f7208477be3ea1764"
+  ]
+ },
+ "mechanics": {
+  "distal_mass_kg": 0.03,
+  "distal_cg_from_hinge_m": 0.055,
+  "distal_inertia_cg_kg_m2": 3e-05,
+  "spring_nm_per_rad": 0.0,
+  "spring_rest_rad": 0.0,
+  "hinge_damping_nm_s_per_rad": 0.0,
+  "stop_angle_rad": 0.0,
+  "stop_stiffness_nm_per_rad": 250.0,
+  "stop_restitution": 0.5,
+  "fold_limit_rad": -2.9670597283903604,
+  "initial_fold_rad": -0.08726646259971647,
+  "initial_rate_rad_s": 0.0,
+  "release_time_s": 0.001,
+  "proximal_mass_kg": 0.05,
+  "hub_mass_kg": 0.1,
+  "source": "Demonstration assumption: 30 g distal segment, CG 55 mm from hinge, J_cg 3e-5 kg m^2; compliant penalty stop; not measured hardware",
+  "declaration_kind": "demonstration_assumption"
+ },
+ "controls": {
+  "azimuth_step_deg": 5.0,
+  "duration_s": 0.0104,
+  "elements_per_segment": 8,
+  "n_wake_panels": 1,
+  "max_wake_particles": 60000,
+  "wake_box_axial_m": 1.6,
+  "wake_box_radial_factor": 1.6,
+  "coupling_max_iterations": 30,
+  "coupling_position_tol_m": 1e-06,
+  "coupling_rotation_tol_rad": 1e-06,
+  "coupling_velocity_tol_m_s": 0.001,
+  "coupling_angular_velocity_tol_rad_s": 0.001,
+  "aitken_initial_relaxation": 0.5,
+  "mbdyn_tolerance": 1e-06,
+  "mbdyn_max_iterations": 50,
+  "mbdyn_spectral_radius": 0.6,
+  "ll_tol": 1e-06,
+  "ll_max_iter": 200,
+  "ll_damp": 25.0,
+  "fmm": false,
+  "wall_timeout_s": 3600.0
+ },
+ "drive": "prescribed_constant_speed",
+ "case_sha256": "e3cb46ae5aa38ed5a3476592f5ddd03b84bbcc28a9da1119459a5d0a17c22d5f",
+ "deck": {
+  "files": {
+   "dust/References.in": {
+    "sha256": "354c7bdddfd9056b8a1251a748e1c217b7c37a95de87df746e270dbbc5d8f1ff",
+    "bytes": 349
+   },
+   "dust/airfoil/NACA2412.c81": {
+    "sha256": "4df4ba024bfe0888864a29ac28ee1d1b5dd4a25c20034f9af89b6bfd020e7837",
+    "bytes": 1973
+   },
+   "dust/comps/blade1_distal.in": {
+    "sha256": "b2ff11bf0db185dcd81e949659adb896776b2f1ce184e6d472272ffd150e1de9",
+    "bytes": 1022
+   },
+   "dust/comps/blade1_proximal.in": {
+    "sha256": "1b91e3a48936422efc1ebcc7a900b61f9d66672bfa4a3469e2bac696a927a301",
+    "bytes": 1034
+   },
+   "dust/comps/blade2_distal.in": {
+    "sha256": "0f3704cff6e74286f13bcdbf11543480c94385f5a77dc7af57c6d7208ed3944e",
+    "bytes": 1023
+   },
+   "dust/comps/blade2_proximal.in": {
+    "sha256": "6b1bfbca1349b7072de8e9dd5f2f3ba89f3917497ff6f082752f54222200f660",
+    "bytes": 1035
+   },
+   "dust/dust.in": {
+    "sha256": "35ed97fb5cc2b254a87e3a6c7f2960ee7a18935bec80b1c0c1b2ca249c667a99",
+    "bytes": 828
+   },
+   "dust/dust_pre.in": {
+    "sha256": "040b9f524d4bdb42631ada8659d6113373c7ce266c6b41a5def0809cb29bfc19",
+    "bytes": 353
+   },
+   "precice-config.xml": {
+    "sha256": "5a7c38723300b7bf0e6018de952ac6c2795c0572b735452fa814545526d65427",
+    "bytes": 3796
+   },
+   "structure/adapter_config.json": {
+    "sha256": "21eaa9ca074b0a8d391a00d304da0379cce83cd28c24f9f49bb797acbc041a44",
+    "bytes": 520
+   },
+   "structure/rotor.mbd": {
+    "sha256": "7d2e90579bd483e7897b4ac78f4d6d49150bfa21c7f666a637c470112fc79c65",
+    "bytes": 6129
+   }
+  },
+  "deck_sha256": "91b6c39b28ed07c95d0ca3cd85f26305bd737525558c0632d1d7e72c128579fc"
+ },
+ "participant_scripts_sha256": {
+  "adapter.py": "ba1f25155893d506eefbc37e5a4f645fed82f431b9c08f9b906ff4b100717cd3",
+  "extract_dust.py": "1bec7f93d1e6ece3ed65fe7c2943b2ca43009d99aaf183d2eab175a34050951c"
+ },
+ "toolchain": {
+  "manifest_sha256": "c23274385e5c377a22f0d2d01a41ed44497ca5c1a7a291f910f6f74852b5bf2e",
+  "versions": {
+   "dust_revision": "3b1d2e61f0b74a3c9fdde9c850951c73f8c6ad3e",
+   "h5py": "3.11.0",
+   "mbdyn_revision": "55c86cc6ec7ff8d69d31271c8f23220a43d996b6",
+   "mpi4py": "3.1.6",
+   "numpy_coupling": "1.26.4",
+   "precice_version": "2.5.0",
+   "pyprecice_version": "2.5.0.4"
+  },
+  "sources": {
+   "cgns": "https://github.com/CGNS/CGNS/archive/refs/tags/v4.3.0.tar.gz",
+   "dust": "https://public.gitlab.polimi.it/DAER/dust.git",
+   "mbdyn": "https://public.gitlab.polimi.it/DAER/mbdyn.git",
+   "precice": "https://github.com/precice/precice/archive/refs/tags/v2.5.0.tar.gz"
+  },
+  "build": {
+   "cgns": "4.3.0 Fortran+HDF5 serial, shared",
+   "dust": "CMAKE_BUILD_TYPE=Release WITH_PRECICE=YES (and a WITH_PRECICE=NO standalone build)",
+   "mbdyn": "configure --disable-netcdf --with-lapack --enable-python",
+   "precice": "Release, PETScMapping=OFF, PythonActions=OFF, MPICommunication=ON"
+  },
+  "executables_sha256": {
+   "dust": "6f40afe90b7e4f39506e351d11bc48886a3520f7101b9f99086bf5170c0f2f3f",
+   "dust_pre": "748dfeca5817a566267b448f35d67754f4c542aa70ee588d2740d71f6d0af458",
+   "dust_post": "0b5eaff2c1720d17421a90c35da1475596f4a0553c71c7b87a611300e8e2ddce",
+   "mbdyn": "23f9d57e9568048fb3fe08be4525a12752394c2460207601434c24a9d44128bb",
+   "coupling_python": "33f9dae7896c3ed23260a5cafe72679ba9ff35a0883d67e0d1a1d3018322563e"
+  }
+ },
+ "preflight_no_induction_ranges": {
+  "alpha_deg": [
+   4.95730667472266,
+   5.01794741705834
+  ],
+  "reynolds": [
+   183839.60464255625,
+   293367.5255298472
+  ],
+  "mach": [
+   0.11403322795289572,
+   0.2895007825440197
+  ]
+ },
+ "request_sha256": "c07845ca7238718254a5a4cbeb00e09ac0650ed48a71c33551bc72059d6c75b4"
+}

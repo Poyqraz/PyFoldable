@@ -1,0 +1,83 @@
+{
+ "runs": {
+  "attached_xfoil_v1": "20261112T203049_d66ad5cd8d",
+  "deploy_xfoil_v3": "20261112T220258_0bb5c02ad8"
+ },
+ "families": [
+  "research_axial_800_attached_xfoil_v1:NACA2412",
+  "research_axial_800_deploy_xfoil_v3:NACA2412"
+ ],
+ "c81_sha256": [
+  "4df4ba024bfe0888864a29ac28ee1d1b5dd4a25c20034f9af89b6bfd020e7837",
+  "76c7d36fb5309827313bffa3e23cb01a34e7340559a31e552e349ebd04fa4f04"
+ ],
+ "table_envelopes": [
+  {
+   "alpha_deg": [
+    -6.000000000000001,
+    8.0
+   ],
+   "alpha_mach_outside": "dust_aborts",
+   "mach": [
+    0.1,
+    0.31
+   ],
+   "reynolds": [
+    165000.0,
+    330000.0
+   ],
+   "reynolds_outside": "dust_linear_extrapolation_audited_by_pyfoldable"
+  },
+  {
+   "alpha_deg": [
+    -6.000000000000001,
+    8.0
+   ],
+   "alpha_mach_outside": "dust_aborts",
+   "mach": [
+    0.07,
+    0.36
+   ],
+   "reynolds": [
+    100000.0,
+    400000.0
+   ],
+   "reynolds_outside": "dust_linear_extrapolation_audited_by_pyfoldable"
+  }
+ ],
+ "source_tables": {
+  "v1": 6,
+  "v3": 20,
+  "shared": 6,
+  "v1_all_in_v3": true
+ },
+ "trajectory_coverage": {
+  "alpha_deg": [
+   -0.8194706597009462,
+   2.2866093788950783
+  ],
+  "reynolds": [
+   174471.04249512896,
+   317510.39145192475
+  ],
+  "mach": [
+   0.1097904704665171,
+   0.3080741681779861
+  ]
+ },
+ "windows": [
+  720,
+  720
+ ],
+ "result_sha256_differ": true,
+ "max_abs_series_difference": {
+  "thrust_n": 0.0,
+  "aero_shaft_torque_nm": 0.0,
+  "drive_torque_nm": 0.0,
+  "hinge_aero_torque_nm": 0.0,
+  "rpm": 0.0,
+  "theta_deg": 0.0,
+  "theta_rate_rad_s": 0.0
+ },
+ "reading": "Bit-identical series: the trajectory stays where both tables interpolate the same source tables. Consistency of the table swap and of the run path, not a polar sensitivity measure."
+}

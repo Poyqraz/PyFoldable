@@ -1,0 +1,48 @@
+
+-5 deg, 2400 RPM (20261112T071200_20d4a1092d, completed)
+  impact 38.8 rad/s, energy 0.091 J = 0.848 x bound 0.107 J; release->contact 3.47 ms; restitution 0.514 (declared 0.5)
+  impulse balance over contact 0.0011 (pointwise contact-phase 0.188); peak stop torque 7.79 N m = 0.817 x undamped estimate
+  shaft: net impulse -0.0664 N m s vs distal momentum change -0.0665 (residual 0.0012, speed change 0.00 RPM) over 1.74 ms; mean -38.3 N m, peak 75.2 N m (peak x duration / impulse 1.96)
+
+-20 deg, 2400 RPM (stopped, retained table) (20261112T191618_02b58b9c61, failed_solver)
+  no finished stop contact in the valid prefix
+
+-15 deg, ramp 2200->2400 (20261112T203052_6971a5d10d, completed)
+  impact 111.2 rad/s, energy 0.747 J = 0.925 x bound 0.808 J; release->contact 3.65 ms; restitution 0.517 (declared 0.5)
+  impulse balance over contact 0.0007 (pointwise contact-phase 0.174); peak stop torque 21.75 N m = 0.796 x undamped estimate
+  shaft: net impulse -0.1879 N m s vs distal momentum change -0.1891 (residual 0.0064, speed change 3.05 RPM) over 1.74 ms; mean -108.2 N m, peak 210.3 N m (peak x duration / impulse 1.94)
+
+-20 deg, ramp 2200->2400 (20261112T203049_d66ad5cd8d, completed)
+  impact 149.1 rad/s, energy 1.342 J = 0.939 x bound 1.429 J; release->contact 3.65 ms; restitution 0.517 (declared 0.5)
+  impulse balance over contact 0.0007 (pointwise contact-phase 0.176); peak stop torque 29.33 N m = 0.801 x undamped estimate
+  shaft: net impulse -0.2530 N m s vs distal momentum change -0.2541 (residual 0.0046, speed change 3.05 RPM) over 1.74 ms; mean -145.7 N m, peak 284.6 N m (peak x duration / impulse 1.95)
+
+-22.5 deg, 2400 RPM (deploy-v3) (20261112T220252_1f1a7bf962, completed)
+  impact 183.9 rad/s, energy 2.041 J = 0.953 x bound 2.142 J; release->contact 3.30 ms; restitution 0.516 (declared 0.5)
+  impulse balance over contact 0.0003 (pointwise contact-phase 0.159); peak stop torque 34.73 N m = 0.769 x undamped estimate
+  shaft: net impulse -0.3161 N m s vs distal momentum change -0.3155 (residual 0.0019, speed change 0.00 RPM) over 1.74 ms; mean -182.1 N m, peak 340.1 N m (peak x duration / impulse 1.87)
+
+-20 deg, ramp 1600->2400 (deploy-v3) (20261112T220255_14fc6eaab8, completed)
+  impact 105.0 rad/s, energy 0.666 J = 0.868 x bound 0.767 J; release->contact 5.03 ms; restitution 0.523 (declared 0.5)
+  impulse balance over contact 0.0007 (pointwise contact-phase 0.168); peak stop torque 20.14 N m = 0.780 x undamped estimate
+  shaft: net impulse -0.1693 N m s vs distal momentum change -0.1737 (residual 0.0256, speed change 11.06 RPM) over 1.74 ms; mean -97.5 N m, peak 189.8 N m (peak x duration / impulse 1.95)
+
+-20 deg, ramp 2200->2400 control (deploy-v3) (20261112T220258_0bb5c02ad8, completed)
+  impact 149.1 rad/s, energy 1.342 J = 0.939 x bound 1.429 J; release->contact 3.65 ms; restitution 0.517 (declared 0.5)
+  impulse balance over contact 0.0007 (pointwise contact-phase 0.176); peak stop torque 29.33 N m = 0.801 x undamped estimate
+  shaft: net impulse -0.2530 N m s vs distal momentum change -0.2541 (residual 0.0046, speed change 3.05 RPM) over 1.74 ms; mean -145.7 N m, peak 284.6 N m (peak x duration / impulse 1.95)
+
+Sensitivities d ln(output)/d ln(input) at declared values (J_h share from m c_g^2: 0.75):
+  impact_energy (= eta m c_g W^2 r_h (1 - cos th0)) {'mass': 1.0, 'cg': 1.0, 'inertia_cg': 0.0, 'stop_stiffness': 0.0, 'restitution': 0.0, 'shaft_speed': 2.0}
+  impact_rate (sqrt(2E/J_h)) {'mass': 0.12, 'cg': -0.25, 'inertia_cg': -0.12, 'stop_stiffness': 0.0, 'restitution': 0.0, 'shaft_speed': 1.0}
+  release_to_contact_time (~ sqrt(J_h/(m r_h c_g))/W) {'mass': -0.12, 'cg': 0.25, 'inertia_cg': 0.12, 'stop_stiffness': 0.0, 'restitution': 0.0, 'shaft_speed': -1.0}
+  peak_stop_torque (~ sqrt(2 E k) f(e)) {'mass': 0.5, 'cg': 0.5, 'inertia_cg': 0.0, 'stop_stiffness': 0.5, 'restitution': 'f(e): damping set from e', 'shaft_speed': 1.0}
+  shaft_angular_impulse (~ (1+e)(J_h + m r_h c_g) th_dot) {'mass': 1.07, 'cg': 0.86, 'inertia_cg': -0.07, 'stop_stiffness': 0.0, 'restitution': 0.33, 'shaft_speed': 1.0}
+  observed energy ratio eta 0.848..0.953
+
+Fold limit of the representation: chord tolerance -> fold {'0.02': -23.0, '0.05': -36.4, '0.10': -51.7} ; sweep limit -> fold {'25': -30.2, '35': -42.2, '45': -53.8}
+  fold -23 deg: junction chord 2.0 %, mid-distal sweep 18.9 deg
+  fold -30 deg: junction chord 3.4 %, mid-distal sweep 24.8 deg
+  fold -45 deg: junction chord 7.6 %, mid-distal sweep 37.4 deg
+  fold -60 deg: junction chord 13.4 %, mid-distal sweep 50.3 deg
+  fold -90 deg: junction chord 29.3 %, mid-distal sweep 77.7 deg

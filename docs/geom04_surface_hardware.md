@@ -57,6 +57,11 @@ the current blade count. All geometry starts in `body_local` coordinates:
 | `blade_N_root` | Rotor origin | Open blade axes; blade azimuth applied; stationary |
 | `blade_N_tip` | Its hinge | Open blade axes; blade azimuth then hinge rotation |
 
+Open blade axes (since 2026-11-13, the coupled model's convention with the span on x): x radial outward,
+y toward the leading edge (rotation +Ω about +z, so the leading edge leads), z the thrust direction;
+negative hinge rotation turns `blade_N_tip` back toward the trailing side (−y). Hardware declared before
+this date was placed against a mirrored blade section (leading edge on −y); re-check such declarations.
+
 The declared transform maps the supplied geometry into that body-local frame.
 The finite hub must share the active rotor axis and hub radius; its explicit
 height/axial offset determine the finite obstacle. It replaces only the infinite

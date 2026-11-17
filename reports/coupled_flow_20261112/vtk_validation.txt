@@ -1,0 +1,13 @@
+particles.pvd  particles/particles_00009.vtk      points    256 verts 256 |alpha| max 1.361e-02
+particles.pvd  particles/particles_00333.vtk      points  10624 verts 10624 |alpha| max 1.519e-02
+particles.pvd  particles/particles_00720.vtk      points  17192 verts 17192 |alpha| max 1.519e-02
+particles.pvd: 110 time steps, t 0.0016..0.1250 s
+plane.pvd      plane/plane_00009.vtk              points   6561 dims (81, 1, 81) w median -14.00 m/s
+plane.pvd      plane/plane_00333.vtk              points   6561 dims (81, 1, 81) w median -14.55 m/s
+plane.pvd      plane/plane_00720.vtk              points   6561 dims (81, 1, 81) w median -14.61 m/s
+plane.pvd: 110 time steps, t 0.0016..0.1250 s
+rotor.pvd      rotor/rotor_00009.vtk              points    816 polys 1200
+rotor.pvd      rotor/rotor_00333.vtk              points    816 polys 1200
+rotor.pvd      rotor/rotor_00720.vtk              points    816 polys 1200
+rotor.pvd: 110 time steps, t 0.0016..0.1250 s
+VTK 9.3.1 read every sampled file

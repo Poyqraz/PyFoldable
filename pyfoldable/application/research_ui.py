@@ -3,18 +3,22 @@ from dataclasses import dataclass, replace
 import json
 import math
 from pathlib import Path
+import re
 
 import streamlit as st
 
 from pyfoldable.core.airfoil import airfoil_coordinate_sha256
 from pyfoldable.core.profile_catalog import PROJECT_AIRFOIL_IDS, load_project_airfoil
 
-from . import provider_design_analysis as managed, research_design as research, research_views as views
+from . import figure_style, gallery_figures, provider_design_analysis as managed, research_design as research, \
+    research_views as views
 
 _HISTORY = "research_saved_results"
 _ACTIVE = "research_active"
+_KIND = "research_results_kind"
+_BEM_KIND = "BEM / mekanizma"
 _PAGE = "research_page"
-_PAGES = ("Tasarım", "Analiz", "Sonuçlar", "Karşılaştırma / kayıtlar")
+_PAGES = ("Tasarım", "Analiz", "Sonuçlar", "Karşılaştırma / kayıtlar", "Görseller")
 _MAX_HISTORY = 12
 _TEMPLATE_LABELS = {
     "axial_800": "800 mm eksenel referans · iki uzunluk sırası",
@@ -75,8 +79,8 @@ def _inventory(repository, error, profile):
 
 
 def _plot(fig, key):
-    st.plotly_chart(fig, use_container_width=True, key=key,
-                    config={"displaylogo": False, "scrollZoom": False})
+    st.plotly_chart(figure_style.apply(fig), key=key, config={"displaylogo": False, "scrollZoom": False},
+                    **figure_style.width_kwargs())
 
 
 def _reset_camera():
@@ -101,22 +105,8 @@ def _geometry(active):
         st.caption(f"{i.profile} · Katalog kesiti, iki eksen aynı kord ölçeğinde.")
         _plot(views.airfoil_figure(foil), "research_airfoil")
     else:
-        st.caption(f"Gösterilen katlanma pozu: {_fmt(i.fold_deg, 1)}°. BEM, ana kanadı tam açık (0°) çözer.")
-        try:
-            if view == "3B":
-                revision = st.session_state.get("_research_camera_revision", 0)
-                controls, reset = st.columns((1.5, 1), vertical_alignment="bottom")
-                camera = _choice(controls.selectbox, "Kamera", tuple(views.CAMERAS),
-                                 key=f"research_camera_{revision}", default="İzometrik")
-                reset.button("Kamerayı sıfırla", on_click=_reset_camera)
-                _plot(views.surface_figure(active, foil, camera, revision), "research_surface")
-                st.caption("3B için tarayıcıda WebGL gerekir. Plan ve profil görünümleri WebGL gerektirmez.")
-            else:
-                _plot(views.plan_figure(active, foil), "research_plan")
-        except ValueError as exc:
-            st.warning("Bu konumda saklanan istasyonlardan yüzey çizilemiyor. Menteşe ve istasyon açıklığını kontrol edin.")
-            with st.expander("Önizleme teknik ayrıntısı"):
-                st.text(str(exc))
+        from . import blade_ui
+        blade_ui.design_preview(active, foil, view)
     st.markdown(
         f"**İç parça — proksimal:** {_fmt(1000 * result['proximal_m'] if active.root else None, 1)} mm  \n"
         f"**Dış parça — distal:** {_fmt(1000 * result['distal_m'], 1)} mm"
@@ -129,12 +119,13 @@ def _geometry(active):
     st.caption(
         f"Bu pozdaki merkez çizgisi zarfı: {_fmt(1000*audit['centerline_envelope_diameter_m'], 1)} mm · "
         f"beyan edilen alt sınırdaki zarf: {_fmt(1000*result['declared_stow_limit_centerline_envelope_m'], 1)} mm. "
-        "Kesikli gri çizgiler yüzey verisi olmayan aralıkları gösterir. Bu bir açıklık veya temas hesabı değildir."
+        "Saydam gri yer tutucular yüzey verisi olmayan aralıkları gösterir. Merkez çizgisi zarfı bir açıklık hesabı "
+        "değildir; yüzey teması yukarıda ayrıca taranır."
     )
     with st.expander("Kord ve burulma istasyonları"):
         st.dataframe([{"Yarıçap [mm]": 1000*s.r_over_R*d.blade.radius_m, "r/R": s.r_over_R,
                        "Kord [mm]": 1000*s.chord_m, "Burulma [°]": math.degrees(s.twist_rad)}
-                      for s in d.blade.stations], hide_index=True, use_container_width=True)
+                      for s in d.blade.stations], hide_index=True, **figure_style.dataframe_width_kwargs())
 
 
 def _edit_design(root, repository, store_error):
@@ -144,7 +135,7 @@ def _edit_design(root, repository, store_error):
     st.caption(f"**{profile}:** {_inventory(repository, store_error, profile)}.")
     with st.expander("Tüm profillerin veri durumu"):
         st.dataframe([{"Profil": name, "Depodaki durum": _inventory(repository, store_error, name)}
-                      for name in PROJECT_AIRFOIL_IDS], hide_index=True, use_container_width=True)
+                      for name in PROJECT_AIRFOIL_IDS], hide_index=True, **figure_style.dataframe_width_kwargs())
         st.caption("Bu liste kayıt envanteridir. Seçilen sürüm ve girdiler Analiz’de denetlenir.")
     template = _choice(st.selectbox, "Kord / burulma şablonu", tuple(research.TEMPLATES),
                        key="research_template", default="axial_800", display=_TEMPLATE_LABELS.__getitem__)
@@ -337,10 +328,9 @@ def _readiness(active, repository, store_error):
         status = first_check or _Readiness("unselected")
     else:
         status = _inspect_family(active, family, repository, initial)
-        source_summary = ("800 mm eksenel referansın saklanan sağlayıcı çıktıları"
-                          if family.family_id.startswith("research_axial_800_attached_xfoil_v1:")
-                          else family.source_identity.split(";")[0][:110])
-        st.caption(f"Kaynak: {source_summary} · {len(family.requests)} hücre")
+        st.caption(f"Kaynak: {_source_summary(family)} · {len(family.requests)} hücre")
+        if (note := _source_note(family)) is not None:
+            st.caption(note)
         if family.evidence_class == "inert_fixture":
             st.warning("Test kaydı: katsayılar mühendislik sonucu olarak kullanılamaz.")
     if status.status == "outside":
@@ -349,19 +339,39 @@ def _readiness(active, repository, store_error):
         st.warning("Hazırlık reddedildi. " + _rejection_message(status.diagnostic))
     elif status.status == "ready":
         st.success("Hazırlık tamamlandı. BEM’i siz başlatabilirsiniz.")
+        if family is not None:
+            (a_lo, a_hi), (r_lo, r_hi), (m_lo, m_hi) = research.grid_margins(family, initial)
+            st.caption(f"İlk sorguların veri kenarına payı: α alt {_fmt(math.degrees(a_lo))}° / üst "
+                       f"{_fmt(math.degrees(a_hi))}° · Re alt {_fmt(r_lo, 0)} / üst {_fmt(r_hi, 0)} · Mach alt "
+                       f"{_fmt(m_lo, 3)} / üst {_fmt(m_hi, 3)}. İndüksiyon iç kesitlerde α’yı düşürür; alt α payı "
+                       "küçükse çözüm veri dışına çıkabilir.")
     return family, status
+
+
+def _source_summary(family) -> str:
+    if family.family_id.startswith("research_axial_800_attached_xfoil_v1:"):
+        return "800 mm eksenel referansın saklanan sağlayıcı çıktıları"
+    if family.family_id.startswith("research_axial_800_deploy_xfoil_v3:"):
+        return ("800 mm eksenel referans · açılma için genişletilmiş XFOIL ızgarası "
+                "(Re 100k–400k, Mach 0,07–0,36, α −6…8°, ekli akış)")
+    return family.source_identity.split(";")[0][:110]
+
+
+def _source_note(family) -> str | None:
+    if family.family_id.startswith("research_axial_800_deploy_xfoil_v3:"):
+        return ("Izgara seviyeleri, bu XFOIL derlemesinin yakınsama ön taramasıyla seçildi: yakınsamayan iç "
+                "durumlar (ör. Mach 0,10 / Re 130k, Mach 0,20 / Re 165k ve 400k) tabloda yoktur ve bunların "
+                "üzerinden doğrusal ara değer kullanılır. Ekli akış verisidir; ayrılmış akışı temsil etmez.")
+    return None
 
 
 def _analysis_scope(active, family, readiness):
     st.markdown("**Kapsam ve model**")
     st.caption("Tam açık ana kanat (0°), eklem kaybı yok. Aynı ana kanat ve koşullarda menteşe konumu, ideal BEM yükünü değiştirmez.")
     if family is not None:
-        requests = family.requests
-        angles = tuple(set.intersection(*(set(r.alpha_rad) for r in requests)))
-        if angles:
-            re, ma = [r.reynolds for r in requests], [r.mach for r in requests]
-            domain = ((min(angles), max(angles)), (min(re), max(re)), (min(ma), max(ma)))
-            st.caption("Beyan edilen ortak veri aralığı: " + _ranges(domain))
+        grid = research._declared_grid(family)
+        if grid[0]:
+            st.caption("Beyan edilen ortak veri aralığı: " + _ranges(tuple((min(v), max(v)) for v in grid)))
     st.caption("Koşullu ilk sorgular: " + _ranges(research.initial_query_ranges(active)) +
                ". Kapsanması, yakınsamayı veya tüm denemelerin kapsanacağını göstermez.")
     if family is not None or readiness.diagnostic:
@@ -428,21 +438,109 @@ def _save(row, *, imported=False):
     return "saved"
 
 
-def _navigate(page):
+def _navigate(page, kind=None):
     st.session_state["_research_next_page"] = page
+    if kind is not None:   # the remembered result type would otherwise hide the result just opened
+        st.session_state[_KIND] = kind
+
+
+def _prepare_matched_run(action):
+    """Preselect the profile and the data version that make the pair matched, then open Analiz."""
+    values = st.session_state.setdefault("_research_control_values", {})  # survives pages (see _seed)
+    for key, value in (("research_profile", action["profile"]),
+                       (f"research_version_{action['profile']}", action["content_sha256"])):
+        values[key] = value
+        st.session_state.get("_research_widget_seeds", {}).pop(key, None)
+        st.session_state.pop(key, None)
+    _navigate("Analiz")
+
+
+def _equal_point(root, rows):
+    """Explicit action: rerun the second record at the shaft speed that gives the first record's thrust or power."""
+    st.markdown("**Eşit itki veya eşit güçte karşılaştırma**")
+    quantity = _choice(st.radio, "Eşitlenecek büyüklük", ("thrust", "power"), key="research_compare_trim_quantity",
+                       default="thrust", horizontal=True, display={"thrust": "İtki", "power": "Şaft gücü"}.__getitem__)
+    label = {"thrust": "itki", "power": "şaft gücü"}[quantity]
+    if notice := st.session_state.pop("_research_trim_notice", None):
+        st.success(notice)
+    if st.button(f"İkinci kaydı birincinin {label} değerine getir (yalnız devir değişir)", key="research_compare_trim",
+                 help="Giriş hızı, geometri ve veri sürümü aynı kalır; BEM birkaç kez çalışır. Mevcut kayıtlar değişmez."):
+        key = "thrust_n" if quantity == "thrust" else "shaft_power_w"
+        with st.spinner("Devir ayarlanıyor (her adım yeni bir BEM çözümü)…"):
+            try:
+                out = research.match_operating_point(root, rows[1], _repository()[0], quantity, rows[0]["aerodynamics"][key])
+            except ValueError as exc:
+                st.error("Eşit çalışma noktası bulunamadı: " + str(exc))
+                return
+        row = out["row"]
+        status = _save(row)
+        if status == "full":
+            st.warning("Oturum en fazla 12 kayıt alır.")
+            return
+        try:
+            research.store_local_result(row)
+        except OSError as exc:
+            st.session_state["_research_local_store_error"] = str(exc)
+        st.session_state["_research_trim_notice"] = (
+            f"Eşit {label}: {row['inputs']['profile']} {_fmt(out['rpm'], 0)} RPM’de "
+            f"{_fmt(row['aerodynamics'][key], 3)} {'N' if quantity == 'thrust' else 'W'} ({len(out['runs'])} BEM çözümü). "
+            + ("Bu sonuç listede zaten vardı." if status == "duplicate" else
+               "Yeni kayıt listeye eklendi; ikinci kayıt olarak seçip karşılaştırın."))
+        st.rerun()
+
+
+def _local_results_panel():
+    """BEM results saved on this computer: listed and reopened without recalculation."""
+    local = research.local_results()
+    st.markdown("**Bu bilgisayarda saklanan BEM sonuçları**")
+    if error := st.session_state.pop("_research_local_store_error", None):
+        st.warning("Son sonuç yerel klasöre yazılamadı: " + error)
+    if not local:
+        st.caption(f"Henüz yok. Her BEM ve mekanizma çalıştırması (tamamlanmayan denemeler dahil) "
+                   f"{research.results_root()} klasörüne de yazılır.")
+        return
+    import datetime
+    state = {"success": "başarılı", "failure": "başarısız", "mechanism": "mekanizma"}.get
+    st.dataframe([{"Kaydedildi": datetime.datetime.fromtimestamp(r["saved"]).strftime("%Y-%m-%d %H:%M"),
+                   "Durum": state(r["status"], r["status"]),
+                   "Profil": r["profile"], "Devir [RPM]": _fmt(r["rpm"], 0), "Giriş [m/s]": _fmt(r["inflow_m_s"], 1),
+                   "İtki [N]": _fmt(r["thrust_n"], 3), "Tork [N·m]": _fmt(r["torque_nm"], 3)} for r in local],
+                 hide_index=True, **figure_style.dataframe_width_kwargs())
+    keys = tuple(r["result_sha256"] for r in local)
+    by = {r["result_sha256"]: r for r in local}
+    chosen = _choice(st.selectbox, "Saklanan sonuç", keys, key="research_local_choice", default=keys[0],
+                     display=lambda k: f"{by[k]['profile']} · {_fmt(by[k]['rpm'], 0)} RPM · {_fmt(by[k]['thrust_n'], 2)} N"
+                                       f" · {state(by[k]['status'], by[k]['status'])}")
+    if st.button("Sonucu aç (yeniden hesaplanmaz)", key="research_local_open"):
+        try:
+            row = research.read_saved_result(by[chosen]["path"].read_bytes())
+        except (ValueError, OSError) as exc:
+            st.error("Saklanan sonuç doğrulanamadı: " + str(exc))
+            return
+        status = _save(row, imported=True)
+        if status == "full":
+            st.warning("Oturum en fazla 12 kayıt alır.")
+            return
+        st.session_state["_research_result_view"] = row["result_sha256"]
+        _navigate("Sonuçlar", _BEM_KIND)
+        st.rerun()
 
 
 def _show_run(row, token):
     st.session_state[_ACTIVE] = (token, research.saved_result_json(row))
     st.session_state["_research_result_view"] = None
     status = _save(row)
+    try:
+        research.store_local_result(row)
+    except OSError as exc:
+        st.session_state["_research_local_store_error"] = str(exc)
     if status == "full":
         st.session_state["_research_history_full"] = True
     if row["aerodynamics"] and row["aerodynamics"]["failure_stage"] == "preflight_rejection" and status != "full":
         # A race-time rejection remains inspectable even when the selected
         # version cannot remain active after the fresh store read.
         st.session_state["_research_result_view"] = row["result_sha256"]
-    _navigate("Sonuçlar")
+    _navigate("Sonuçlar", _BEM_KIND)
     st.rerun()
 
 
@@ -471,7 +569,41 @@ def _bem_run_button(ready):
         return st.button("BEM’i çalıştır", type="primary", key="research_run", disabled=not ready)
 
 
-def _analysis(active, repository, store_error):
+def _capability_panel(active, family, readiness, repository):
+    """What each analysis method needs for the selected case, and the next action (no calculation here)."""
+    from . import coupled_ui
+    profile = active.inputs.profile
+    versions = _families(repository, profile, active.coordinate_sha256)
+    if not versions:
+        bem = ("Polar verisi gerekli", f"{profile} için saklanan polar verisi yok; veri yakalaması operatör adımıdır "
+                                        "(examples/research_catalog_polar_data.py).")
+    elif family is None:
+        bem = ("Veri sürümü seçin", f"{profile} için {len(versions)} saklanan sürüm var; aşağıdan birini seçin.")
+    elif readiness.status != "ready":
+        bem = ("Girdiler başlangıç aralığı dışında", "Aşağıdaki hazırlık açıklamasına bakın (devir, giriş hızı veya geometri).")
+    else:
+        bem = ("Hazır", "“BEM’i çalıştır” · saniyeler; tam açık rotor, itki, tork, güç ve kesit yükleri.")
+    tool = coupled_ui.readiness_cached()
+    if tool.status != "ready":
+        dyn = ("Araç zinciri gerekli", "DUST–MBDyn–preCICE bu bilgisayarda kurulu ve bildirilmiş olmalı "
+                                       "(tools/coupled/build_toolchain.sh). Kayıtlı dinamik sonuçlar yine açılabilir.")
+    elif family is None:
+        dyn = ("Polar verisi gerekli", "Önce BEM için bir veri sürümü seçin; dinamik analiz aynı tabloyu kullanır.")
+    else:
+        dyn = ("Mekanik girdi gerekli", "Aşağıda dış parça kütlesi, kütle merkezi, atalet ve stop özelliklerini girin "
+                                        "(veya gösterim varsayımlarını doldurun), katlanma ve devir profilini seçin; "
+                                        "çalıştırma ≈ 1 saat sürebilir.")
+    st.dataframe([
+        {"Yöntem": "Kararlı BEM (tam açık, hızlı)", "Durum": bem[0], "Sonraki adım": bem[1]},
+        {"Yöntem": "Tam açılma–kapanma çevrimi (mekanik dinamik, açık aero modeli)", "Durum": "Hazır (keşif varsayımlarıyla)",
+         "Sonraki adım": "Aşağıda mekanizma yapılandırmasını seçin, “Çevrimi çalıştır” · süre çevrim süresiyle artar; bağlantı kuvvet ve momentleri."},
+        {"Yöntem": "Zamana bağlı dinamik analiz (katlanma, açılma, iz)", "Durum": dyn[0], "Sonraki adım": dyn[1]},
+    ], hide_index=True, **figure_style.dataframe_width_kwargs())
+    st.caption("Kararlı BEM tek bir açık konum ve sabit devir için çözer; katlanma, açılma ve zamanla değişen yük, "
+               "iz ve tork zamana bağlı analizden gelir. Kayıtlı sonuçlar Karşılaştırma / kayıtlar sayfasında listelenir.")
+
+
+def _analysis(active, repository, store_error, root=None):
     st.subheader("Analiz")
     if active is None:
         st.info("Önce Tasarım’da geçerli bir geometri hazırlayın.")
@@ -484,6 +616,8 @@ def _analysis(active, repository, store_error):
         clicked = _bem_run_button(ready)
     with scope:
         _analysis_scope(active, family, readiness)
+    # Full width after the columns; a container created before them and filled later breaks AppTest on Streamlit 1.40.
+    _capability_panel(active, family, readiness, repository)
     if clicked and ready:
         with st.spinner("Seçili sürüm yeniden denetleniyor ve BEM çalışıyor…"):
             fresh, error = _repository()
@@ -502,6 +636,13 @@ def _analysis(active, repository, store_error):
         with st.spinner("Mekanizma hesabı çalışıyor…"):
             row = research.run_mechanics_only(active, options)
         _show_run(row, ("mechanics", active.identity, options))
+    st.divider()
+    from . import fold_cycle_ui
+    fold_cycle_ui.analysis_section(active)
+    if root is not None:
+        st.divider()
+        from . import coupled_ui
+        coupled_ui.render_analysis(active, family, readiness.status, repository, root)
 
 
 def _invalidate(active, repository):
@@ -520,6 +661,15 @@ def _invalidate(active, repository):
             st.session_state.pop(_ACTIVE, None)
     elif st.session_state.get("_research_mechanics") != selected:
         st.session_state.pop(_ACTIVE, None)
+
+
+def _invalidate_coupled(active, repository):
+    from . import coupled_ui
+    family = None
+    if active is not None:
+        key = st.session_state.get("_research_selected_versions", {}).get(active.inputs.profile)
+        family = _families(repository, active.inputs.profile, active.coordinate_sha256).get(key)
+    coupled_ui.invalidate(active, family)
 
 
 _RADIAL_COLUMNS = {
@@ -551,14 +701,41 @@ def _radial(rows):
     with st.expander("Radyal veri tablosu"):
         table = [{label: (1000*r[field] if field == "radius_m" else r[field])
                   for field, (label, _) in _RADIAL_COLUMNS.items()} for r in rows]
-        st.dataframe(table, hide_index=True, use_container_width=True, column_config={
+        st.dataframe(table, hide_index=True, **figure_style.dataframe_width_kwargs(), column_config={
             label: st.column_config.NumberColumn(format=f"%.{digits}f")
             for label, digits in _RADIAL_COLUMNS.values()})
 
 
+_NUM = r"(-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?)"  # strict: the reason may come from an uploaded snapshot
+_OUTSIDE = re.compile(rf"Annulus (\d+) at r/R={_NUM} failed: Requested (alpha_rad|reynolds|mach) {_NUM} "
+                      rf"is outside \[{_NUM}, {_NUM}\]")
+# Which way to move: lower α means a steeper inflow angle (more inflow per blade speed).
+_OUTSIDE_HINT = {
+    ("alpha_rad", "alt"): "devri artırın veya giriş hızını düşürün", ("alpha_rad", "üst"): "devri düşürün veya giriş hızını artırın",
+    ("reynolds", "alt"): "devri artırın", ("reynolds", "üst"): "devri düşürün",
+    ("mach", "alt"): "devri artırın", ("mach", "üst"): "devri düşürün",
+}
+
+
+def _solver_hint(reason):
+    """Turkish reading of the retained solver reason: element, axis, value, limit and the direction to move."""
+    found = _OUTSIDE.search(reason or "")
+    if found is None:
+        return None
+    element, ratio, axis, value, lo, hi = found.groups()
+    value, lo, hi = float(value), float(lo), float(hi)
+    side, limit = ("alt", lo) if value < lo else ("üst", hi)
+    name, show = {"alpha_rad": ("hücum açısı α", lambda v: f"{_fmt(math.degrees(v))}°"),
+                  "reynolds": ("Reynolds sayısı", lambda v: _fmt(v, 0)),
+                  "mach": ("Mach sayısı", lambda v: _fmt(v, 3))}[axis]
+    return (f"Eleman {element} (r/R={_fmt(float(ratio), 3)}): {name} {show(value)}, verinin {side} sınırı "
+            f"{show(limit)} dışında kaldı. Öneri: {_OUTSIDE_HINT[axis, side]}.")
+
+
 def _failure_summary(aero):
     if aero["failure_stage"] == "solver_invocation":
-        return "Çözücü tamamlanamadı; kısmi toplam yayımlanmadı."
+        hint = _solver_hint(aero.get("failure_reason"))
+        return "Çözücü tamamlanamadı; kısmi toplam yayımlanmadı." + (" " + hint if hint else "")
     return "Hazırlık reddedildi. " + _rejection_message(aero.get("failure_reason"))
 
 
@@ -602,6 +779,8 @@ def _results(row, *, archived=False, imported=False):
     if radial:
         b.download_button("Radyal CSV indir", research.records_csv(radial), name+"_radyal.csv", "text/csv")
         _radial(radial)
+        from . import blade_ui
+        blade_ui.bem_on_blade(row)
     mech = row["mechanism"]
     if mech["status"] == "computed":
         doc = json.loads(mech["report_text"])["result"]
@@ -611,7 +790,7 @@ def _results(row, *, archived=False, imported=False):
                        "Merkezkaç momenti [N·m]": s["centrifugal_torque_nm"],
                        "Euler momenti [N·m]": s["euler_torque_nm"],
                        "Kuru sürtünme [N·m]": s["dry_friction_torque_nm"]} for s in doc["samples"]],
-                     hide_index=True, use_container_width=True)
+                     hide_index=True, **figure_style.dataframe_width_kwargs())
     elif mech["status"] == "blocked_or_failed":
         st.warning("Mekanizma tamamlanamadı. Girdi ve tanıyı teknik ayrıntıda inceleyin.")
     elif mech.get("requested", "inputs" in mech):
@@ -626,21 +805,75 @@ def _results(row, *, archived=False, imported=False):
         st.json(row, expanded=False)
 
 
+_COUPLED_PREFIX = b'{"artifact_class":"pyfoldable_coupled_result"'
+
+
+MULTIPART_MARGIN_BYTES = 64 * 1024  # older (Tornado) servers count multipart framing against the limit
+
+
+def restore_archive_fits(size: int) -> bool:
+    """Conservative: an archive of ``size`` bytes uploads and is accepted by the coupled reader."""
+    from . import coupled_analysis
+    return size <= min(restore_upload_limit_bytes() - MULTIPART_MARGIN_BYTES, coupled_analysis.MAX_COUPLED_ARCHIVE_BYTES)
+
+
+def restore_upload_limit_bytes() -> int:
+    """Upload bound actually in force for the restore uploader: Streamlit's upload endpoint caps every
+    request at ``server.maxUploadSize`` (MB counted as MiB) on all supported versions; a per-widget
+    ``max_upload_size`` (Streamlit >= 1.53) only changes the browser-side check, so it is not used."""
+    return int(st.get_option("server.maxUploadSize")) * 1024 * 1024
+
+
+def _artifact_class(raw):
+    """Peek only at the declared class; the selected reader performs all validation.
+
+    Bounded before any full parse: compressed input inflates under the coupled bounds; input
+    larger than the research reader's limit is only a coupled candidate when it starts with the
+    canonical (sorted-key) coupled header, otherwise it is rejected without parsing."""
+    from . import coupled_analysis
+    if raw[:2] == coupled_analysis.GZIP_MAGIC or raw[:6] == coupled_analysis.XZ_MAGIC:  # bounded inflation
+        try:
+            raw = coupled_analysis._inflate_record(raw)
+        except ValueError:
+            return None
+    if len(raw) > coupled_analysis.MAX_COUPLED_RESULT_BYTES:
+        return None
+    if len(raw) > research.MAX_SAVED_RESULT_BYTES:
+        return "pyfoldable_coupled_result" if raw.lstrip()[:len(_COUPLED_PREFIX)] == _COUPLED_PREFIX else None
+    try:
+        doc = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError, RecursionError):
+        return None
+    return doc.get("artifact_class") if isinstance(doc, dict) else None
+
+
 def _retained():
     return {row["result_sha256"]: (row, imported) for row, imported in
             ((json.loads(raw), imported) for raw, imported in st.session_state.get(_HISTORY, ()))}
 
 
-def _history():
+def _history(root=None):
     st.subheader("Karşılaştırma / kayıtlar")
-    st.caption("Oturum kapanınca bu liste saklanmaz. Sonuç JSON’unu indirin; daha sonra buradan açabilirsiniz.")
+    st.caption("Karşılaştırma listesi bu oturuma aittir. Çalıştırılan sonuçlar ayrıca bu bilgisayarda saklanır ve "
+               "aşağıdan yeniden açılabilir; başka bir bilgisayar için sonuç JSON’unu indirin.")
     restore_error = None
     with st.expander("Önceki sonuç JSON’unu aç"):
         st.caption("Uygulamanın dışa aktardığı sonuç dosyası. İçerik tutarlılığı denetlenir, hesap başlatılmaz.")
-        uploaded = st.file_uploader("Sonuç JSON dosyası", type=("json",), key="research_restore")
+        # Per-uploader bound (app default 5 MB): coupled records are up to 24 MiB as JSON or 12 MiB as
+        # .json.gz; each reader enforces its own stricter size limit and full content verification.
+        limit = restore_upload_limit_bytes()
+        uploaded = st.file_uploader("Sonuç JSON dosyası (.json; dinamik kayıt için .json.gz veya .json.xz)",
+                                    type=("json", "gz", "xz"), key="research_restore")
+        st.caption(f"Yükleme sınırı {limit / 2**20:.0f} MB (sunucu ayarı). Dinamik kayıtlar için en küçük biçim "
+                   ".json.xz arşividir; sınırı aşan kayıtları yerel çalıştırma klasöründen açın.")
         if st.button("Sonucu oturuma ekle", disabled=uploaded is None) and uploaded is not None:
+            raw = uploaded.getvalue()
             try:
-                status = _save(research.read_saved_result(uploaded.getvalue()), imported=True)
+                if _artifact_class(raw) == "pyfoldable_coupled_result":
+                    from . import coupled_ui
+                    status = coupled_ui.import_bytes(raw)
+                else:
+                    status = _save(research.read_saved_result(raw), imported=True)
             except (ValueError, OSError) as exc:
                 message = getattr(exc, "user_message",
                                   "Dosya eksik veya saklanan tasarım ve çalışma girdileriyle tutarsız.")
@@ -654,6 +887,11 @@ def _history():
     if restore_error:
         with st.expander("İçe aktarma teknik ayrıntısı"):
             st.text(restore_error)
+    from . import coupled_ui
+    coupled_ui.render_history(root)
+    _local_results_panel()
+    from . import fold_cycle_ui
+    fold_cycle_ui.saved_panel()
     records = _retained()
     if not records:
         st.info("Henüz kayıt yok. Analiz çalıştırabilir veya önceki bir sonucu açabilirsiniz.")
@@ -664,6 +902,8 @@ def _history():
     def display(key):
         if key is None:
             return "Kayıt seçin"
+        if key not in records:  # Streamlit 1.40 AppTest passes the already formatted label back in
+            return str(key)
         i = records[key][0]["inputs"]
         return f"K{numbers[key]:02d} · {i['profile']} · {_fmt(i['rpm'], 0)} RPM · {_fmt(i['inflow_m_s'], 1)} m/s"
 
@@ -685,30 +925,45 @@ def _history():
             result = research.compare_results(rows)
             if result["matched_numerical_comparison"]:
                 st.success("Eşleştirilmiş sayısal karşılaştırma · farklı koordinatlar, aynı planform, koşul ve yöntem.")
+            elif result["comparison_class"] != "unmatched":
+                label = {"equal_thrust": "itki", "equal_power": "şaft gücü"}[result["comparison_class"]]
+                st.success(f"Eşit {label} karşılaştırması · aynı polar verisi, planform ve yöntem; yalnız devir, "
+                           f"{label} eşitlensin diye ayarlandı.")
             else:
-                st.info("Eşleştirilmiş sayısal çift oluşmadı. Profil koordinatları farklı; planform, koşul ve sayısal yöntem eş olmalı.")
+                st.info("Eşleştirilmiş sayısal çift oluşmadı. Profil dışındaki şu alanlar farklı:")
+                diff = [d for d in research.comparison_differences(rows) if not d["expected"]]
+                cell = lambda v: _fmt(v, 1) if isinstance(v, float) else str(v)  # noqa: E731
+                st.dataframe([{"Alan": d["field"], "Birinci": cell(d["first"]), "İkinci": cell(d["second"])} for d in diff],
+                             hide_index=True, **figure_style.dataframe_width_kwargs())
+                action = research.matching_action(rows, _repository()[0])
+                if action is None:
+                    st.caption("Polar verisi ve yöntem aynı; fark yalnız yukarıdaki girdilerde (ör. eşit itki veya güç için "
+                               "ayarlanmış devir). Bu durumda sonuçlar aynı veriyle, farklı çalışma noktasında karşılaştırılır.")
+                elif action["available"]:
+                    st.button(f"Eşleşen kaydı üret: {action['profile']} · {action['version_label']} ile Analiz’e git",
+                              key="research_compare_match", on_click=_prepare_matched_run, args=(action,),
+                              help="Profil ve veri sürümü seçilir; BEM’i siz başlatırsınız. Mevcut kayıtlar değişmez.")
+                elif action:
+                    st.caption("Bu iki profil için aynı XFOIL derlemesi, ızgara ve ayarlarla saklanan sürüm yok; "
+                               "eşleşmiş bir çift için ortak ızgarada yeni bir polar yakalaması gerekir.")
                 with st.expander("Karşılaştırma teknik ayrıntısı"):
                     st.json(result, expanded=False)
             summary = [{"Kayıt": display(k), "İtki [N]": _fmt(r["aerodynamics"]["thrust_n"], 3),
                         "Şaft torku [N·m]": _fmt(r["aerodynamics"]["torque_nm"], 3),
                         "Şaft gücü [W]": _fmt(r["aerodynamics"]["shaft_power_w"], 3)} for k, r in zip(chosen, rows)]
-            st.dataframe(summary, hide_index=True, use_container_width=True)
+            st.dataframe(summary, hide_index=True, **figure_style.dataframe_width_kwargs())
+            try:
+                _plot(gallery_figures.bem_overlay_figure(rows), "research_compare_overlay")
+            except ValueError as exc:   # a saved record without radial elements still compares by its totals
+                st.caption(str(exc))
+            if root is not None:
+                _equal_point(root, rows)
             a, b = st.columns(2)
-            a.download_button("Karşılaştırma JSON’u", json.dumps({
-                "schema_version": 1, "artifact_class": "pyfoldable_research_comparison",
-                "assessment": result, "results": rows,
-            }, ensure_ascii=False, allow_nan=False), "research_comparison.json", "application/json")
-            csv_rows = [{
-                "result_sha256": r["result_sha256"], "profile": r["inputs"]["profile"],
-                "rpm": r["inputs"]["rpm"], "inflow_m_s": r["inputs"]["inflow_m_s"],
-                "matched_numerical_comparison": result["matched_numerical_comparison"],
-                **{field: r["aerodynamics"][field] for field in
-                   ("airfoil_coordinate_sha256", "report_sha256", "thrust_n", "torque_nm", "shaft_power_w",
-                    "inner_radius_m", "outer_radius_m")},
-            } for r in rows]
-            b.download_button("Karşılaştırma CSV’si", research.records_csv(csv_rows), "research_comparison.csv", "text/csv")
-    st.caption("Eşit devir ve giriş hızı, eşit şaft gücü demek değildir. Eşit güç için başka çalışma noktaları gerekir. "
-               "Bu karşılaştırma tasarım seçmez veya fiziksel yeterlilik göstermez.")
+            document, table = research.comparison_exports(rows, result)
+            a.download_button("Karşılaştırma JSON’u", document, "research_comparison.json", "application/json")
+            b.download_button("Karşılaştırma CSV’si", table, "research_comparison.csv", "text/csv")
+    st.caption("Eşit devir ve giriş hızı, eşit şaft gücü demek değildir; eşit itki veya eşit güç için yukarıdaki devir "
+               "ayarını kullanın. Bu karşılaştırma tasarım seçmez veya fiziksel yeterlilik göstermez.")
     if failures:
         with st.expander(f"Tamamlanmayan BEM denemeleri ({len(failures)})"):
             for key in failures:
@@ -720,7 +975,7 @@ def _history():
                      default=None, display=display)
     if st.button("Kaydı Sonuçlar’da aç", disabled=chosen is None) and chosen is not None:
         st.session_state["_research_result_view"] = chosen
-        _navigate("Sonuçlar")
+        _navigate("Sonuçlar", _BEM_KIND)
         st.rerun()
 
 
@@ -752,10 +1007,35 @@ def render_research(root: Path):
                f"{_fmt(inputs.rpm, 0)} RPM · {_fmt(inputs.inflow_m_s, 2)} m/s · "
                + ("geometri hazır" if active is not None else "girdileri kontrol edin"))
     _invalidate(active, repository)
+    _invalidate_coupled(active, repository)
     if page == "Analiz":
-        _analysis(active, repository, store_error)
+        _analysis(active, repository, store_error, root)
         _invalidate(active, repository)  # A version or mechanical input could have changed in this render.
+        _invalidate_coupled(active, repository)
     elif page == "Sonuçlar":
+        from . import coupled_ui, fold_cycle_ui
+        coupled_ui.monitor()  # a running coupled job keeps its progress and 'Durdur' on every result kind
+        kinds = (_BEM_KIND, "Dinamik bağlaşık", fold_cycle_ui.KIND)
+        offered = tuple(k for k, on in zip(kinds, (True, bool(coupled_ui.retained()), fold_cycle_ui.active_row() is not None)) if on)
+        if st.session_state.get(_KIND) not in offered:
+            st.session_state.pop(_KIND, None)
+        # Streamlit drops the radio's state on pages where it is not drawn; restore the last choice. Other modules
+        # write the key directly to open their result, so this mirror is used instead of _choice's seeded index.
+        values = st.session_state.setdefault("_research_control_values", {})
+        if _KIND not in st.session_state and values.get(_KIND) in offered:
+            st.session_state[_KIND] = values[_KIND]
+        kind = st.radio("Sonuç türü", offered, horizontal=True, key=_KIND) if len(offered) > 1 else kinds[0]
+        values[_KIND] = kind
+        if kind == fold_cycle_ui.KIND:
+            fold_cycle_ui.render_result(fold_cycle_ui.active_row())
+            return
+        if kind == kinds[1]:
+            row = coupled_ui.active_result()
+            if row is None:
+                st.info("Etkin dinamik sonuç yok. Analiz’den başlatın veya kayıtlardan açın.")
+            else:
+                coupled_ui.render_result(row, imported=coupled_ui.retained()[row["result_sha256"]][1], root=root)
+            return
         archive_key = st.session_state.get("_research_result_view")
         record = _retained().get(archive_key) if archive_key is not None else None
         current = st.session_state.get(_ACTIVE)
@@ -764,4 +1044,7 @@ def render_research(root: Path):
         else:
             _results(None if current is None else json.loads(current[1]))
     elif page == "Karşılaştırma / kayıtlar":
-        _history()
+        _history(root)
+    elif page == "Görseller":
+        from . import gallery_ui
+        gallery_ui.render_gallery(root, active, repository)

@@ -1,0 +1,322 @@
+{
+ "coupled_runs": [
+  {
+   "ended_local": "20261112T003954",
+   "environment": "pre_upgrade",
+   "result_sha256": "913e8d4e52900bf488011b33c2e1197b0300e92bdecf2e87bcb118077caf2027",
+   "run_id": "20261112T003819_46b457acea",
+   "started": "20261112T003819",
+   "status": "completed",
+   "topology": "split_rigid (legacy record)",
+   "windows_accepted": 216
+  },
+  {
+   "ended_local": "20261112T005048",
+   "environment": "pre_upgrade",
+   "result_sha256": "232f908facea640724b8a39529bd0be91249fd1b1f94372853d6baa5a2b1a41b",
+   "run_id": "20261112T004422_676d3c8c65",
+   "started": "20261112T004422",
+   "status": "completed",
+   "topology": "split_rigid (legacy record)",
+   "windows_accepted": 432
+  },
+  {
+   "ended_local": "20261112T005152",
+   "environment": "pre_upgrade",
+   "result_sha256": "4fab6bf7532f5ecf4831c1eb8b16d1d9831fb7ac0eadf1b3d674bf8a4852ae39",
+   "run_id": "20261112T005151_ac99b124d6",
+   "started": "20261112T005151",
+   "status": "failed_solver",
+   "topology": "split_rigid (legacy record)",
+   "windows_accepted": 0
+  },
+  {
+   "ended_local": "20261112T005354",
+   "environment": "pre_upgrade",
+   "result_sha256": "9ab700cbefc38eeda62f3341be267c920a2fccbefcc7e1bcc15b1cfdefe110aa",
+   "run_id": "20261112T005343_c07845ca72",
+   "started": "20261112T005343",
+   "status": "completed",
+   "topology": "split_rigid (legacy record)",
+   "windows_accepted": 30
+  },
+  {
+   "ended_local": "20261112T014126",
+   "environment": "pre_upgrade",
+   "result_sha256": "3251c57f0fbd6d4b2aae53b5c7453bd97f08d99bc4ea11ee640d768965088cb9",
+   "run_id": "20261112T005547_39a32f06ef",
+   "started": "20261112T005547",
+   "status": "completed",
+   "topology": "split_rigid (legacy record)",
+   "windows_accepted": 720
+  },
+  {
+   "ended_local": "20261112T010322",
+   "environment": "pre_upgrade",
+   "result_sha256": "71c26ab72b8357563f83516669511eeec01bb8b7b5231f0032644a64c13b998a",
+   "run_id": "20261112T005554_32f9e3b7d0",
+   "started": "20261112T005554",
+   "status": "completed",
+   "topology": "split_rigid (legacy record)",
+   "windows_accepted": 360
+  },
+  {
+   "ended_local": "20261112T010346",
+   "environment": "pre_upgrade",
+   "result_sha256": "6ea04bce829b0020be4346a34d3d542e20e9a21147de74eefa1c7027709a48a0",
+   "run_id": "20261112T005601_e9e1ec9212",
+   "started": "20261112T005601",
+   "status": "completed",
+   "topology": "split_rigid (legacy record)",
+   "windows_accepted": 360
+  },
+  {
+   "ended_local": "20261112T015049",
+   "environment": "pre_upgrade",
+   "result_sha256": "cda14c21673e96bfa4a43c67eb1a84c80da7afe9578cb66af2b114bc3377b8d8",
+   "run_id": "20261112T010638_68279430ef",
+   "started": "20261112T010638",
+   "status": "completed",
+   "topology": "split_rigid (legacy record)",
+   "windows_accepted": 720
+  },
+  {
+   "ended_local": "20261112T010649",
+   "environment": "pre_upgrade",
+   "result_sha256": "139511b37cb35f25d300976900f27033c61746f5dcdbffae55c7aac5e166caa0",
+   "run_id": "20261112T010645_7d61b1a49c",
+   "started": "20261112T010645",
+   "status": "failed_solver",
+   "topology": "split_rigid (legacy record)",
+   "windows_accepted": 0
+  },
+  {
+   "ended_local": "20261112T011439",
+   "environment": "pre_upgrade",
+   "result_sha256": "d9ef23252d6d6aa50e159e23b85057a402594635c76c7fd24aa03956d654330f",
+   "run_id": "20261112T011303_d503584a80",
+   "started": "20261112T011303",
+   "status": "completed",
+   "topology": "split_rigid (legacy record)",
+   "windows_accepted": 173
+  },
+  {
+   "ended_local": "20261112T012548",
+   "environment": "pre_upgrade",
+   "result_sha256": "c805bd280c67eee00cc97daf2dc1c637005920f3cc836ea410fb1261094a3815",
+   "run_id": "20261112T012130_6307e9790a",
+   "started": "20261112T012130",
+   "status": "failed_solver",
+   "topology": "split_rigid (legacy record)",
+   "windows_accepted": 298
+  },
+  {
+   "ended_local": "20261112T064819",
+   "environment": "pre_upgrade",
+   "result_sha256": "d3d66a38643727df935a7ad2fe3e832345f8520c8f6583e420d358f01b44d0eb",
+   "run_id": "20261112T064218_36285ecfd1",
+   "started": "20261112T064218",
+   "status": "completed",
+   "topology": "split_rigid (legacy record)",
+   "windows_accepted": 360
+  },
+  {
+   "ended_local": "20261112T064847",
+   "environment": "pre_upgrade",
+   "result_sha256": "6792a12843b9728b79d3310f3eec0828d53f19ee81e335820224194ae7c0a90c",
+   "run_id": "20261112T064223_a564b2a131",
+   "started": "20261112T064223",
+   "status": "completed",
+   "topology": "split_rigid (legacy record)",
+   "windows_accepted": 360
+  },
+  {
+   "ended_local": "20261112T065525",
+   "environment": "pre_upgrade",
+   "result_sha256": "61d27d13ea77220784ce8e1e78f2dd7d13061d371ccdb212aef628635495d67d",
+   "run_id": "20261112T064948_aba91dea80",
+   "started": "20261112T064948",
+   "status": "completed",
+   "topology": "split_rigid (legacy record)",
+   "windows_accepted": 360
+  },
+  {
+   "ended_local": "20261112T065602",
+   "environment": "pre_upgrade",
+   "result_sha256": "f767ef8998b207d513448c58cd22f8e8bbd41e4f888b8be15a0233b117e9323d",
+   "run_id": "20261112T064957_1a28302b46",
+   "started": "20261112T064957",
+   "status": "completed",
+   "topology": "split_rigid (legacy record)",
+   "windows_accepted": 360
+  },
+  {
+   "ended_local": "20261112T070713",
+   "environment": "post_upgrade",
+   "result_sha256": "2aadcf293d5829833cfaa4965fc7a2eb26a16a3c7a76ff9620d819d150e9041d",
+   "run_id": "20261112T070651_69c3972b66",
+   "started": "20261112T070651",
+   "status": "failed_solver",
+   "topology": "continuous_rbf",
+   "windows_accepted": 0
+  },
+  {
+   "ended_local": "20261112T070718",
+   "environment": "post_upgrade",
+   "result_sha256": "a446ff4ac4500e443b4190c900ca49b742217ef32874ae01f32cd05091eedf51",
+   "run_id": "20261112T070657_e65d989b79",
+   "started": "20261112T070657",
+   "status": "failed_solver",
+   "topology": "continuous_rbf",
+   "windows_accepted": 0
+  },
+  {
+   "ended_local": "20261112T071457",
+   "environment": "post_upgrade",
+   "result_sha256": "f19b3c6480949c18c559c3be65c079c6892dc0cd17e621926864457e18167874",
+   "run_id": "20261112T070700_c891c455ae",
+   "started": "20261112T070700",
+   "status": "completed",
+   "topology": "split_rigid",
+   "windows_accepted": 432
+  },
+  {
+   "ended_local": "20261112T071129",
+   "environment": "post_upgrade",
+   "result_sha256": "1161ac5077a64e237dbddb7e2777adc8ef111afb69f3ced3811890d3a6f30c48",
+   "run_id": "20261112T070917_55f6aea26f",
+   "started": "20261112T070917",
+   "status": "completed",
+   "topology": "continuous_rbf",
+   "windows_accepted": 216
+  },
+  {
+   "ended_local": "20261112T071132",
+   "environment": "post_upgrade",
+   "result_sha256": "89d3d930b865ab48801fb3382bd89bfeef7aa165110373352f1b461fa1a83036",
+   "run_id": "20261112T070920_67c85e4108",
+   "started": "20261112T070920",
+   "status": "completed",
+   "topology": "continuous_rbf",
+   "windows_accepted": 216
+  },
+  {
+   "ended_local": "20261112T071930",
+   "environment": "post_upgrade",
+   "result_sha256": "ec22c1578509b27e724eac6898786ec5f8c1f0acbb2caaecfa86c8bc57c56205",
+   "run_id": "20261112T071157_91efdf9841",
+   "started": "20261112T071157",
+   "status": "completed",
+   "topology": "continuous_rbf",
+   "windows_accepted": 360
+  },
+  {
+   "ended_local": "20261112T075000",
+   "environment": "post_upgrade",
+   "result_sha256": "c7a2ab47b0a337ab2faaa00b6c86c4c8712e95be56ba6a190c119e8e97db7aee",
+   "run_id": "20261112T071200_20d4a1092d",
+   "started": "20261112T071200",
+   "status": "completed",
+   "topology": "continuous_rbf",
+   "windows_accepted": 720
+  },
+  {
+   "ended_local": "20261112T073926",
+   "environment": "post_upgrade",
+   "result_sha256": "04774b5010022c74a457bff27b73c652b4d0c5c1bb7f027f845566f04094786a",
+   "run_id": "20261112T073117_fab3a9a152",
+   "started": "20261112T073117",
+   "status": "completed",
+   "topology": "continuous_rbf",
+   "windows_accepted": 432
+  },
+  {
+   "ended_local": "20261112T074252",
+   "environment": "post_upgrade",
+   "result_sha256": "777765a414044893eace9b3c2d99ccb315d7ee86870c554e8828e1469342aa56",
+   "run_id": "20261112T074237_2a6ad5bd14",
+   "started": "20261112T074237",
+   "status": "completed",
+   "topology": "continuous_rbf",
+   "windows_accepted": 30
+  },
+  {
+   "ended_local": "20261112T104617",
+   "environment": "post_upgrade",
+   "result_sha256": "3e824caea59b3513a2b2f2a1c21c73435c59f445d8b0ed825ac76d33ba9f6513",
+   "run_id": "20261112T104303_5d5d234081",
+   "started": "20261112T104303",
+   "status": "completed",
+   "topology": "continuous_rbf",
+   "windows_accepted": 259
+  },
+  {
+   "ended_local": "20261112T104620",
+   "environment": "post_upgrade",
+   "result_sha256": "e9162cc684de744cb2e3916fb4d308441780dd81d636d3ae1876303f885322e2",
+   "run_id": "20261112T104306_fc454dbf5a",
+   "started": "20261112T104306",
+   "status": "completed",
+   "topology": "continuous_rbf",
+   "windows_accepted": 259
+  },
+  {
+   "ended_local": "20261112T104619",
+   "environment": "post_upgrade",
+   "result_sha256": "0e7ba3c11086980f217e1386e016e8c1953648573354d40b05134d632de266ce",
+   "run_id": "20261112T104309_3578a648d8",
+   "started": "20261112T104309",
+   "status": "completed",
+   "topology": "continuous_rbf",
+   "windows_accepted": 259
+  },
+  {
+   "ended_local": "20261112T104646",
+   "environment": "post_upgrade",
+   "result_sha256": "c6a700ca8561cd36d99fb4989d90449ca77f6e351a775e8c8137cb90c58021e5",
+   "run_id": "20261112T104628_964ec74da3",
+   "started": "20261112T104628",
+   "status": "cancelled",
+   "topology": "continuous_rbf",
+   "windows_accepted": 78
+  }
+ ],
+ "manifest_difference": {
+  "coupling_python": [
+   "33f9dae7896c3ed23260a5cafe72679ba9ff35a0883d67e0d1a1d3018322563e",
+   "a2f33a6e006989270f4340528eb61f8f97366e00a5d1b602ac8672ea44fc56ae"
+  ]
+ },
+ "manifest_post_upgrade_sha256": "58107cc818eb10d40d97627deb22e3ac80cba83c21f9df45fd0bf77af0c486a1",
+ "manifest_pre_upgrade_sha256": "c23274385e5c377a22f0d2d01a41ed44497ca5c1a7a291f910f6f74852b5bf2e",
+ "note": "Each run is bound to the manifest it copied at start (toolchain.json in its run directory). Ubuntu unattended upgrades: libgfortran5 12.3.0-1ubuntu1~22.04.3 installed 2026-11-12 06:58:13, python3.10 3.10.12-1~22.04.12 -> ~22.04.18 at 06:59:49-50 (/var/log/dpkg.log). The manifest hashes the coupling interpreter, solvers and libprecice, not system libraries such as libgfortran5. Readiness failed closed (toolchain_invalid) until re-attestation at 07:06:37. No cited run spans 06:58-07:06.",
+ "standalone_runs": [
+  {
+   "binary_sha256": "d1bc8588281c5a44c99fb872d1f038f93cf1eb2cd387f7dc814a245fa7d67664",
+   "dust_in_sha256": "95ae15d3742c059e0b5388c60f2b85e741796f8e2a350a19d9010c2cebe590d1",
+   "first_output": "00:14:57",
+   "geo_input_sha256": "402d98b3689669e7a393887ba980c8bbeaed472305a5466165a1397deca492eb",
+   "last_output": "00:24:04",
+   "run": "sa_n2412_s5_d150 (split, stock standalone)",
+   "system_libraries": "pre_upgrade"
+  },
+  {
+   "binary_sha256": "d1bc8588281c5a44c99fb872d1f038f93cf1eb2cd387f7dc814a245fa7d67664",
+   "dust_in_sha256": "95ae15d3742c059e0b5388c60f2b85e741796f8e2a350a19d9010c2cebe590d1",
+   "first_output": "07:15:40",
+   "geo_input_sha256": "c8e4c80dbda4d897c988f8ee97fdc3bbe496a4ee655d9da89a7085014b90eeb3",
+   "last_output": "07:23:21",
+   "run": "sa_cont_s5_d150 (continuous, stock standalone)",
+   "system_libraries": "post_upgrade"
+  },
+  {
+   "binary_sha256": "08b780d44542eb17ab5c3b1ad46733d130e9fb416cc086a50b8e555487481a00",
+   "dust_in_sha256": "95ae15d3742c059e0b5388c60f2b85e741796f8e2a350a19d9010c2cebe590d1",
+   "first_output": "10:34:39",
+   "geo_input_sha256": "c8e4c80dbda4d897c988f8ee97fdc3bbe496a4ee655d9da89a7085014b90eeb3",
+   "last_output": "10:40:00",
+   "run": "sa_cont_s5_d150_ubcen (continuous, DIAGNOSTIC build)",
+   "system_libraries": "post_upgrade"
+  }
+ ]
+}

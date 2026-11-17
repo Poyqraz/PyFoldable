@@ -1,0 +1,19 @@
+--- ~/pyf-work/src/dust/src/geo/mod_geo.f90	2026-11-11 23:44:16.785389587 +0300
++++ mod_geo.f90	2026-11-12 10:32:35.918469411 +0300
+@@ -2163,7 +2163,15 @@
+   class(c_pot_elem), intent(inout)  :: elem
+   real(wp), intent(in)              :: f(3), G(3,3)
+ 
+-  elem%ub = f + matmul(G,elem%cen)
++  ! DIAGNOSTIC BUILD (PyFoldable RBF-gap study, not for production): evaluate the body velocity
++  ! of lifting-line elements at the leading-line midpoint, as the rbf coupling branch does
++  ! (loc_cen = mean(ver1, ver2)), instead of at the control point elem%cen.
++  select type(elem)
++  type is(t_liftlin)
++    elem%ub = f + matmul(G, 0.5_wp*(elem%ver(:,1) + elem%ver(:,2)))
++  class default
++    elem%ub = f + matmul(G,elem%cen)
++  end select
+ 
+ end subroutine calc_geo_vel
+ 

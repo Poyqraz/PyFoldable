@@ -108,7 +108,8 @@ def test_preview_uses_exact_coordinates_without_naca_substitution(profile, monke
     assert mesh.section_vertex_count == len(points)
     assert len(mesh.vertices) == mesh.station_count * len(points)
     for vertex, (x, y) in zip(mesh.vertices, points):
-        assert vertex == pytest.approx((0.025, (x - 0.25) * 0.028, y * 0.028))
+        # coupled-model frame with the span on x: leading edge on +y (2026-11-13 convention alignment)
+        assert vertex == pytest.approx((0.025, -(x - 0.25) * 0.028, y * 0.028))
     for a, b, c in mesh.faces:
         ab = tuple(mesh.vertices[b][i] - mesh.vertices[a][i] for i in range(3))
         ac = tuple(mesh.vertices[c][i] - mesh.vertices[a][i] for i in range(3))

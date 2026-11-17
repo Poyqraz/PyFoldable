@@ -118,7 +118,15 @@ def test_old_store_snapshot_and_request_identities_survive_catalog_append(tmp_pa
     saved = add_record((), old_snapshot)
     doc = comparison_document(saved, evidence_class='inert_fixture')
     assert saved[0] == old_snapshot
-    assert comparison_csv(doc).encode() == retained['comparison.csv']
+    # The status column is derived at export time (WP9 renamed the blocked value); every
+    # snapshot-carried field must still export byte-identically to the archived CSV.
+    old_csv = csv.DictReader(io.StringIO(retained['comparison.csv'].decode()))
+    new_csv = csv.DictReader(io.StringIO(comparison_csv(doc)))
+    old_rows, new_rows = list(old_csv), list(new_csv)
+    assert new_csv.fieldnames == old_csv.fieldnames and len(new_rows) == len(old_rows) == 1
+    assert old_rows[0].pop('genuine_comparison_status') == 'BLOCKED_no_matching_real_provider_polar_bundle'
+    assert new_rows[0].pop('genuine_comparison_status') == 'BLOCKED_no_shared_retained_provider_contract'
+    assert new_rows == old_rows
     assert all((tmp_path/name).read_bytes() == data for name, data in retained.items())
 
 

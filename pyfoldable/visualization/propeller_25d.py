@@ -307,8 +307,13 @@ def build_propeller_preview_mesh(
         for chord_fraction, thickness_fraction in section:
             chord_axis = (chord_fraction - 0.25) * chord
             thickness_axis = thickness_fraction * chord
-            local_y = chord_axis * math.cos(twist) - thickness_axis * math.sin(twist)
-            local_z = chord_axis * math.sin(twist) + thickness_axis * math.cos(twist)
+            # Same physical section as the coupled model (pyfoldable/coupled/frames.py), with the span on x:
+            # x_p = y_c, y_p = -x_c, z_p = z_c. Rotation +Omega about +z, so the leading edge is on +y and
+            # positive twist raises it toward +z; a negative fold (below) then turns the distal part back
+            # toward the trailing side (-y). Before 2026-11-13 the section was mirrored (LE on -y, twist
+            # lowering it), so the fold went toward the leading edge.
+            local_y = -(chord_axis * math.cos(twist) + thickness_axis * math.sin(twist))
+            local_z = -chord_axis * math.sin(twist) + thickness_axis * math.cos(twist)
             local_x = radial
             if station_index >= hinge_tip_index:
                 delta_x = radial - spec.hinge_radius_m

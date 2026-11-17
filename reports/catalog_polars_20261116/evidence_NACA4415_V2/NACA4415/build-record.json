@@ -1,0 +1,19 @@
+{
+  "actual_build_script": "build/build_xfoil.sh",
+  "backend_version_basis": "Pinned XFOIL 6.99 source; startup banner 'XFOIL Version 6.99' observed after the build (QUIT only)",
+  "build_log": "build/build.log",
+  "compiler": "GNU Fortran (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0",
+  "compiler_family_requirement": "gfortran; no exact version pinned by inherited recipe",
+  "executable_sha256": "d1076680fd8ffa5e2eaa94f601ab495ae8ce20e6b4f1b80c5729505691b136a7",
+  "fortran_flags": "-O2 -fdefault-real-8 -fallow-argument-mismatch",
+  "inherited_recipe": ".github/workflows/polar-real-qualification.yml (build_xfoil step)",
+  "kind": "observed-local-build-not-process-image-attestation",
+  "local_provisioning": "WSL2 Ubuntu 22.04 system gfortran and libx11-dev; no sudo during this build",
+  "osmap_sha256": "2f6b3c63461d71da9b6cb9ca1340d77cff0cfbe767679d15b5b8556b45d948c4",
+  "process_image_attestation": false,
+  "relation_to_retained_store_build": "Different executable from the 2026-11-11 capture (2b952bd2..., GNU Fortran 14.2.0 Debian); same source archive, flags and OSMAP bytes. Not declared identical.",
+  "source_archive": "build/xfoil6.99.tgz",
+  "source_archive_sha256": "5c0250643f52ce0e75d7338ae2504ce7907f2d49a30f921826717b8ac12ebe40",
+  "source_patches_applied": [],
+  "source_url": "https://web.mit.edu/drela/Public/web/xfoil/xfoil6.99.tgz"
+}

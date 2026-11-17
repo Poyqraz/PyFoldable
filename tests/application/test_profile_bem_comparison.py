@@ -98,7 +98,7 @@ def test_saved_record_keeps_its_profile_after_the_selector_changes() -> None:
     document = comparison_document(saved, evidence_class="inert_fixture")
     assert document["software_controlled_comparison"] is True
     assert document["performance_comparison"] is False
-    assert document["genuine_comparison_status"] == "BLOCKED_no_matching_real_provider_polar_bundle"
+    assert document["genuine_comparison_status"] == "BLOCKED_no_shared_retained_provider_contract"
     assert document["qualified_winner"] is None
     assert "propulsive_efficiency" not in comparison_csv(document)
     assert "shaft_power_w" in comparison_csv(document)
@@ -221,7 +221,7 @@ def test_identical_complete_policies_compare_distinct_profiles() -> None:
     assert document["settings_compatible"] is True
     assert document["software_controlled_comparison"] is True
     assert document["performance_comparison"] is False
-    assert document["genuine_comparison_status"] == "BLOCKED_no_matching_real_provider_polar_bundle"
+    assert document["genuine_comparison_status"] == "BLOCKED_no_shared_retained_provider_contract"
 
 
 def test_repeated_runs_and_relabeling_are_not_profile_comparisons() -> None:
