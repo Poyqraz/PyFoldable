@@ -30,7 +30,7 @@ from .mbdyn_output import parse_jnt
 COMPANION = "hinge_loads.json"
 REV, HINGE, LATCH = 400, 500, 600
 NODE_Z_OFFSET_M = 0.01
-EXTRACTOR_VERSION = 2       # bump on any change to extract(); load() then rejects older companions so they are re-derived
+EXTRACTOR_VERSION = 3      # bump on any change to extract(); load() then rejects older companions so they are re-derived
 
 
 def _sha(path: Path) -> str:
@@ -50,20 +50,21 @@ def local_components(F, M, R):
             "M_torsion": float(M @ es), "M_bending": float(M @ et), "M_pin": float(M @ ez)}
 
 
-def startup_windows(residual: dict, magnitude: dict, W: int, rel: float = 0.02) -> int:
-    """Number of leading windows in MBDyn's constraint start-up transient: the contiguous run from the first checked
-    window whose residual exceeds ``rel`` of the steady joint-load level (median of later windows), capped at
-    half the record. A mismatch after a balanced window is never relabelled as start-up."""
+def startup_windows(residual: dict, magnitude: dict, W: int, rel: float = 0.02,
+                    start: int | None = None, decay: float | None = None) -> int:
+    """Number of leading windows in MBDyn's constraint start-up transient: the run of consecutive checked windows,
+    from the first checked window (or from window ``start``), whose residual exceeds ``rel`` of the steady joint-load
+    level (median of later windows), capped at half the record. It stops at a window the stencil excluded, and with
+    ``decay`` also at the first window above ``decay`` × the one before, so a sustained mismatch is never relabelled
+    as start-up. A mismatch after a balanced window is never relabelled either."""
     if not residual:
         return 0
     ks = sorted(residual)
     level = float(np.median([magnitude[k] for k in ks[len(ks) // 2:]])) or 1e-12
-    n = 0
-    for k in ks:
-        if residual[k] > rel * level and k < W // 2:
-            n = k + 1
-        else:
-            break
+    k, n = (ks[0], 0) if start is None else (start, start)
+    while (k in residual and residual[k] > rel * level and k < W // 2
+           and (decay is None or residual[k] <= decay * residual.get(k - 1, 0.0))):
+        n = k = k + 1
     return n
 
 
@@ -140,11 +141,14 @@ def extract(run_dir: Path, row: dict) -> dict:
                                       float(np.abs(Fg[k]).max()), float(np.abs(Mg[k]).max()))
         out_blades.append({"blade": b, **{k: v for k, v in comps.items()}, "F_global_n": Fg, "M_global_nm": Mg})
     # MBDyn's constraint reactions start with a decaying numerical transient (algebraic variables of the ms
-    # integrator settling from the initial state): windows before the force and pin-moment balances settle are flagged,
-    # not hidden; the pin-moment channel (latch torque alternating window to window) settles a few windows later
+    # integrator settling from the initial state): windows before the force balance settles are flagged, not hidden.
+    # The pin-moment channel (latch torque alternating window to window) settles a few windows later; it extends the
+    # span only while its residual keeps decaying (≈0.7× per window observed, 0.8× allowed), so a sustained
+    # pin-moment mismatch stays in the check
     def by_window(i):
         return {k: max(v[i] for (_, k2), v in per_window.items() if k2 == k) for (_, k) in per_window}
-    startup = max(startup_windows(by_window(0), by_window(3), W), startup_windows(by_window(2), by_window(4), W))
+    force_span = startup_windows(by_window(0), by_window(3), W)
+    startup = startup_windows(by_window(2), by_window(4), W, start=force_span, decay=0.8)
     kept = {key: v for key, v in per_window.items() if key[1] >= startup}
     scale_f = max([v[3] for v in kept.values()] or [1e-12])
     scale_m = max([v[4] for v in kept.values()] or [1e-12])
@@ -192,7 +196,8 @@ def extract(run_dir: Path, row: dict) -> dict:
             "theta_deg": [s["theta_deg"] for s in series], "contact_active": [s["contact_active"] for s in series],
             "latch_active": [s["latch_active"] for s in series], "blades": out_blades, "peaks": peaks,
             "peaks_per_blade": peaks_per_blade, "checks": checks, "checks_skipped_reason": checks_skipped_reason,
-            "startup_transient_windows": startup, "startup_overlaps": startup_overlaps,
+            "startup_transient_windows": startup, "startup_pin_extension_windows": startup - force_span,
+            "startup_overlaps": startup_overlaps,
             "startup_note": ("MBDyn's joint reactions settle from the initial state over the first windows (numerical "
                              "transient of the constraint multipliers, decaying ≈0.7× per window); those windows are "
                              "flagged and excluded from peaks and checks."),

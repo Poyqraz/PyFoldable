@@ -76,6 +76,18 @@ def test_start_up_exclusion_is_only_a_leading_contiguous_run():
     assert hinge_loads.startup_windows(lead, mag, 40) == 8
     late = {**{k: 1.0 for k in range(1, 40)}, 12: 400.0}              # a mismatch after balanced windows stays visible
     assert hinge_loads.startup_windows(late, mag, 40) == 0
+    gap = {k: v for k, v in lead.items() if k not in (5, 6)}           # the run stops at a window the stencil excluded
+    assert hinge_loads.startup_windows(gap, mag, 40) == 5
+
+
+def test_pin_channel_extends_the_span_only_while_its_residual_keeps_decaying():
+    mag = {k: 600.0 for k in range(1, 40)}
+    settling = {k: 300.0 * 0.7 ** k for k in range(1, 40)}             # ≈0.7× per window, as MBDyn's transient
+    assert hinge_loads.startup_windows(settling, mag, 40, start=4, decay=0.8) == 10     # until below 2 % of 600
+    sustained = {k: 300.0 * 0.7 ** k + 20.0 for k in range(1, 40)}     # a real mismatch under the transient
+    assert hinge_loads.startup_windows(sustained, mag, 40, start=4, decay=0.8) == 7
+    flat = {k: 20.0 for k in range(1, 40)}
+    assert hinge_loads.startup_windows(flat, mag, 40, start=4, decay=0.8) == 4
 
 
 def test_symmetric_blades_report_the_same_moments_about_their_blade_plane(recorded):
@@ -172,3 +184,20 @@ def test_an_edited_companion_is_not_accepted(recorded):
     c["checks"][0]["passed"] = not c["checks"][0]["passed"]
     p.write_text(json.dumps(c))
     assert hinge_loads.load(run, row) is None
+
+
+def test_a_sustained_pin_moment_mismatch_from_the_first_checked_window_is_not_absorbed_into_the_start_up_span(recorded):
+    run, row = recorded
+    c0 = hinge_loads.extract(run, row)
+    bad = copy.deepcopy(row)
+    nodes = row["run_definition"]["coupling_nodes"]
+    i = next(i for i, nd in enumerate(nodes) if nd["blade"] == 0 and nd["segment"] == "distal")
+    # 1 N·m about the pin in every window; the 30-window fixture caps the span at 15, so the decay rule itself is
+    # pinned by the synthetic test above
+    for s in row["series"]:
+        bad["window_exchange"][s["window"] - 1]["moment"][i][2] += 1.0
+    c = hinge_loads.extract(run, bad)
+    force_span = c0["startup_transient_windows"] - c0["startup_pin_extension_windows"]
+    assert c["startup_transient_windows"] == force_span and c["startup_pin_extension_windows"] == 0
+    pin = next(ch for ch in c["checks"] if ch["name"] == "distal_pin_moment_balance_relative")
+    assert not pin["passed"], pin
