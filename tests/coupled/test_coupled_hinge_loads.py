@@ -1,4 +1,5 @@
 """Connection loads of a coupled record from MBDyn's joint reactions, checked against the distal Newton–Euler balance."""
+import copy
 import json
 import shutil
 from pathlib import Path
@@ -75,6 +76,92 @@ def test_start_up_exclusion_is_only_a_leading_contiguous_run():
     assert hinge_loads.startup_windows(lead, mag, 40) == 8
     late = {**{k: 1.0 for k in range(1, 40)}, 12: 400.0}              # a mismatch after balanced windows stays visible
     assert hinge_loads.startup_windows(late, mag, 40) == 0
+
+
+def test_symmetric_blades_report_the_same_moments_about_their_blade_plane(recorded):
+    run, row = recorded
+    c = hinge_loads.extract(run, row)
+    k0 = c["startup_transient_windows"]
+    b0, b1 = c["blades"]
+    for key in ("M_bending", "M_torsion", "M_pin", "N_tension"):
+        p0, p1 = (max(abs(x) for x in b[key][k0:]) for b in (b0, b1))
+        # was 9x on blade 2 (moment about the 10 mm label offset); blades still differ by ~4e-5 N·m in the solver output
+        assert p1 == pytest.approx(p0, rel=1e-4, abs=1e-3), key
+
+
+def test_peaks_cover_every_blade_and_name_the_blade(recorded):
+    run, row = recorded
+    c = hinge_loads.extract(run, row)
+    k0 = c["startup_transient_windows"]
+    assert len(c["peaks_per_blade"]) == len(c["blades"])
+    for p in c["peaks"]:
+        best = max(abs(x) for b in c["blades"] for x in b[p["key"]][k0:])
+        assert abs(p["value"]) == pytest.approx(best) and p["blade"] in range(len(c["blades"]))
+        assert all(pb["blade"] == b for b, per in enumerate(c["peaks_per_blade"]) for pb in per)
+
+
+def test_extract_refuses_a_joint_file_the_sealed_record_did_not_use(recorded):
+    run, row = recorded
+    jnt = run / "structure" / "out.jnt"
+    saved = jnt.read_bytes()
+    jnt.write_bytes(saved + b"\n")
+    try:
+        with pytest.raises(ValueError):
+            hinge_loads.extract(run, row)
+    finally:
+        jnt.write_bytes(saved)
+
+
+def test_a_companion_from_another_extractor_version_or_manifest_is_not_accepted(recorded):
+    run, row = recorded
+    c = hinge_loads.extract(run, row)
+    assert c["extractor_version"] == hinge_loads.EXTRACTOR_VERSION
+    hinge_loads.store(run, {**c, "extractor_version": hinge_loads.EXTRACTOR_VERSION - 1})
+    assert hinge_loads.load(run, row) is None
+    hinge_loads.store(run, c)
+    files = {**row["raw_outputs"]["files"], "structure/out.jnt": {"sha256": "0" * 64}}
+    assert hinge_loads.load(run, {**row, "raw_outputs": {**row["raw_outputs"], "files": files}}) is None
+
+
+def test_coupling_nodes_come_only_from_the_sealed_record_and_a_skipped_check_says_why(recorded):
+    run, row = recorded
+    c = hinge_loads.extract(run, {**row, "run_definition": {**row["run_definition"], "coupling_nodes": None}})
+    assert c["checks"] == [] and c["checks_skipped_reason"]
+    assert hinge_loads.extract(run, row)["checks_skipped_reason"] is None
+
+
+def test_the_window_whose_difference_reaches_the_latch_torque_drop_is_not_checked(recorded):
+    run, row = recorded
+    s = row["series"]
+    drop = next(k for k, r in enumerate(s) if r["latch_torque_nm"][0] == 0.0)
+    assert s[drop]["latch_active"]                                      # the recorded flag lags the torque by one window
+    c = hinge_loads.extract(run, row)
+    assert all(c["force_residual_n"][k] is None for k in range(drop - 2, drop + 3))
+
+
+def test_release_inside_the_start_up_span_is_listed(recorded):
+    run, row = recorded
+    c = hinge_loads.extract(run, row)
+    k0 = c["startup_transient_windows"]
+    rel = next(k for k, r in enumerate(row["series"]) if not r["latch_active"])
+    assert rel < k0
+    assert {"event": "release", "blade": None, "window": row["series"][rel]["window"],
+            "time_s": row["series"][rel]["time_s"]} in c["startup_overlaps"]
+    assert all(o["event"] != "first_contact" for o in c["startup_overlaps"])     # first contact at window 13 > k0
+
+
+def test_a_late_pin_moment_mismatch_is_not_absorbed_into_the_start_up_span(recorded):
+    run, row = recorded
+    k0 = hinge_loads.extract(run, row)["startup_transient_windows"]
+    bad = copy.deepcopy(row)
+    k = len(row["series"]) - 4                                          # checked, after contacts and the start-up span
+    nodes = row["run_definition"]["coupling_nodes"]
+    i = next(i for i, nd in enumerate(nodes) if nd["blade"] == 0 and nd["segment"] == "distal")
+    bad["window_exchange"][row["series"][k]["window"] - 1]["moment"][i][2] += 1.0     # 1 N·m about the pin
+    c = hinge_loads.extract(run, bad)
+    assert c["startup_transient_windows"] == k0
+    pin = next(ch for ch in c["checks"] if ch["name"] == "distal_pin_moment_balance_relative")
+    assert not pin["passed"], pin
 
 
 def test_an_edited_companion_is_not_accepted(recorded):
