@@ -1,4 +1,6 @@
 """Comparison of two BEM records: name the exact differing fields and the action that gives a matched pair."""
+import copy
+import json
 from dataclasses import replace
 from pathlib import Path
 
@@ -62,6 +64,11 @@ def test_matching_action_points_at_the_profile_version_that_shares_the_contract(
     assert research.matching_action([r["a"], r["b_v1"]], repo) is None          # already matched
     assert research.matching_action([r["a"], r["b_rpm"]], repo) is None         # same data, only the operating point differs
     assert research.matching_action([r["a"], r["b_root"]], repo) is None        # same data, only a geometry input differs
+    older = copy.deepcopy(r["b_v1"])                                            # saved by another BEM implementation
+    report = json.loads(older["aerodynamics"]["report_text"])
+    report["request"]["implementation"] = "older-bem-implementation"
+    older["aerodynamics"]["report_text"] = json.dumps(report)
+    assert research.matching_action([r["a"], older], repo) is not None          # the method differs; not "same"
 
 
 @pytest.mark.parametrize("quantity,key", [("thrust", "thrust_n"), ("power", "shaft_power_w")])

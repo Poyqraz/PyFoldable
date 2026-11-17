@@ -868,9 +868,9 @@ def matching_action(results, repository):
     if compare_results(results)["matching_retained_provider_contract"]:
         return None
     adm = [_admission(r) for r in results]
-    keys = [None if c is None else _contract_key(c["provider_policy"], c["builds"], c["grid"])
-            for c in (_provider_contract(r["aerodynamics"]) for r in results)]
-    if None not in keys and keys[0] == keys[1]:
+    contracts = [_provider_contract(r["aerodynamics"]) for r in results]
+    keys = [None if c is None else _contract_key(c["provider_policy"], c["builds"], c["grid"]) for c in contracts]
+    if None not in keys and keys[0] == keys[1] and contracts[0]["bem_implementation"] == contracts[1]["bem_implementation"]:
         return None   # same data; only declared geometry inputs (root, template) differ, which no version fixes
     for target, other in ((1, 0), (0, 1)):
         if keys[other] is None:
