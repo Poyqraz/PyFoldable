@@ -1,11 +1,14 @@
 """'Görseller': the workspace figures in one place, built only on request. A registry of cards calls the existing
 builders (and gallery_figures for the figures no other view draws). Every card names its source and evidence class;
-a missing source or a failed build stays visible. No card claims physical qualification."""
+a missing source or a failed build stays visible. No card claims physical qualification. Not carded (still on their
+own Results tabs): the derived centrifugal hinge-moment trace, the coupled flow-blade scene, the coupled radial-link
+view and the legacy coupled playback; the separate dashboard app's figures are out of scope."""
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
+import plotly.graph_objects as go
 import streamlit as st
 
 from . import coupled_views as cv, fold_cycle_views as fcv, gallery_figures as gf
@@ -27,7 +30,7 @@ _COUPLED_SCOPE = "Kabul edilen MBDyn/DUST pencereleri; noktalı çizgiler geçer
 # ----------------------------------------------------------------------------------------------- archive files
 def archive_files(root) -> list:
     base = (Path(root) / "reports").resolve()
-    return sorted(p.relative_to(base).as_posix() for p in base.rglob("*") if p.is_file())
+    return sorted(p.relative_to(base).as_posix() for p in base.rglob("*") if p.is_file() and base in p.resolve().parents)
 
 
 def archive_path(root, rel) -> Path:
@@ -76,12 +79,10 @@ def _airfoil(ctx):
 def _design_blade(ctx):
     """Lofted blade at the requested fold pose, stopped at the last contact-free angle as on the Design tab."""
     from . import blade_ui as bu
-    i = ctx["active"].inputs
     spec = bu.bg.spec_from_active(ctx["active"], _foil(ctx["active"]))
-    rep, _ = bu.contacts_for(spec, max(-180.0, min(-0.01, i.stow_limit_deg)))
-    shown = rep.clamp(i.fold_deg)
+    rep, _, shown, at_contact = bu.design_pose(spec, ctx["active"].inputs)
     return bu.bv.blade_figure(bu.mesh_for(spec), fold_deg=shown, contact_angle_deg=shown,
-                              contacts=rep if abs(shown - rep.interference_free_deg) < 0.05 else None)
+                              contacts=rep if at_contact else None)
 
 
 def _bem_fields(ctx):
@@ -257,8 +258,9 @@ CARDS = [
           missing="Bindirme için yukarıdan ikinci bir tamamlanmış BEM kaydı seçin.",
           scope="Eşleşme koşulları (veri sürümü, planform, koşul) Karşılaştırma / kayıtlar’da denetlenir."),
     _card("cycle_timeline", "cycle", "Senkron zaman çizelgesi", "Açı, devir ve bağlantı yükleri olaylarla birlikte.",
-          lambda c: fcv.timeline_figure(c["cycle"], 0, blade=c["blade"]), needs=("cycle", "blade"), missing=_NO_CYCLE,
-          scope=_CYCLE_SCOPE, cost="heavy"),
+          # a copy: the Results slider moves the cursor of the module-cached figure in place
+          lambda c: go.Figure(fcv.timeline_figure(c["cycle"], 0, blade=c["blade"])), needs=("cycle", "blade"),
+          missing=_NO_CYCLE, scope=_CYCLE_SCOPE, cost="heavy"),
     _card("cycle_angle", "cycle", "Yük – katlanma açısı", "Pim ekseni momenti açılma, kapanma ve stopta.",
           lambda c: fcv.angle_figure(c["cycle"], "M_pin", blade=c["blade"]), needs=("cycle", "blade"), missing=_NO_CYCLE,
           scope=_CYCLE_SCOPE),
@@ -284,8 +286,21 @@ CARDS = [
     _card("coupled_theta", "coupled", "Katlanma açısı θ", "Kanat başına θ zaman geçmişi, kilit ve stop teması gölgeli.",
           lambda c: cv.time_figure(c["coupled"], (("theta_deg", "θ"),), "Katlanma açısı θ [°]", per_blade=True),
           needs=("coupled",), missing=_NO_COUPLED, scope=_COUPLED_SCOPE),
+    _card("coupled_rate", "coupled", "Menteşe açısal hızı θ̇", "Kanat başına θ̇ zaman geçmişi.",
+          lambda c: cv.time_figure(c["coupled"], (("theta_rate_rad_s", "θ̇"),), "Menteşe açısal hızı [rad/s]",
+                                   per_blade=True),
+          needs=("coupled",), missing=_NO_COUPLED, scope=_COUPLED_SCOPE),
     _card("coupled_thrust", "coupled", "İtki", "Rotor itkisi zaman geçmişi.",
           lambda c: cv.time_figure(c["coupled"], (("thrust_n", "İtki"),), "İtki [N]"),
+          needs=("coupled",), missing=_NO_COUPLED, scope=_COUPLED_SCOPE),
+    _card("coupled_torque", "coupled", "Şaft ve tahrik torku", "Aerodinamik şaft torku ve sabit devri koruyan tahrik torku.",
+          lambda c: cv.time_figure(c["coupled"], (("aero_shaft_torque_nm", "Aerodinamik şaft torku"),
+                                                  ("drive_torque_nm", "Tahrik (tepki) torku")), "Tork [N·m]", split=True),
+          needs=("coupled",), missing=_NO_COUPLED,
+          scope=_COUPLED_SCOPE + " Tahrik torku MBDyn tepki torkudur, atalet etkilerini içerir; ayrı eksende çizilir."),
+    _card("coupled_power", "coupled", "Aerodinamik ve tahrik gücü", "Havaya aktarılan güç ve tahrik gücü ayrı eksenlerde.",
+          lambda c: cv.time_figure(c["coupled"], (("aero_power_absorbed_w", "Aerodinamik güç (havaya aktarılan)"),
+                                                  ("drive_power_w", "Tahrik gücü")), "Güç [W]", split=True),
           needs=("coupled",), missing=_NO_COUPLED, scope=_COUPLED_SCOPE),
     _card("coupled_hinge", "coupled", "Menteşe momenti", "Dış parçaya aerodinamik ve yay+sönüm+stop momenti.",
           lambda c: cv.time_figure(c["coupled"], (("hinge_aero_torque_nm", "Aerodinamik"),
@@ -294,6 +309,12 @@ CARDS = [
           needs=("coupled",), missing=_NO_COUPLED, scope=_COUPLED_SCOPE + " Stop teması penaltı yasasıdır."),
     _card("coupled_coverage", "coupled", "Polar kapsamı", "Sorgulanan α’nın kabul edilen tablo aralığına göre konumu.",
           lambda c: cv.coverage_figure(c["coupled"], "alpha"), needs=("coupled",), missing=_NO_COUPLED,
+          scope="DUST tablo dışı α veya Mach’ta durur."),
+    _card("coupled_coverage_re", "coupled", "Reynolds kapsamı", "Sorgulanan Re’nin kabul edilen tablo aralığına göre konumu.",
+          lambda c: cv.coverage_figure(c["coupled"], "re"), needs=("coupled",), missing=_NO_COUPLED,
+          scope="DUST Reynolds dışına doğrusal ekstrapolasyon yapar; burada denetlenir."),
+    _card("coupled_coverage_mach", "coupled", "Mach kapsamı", "Sorgulanan Mach’ın kabul edilen tablo aralığına göre konumu.",
+          lambda c: cv.coverage_figure(c["coupled"], "mach"), needs=("coupled",), missing=_NO_COUPLED,
           scope="DUST tablo dışı α veya Mach’ta durur."),
     _card("coupled_iterations", "coupled", "Bağlaşım yinelemeleri", "Her pencerede preCICE yineleme sayısı.",
           lambda c: cv.iterations_figure(c["coupled"]), needs=("coupled",), missing=_NO_COUPLED, scope=_COUPLED_SCOPE),

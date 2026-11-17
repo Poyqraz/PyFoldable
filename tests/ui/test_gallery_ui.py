@@ -97,6 +97,8 @@ def test_archive_lists_exactly_the_reports_files_and_refuses_paths_outside():
         with pytest.raises(ValueError):
             gallery_ui.archive_path(ROOT, bad)
     assert gallery_ui.archive_path(ROOT, "pr06d_opening_sensitivity.json") == (reports / "pr06d_opening_sensitivity.json").resolve()
+    for name in gallery_ui.archive_files(ROOT):    # every listed file passes containment, so selecting it cannot crash
+        gallery_ui.archive_path(ROOT, name)
     at = section(app(), "Arşiv kanıtı")
     at.selectbox(key="gallery_archive_folder").set_value(".").run()
     at.selectbox(key="gallery_archive_file").set_value("pr06d_opening_sensitivity.json").run()
@@ -106,6 +108,14 @@ def test_archive_lists_exactly_the_reports_files_and_refuses_paths_outside():
     at.selectbox(key="gallery_archive_file").set_value("app_demo_20261116/03_bem_result_naca4415.jpg").run()
     at.button(key="gallery_build_archive_file").click().run()
     assert not at.exception and len(images(at)) == 1 and "ekran görüntüsü · belgeleme" in text(at)
+
+
+def test_archive_does_not_list_a_link_that_points_outside_reports(tmp_path):
+    (tmp_path / "reports").mkdir()
+    (tmp_path / "outside.txt").write_text("dış")
+    (tmp_path / "reports/inside.txt").write_text("iç")
+    (tmp_path / "reports/link.txt").symlink_to(tmp_path / "outside.txt")
+    assert gallery_ui.archive_files(tmp_path) == ["inside.txt"]
 
 
 def test_archive_shows_text_evidence_by_content_and_refuses_binary():
@@ -138,6 +148,16 @@ def test_cycle_cards_follow_the_chosen_blade(monkeypatch):
     assert seen == [1] * 5
 
 
+def test_cycle_timeline_card_keeps_its_cursor_when_the_results_slider_moves_the_shared_figure(monkeypatch):
+    import plotly.graph_objects as pgo
+    shared = pgo.Figure(layout={"shapes": [{"type": "line", "x0": 0.0, "x1": 0.0, "y0": 0, "y1": 1}]})
+    monkeypatch.setattr(gallery_ui.fcv, "timeline_figure", lambda *a, **k: shared)   # the module-cached figure
+    card = next(c for c in gallery_ui.CARDS if c["id"] == "cycle_timeline")
+    tile = card["build"]({"cycle": {}, "blade": 0})
+    shared.layout.shapes[-1].update(x0=5.0, x1=5.0)                                  # a Results slider step
+    assert tile.layout.shapes[-1].x0 == 0.0
+
+
 def test_result_cards_reuse_the_workspace_blade_and_radial_views(bem_row, tmp_path):
     at = app()
     at.session_state["research_saved_results"] = ((research.saved_result_json(bem_row), True),)
@@ -158,6 +178,16 @@ def test_result_cards_reuse_the_workspace_blade_and_radial_views(bem_row, tmp_pa
     assert len(charts(at)) == 3 and "Bağlantı yükleri eki yok" in text(at)   # fixtures have no local run folder
 
 
+def test_coupled_rate_torque_power_and_re_mach_coverage_have_cards(tmp_path):
+    at = app()
+    at.session_state["research_coupled_results"] = ((coupled_views.saved_json(_coupled(tmp_path, "release_30w")), True),)
+    section(at, "Dinamik bağlaşık")
+    for card in ("coupled_rate", "coupled_torque", "coupled_power", "coupled_coverage_re", "coupled_coverage_mach"):
+        at.button(key=f"gallery_build_{card}").click().run()
+        assert not at.exception
+    assert len(charts(at)) == 5 and "Görsel üretilemedi" not in text(at)
+
+
 def _coupled(tmp_path, name):
     run = tmp_path / name
     shutil.copytree(ROOT / "tests/fixtures/coupled" / name, run)
@@ -176,6 +206,10 @@ def test_two_coupled_records_overlay_aligned_on_the_chosen_event(tmp_path):
     assert rows[1]["result_sha256"][:8] in text(at)
     at.button(key="gallery_build_coupled_flow_plane").click().run()   # fixtures have no local run folder
     assert not at.exception and len(charts(at)) == 1 and "Akış eki yok" in text(at)
+    at.button(key="gallery_build_coupled_theta").click().run()
+    assert len(charts(at)) == 2
+    at.selectbox(key="gallery_coupled_source").select_index(1).run()   # another record: built figures are not reused
+    assert not at.exception and not charts(at)
 
 
 def test_cycle_cards_build_from_the_active_cycle():

@@ -146,13 +146,20 @@ def _vtk_from_transforms(mesh, transforms, field):
 
 
 # ---------------------------------------------------------------- design tab
+def design_pose(spec, inputs):
+    """(relief contacts, plane contacts, shown pose, at first contact): the pose stops at the last contact-free angle."""
+    rep, plane = contacts_for(spec, max(-180.0, min(-0.01, inputs.stow_limit_deg)))
+    shown = rep.clamp(inputs.fold_deg)
+    return rep, plane, shown, abs(shown - rep.interference_free_deg) < 0.05
+
+
 def design_preview(active, foil, view):
     rui = _rui()
     i = active.inputs
     try:
         spec = bg.spec_from_active(active, foil)
         mesh = mesh_for(spec)
-        rep, plane = contacts_for(spec, max(-180.0, min(-0.01, i.stow_limit_deg)))
+        rep, plane, shown, at_contact = design_pose(spec, i)
     except ValueError as exc:
         st.warning("Bu menteşe ekseni lofted görünümde desteklenmiyor (yalnız şafta paralel, çeyrek kirişten geçen eksen)."
                    if "hinge axis" in str(exc) else
@@ -160,7 +167,6 @@ def design_preview(active, foil, view):
         with st.expander("Önizleme teknik ayrıntısı"):
             st.text(str(exc))
         return
-    shown = rep.clamp(i.fold_deg)
     st.caption(f"Gösterilen katlanma pozu: {rui._fmt(shown, 1)}°. BEM, ana kanadı tam açık (0°) çözer. Geometri: "
                f"{spec.profile_id} katalog profili, beyan edilen istasyonlar (kord ve burulma yarıçapla doğrusal), "
                f"çeyrek kiriş yığılımı; {CONVENTION}. Yeniden oluşturulmuş yüzey, CAD değil.")
@@ -176,7 +182,6 @@ def design_preview(active, foil, view):
         camera = rui._choice(controls.selectbox, "Kamera", tuple(rui.views.CAMERAS), key=f"research_camera_{revision}",
                              default="İzometrik")
         reset.button("Kamerayı sıfırla", on_click=rui._reset_camera)
-    at_contact = abs(shown - rep.interference_free_deg) < 0.05
     fig = bv.blade_figure(mesh, fold_deg=shown, contacts=rep if at_contact else None, contact_angle_deg=shown,
                           uirevision=f"{active.identity}:{camera}:{revision}")
     fig.update_layout(scene_camera={**rui.views.CAMERAS[camera], "projection": {"type": "orthographic"}})
