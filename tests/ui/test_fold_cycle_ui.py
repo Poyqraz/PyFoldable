@@ -130,6 +130,41 @@ def test_cycle_rpm_follows_the_design_unless_overridden():
     assert any("3200" in w.value for w in at.warning)
     at.button(key="cycle_rpm_from_design").click().run()
     assert at.number_input(key="cycle_rpm").value == 3200.0
+    # the browser keeps its own value unless told: Streamlit 1.65 keys the widget id on the key alone
+    assert at.number_input(key="cycle_rpm").proto.set_value
+
+
+def test_a_stow_limit_above_the_stowed_stop_bound_does_not_break_the_analysis_page():
+    at = go(app(), ANALYSIS)
+    go(at, DESIGN).number_input(key="research_axial_800_fold_deg").set_value(-2.0)     # the preview pose must stay within the limit
+    at.number_input(key="research_axial_800_stow_limit_deg").set_value(-3.0).run()
+    go(at, ANALYSIS)                                                                     # go() asserts no exception
+    assert at.number_input(key="cycle_stowed__spring").value == -5.0
+    assert any("katlanma sınırının" in w.value for w in at.warning)
+
+
+def test_an_older_horizontal_gravity_record_is_not_called_identical_and_every_blade_is_checked(monkeypatch):
+    import json
+    from pyfoldable.application import fold_cycle_ui as fcui
+    from pyfoldable.dynamics import fold_cycle as fc
+    at = go(app(), ANALYSIS)
+    _fast(at)
+    at.radio(key="cycle_gravity").set_value("shaft_horizontal")
+    at.button(key="cycle_run").click().run()
+    old = {k: v for k, v in _stored(at).items() if k not in ("result_sha256", "events_by_blade")}
+    old["schema_version"] = 1                            # schema 1 never wrote events_by_blade
+    path = at.session_state["_fold_cycle_active"]
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(fc.seal(old), f)
+    blades = []
+    real = fcui.pl.connection_checks
+    monkeypatch.setattr(fcui.pl, "connection_checks", lambda loads, *a: blades.append(1) or real(loads, *a))
+    for key, value in (("cycle_pin_d", 3.0), ("cycle_tang_t", 4.0), ("cycle_plate_t", 2.0)):
+        at.number_input(key=key).set_value(value)
+    at.run()
+    assert not at.exception
+    assert not any("özdeş" in c.value for c in at.caption)
+    assert len(blades) == 2
 
 
 def test_reversed_actuator_window_is_an_input_error():

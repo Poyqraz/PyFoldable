@@ -177,8 +177,8 @@ class FoldMechanism:
     @property
     def latch_target_rad(self):
         """The latch locks where it engages (the open stop, or the lower edge of the capture band) with a 1 mrad preload
-        past that angle, so engagement adds the same small snap energy with or without a band; within a band it holds the
-        blade at the band edge and does not pull it onto the stop."""
+        past that angle, so engagement adds the same small snap energy with or without a band. It acts only below this
+        angle (it stops fold-back): a band neither pulls the blade onto the stop nor holds it off it."""
         return self.open_stop_rad - self.latch_capture_rad + 1e-3
 
     @property
@@ -316,7 +316,7 @@ class _Model:
         out["open_stop"] = np.where(po > 0, -kc * po - cc * thd, 0.0)
         out["stowed_stop"] = np.where(ps > 0, kc * ps - cc * thd, 0.0)
         kl, cl = m.latch_stiffness_nm_per_rad, m.latch_damping_nm_s_per_rad
-        out["latch"] = np.where(latched, -kl * (th - m.latch_target_rad) - cl * thd, 0.0)
+        out["latch"] = np.where(latched & (th < m.latch_target_rad), -kl * (th - m.latch_target_rad) - cl * thd, 0.0)
         out["actuator"] = np.where((t >= m.actuator_start_s) & (t < m.actuator_end_s), m.actuator_nm, 0.0)
         return out
 
@@ -519,11 +519,11 @@ def _postprocess(model, t, th, thd, lat):
         "kinetic": back(0.5 * mass * (vG ** 2).sum(1) + 0.5 * J * (Om + thd_r) ** 2),
         "potential": back(m.spring_preload_nm * dth + 0.5 * m.spring_nm_per_rad * dth ** 2
                           + 0.5 * m.stop_stiffness_nm_per_rad * (po ** 2 + ps ** 2)
-                          + np.where(lat_r, 0.5 * m.latch_stiffness_nm_per_rad * (th_r - m.latch_target_rad) ** 2, 0.0)),
+                          + np.where(lat_r & (th_r < m.latch_target_rad), 0.5 * m.latch_stiffness_nm_per_rad * (th_r - m.latch_target_rad) ** 2, 0.0)),
         "dissipation_power": back(m.damping_nm_s_per_rad * thd_r ** 2
                                   + m.coulomb_nm * np.tanh(thd_r / m.friction_transition_rad_s) * thd_r
                                   + np.where((po > 0) | (ps > 0), m.stop_damping_nm_s_per_rad * thd_r ** 2, 0.0)
-                                  + np.where(lat_r, m.latch_damping_nm_s_per_rad * thd_r ** 2, 0.0)),
+                                  + np.where(lat_r & (th_r < m.latch_target_rad), m.latch_damping_nm_s_per_rad * thd_r ** 2, 0.0)),
         "actuator_power": back(el["actuator"] * thd_r),
     })
     vec = {"F": back(F), "M": back(M), **{f"F_{k}": back(v) for k, v in parts_F.items()},
@@ -761,6 +761,9 @@ def run_cycle(case: CycleCase, *, sensitivity: bool = True, extra: dict | None =
         if b is None or b < nb:
             i = int(np.searchsorted(tf, x))
             contact_f[max(0, i - 3):i + 3, slice(None) if b is None else b] = True
+    si, sb = np.nonzero(np.diff(latf & (thf < m.latch_target_rad), axis=0))   # the one-sided latch damper switches on/off
+    for k in range(-2, 4):
+        contact_f[np.clip(si + k, 0, len(tf) - 1), sb] = True
     el_f = sum(resf[k] for k in ELEMENTS)
     free_scale = max(1e-3, float(np.abs(el_f)[~contact_f].max()) if (~contact_f).any() else 1e-3)
     W_in = _cumtrapz(resf["drive_power"] + resf["aero_power"] + resf["gravity_power"] + resf["actuator_power"]
@@ -833,7 +836,6 @@ def run_cycle(case: CycleCase, *, sensitivity: bool = True, extra: dict | None =
            **({"events_by_blade": events_by_blade} if horiz else {}),
            "peaks": _peaks(t, th, comps, rpm), "checks": checks,
            "outcome": {"open_reached": bool(opened.all()), "returned_to_stowed": bool(returned.all()),
-                       "any_open_reached": bool(opened.any()), "all_returned": bool(returned.all()),
                        "open_reached_by_blade": opened.tolist(), "returned_by_blade": returned.tolist(),
                        "final_theta_deg": float(np.degrees(th[-1, 0])), "final_theta_deg_by_blade": np.degrees(th[-1]).tolist(),
                        "operating_theta_deg": eq_open},

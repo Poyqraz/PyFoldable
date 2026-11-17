@@ -208,7 +208,8 @@ def test_horizontal_gravity_reports_every_blade():
         b = int(np.unravel_index(np.argmax(np.abs(x)), x.shape)[1])
         assert p["blade"] == b and p["value"] == pytest.approx(x.flat[np.argmax(np.abs(x))])
     assert len(r["outcome"]["returned_by_blade"]) == 3 and len(r["outcome"]["open_reached_by_blade"]) == 3
-    assert r["outcome"]["all_returned"] == all(r["outcome"]["returned_by_blade"])
+    assert r["outcome"]["returned_to_stowed"] == all(r["outcome"]["returned_by_blade"])
+    assert "all_returned" not in r["outcome"] and "any_open_reached" not in r["outcome"]
     assert np.array(s["energy_residual_j_by_blade"]).shape == (len(s["time_s"]), 3)
     assert np.array(s["contrib_gravity_M_pin_by_blade"]).shape == (len(s["time_s"]), 3)
     assert len(r["events_by_blade"]) == 3
@@ -368,3 +369,15 @@ def test_latch_engaging_within_its_capture_band_adds_no_snap_torque():
     th = np.array([mech.open_stop_rad - capture])
     tau = model.elements(0.0, th, np.zeros(1), np.ones(1, bool))["latch"][0]
     assert tau == pytest.approx(mech.latch_stiffness_nm_per_rad * 1e-3)     # the same 1 mrad preload as at the stop
+
+
+def test_a_capture_band_does_not_hold_a_blade_off_the_open_stop():
+    # the latch only resists folding back: centrifugal moment still seats the blade, so no release impact appears
+    base = replace(PASSIVE, open_latch=True, latch_release_s=FAST.knots[3] + 0.05)
+    r0 = fc.run_cycle(case(base), sensitivity=False)
+    r1 = fc.run_cycle(case(replace(base, latch_capture_rad=math.radians(1.0))), sensitivity=False)
+    assert any(e["kind"] == "latch_engaged" for e in r1["latch_events"])
+    # within the band-0 latch's own 1 mrad (0.057°) preload past the stop; a held-off blade sat ≈ −0.93°
+    assert r1["outcome"]["operating_theta_deg"] == pytest.approx(r0["outcome"]["operating_theta_deg"], abs=0.1)
+    assert min(c["t_in_s"] for c in r1["contacts"] if c["stop"] == "open") < base.latch_release_s
+    assert all(c["passed"] in (True, None) for c in r1["checks"]), r1["checks"]

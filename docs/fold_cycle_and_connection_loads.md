@@ -39,8 +39,8 @@ the pin parallel to the shaft is the same kinematics). θ = 0 open, negative fol
   included in the impulse, the effective restitution and the M_pin and connection-load histories during rebound. A
   load reversal at separation is therefore a property of this law, not of hardware.
 * Latch: engages at the open stop, or on arrival within an optional capture band `latch_capture_rad` (default 0)
-  below it. It locks 1 mrad past the engagement angle, so a band holds the blade at the band edge and does not pull
-  it onto the stop. Release is on command. Friction is tanh-regularised: a stationary joint dissipates no continuous
+  below it. It locks 1 mrad past the engagement angle and acts only below that angle (it stops fold-back), so a band
+  neither pulls the blade onto the stop nor holds it off it. Release is on command. Friction is tanh-regularised: a stationary joint dissipates no continuous
   power.
 * Distal inertia: `inertia_cg_kg_m2` is isotropic about the CG, as in the coupled model. An optional declared
   product of inertia `inertia_tz_kg_m2` (default 0) adds −I_tz ω² about e_s (the centrifugal twisting moment) and

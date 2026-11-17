@@ -87,7 +87,7 @@ def _read(path):
     s = Path(path).stat()
     key = (str(path), s.st_mtime_ns, s.st_size)
     if key not in _ROWS:
-        if len(_ROWS) >= 2:                             # the active record and one comparison
+        if len(_ROWS) >= 3:                             # the active record, the gallery record and one comparison
             _ROWS.pop(next(iter(_ROWS), None), None)    # another session may evict concurrently
         _ROWS[key] = fc.verify(json.loads(Path(path).read_text(encoding="utf-8")))
     return _ROWS[key]
@@ -129,7 +129,7 @@ def _preset_values(preset, design):
 def _design_of(active):
     foil = next(f for f in active.design.airfoils if f.id == active.inputs.profile)
     return {"spec": bs.spec_from_design(active, foil), "rpm": active.inputs.rpm, "inflow": active.inputs.inflow_m_s,
-            "density": active.inputs.density_kg_m3, "stow_deg": max(-179.0, active.inputs.stow_limit_deg),
+            "density": active.inputs.density_kg_m3, "stow_deg": min(-5.0, max(-179.0, active.inputs.stow_limit_deg)),
             "stow_limit_deg": active.inputs.stow_limit_deg}
 
 
@@ -137,7 +137,7 @@ def _reset(key, value):
     """Set a remembered field value (rui._seed) so the widget shows it on its next render."""
     st.session_state.setdefault("_research_control_values", {})[key] = value
     st.session_state.get("_research_widget_seeds", {}).pop(key, None)
-    st.session_state.pop(key, None)
+    st.session_state[key] = value       # Streamlit 1.65 keys the widget id on the key alone: the browser needs set_value
 
 
 def _follow(key, design_value):
@@ -190,7 +190,7 @@ def analysis_section(active):
         coul = rui._field(c.number_input, "Coulomb sürtünmesi [N·m]", pk("cycle_coulomb"), vals["cycle_coulomb"], min_value=0.0, max_value=5.0)
         kc = rui._field(a.number_input, "Stop rijitliği [N·m/rad]", pk("cycle_kc"), vals["cycle_kc"], min_value=1.0, max_value=1e5)
         e = rui._field(b.number_input, "Stop geri sekme katsayısı", pk("cycle_e"), vals["cycle_e"], min_value=0.05, max_value=1.0)
-        latch = rui._field(c.checkbox, "Açık mandal (stopta kilitlenir)", pk("cycle_latch"), vals["cycle_latch"])
+        latch = rui._field(c.checkbox, "Açık mandal", pk("cycle_latch"), vals["cycle_latch"])
         rel = rui._field(a.number_input, "Mandal bırakma zamanı [s]", pk("cycle_latch_release"), vals["cycle_latch_release"], min_value=0.0,
                          max_value=fc.MAX_CYCLE_DURATION_S)
         act = rui._field(b.number_input, "Aktüatör momenti [N·m] (− katlar)", pk("cycle_act"), vals["cycle_act"], min_value=-5.0, max_value=5.0)
@@ -336,7 +336,9 @@ def render_result(row):
                             display=lambda b: f"Kanat {b + 1}")
     else:
         blade = 0
-        st.caption("Kanatlar özdeş (yerçekimi dönme düzleminde değil): kanat 1 hepsini temsil eder.")
+        st.caption("Kanatlar özdeş (yerçekimi dönme düzleminde değil): kanat 1 hepsini temsil eder."
+                   if row["case"].get("gravity") != "shaft_horizontal" else
+                   "Eski kayıt (kanat seçimi yok): kanat 1 gösterilir; kanatlar yerçekimi nedeniyle farklıdır.")
     out, geo = row["outcome"], row.get("geometry_check", {})
     final = (out.get("final_theta_deg_by_blade") or [out["final_theta_deg"]] * nb)[blade]
     c = st.columns(4)
@@ -352,8 +354,9 @@ def render_result(row):
                    "katlayan bir moment yoktur (mili yavaşlatmak kanadı açık stopa iter). Geri dönüş için yay, aktüatör veya mandal + "
                    "aktüatör tanımlayın.")
     if mech["open_latch"] and not any(e["kind"] == "latch_engaged" for e in row.get("latch_events", ())):
-        st.warning("Açık mandal hiç kilitlenmedi: kanat bırakma zamanından önce açık stopa ulaşmadı (mandal yalnız stopta "
-                   "kilitlenir). Geri katlama yalnız aktüatör ve diğer elemanlarla gerçekleşti.")
+        st.warning("Açık mandal hiç kilitlenmedi: kanat bırakma zamanından önce yakalama açısına (açık stopun "
+                   f"{_fmt(math.degrees(mech.get('latch_capture_rad', 0.0)), 1)}° altı) ulaşmadı. Geri katlama yalnız aktüatör ve "
+                   "diğer elemanlarla gerçekleşti.")
     if out["operating_theta_deg"] is not None and out["operating_theta_deg"] < -0.3 and out["open_reached"]:
         cause = ("geri dönüş yayı açık konumda da çeker" if (mech["spring_nm_per_rad"] > 0 or mech["spring_preload_nm"] > 0)
                  else "dış parçanın aerodinamik pim momenti kanadı geriye iter")
@@ -524,8 +527,8 @@ def _connection(row, a):
             st.error(str(exc))
             return
         allowables = pl.Allowables(**{k: (v * 1e6) or None for k, v in allow.items()}, source=source)
-        # every stored blade is checked and each row shows its governing blade (identical blades: blade 1 only)
-        blades = range(row["case"]["blade_count"] if "events_by_blade" in row else 1)
+        # every stored blade is checked and each row shows its governing blade (identical blades tie: blade 1)
+        blades = range(a["load_N_tension"].shape[1])
         res = [pl.connection_checks({k: a[f"load_{k}"][:, b] for k in ("N_tension", "V_inplane", "V_axial", "M_torsion", "M_bending")},
                                     geom, allowables, a["time_s"]) for b in blades]
         worst = [max(((b, rs["rows"][j]) for b, rs in enumerate(res)), key=lambda br: br[1]["peak_pa"])
