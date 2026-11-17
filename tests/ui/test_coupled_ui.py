@@ -388,3 +388,126 @@ def test_connection_loads_tab_explains_a_missing_joint_output(tmp_path, monkeypa
     assert not at.exception
     assert any("out.jnt" in i.value for i in at.info)
     assert not any(b.key == "coupled_hinge_loads_build" for b in at.button)
+
+
+def _open_record(tmp_path, monkeypatch, row):
+    store(tmp_path, monkeypatch, PROJECT_AIRFOIL_IDS)
+    bem(monkeypatch)
+    _no_toolchain(monkeypatch, tmp_path)
+    _forbid_runs(monkeypatch)
+    at = app()
+    at.session_state["research_coupled_results"] = ((json.dumps(row, sort_keys=True, separators=(",", ":")), False),)
+    at.session_state["_coupled_active"] = (None, row["result_sha256"])
+    go(at, "Sonuçlar")
+    at.radio(key="research_results_kind").set_value("Dinamik bağlaşık").run()
+    assert not at.exception
+    return at
+
+
+def test_exports_are_built_only_on_request_and_kept_for_the_record(tmp_path, monkeypatch):
+    from pyfoldable.application import coupled_views
+    row = _record(tmp_path, FIXTURE_RBF)
+    calls = []
+    real = coupled_views.vtk_zip
+    monkeypatch.setattr(coupled_views, "vtk_zip", lambda r: calls.append(1) or real(r))
+    from types import SimpleNamespace
+    from pyfoldable.application import coupled_ui
+    parses = []
+    monkeypatch.setattr(coupled_ui, "json", SimpleNamespace(dumps=json.dumps,
+                                                           loads=lambda s: parses.append(1) or json.loads(s)))
+    at = _open_record(tmp_path, monkeypatch, row)
+    for tab in ("Yükler", "Menteşe"):
+        at.radio(key="coupled_tab").set_value(tab).run()
+        assert not at.exception
+    assert calls == []
+    assert parses == [1]  # the record is parsed once, not on every rerun and caller
+    at.button(key="coupled_prepare_exports").click().run()
+    assert not at.exception and calls == [1]
+    assert any(b.label == "ParaView (VTK)" for b in at.get("download_button"))
+    at.radio(key="coupled_tab").set_value("Güç").run()
+    assert not at.exception and calls == [1]
+
+
+def _running_run(path):
+    path.mkdir(parents=True)
+    (path / "status.json").write_text(json.dumps({"state": "running", "n_windows": 10, "windows_accepted": 3,
+                                                  "phase": "coupling", "started": "2026-11-17T10:00:00+0300"}))
+    (path / "request.json").write_text("{}")
+    return path
+
+
+def test_progress_and_cancel_stay_while_preparation_fails(tmp_path, monkeypatch):
+    at = _ready_app(tmp_path, monkeypatch)
+    assert any("hazırlanamadı" in w.value for w in at.warning)  # inert tables: preparation fails
+    run = _running_run(tmp_path / "runs" / "20261117T100000_running")
+    at.session_state["_coupled_run"] = {"run_dir": str(run), "token": "earlier inputs"}
+    at.run()
+    assert not at.exception
+    assert any("hazırlanamadı" in w.value for w in at.warning)
+    at.button(key="coupled_cancel").click().run()
+    assert not at.exception and (run / "cancel.request").is_file()
+
+
+def test_records_page_lists_a_running_run_and_reattaches_its_monitor(tmp_path, monkeypatch):
+    store(tmp_path, monkeypatch, PROJECT_AIRFOIL_IDS)
+    bem(monkeypatch)
+    _no_toolchain(monkeypatch, tmp_path)
+    _forbid_runs(monkeypatch)
+    runs = tmp_path / "runs"
+    _running_run(runs / "20261117T100000_running")
+    monkeypatch.setenv("PYFOLDABLE_COUPLED_RUNS", str(runs))
+    at = go(app(), "Karşılaştırma / kayıtlar")
+    assert not any(b.key == "coupled_cancel" for b in at.button)
+    at.button(key="coupled_attach_20261117T100000_running").click().run()
+    assert not at.exception
+    at.button(key="coupled_cancel").click().run()
+    assert (runs / "20261117T100000_running" / "cancel.request").is_file()
+
+
+def test_failed_record_checks_are_shown_next_to_the_status(tmp_path, monkeypatch):
+    row = _record(tmp_path, FIXTURE_RBF)
+    assert any(c["passed"] is None for c in row["checks"])
+    at = _open_record(tmp_path, monkeypatch, row)
+    assert not any("sayısal denetim" in w.value for w in at.warning)  # passed=None is not a failure
+    failed = json.loads(json.dumps(row))
+    failed["checks"][1]["passed"] = False
+    at = _open_record(tmp_path, monkeypatch, failed)
+    assert not any("Tamamlandı" in s.value for s in at.success)  # no green banner over a failed check
+    assert any("sayısal denetim" in w.value and failed["checks"][1]["name"] in w.value for w in at.warning)
+
+
+def test_local_runs_show_turkish_status_and_mark_records_that_cannot_open(tmp_path, monkeypatch):
+    store(tmp_path, monkeypatch, PROJECT_AIRFOIL_IDS)
+    bem(monkeypatch)
+    _no_toolchain(monkeypatch, tmp_path)
+    _forbid_runs(monkeypatch)
+    runs = tmp_path / "runs"
+    good = runs / "20261112T000000_partial"
+    shutil.copytree(FIXTURE, good)
+    postprocess.build_result(good, participant_outcome="finished", exit_codes={}, extraction_ok=True)
+    status = json.loads((good / "status.json").read_text())
+    (good / "status.json").write_text(json.dumps({**status, "state": "failed_aero_coverage"}))
+    bad = runs / "20261112T000001_legacy"
+    shutil.copytree(good, bad)
+    (bad / "result.json").write_text('{"artifact_class": "pyfoldable_coupled_result"}')
+    monkeypatch.setenv("PYFOLDABLE_COUPLED_RUNS", str(runs))
+    at = go(app(), "Karşılaştırma / kayıtlar")
+    table = next(d.value for d in at.dataframe if "Durum" in d.value.columns)
+    assert set(table["Durum"]) == {"Aerodinamik kapsam aşıldı"}
+    assert any(str(v).startswith("hayır") for v in table["Açılabilir"])
+    options = at.selectbox(key="coupled_local_run").options  # display labels; only the restorable run is offered
+    assert len(options) == 1 and "Aerodinamik kapsam aşıldı" in options[0]
+
+
+def test_radial_window_defaults_to_the_last_valid_one_and_survives_tabs(tmp_path, monkeypatch):
+    row = _record(tmp_path, FIXTURE_RBF)
+    row = json.loads(json.dumps(row))
+    row["execution"]["valid_prefix_windows"] = 20
+    at = _open_record(tmp_path, monkeypatch, row)
+    at.radio(key="coupled_tab").set_value("Radyal").run()
+    assert at.select_slider(key="coupled_radial_window").value == 20
+    at.select_slider(key="coupled_radial_window").set_value(25).run()
+    assert any("geçerli önek dışı" in w.value for w in at.warning)
+    at.radio(key="coupled_tab").set_value("Menteşe").run()
+    at.radio(key="coupled_tab").set_value("Radyal").run()
+    assert not at.exception and at.select_slider(key="coupled_radial_window").value == 25

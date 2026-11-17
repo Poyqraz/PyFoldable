@@ -18,12 +18,23 @@ import plotly.graph_objects as go
 from pyfoldable.core.profile_catalog import load_project_airfoil
 from pyfoldable.coupled.frames import rotvec_to_matrix
 
-_COLORS = ("#0b6170", "#DC671D", "#A44AC2", "#2E7D32")
-_SEGMENT_COLORS = {"proximal": "#008579", "distal": "#DC671D"}
+from . import figure_style as fs
+
+_COLORS = fs.SERIES
+_SEGMENT_COLORS = {"proximal": "#008579", "distal": "#DC671D", "junction": fs.CONSTRUCTION}
+_BLADE_DASH = ("solid", "dash", "dashdot", "longdash")  # "dot" marks windows outside the valid prefix
+_INVALID = " (kapsam/yakınsama dışı)"
+
+
+def _legend_px(fig):
+    """figure_style.apply grows the bottom margin per legend row; the height grows too so the plot keeps its size.
+    shortcut: assumes two legend columns (apply may choose 1 or 3); measure if plots still squeeze."""
+    entries = sum(t.showlegend is not False for t in fig.data)
+    return 22 * math.ceil(entries / 2) if entries > 1 else 0
 
 
 def _layout(fig, title_y, height=300):
-    fig.update_layout(height=height, margin=dict(l=55, r=20, t=24, b=45), hovermode="x unified",
+    fig.update_layout(height=height + _legend_px(fig), margin=dict(l=55, r=20, t=24, b=45), hovermode="x unified",
                       legend=dict(orientation="h", x=0, y=-.22, xanchor="left", yanchor="top"))
     fig.update_xaxes(title="Zaman [s]")
     fig.update_yaxes(title=title_y)
@@ -32,6 +43,19 @@ def _layout(fig, title_y, height=300):
 
 def _valid(row):
     return row["series"][:row["execution"]["valid_prefix_windows"]], row["series"][row["execution"]["valid_prefix_windows"]:]
+
+
+def _legend_only(fig, name, color, dash="solid", group=None):
+    """Legend entry without data: one entry per channel or line style instead of one per trace."""
+    fig.add_trace(go.Scatter(x=[None], y=[None], mode="lines", name=name, legendgroup=group,
+                             line=dict(color=color, dash=dash, width=2), showlegend=True, hoverinfo="skip"))
+
+
+def _style_legend(fig, n_blades, invalid):
+    for b in range(n_blades if n_blades > 1 else 0):
+        _legend_only(fig, f"Kanat {b + 1}", fs.CONSTRUCTION, _BLADE_DASH[b % 4])
+    if invalid:
+        _legend_only(fig, "Kapsam/yakınsama dışı", fs.CONSTRUCTION, "dot")
 
 
 def _shade(fig, series, key, color, name):
@@ -46,34 +70,53 @@ def _shade(fig, series, key, color, name):
     if start is not None and series:
         spans.append((start, series[-1]["time_s"]))
     for a, b in spans:
-        fig.add_vrect(x0=a, x1=b, fillcolor=color, opacity=.12, line_width=0)
+        fig.add_vrect(x0=a, x1=b, fillcolor=color, opacity=.12, line_width=0, row="all", col=1)
     if spans:
         fig.add_trace(go.Scatter(x=[None], y=[None], mode="markers", marker=dict(color=color, opacity=.35, size=10),
                                  name=name, showlegend=True))
 
 
-def time_figure(row, channels, unit, *, per_blade=False, shade=True):
+def time_figure(row, channels, unit, *, per_blade=False, shade=True, split=False):
+    """Time histories; colour is the channel, dash the blade, dots the windows outside the valid prefix.
+    ``split`` gives every channel its own subplot (aero and drive torque differ by about two orders of
+    magnitude). Each y range comes from the data after the first quarter revolution: the impulsive start of
+    the lifting-line wake stays plotted but does not set the scale (as in response_timeline_figure)."""
+    from plotly.subplots import make_subplots
     valid, invalid = _valid(row)
-    fig = go.Figure()
+    n_rows = len(channels) if split else 1
+    fig = make_subplots(rows=n_rows, cols=1, shared_xaxes=True, vertical_spacing=.12 if split else .02,
+                        subplot_titles=[label for _, label in channels] if split else None)
+    t0 = 0.25 * 2 * math.pi / row["run_definition"]["case"]["omega_rad_s"]
+    late = {}
+    n_blades = len(row["series"][0][channels[0][0]]) if per_blade and row["series"] else 1
     for i, (key, label) in enumerate(channels):
-        for part, dash, suffix in ((valid, "solid", ""), (invalid, "dot", " (kapsam/yakınsama dışı)")):
-            if not part:
-                continue
+        rown = i + 1 if split else 1
+        _legend_only(fig, label, _COLORS[i % 4], group=label)
+        for part, outside in ((valid, False), (invalid, True)):
             t = [r["time_s"] for r in part]
-            if per_blade:
-                for b in range(len(part[0][key])):
-                    # colour identifies the channel, line style the blade
-                    fig.add_trace(go.Scatter(x=t, y=[r[key][b] for r in part], mode="lines",
-                                             name=f"{label} · kanat {b + 1}{suffix}",
-                                             line=dict(color=_COLORS[i % 4], width=2.4 if b == 0 else 1.6,
-                                                       dash=dash if dash != "solid" else ("solid" if b == 0 else "dash"))))
-            else:
-                fig.add_trace(go.Scatter(x=t, y=[r[key] for r in part], mode="lines", name=label + suffix,
-                                         line=dict(color=_COLORS[i % 4], dash=dash, width=2)))
+            for b in (range(n_blades) if per_blade else (None,)) if part else ():
+                y = [r[key] if b is None else r[key][b] for r in part]
+                late.setdefault(rown, []).extend(v for r, v in zip(part, y) if r["time_s"] >= t0)
+                fig.add_trace(go.Scatter(x=t, y=y, mode="lines", legendgroup=label, showlegend=False,
+                                         name=label + ("" if b is None else f" · kanat {b + 1}") + (_INVALID if outside else ""),
+                                         line=dict(color=_COLORS[i % 4], width=2 if b in (None, 0) else 1.6,
+                                                   dash="dot" if outside else _BLADE_DASH[(b or 0) % 4])),
+                              row=rown, col=1)
+    _style_legend(fig, n_blades, bool(invalid))
+    for rown, vals in late.items():
+        if vals:
+            lo, hi = min(vals), max(vals)
+            pad = 0.06 * (hi - lo or abs(hi) or 1.0)
+            fig.update_yaxes(range=[lo - pad, hi + pad], row=rown, col=1)
     if shade:
         _shade(fig, row["series"], "latch_active", "#76889A", "Kilit (serbest bırakma öncesi)")
         _shade(fig, row["series"], "contact_active", "#CB4B66", "Stop teması")
-    return _layout(fig, unit)
+    _layout(fig, unit, height=300 if n_rows == 1 else 40 + 230 * n_rows)
+    if split:
+        fig.update_layout(margin_t=36)
+        fig.update_xaxes(title=None)
+        fig.update_xaxes(title="Zaman [s]", row=n_rows, col=1)
+    return fig
 
 
 def coverage_figure(row, quantity):
@@ -83,7 +126,7 @@ def coverage_figure(row, quantity):
     t = [r["time_s"] for r in s]
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=t, y=[r["coverage"][key][1] for r in s], name="En büyük", mode="lines",
-                             line=dict(color="#0b6170")))
+                             line=dict(color=_COLORS[0])))
     fig.add_trace(go.Scatter(x=t, y=[r["coverage"][key][0] for r in s], name="En küçük", mode="lines",
                              line=dict(color="#DC671D")))
     for v, name in ((env[0], "Tablo alt sınırı"), (env[1], "Tablo üst sınırı")):
@@ -94,7 +137,7 @@ def coverage_figure(row, quantity):
 def iterations_figure(row):
     s = row["series"]
     fig = go.Figure(go.Bar(x=[r["time_s"] for r in s], y=[r["coupling_iterations"] for r in s],
-                           marker_color=["#0b6170" if r["coupling_converged"] else "#CB4B66" for r in s],
+                           marker_color=[_COLORS[0] if r["coupling_converged"] else "#CB4B66" for r in s],
                            name="Bağlaşım iterasyonu"))
     return _layout(fig, "İterasyon", height=220)
 
@@ -108,16 +151,22 @@ def radial_rows(row, window):
 
 
 def radial_figure(rows, field, label):
+    """Radial distribution of one window; colour is the segment, dash the blade (every blade in ``rows``)."""
     fig = go.Figure()
-    for (blade, seg), color in (((0, "proximal"), "#008579"), ((0, "distal"), "#DC671D"),
-                                ((1, "proximal"), "#5BB5A9"), ((1, "distal"), "#F0A672"),
-                                ((0, "junction"), "#6B6B6B"), ((1, "junction"), "#A3A3A3")):
-        pts = [r for r in rows if r["blade"] == blade and r["segment"] == seg]
-        if pts:
-            fig.add_trace(go.Scatter(x=[1000 * r["span_y_m"] for r in pts], y=[r[field] for r in pts],
-                                     mode="lines+markers", line=dict(color=color, width=2),
-                                     name=f"Kanat {blade + 1} · {_SEG_NAMES[seg]}"))
-    fig.update_layout(height=280, margin=dict(l=55, r=20, t=24, b=45),
+    blades = sorted({r["blade"] for r in rows})
+    for seg in ("proximal", "distal", "junction"):
+        if any(r["segment"] == seg for r in rows):
+            _legend_only(fig, _SEG_NAMES[seg], _SEGMENT_COLORS[seg], group=seg)
+        for blade in blades:
+            pts = [r for r in rows if r["blade"] == blade and r["segment"] == seg]
+            if pts:
+                fig.add_trace(go.Scatter(x=[1000 * r["span_y_m"] for r in pts], y=[r[field] for r in pts],
+                                         mode="lines+markers", legendgroup=seg, showlegend=False,
+                                         line=dict(color=_SEGMENT_COLORS[seg], width=2, dash=_BLADE_DASH[blade % 4]),
+                                         name=f"Kanat {blade + 1} · {_SEG_NAMES[seg]}",
+                                         hovertemplate=f"r %{{x:.1f}} mm · {label} %{{y:.4g}}<extra>%{{fullData.name}}</extra>"))
+    _style_legend(fig, len(blades), False)
+    fig.update_layout(height=280 + _legend_px(fig), margin=dict(l=55, r=20, t=24, b=45),
                       legend=dict(orientation="h", x=0, y=-.25, xanchor="left", yanchor="top"))
     fig.update_xaxes(title="Gövde ekseninde açıklık konumu (açık geometri) [mm]")
     fig.update_yaxes(title=label)
@@ -182,6 +231,7 @@ def playback_figure(row, max_frames=90):
     if picked[-1] is not states[-1]:
         picked.append(states[-1])
     times = {r["window"]: r for r in row["series"]}
+    last_valid = row["execution"]["valid_prefix_windows"]
 
     def traces(entry):
         out = []
@@ -200,7 +250,8 @@ def playback_figure(row, max_frames=90):
         if r is None:
             return "t = 0 s"
         th = ", ".join(f"{v:.2f}°" for v in r["theta_deg"])
-        return f"t = {r['time_s']:.4f} s · θ = {th} · T = {r['thrust_n']:.2f} N"
+        return (f"t = {r['time_s']:.4f} s · θ = {th} · T = {r['thrust_n']:.2f} N"
+                + (" · geçerli önek dışı" if entry["window"] > last_valid else ""))
 
     first = traces(picked[0])
     fig = go.Figure(data=first, frames=[go.Frame(data=traces(e), name=str(e["window"]), layout=dict(title=label(e)))
@@ -227,6 +278,7 @@ def vtk_zip(row) -> bytes:
     """ParaView-compatible legacy VTK polydata series plus a .pvd time collection."""
     meshes = segment_meshes(row, n_loop=48)
     times = {r["window"]: r["time_s"] for r in row["series"]}
+    last_valid = row["execution"]["valid_prefix_windows"]
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         entries = []
@@ -237,7 +289,8 @@ def vtk_zip(row) -> bytes:
                 pts += _world(mesh, entry["nodes"][str(mesh["node"]["mbdyn_label"])])
                 polys += [tuple(base + v for v in f) for f in mesh["faces"]]
                 seg += [mid] * len(mesh["faces"])
-            lines = ["# vtk DataFile Version 3.0", f"PyFoldable coupled window {entry['window']}", "ASCII",
+            lines = ["# vtk DataFile Version 3.0", f"PyFoldable coupled window {entry['window']}"
+                     + (" (outside valid prefix)" if entry["window"] > last_valid else ""), "ASCII",
                      "DATASET POLYDATA", f"POINTS {len(pts)} double"]
             lines += [f"{p[0]!r} {p[1]!r} {p[2]!r}" for p in pts]
             lines.append(f"POLYGONS {len(polys)} {4 * len(polys)}")
@@ -252,7 +305,10 @@ def vtk_zip(row) -> bytes:
         pvd += ["</Collection>", "</VTKFile>"]
         zf.writestr("rotor.pvd", "\n".join(pvd) + "\n")
         zf.writestr("README.txt", "Rigid segment surfaces at MBDyn accepted states (catalog airfoil, declared sections).\n"
-                                  "No pressure or stress field is included: none was solved.\n")
+                                  "No pressure or stress field is included: none was solved.\n"
+                                  f"The valid prefix ends at window {last_valid} (status {row['execution']['status']}); "
+                                  "later windows are marked 'outside valid prefix' in their header and are not a "
+                                  "completed result (coverage, convergence or fold envelope).\n")
     return buf.getvalue()
 
 
@@ -296,7 +352,32 @@ def saved_json(row) -> str:
 EVENT_LABELS = {"release": "Kilit açılışı", "first_contact": "İlk stop teması", "largest_opening": "En büyük açılma",
                 "second_swing_min": "İkinci salınım minimumu", "last": "Son pencere"}
 _EVENT_COLORS = {"release": "#6B7280", "first_contact": "#DC2626", "largest_opening": "#D97706",
-                 "second_swing_min": "#7C3AED", "last": "#374151"}
+                 "second_swing_min": "#7C3AED", "last": fs.CONSTRUCTION}
+# Dark outline under a thin light line: visible on both ends and on the near-white middle of RdBu_r.
+_OUTLINE, _HIGHLIGHT = "rgba(17,24,39,.85)", "rgba(255,255,255,.9)"
+
+
+def _outlined(fig, xs, ys, name):
+    fig.add_trace(go.Scatter(x=xs, y=ys, mode="lines", line=dict(color=_OUTLINE, width=3), name=name,
+                             showlegend=False, hoverinfo="skip"))
+    fig.add_trace(go.Scatter(x=xs, y=ys, mode="lines", line=dict(color=_HIGHLIGHT, width=1), name=name,
+                             hoverinfo="skip"))
+
+
+def _plane_component(row, fc, component, frame=slice(None)):
+    """Plane values of every companion frame (or one): axial is the induced −w − V∞ (the free stream removed),
+    swirl v_y sign(x) and radial v_x sign(x)."""
+    import numpy as np
+    vel = fc.plane_velocity[frame]
+    if component == "axial":
+        return -vel[..., 2] - row["run_definition"]["case"]["inflow_m_s"]
+    return vel[..., 1 if component == "swirl" else 0] * np.sign(fc.plane_x)
+
+
+def _plane_limit(row, fc, component):
+    """One symmetric colour range per companion (all frames), so a colour means the same speed in every window."""
+    import numpy as np
+    return max(float(np.percentile(np.abs(_plane_component(row, fc, component)), 99)), 1e-9)
 
 
 def _node_state(row, window):
@@ -336,15 +417,10 @@ def flow_scene_figure(row, fc, window, *, max_particles=6000, show_plane=True):
     pw = fc.panel_wake[fc.index(window)]
     for row_i, dash in ((0, "solid"), (1, "dot")):
         fig.add_trace(go.Scatter3d(x=1000 * pw[row_i, :, 0], y=1000 * pw[row_i, :, 1], z=1000 * pw[row_i, :, 2],
-                                   mode="markers", marker=dict(size=1.8, color="#111827"), showlegend=row_i == 0,
+                                   mode="markers", marker=dict(size=1.8, color=fs.CONSTRUCTION), showlegend=row_i == 0,
                                    name="Panel izi (DUST, ilk sıra)", hoverinfo="skip"))
     if show_plane:
-        vel = fc.plane_velocity[fc.index(window)]
-        X, Z = np.meshgrid(1000 * fc.plane_x, 1000 * fc.plane_z)
-        fig.add_trace(go.Surface(x=X, y=np.full_like(X, 1000 * fc.plane_y), z=Z, surfacecolor=-vel[:, :, 2],
-                                 colorscale="RdBu_r", cmin=float(np.percentile(-vel[:, :, 2], 1)),
-                                 cmax=float(np.percentile(-vel[:, :, 2], 99)), opacity=.55, showscale=False,
-                                 name="Hız düzlemi (dust_post)", hoverinfo="skip", showlegend=True))
+        fig.add_trace(_plane_surface(row, fc, window, lambda x, y: (x, y), opacity=.55))
     R = 1000 * row["run_definition"]["case"]["geometry"]["tip_radius_m"]
     fig.update_layout(height=560, margin=dict(l=0, r=0, t=30, b=0),
                       legend=dict(orientation="h", x=0, y=0, xanchor="left", yanchor="top"),
@@ -372,25 +448,30 @@ def flow_traces(row, fc, window, *, max_particles=6000, show_plane=True, view_ro
     x, y = rot(1000 * p[pick, 0], 1000 * p[pick, 1])
     out.append(go.Scatter3d(
         x=x, y=y, z=1000 * p[pick, 2], mode="markers",
-        marker=dict(size=1.6, color=np.log10(np.maximum(mag, 1e-12)), colorscale="Greys", opacity=.6,
+        marker=dict(size=1.6, color=np.log10(np.maximum(mag, 1e-12)), colorscale=fs.PARTICLE_SCALE, opacity=.6,
                     colorbar=dict(title="log₁₀|α|<br>(parçacık)", x=-0.02, xanchor="right", len=.45, y=.75)),
         name=f"Girdap parçacıkları (DUST, {len(pick)}/{len(p)})", hoverinfo="skip"))
     pw = fc.panel_wake[fc.index(window)]
     for row_i in (0, 1):
         x, y = rot(1000 * pw[row_i, :, 0], 1000 * pw[row_i, :, 1])
         out.append(go.Scatter3d(x=x, y=y, z=1000 * pw[row_i, :, 2], mode="markers",
-                                marker=dict(size=1.8, color="#111827"), showlegend=row_i == 0,
+                                marker=dict(size=1.8, color=fs.CONSTRUCTION), showlegend=row_i == 0,
                                 name="Panel izi (DUST, ilk sıra)", hoverinfo="skip"))
     if show_plane:
-        vel = fc.plane_velocity[fc.index(window)]
-        X, Z = np.meshgrid(1000 * fc.plane_x, 1000 * fc.plane_z)
-        Xr, Yr = rot(X, np.full_like(X, 1000 * fc.plane_y))
-        down = -vel[:, :, 2]
-        out.append(go.Surface(x=Xr, y=Yr, z=Z, surfacecolor=down, colorscale="RdBu_r",
-                              cmin=float(np.percentile(down, 1)), cmax=float(np.percentile(down, 99)), opacity=.45,
-                              showscale=False, name="Hız düzlemi (dust_post, −w)", showlegend=True,
-                              hovertemplate="−w %{surfacecolor:.2f} m/s<extra>Hız düzlemi</extra>"))
+        out.append(_plane_surface(row, fc, window, rot, opacity=.45))
     return out
+
+
+def _plane_surface(row, fc, window, rot, *, opacity):
+    """3-D velocity plane: induced axial velocity on the same fixed scale as the 2-D axial plane figure."""
+    import numpy as np
+    X, Z = np.meshgrid(1000 * fc.plane_x, 1000 * fc.plane_z)
+    Xr, Yr = rot(X, np.full_like(X, 1000 * fc.plane_y))
+    lim = _plane_limit(row, fc, "axial")
+    return go.Surface(x=Xr, y=Yr, z=Z, surfacecolor=_plane_component(row, fc, "axial", fc.index(window)),
+                      colorscale="RdBu_r", cmin=-lim, cmax=lim, opacity=opacity, showscale=False, showlegend=True,
+                      name="Hız düzlemi (dust_post, indüklenmiş −w−V∞; renk ölçeği 2B eksenel grafikle aynı)",
+                      hovertemplate="−w−V∞ %{surfacecolor:.2f} m/s<extra>Hız düzlemi</extra>")
 
 
 def flow_blade_scene(row, fc, window, mesh, *, fields=None, crange=None, rotor_fixed=False, show_plane=True,
@@ -410,26 +491,23 @@ def flow_blade_scene(row, fc, window, mesh, *, fields=None, crange=None, rotor_f
                            uirevision=f"flow:{row['result_sha256']}:{rotor_fixed}")
 
 
-PLANE_COMPONENTS = {"axial": ("−w [m/s] (eksenel, aşağı)", "−w"), "swirl": ("Dönme v_θ [m/s] (+Ω yönünde)", "v_θ"),
-                    "radial": ("Radyal v_r [m/s] (dışa)", "v_r")}
+PLANE_COMPONENTS = {"axial": ("İndüklenmiş −w−V∞ [m/s] (eksenel, aşağı +)", "−w−V∞"),
+                    "swirl": ("Dönme v_θ [m/s] (+Ω yönünde)", "v_θ"), "radial": ("Radyal v_r [m/s] (dışa)", "v_r")}
 
 
 def flow_plane_figure(row, fc, window, *, component="axial", vectors=False, streamlines=False):
     """Velocity on the meridional plane y = 0 (lab frame), from dust_post: the velocity DUST's lifting lines,
-    panel wake and particles induce, plus the free stream. ``component``: axial (−w), swirl (tangential for
-    rotation +Omega about +z: v_y sign(x)) or radial (v_x sign(x)); optional in-plane vectors and in-plane
+    panel wake and particles induce, plus the free stream. ``component``: axial (induced −w − V∞, the free
+    stream removed), swirl (tangential for rotation +Omega about +z: v_y sign(x)) or radial (v_x sign(x)), each
+    on RdBu_r centred at zero with one range for all frames; optional in-plane vectors and in-plane
     streamlines (instantaneous, of the (v_x, v_z) components only)."""
     import numpy as np
-    i = fc.index(window)
-    vel = fc.plane_velocity[i]
-    side = np.sign(fc.plane_x)[None, :]
-    data = {"axial": -vel[:, :, 2], "swirl": vel[:, :, 1] * side, "radial": vel[:, :, 0] * side}[component]
+    vel = fc.plane_velocity[fc.index(window)]
     title, short = PLANE_COMPONENTS[component]
-    lim = float(np.percentile(np.abs(data), 99)) if component != "axial" else None
-    fig = go.Figure(go.Heatmap(x=1000 * fc.plane_x, y=1000 * fc.plane_z, z=data, colorscale="RdBu_r",
-                               zmin=-lim if lim else float(np.percentile(data, 1)),
-                               zmax=lim if lim else float(np.percentile(data, 99)),
-                               colorbar=dict(title=title),
+    lim = _plane_limit(row, fc, component)
+    fig = go.Figure(go.Heatmap(x=1000 * fc.plane_x, y=1000 * fc.plane_z,
+                               z=_plane_component(row, fc, component, fc.index(window)), colorscale="RdBu_r",
+                               zmin=-lim, zmax=lim, colorbar=dict(title=title),
                                hovertemplate="x %{x:.0f} mm · z %{y:.0f} mm · " + short + " %{z:.2f} m/s<extra></extra>"))
     if vectors:
         X, Z = np.meshgrid(1000 * fc.plane_x, 1000 * fc.plane_z)
@@ -439,17 +517,15 @@ def flow_plane_figure(row, fc, window, *, component="axial", vectors=False, stre
         xs, ys = [], []
         for x0, z0, du, dw in zip(X[::step, ::step].ravel(), Z[::step, ::step].ravel(), u.ravel(), w.ravel()):
             xs += [x0, x0 + scale * du, None]; ys += [z0, z0 + scale * dw, None]
-        fig.add_trace(go.Scatter(x=xs, y=ys, mode="lines", line=dict(color="rgba(17,24,39,.7)", width=1),
-                                 name="Hız vektörleri (düzlem içi v_x, v_z)", hoverinfo="skip"))
+        _outlined(fig, xs, ys, "Hız vektörleri (düzlem içi v_x, v_z)")
     if streamlines:
         import plotly.figure_factory as ff
         sl = ff.create_streamline(1000 * fc.plane_x, 1000 * fc.plane_z, vel[:, :, 0], vel[:, :, 2], density=1.0,
                                   arrow_scale=0.02)
+        xs, ys = [], []
         for tr in sl.data:
-            tr.update(name="Akım çizgileri (anlık, düzlem içi; 3B değil)", line=dict(color="rgba(255,255,255,.75)", width=1),
-                      showlegend=False, hoverinfo="skip")
-            fig.add_trace(tr)
-        fig.data[-1].showlegend = True
+            xs += [*tr.x, None]; ys += [*tr.y, None]
+        _outlined(fig, xs, ys, "Akım çizgileri (anlık, düzlem içi; 3B değil)")
     p, v, _ = fc.particles(window)
     near = np.abs(p[:, 1] - fc.plane_y) < 0.01
     fig.add_trace(go.Scatter(x=1000 * p[near, 0], y=1000 * p[near, 2], mode="markers",
@@ -477,16 +553,16 @@ def response_timeline_figure(row, window, ev):
     for b in range(nb):
         fig.add_trace(go.Scatter(x=t, y=[r["theta_deg"][b] for r in s], name=f"θ · kanat {b + 1}",
                                  line=dict(color=_COLORS[b % 4], width=1.5)), row=1, col=1)
-    fig.add_trace(go.Scatter(x=t, y=[r["thrust_n"] for r in s], name="İtki", line=dict(color="#0b6170")), row=2, col=1)
+    fig.add_trace(go.Scatter(x=t, y=[r["thrust_n"] for r in s], name="İtki", line=dict(color=_COLORS[0])), row=2, col=1)
     fig.add_trace(go.Scatter(x=t, y=[r["aero_shaft_torque_nm"] for r in s], name="Aero şaft torku",
-                             line=dict(color="#0b6170")), row=3, col=1)
+                             line=dict(color=_COLORS[0])), row=3, col=1)
     fig.add_trace(go.Scatter(x=t, y=[r["drive_torque_nm"] for r in s], name="Tahrik (tepki) torku",
                              line=dict(color="#DC671D", width=1)), row=3, col=1)
     fig.add_trace(go.Scatter(x=t, y=[r["hinge_aero_torque_nm"][0] for r in s], name="Aerodinamik (kanat 1)",
-                             line=dict(color="#0b6170")), row=4, col=1)
+                             line=dict(color=_COLORS[0])), row=4, col=1)
     fig.add_trace(go.Scatter(x=t, y=[r["hinge_law_torque_nm"][0] for r in s], name="Yay+sönüm+stop (kanat 1)",
                              line=dict(color="#A44AC2", width=1)), row=4, col=1)
-    fig.add_trace(go.Scatter(x=t, y=[r["rpm"] for r in s], name="Şaft devri", line=dict(color="#374151")), row=5, col=1)
+    fig.add_trace(go.Scatter(x=t, y=[r["rpm"] for r in s], name="Şaft devri", line=dict(color=fs.CONSTRUCTION)), row=5, col=1)
     by_w = {r["window"]: r for r in s}
     for key, w in ev.items():  # events: dotted lines with legend entries (labels would overlap in time)
         if key == "last" or w not in by_w:
@@ -495,7 +571,7 @@ def response_timeline_figure(row, window, ev):
         fig.add_trace(go.Scatter(x=[None], y=[None], mode="lines", line=dict(color=_EVENT_COLORS[key], dash="dot"),
                                  name=f"{EVENT_LABELS[key]} · {by_w[w]['time_s']:.4f} s"), row=1, col=1)
     if window in by_w:
-        fig.add_vline(x=by_w[window]["time_s"], line=dict(color="#111827", width=2))
+        fig.add_vline(x=by_w[window]["time_s"], line=dict(color=fs.ACCENT, width=2))
     # y ranges from the data after the first quarter revolution: the impulsive start of the
     # lifting-line wake (first windows) would otherwise dominate the scale; it stays plotted.
     case = row["run_definition"]["case"]
@@ -523,7 +599,7 @@ def wake_radial_figure(row, fc, window, ref_window):
     g = row["run_definition"]["case"]["geometry"]
     R = g["tip_radius_m"]
     fig = go.Figure()
-    for w, name, color in ((ref_window, f"Referans (pencere {ref_window})", "#9CA3AF"), (window, f"Seçili (pencere {window})", "#0b6170")):
+    for w, name, color in ((ref_window, f"Referans (pencere {ref_window})", "#9CA3AF"), (window, f"Seçili (pencere {window})", _COLORS[0])):
         r, total = radial_wake_strength(fc, w, R)
         fig.add_trace(go.Scatter(x=1000 * r, y=total, mode="lines+markers", name=name, line=dict(color=color, shape="hvh")))
     fig.add_vline(x=1000 * g["hinge_radius_m"], line=dict(dash="dot", color="#DC671D"))

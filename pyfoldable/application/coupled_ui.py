@@ -10,13 +10,14 @@ from dataclasses import asdict
 import json
 import math
 from pathlib import Path
+import re
 
 import streamlit as st
 
 from pyfoldable.coupled import toolchain as tcmod
 from pyfoldable.coupled.model import CoupledControls, CoupledMechanics
 
-from . import coupled_analysis as svc, coupled_views as views
+from . import coupled_analysis as svc, coupled_views as views, figure_style
 
 RUN = "_coupled_run"
 HISTORY = "research_coupled_results"
@@ -36,6 +37,7 @@ _STATUS_TEXT = {
                                            "çizgisinin geometri sınırının ötesine geçti. Sınır içindeki ilk aralık geçerli "
                                            "önek olarak gösterilir; sonrası tamamlanmış sonuç değildir."),
 }
+_STATUS_SHORT = {k: re.split(r"[:;.]", text, maxsplit=1)[0] for k, (_, text) in _STATUS_TEXT.items()}
 _PREP_TEXT = {
     "inert_fixture_tables": "seçilen polar kaydı bir yazılım test kaydıdır; mühendislik analizinde kullanılamaz.",
     "aero_admission_rejected": "saklanan polar sürümü bu tasarım için kabul edilmedi (BEM hazırlığıyla aynı denetim).",
@@ -185,6 +187,9 @@ def render_analysis(active, family, readiness_status, repository, root: Path):
     st.caption("Öngörülen şaft devri (sabit veya rampa), rijit iç ve dış parça, eksene paralel ideal katlanma menteşesi, beyan edilen yay/sönüm/stop yasası. "
                "Aerodinamik yükler BEM ile aynı saklanan polar sürümünden DUST kaldırma çizgisiyle hesaplanır. "
                "CFD, FEA, eklem dayanımı veya yorulma değildir.")
+    # Before every early return: a fragment not called in a full run stops, and with it progress and 'Durdur'.
+    if st.session_state.get(RUN):
+        _progress()
     ready = readiness_cached()
     if ready.status != "ready":
         st.info(ready.message)
@@ -251,8 +256,6 @@ def render_analysis(active, family, readiness_status, repository, root: Path):
         run = svc.start_run(prep, root)
         st.session_state[RUN] = {"run_dir": str(run), "token": token}
         st.rerun()
-    if st.session_state.get(RUN):
-        _progress()
 
 
 @st.fragment(run_every=2.0)
@@ -318,9 +321,36 @@ def _xz_export(col, row, name):
                    else " · sınırı aşıyor: yerel çalıştırma klasöründen açın"))
 
 
+def _exports(cols, row, name):
+    """JSON, CSVs and the VTK zip take seconds on long records (VTK 8-18 s): built on request, kept for this record."""
+    b, c, d = cols
+    cache = st.session_state.setdefault("_coupled_export_cache", {})
+    key = row["result_sha256"]
+    if key not in cache:
+        slot = b.empty()
+        if not slot.button("Dışa aktarma dosyalarını hazırla", key="coupled_prepare_exports",
+                           help="Sonuç JSON’u, zaman serisi ve radyal CSV, ParaView (VTK) paketi. Uzun kayıtlarda "
+                                "birkaç saniye sürer; bu kayıt için bir kez hazırlanır."):
+            return
+        with st.spinner("Dışa aktarma dosyaları hazırlanıyor…"):
+            cache.clear()
+            cache[key] = {"json": views.saved_json(row)}
+            if row["series"]:
+                cache[key].update(series=views.series_csv(row), radial=views.radial_csv(row), vtk=views.vtk_zip(row))
+        slot.empty()
+    files = cache[key]
+    b.download_button("Sonuç JSON’u", files["json"], name + ".json", "application/json")
+    if "vtk" in files:
+        b.download_button("Zaman serisi CSV", files["series"], name + "_zaman.csv", "text/csv")
+        c.download_button("Radyal CSV", files["radial"], name + "_radyal.csv", "text/csv")
+        d.download_button("ParaView (VTK)", files["vtk"], name + "_vtk.zip", "application/zip",
+                          help="Kabul edilen MBDyn durumlarında rijit parça yüzeyleri ve .pvd zaman listesi; geçerli "
+                               "önek dışındaki pencereler dosya başlığında ve README’de işaretlidir.")
+
+
 def save(row, *, imported=False):
     history = st.session_state.setdefault(HISTORY, ())
-    if any(json.loads(raw)["result_sha256"] == row["result_sha256"] for raw, _ in history):
+    if row["result_sha256"] in retained():
         return "duplicate"
     if len(history) >= MAX_HISTORY:
         history = history[1:]
@@ -329,7 +359,15 @@ def save(row, *, imported=False):
 
 
 def retained():
-    return {json.loads(raw)["result_sha256"]: (json.loads(raw), imp) for raw, imp in st.session_state.get(HISTORY, ())}
+    """History records parsed once each (records reach tens of MB); the raw strings key the cache, and a str
+    keeps its hash, so later lookups are cheap. Callers must not mutate the returned rows.
+    shortcut: all MAX_HISTORY parsed records stay in memory (a few hundred MB for six 720-window records); cache only
+    the active record if MAX_HISTORY grows or memory hurts."""
+    history = st.session_state.get(HISTORY, ())
+    cache = st.session_state.get("_coupled_parsed", {})
+    parsed = {raw: cache[raw] if raw in cache else json.loads(raw) for raw, _ in history}
+    st.session_state["_coupled_parsed"] = parsed
+    return {parsed[raw]["result_sha256"]: (parsed[raw], imp) for raw, imp in history}
 
 
 def invalidate(active, family):
@@ -351,12 +389,40 @@ def active_result():
     return None if rec is None else rec[0]
 
 
+_RANGE_NOTE = ("Eksen aralıkları ilk çeyrek turdan sonraki verilere göre seçilir: kaldırma çizgisi izinin ani başlangıç "
+               "geçişi çizilir ama ölçeği belirlemez; noktalı çizgiler geçerli önek dışındaki pencerelerdir.")
+_RADIAL_LABELS = {"alpha_deg": "α [°]", "reynolds": "Re [-]", "mach": "Mach [-]", "cl": "c_l [-]",
+                  "dFz_n": "Eleman itkisi dF_z [N] (eleman başına)"}
+
+
+def _radial_window(row):
+    """Radial window slider. Its widget state is dropped on other tabs and pages, so the last choice per record is
+    mirrored outside it (rui._choice passes index=, which select_slider does not take). Opens at the last valid window."""
+    key, last_valid = "coupled_radial_window", row["execution"]["valid_prefix_windows"]
+    windows = [r["window"] for r in row["series"]]
+    memory = st.session_state.get("_coupled_radial_memory", (None, None))
+    if st.session_state.get(key) not in windows:
+        st.session_state[key] = memory[1] if memory[0] == row["result_sha256"] and memory[1] in windows else \
+            max([w for w in windows if w <= last_valid], default=windows[0])
+    w = st.select_slider("Pencere", options=windows, key=key,
+                         format_func=lambda v: f"{v} (geçerli önek dışı)" if v > last_valid else str(v))
+    st.session_state["_coupled_radial_memory"] = (row["result_sha256"], w)
+    return w
+
+
 def render_result(row, *, imported=False, root: Path | None = None):
     rui = _rui()
     ex = row["execution"]
     i = row["request"]["research"]["inputs"]
     kind, text = _STATUS_TEXT.get(ex["status"], ("warning", ex["status"]))
-    getattr(st, kind)(text)
+    failed = [c for c in row["checks"] if c["passed"] is False]  # None means not assessed, not failed
+    getattr(st, "warning" if failed and kind == "success" else kind)(text)
+    if failed:
+        st.warning("Kaydın kendi sayısal denetimlerinden geçmeyenler: "
+                   + "; ".join(f"{c['name']} = {_num(c['value'])} (sınır {_num(c['limit'])})" for c in failed)
+                   + ". Ayrıntı: Teknik ayrıntılar.")
+    if st.session_state.get(RUN):
+        _progress()
     st.markdown(f"**{i['profile']} · {_fmt(i['rpm'], 0)} RPM · {_fmt(i['inflow_m_s'], 2)} m/s · dinamik bağlaşık analiz**")
     if imported:
         st.caption("Dosyadan açılan kayıt · çözücü yeniden çalıştırılmadı; iç tutarlılık denetlendi.")
@@ -392,15 +458,10 @@ def render_result(row, *, imported=False, root: Path | None = None):
                    f"{min(r['coupling_iterations'] for r in valid)}–{max(r['coupling_iterations'] for r in valid)}.")
     a, b, c, d = st.columns(4)
     name = f"pyfoldable_dinamik_{i['profile']}_{row['result_sha256'][:8]}"
-    a.download_button("Sonuç JSON’u", views.saved_json(row), name + ".json", "application/json")
     a.download_button("Sıkıştırılmış kayıt (.json.gz)", _archive(row), name + ".json.gz", "application/gzip",
                       help="Aynı mühürlü kaydın kayıpsız gzip hâli; Karşılaştırma / kayıtlar sayfasından açılabilir.")
     _xz_export(a, row, name)
-    if row["series"]:
-        b.download_button("Zaman serisi CSV", views.series_csv(row), name + "_zaman.csv", "text/csv")
-        c.download_button("Radyal CSV", views.radial_csv(row), name + "_radyal.csv", "text/csv")
-        d.download_button("ParaView (VTK)", views.vtk_zip(row), name + "_vtk.zip", "application/zip",
-                          help="Kabul edilen MBDyn durumlarında rijit parça yüzeyleri ve .pvd zaman listesi.")
+    _exports((b, c, d), row, name)
     if not row["series"]:
         _details(row)
         return
@@ -414,16 +475,19 @@ def render_result(row, *, imported=False, root: Path | None = None):
                                           ("centrifugal_hinge_moment_derived_nm", "Merkezkaç (türetilmiş tanı)")),
                                     "Dış parçaya menteşe momenti [N·m]", per_blade=True), "coupled_hinge_m")
         st.caption("Merkezkaç momenti modele ayrıca eklenmez; dönen çerçevede −mΩ²r_h c_g sinθ olarak türetilmiş bir tanıdır. "
-                   "Stop teması penaltı yasasıdır; açının 0°’yi aşması tanımlı esneme (penetrasyon) miktarıdır.")
+                   "Stop teması penaltı yasasıdır; açının 0°’yi aşması tanımlı esneme (penetrasyon) miktarıdır. "
+                   "Düz, kesikli ve noktalı-kesikli çizgiler kanatları ayırır. " + _RANGE_NOTE)
     elif tab == "Yükler":
         rui._plot(views.time_figure(row, (("thrust_n", "İtki"),), "İtki [N]"), "coupled_thrust")
         rui._plot(views.time_figure(row, (("aero_shaft_torque_nm", "Aerodinamik şaft torku"), ("drive_torque_nm", "Tahrik (tepki) torku")),
-                                    "Tork [N·m]"), "coupled_torque")
+                                    "Tork [N·m]", split=True), "coupled_torque")
         st.caption("Tahrik torku, sabit devri koruyan MBDyn tepki torkudur; katlanma sırasında atalet etkilerini de içerir ve "
-                   "aerodinamik torktan ayrıdır. Başlangıç ve kilit açılışında kısa süreli sayısal geçiş görülebilir.")
+                   "aerodinamik torktan ayrıdır; stop darbesi sıçramaları aerodinamik torktan iki mertebe büyük olduğu "
+                   "için ayrı eksende çizilir. " + _RANGE_NOTE)
     elif tab == "Güç":
         rui._plot(views.time_figure(row, (("aero_power_absorbed_w", "Aerodinamik güç (havaya aktarılan)"), ("drive_power_w", "Tahrik gücü")),
-                                    "Güç [W]"), "coupled_power")
+                                    "Güç [W]", split=True), "coupled_power")
+        st.caption("Aerodinamik güç ve tahrik gücü ayrı eksenlerdedir. " + _RANGE_NOTE)
     elif tab == "Kapsam ve yakınsama":
         for q in ("alpha", "re", "mach"):
             rui._plot(views.coverage_figure(row, q), "coupled_cov_" + q)
@@ -431,15 +495,17 @@ def render_result(row, *, imported=False, root: Path | None = None):
         st.caption("Sorgulanan değerler, her kabul edilen pencerede kaldırma çizgisinin son iterasyonundaki kesit durumlarıdır. "
                    "DUST tablo dışı α veya Mach’ta durur; Reynolds dışına doğrusal ekstrapolasyon yapar ve burada denetlenir.")
     elif tab == "Radyal":
-        windows = [r["window"] for r in row["series"]]
-        w = st.select_slider("Pencere", options=windows, value=windows[-1], key="coupled_radial_window")
+        w = _radial_window(row)
+        if w > ex["valid_prefix_windows"]:
+            st.warning(f"Pencere {w} geçerli önek dışı (kapsam, yakınsama veya katlanma sınırı aşıldıktan sonra); "
+                       "değerleri tamamlanmış sonuç değildir.")
         rows = views.radial_rows(row, w)
         field = rui._choice(st.radio, "Büyüklük", ("alpha_deg", "reynolds", "mach", "cl", "dFz_n"), key="coupled_radial_field",
                             default="alpha_deg", horizontal=True,
                             display={"alpha_deg": "α", "reynolds": "Re", "mach": "Mach", "cl": "cl", "dFz_n": "Eleman itkisi"}.__getitem__)
-        rui._plot(views.radial_figure(rows, field, field), "coupled_radial_plot")
+        rui._plot(views.radial_figure(rows, field, _RADIAL_LABELS[field]), "coupled_radial_plot")
         with st.expander("Radyal veri tablosu"):
-            st.dataframe(rows, hide_index=True, use_container_width=True)
+            st.dataframe(rows, hide_index=True, **figure_style.dataframe_width_kwargs())
     elif tab == "Akış ve tepki":
         _flow_tab(row, root)
     elif tab == "Mühendislik değerlendirmesi":
@@ -451,7 +517,8 @@ def render_result(row, *, imported=False, root: Path | None = None):
         from . import blade_ui
         blade_ui.coupled_blade_tab(row, root)
         with st.expander("Eski hızlı oynatma (renksiz, 24 noktalı kesit)"):
-            fig = views.playback_figure(row)
+            # an expander body always runs; the toggle keeps the costly playback out of every rerun
+            fig = views.playback_figure(row) if st.toggle("Eski oynatmayı oluştur", key="coupled_legacy_playback") else None
             if fig is not None:
                 rui._plot(fig, "coupled_playback")  # scroll zoom disabled, like the other workspace figures
         st.caption("Kabul edilen MBDyn durumlarında rijit parça yüzeyleri (katalog kesiti, beyan edilen istasyonlar). "
@@ -496,7 +563,7 @@ def _assessment_tab(row):
         st.info("Bu kayıtta değerlendirilecek geçerli pencere yok.")
         return
     st.dataframe([{"Çıktı": r["label"], "Değer": _num(r["value"]), "Birim": r["unit"], "Sınıf": _CLASS_LABEL[r["class"]],
-                   "Belirleyen": r["governed_by"]} for r in rows], hide_index=True, use_container_width=True)
+                   "Belirleyen": r["governed_by"]} for r in rows], hide_index=True, **figure_style.dataframe_width_kwargs())
     st.caption(" · ".join(f"**{_CLASS_LABEL[k]}:** {v.split(': ', 1)[1]}" for k, v in assessment.CLASSES.items()))
     ev = assessment.contact_events(row)
     sh = assessment.shaft_exchange(row)
@@ -557,6 +624,32 @@ def _flow(row, root):
     return fc
 
 
+def _flow_build(row, root, label, key):
+    """Explicit extraction (or re-extraction) of the flow companion; the regular-stride frame count is bounded by
+    the companion size limit (build_flow refuses more), the dense release span and the events are always added."""
+    from pyfoldable.coupled import flow
+    ready = readiness_cached()
+    if ready.status != "ready":
+        st.caption("Akış verisini hazırlamak için DUST araç zinciri gerekir: " + ready.message)
+        return
+    last = max(2, int(row["execution"]["valid_prefix_windows"]))
+    top = max(2, min(last, flow.MAX_INFLATED_BYTES // svc.flow_frame_bytes_bound(row)))
+    frames = st.number_input("Düzenli adımlı kare sayısı (salınım bölgesinin sık kareleri ve olaylar ayrıca eklenir)",
+                             min_value=2, max_value=top, value=min(81, top), step=10,
+                             key="coupled_flow_frames_" + row["result_sha256"][:12])
+    if st.button(label, key=key, help="Seçilen pencerelerde girdap parçacıklarını ve panel izini okur, dust_post ile "
+                                      "y = 0 düzleminde hızı hesaplar; 81 karede ana koşu için ≈ 35 s ve ≈ 35 MB, "
+                                      "süre ve boyut kare sayısıyla artar."):
+        with st.spinner("Akış verisi çıkarılıyor…"):
+            try:
+                svc.build_flow(root, row, max_frames=int(frames), readiness=tcmod.readiness(hash_executables=True))
+            except (flow.FlowCompanionError, OSError, ValueError) as err:
+                st.error("Akış verisi hazırlanamadı: " + str(err))
+                return
+        st.session_state.pop(FLOW_CACHE, None)
+        st.rerun()
+
+
 def _flow_tab(row, root):
     from pyfoldable.coupled import flow
     st.caption(_FLOW_HELP)
@@ -565,20 +658,7 @@ def _flow_tab(row, root):
     except flow.FlowCompanionError as exc:
         if exc.code in ("missing", "checksum", "malformed", "source_mismatch", "other_record", "unsupported", "too_large"):
             (st.info if exc.code == "missing" else st.error)(str(exc).split(": ", 1)[-1])
-            ready = readiness_cached()
-            if ready.status != "ready":
-                st.caption("Akış verisini hazırlamak için DUST araç zinciri gerekir: " + ready.message)
-            elif st.button("Akış verisini hazırla (kayıtlı DUST çıktılarından; çözücü çalışmaz)", key="coupled_flow_build",
-                           help="Seçilen pencerelerde girdap parçacıklarını ve panel izini okur, dust_post ile y = 0 "
-                                "düzleminde hızı hesaplar; ana koşu için ≈ 35 s ve ≈ 35 MB."):
-                with st.spinner("Akış verisi çıkarılıyor…"):
-                    try:
-                        svc.build_flow(root, row, readiness=tcmod.readiness(hash_executables=True))
-                    except (flow.FlowCompanionError, OSError, ValueError) as err:
-                        st.error("Akış verisi hazırlanamadı: " + str(err))
-                        return
-                st.session_state.pop(FLOW_CACHE, None)
-                st.rerun()
+            _flow_build(row, root, "Akış verisini hazırla (kayıtlı DUST çıktılarından; çözücü çalışmaz)", "coupled_flow_build")
         else:
             st.info(str(exc).split(": ", 1)[-1])
         return
@@ -620,7 +700,9 @@ def _flow_tab(row, root):
         rui._plot(views.flow_blade_scene(row, fc, w, mesh, fields=fields, crange=crange, rotor_fixed=frame == "rotor",
                                          show_plane=show_plane), "coupled_flow_scene")
         st.caption("Kanatlar (MBDyn gövde durumları), kanattaki renk (DUST elemanları), girdap parçacıkları, panel izi ve "
-                   "hız düzlemi aynı kabul edilen pencereye aittir. Renk ölçeği tüm pencerelerde sabittir. "
+                   "hız düzlemi aynı kabul edilen pencereye aittir. Kanat renk ölçeği ve hız düzleminin ölçeği "
+                   "(indüklenmiş eksenel hız −w−V∞, aşağıdaki 2B eksenel grafikle aynı renk aralığı) tüm pencerelerde "
+                   "sabittir. "
                    + ("Rotorla birlikte görünümde iz ve düzlem de rotor açısı kadar döndürülür." if frame == "rotor" else
                       "Dönen görünüm laboratuvar çerçevesidir."))
     except (ValueError, KeyError) as exc:
@@ -637,8 +719,9 @@ def _flow_tab(row, root):
         lines = b.toggle("Akım çizgileri", value=False, key="coupled_flow_streamlines")
         rui._plot(views.flow_plane_figure(row, fc, w, component=comp, vectors=vectors, streamlines=lines),
                   "coupled_flow_plane_fig")
-        st.caption("dust_post’un DUST girdap modelinden hesapladığı hız (CFD değildir). −w: aşağı (itkiye ters) eksenel "
-                   "hız; dönme: +Ω yönündeki teğetsel hız; radyal: dışa. Düzlem laboratuvar çerçevesinde sabittir; "
+        st.caption("dust_post’un DUST girdap modelinden hesapladığı hız (CFD değildir). Eksenel: serbest akım çıkarılmış "
+                   "indüklenmiş hız −w−V∞ (aşağı, itkiye ters +); dönme: +Ω yönündeki teğetsel hız; radyal: dışa. Renk "
+                   "ölçeği sıfırda ortalanır ve bu kaydın tüm akış karelerinde aynıdır. Düzlem laboratuvar çerçevesinde sabittir; "
                    "kanatlar her yarım turda içinden geçer. Vektörler ve akım çizgileri yalnız düzlem içi (v_x, v_z) "
                    "bileşenleriyle, anlık hız alanından çizilir; 3B parçacık yörüngesi değildir. Kanat çizgisine çok "
                    "yakın noktalarda çekirdek düzenlemesi etkilidir.")
@@ -650,7 +733,7 @@ def _flow_tab(row, root):
                    "yarıçaplar (uç ve kök girdapları; menteşe yarıçapı işaretli). Referans son kilitli karedir; iz o anda "
                    "hâlâ gelişmektedir, bu yüzden fark yalnız serbest bırakmanın etkisi değildir.")
     rui._plot(views.response_timeline_figure(row, w, ev), "coupled_flow_timeline")
-    st.caption("Siyah çizgi seçili pencere; noktalı çizgiler olaylardır. Eksen aralıkları ilk çeyrek turdan sonraki "
+    st.caption("Camgöbeği çizgi seçili pencere; noktalı çizgiler olaylardır. Eksen aralıkları ilk çeyrek turdan sonraki "
                "verilere göre seçilir: kaldırma çizgisi izinin ani başlangıç geçişi (ilk pencereler) çizilir ama ölçeği "
                "belirlemez. Tork ve menteşe satırları %1–99 aralığına ölçeklenir; stop darbesindeki kısa tepki "
                "sıçramaları çizilir ama eksenden taşar. Tahrik torku sıçraması, devri öngörülen (sonsuz rijit) "
@@ -672,12 +755,15 @@ def _flow_tab(row, root):
         if key in cache:
             st.download_button("ParaView akış paketi (.zip)", cache[key],
                                f"pyfoldable_akis_{row['result_sha256'][:8]}.zip", "application/zip")
+        st.caption(f"Akış verisi {len(windows)} kabul edilmiş pencerede var; aradaki pencereler için kare sayısını "
+                   "artırıp yeniden hazırlayın (mevcut akış verisinin yerine geçer).")
+        _flow_build(row, root, "Akış verisini bu kare sayısıyla yeniden hazırla", "coupled_flow_rebuild")
 
 
 def _details(row):
     with st.expander("Teknik ayrıntılar · denetimler, kimlikler, sürümler"):
         st.dataframe([{"Denetim": c["name"], "Değer": c["value"], "Sınır": c["limit"], "Geçti": c["passed"], "Anlamı": c["meaning"]}
-                      for c in row["checks"]], hide_index=True, use_container_width=True)
+                      for c in row["checks"]], hide_index=True, **figure_style.dataframe_width_kwargs())
         st.json({"execution": row["execution"], "toolchain": row["request"]["toolchain"],
                  "aero_admission": {k: v for k, v in row["request"]["aero_admission"].items() if k != "tables"},
                  "c81": {k: v for k, v in row["request"]["c81"].items() if k != "text"},
@@ -694,25 +780,43 @@ def _local_runs(root: Path, limit=12):
     return runs[:limit]
 
 
+def _attach(run_dir):
+    """Button callback: monitor a detached run again; token None treats its result like one opened from history."""
+    st.session_state[RUN] = {"run_dir": run_dir, "token": None}
+
+
 def render_history(root: Path | None = None):
     records = retained()
     st.markdown("**Dinamik bağlaşık sonuçlar (zamana bağlı DUST–MBDyn–preCICE)**")
-    local = [r for r in svc.local_run_summaries(root) if r["result_available"]] if root is not None else []
+    summaries = svc.local_run_summaries(root) if root is not None else []
+    for r in summaries:
+        if r["state"] in ("queued", "running"):  # detached supervisors survive reloads; RUN lives only in the session
+            st.caption(f"Süren çalıştırma: {r['profile']} · {r['started'][:16].replace('T', ' ')} · "
+                       f"{r['windows'] or 0}/{r['planned'] or '?'} pencere")
+            st.button("İlerlemeyi göster / durdur", key="coupled_attach_" + r["run_id"], on_click=_attach,
+                      args=(str(svc.runs_root(root) / r["run_id"]),))
+    if st.session_state.get(RUN):
+        _progress()
+    local = [r for r in summaries if r["result_available"]]
     if local:
         rui = _rui()
         st.caption("Bu bilgisayardaki tamamlanmış veya kısmi çalıştırmalar. Açmak çözücüyü çalıştırmaz; mühürlü kayıt "
-                   "doğrulanır ve dönen kanat, yükler ve akış görünümleri açılır.")
-        state = {"completed": "Tamamlandı", "failed_solver": "Çözücü durdu (kısmi)", "cancelled": "İptal (kısmi)",
-                 "timeout": "Süre aşıldı (kısmi)"}
+                   "doğrulanır ve dönen kanat, yükler ve akış görünümleri açılır. Bugünkü kodla doğrulanamayan kayıtlar "
+                   "(ör. eski üretici sürümü) nedeniyle listelenir ama açılamaz.")
+        state = _STATUS_SHORT
         st.dataframe([{"Başlangıç": r["started"][:16].replace("T", " "), "Profil": r["profile"],
                        "Katlanma [°]": rui._fmt(r["fold_deg"], 1),
                        "Devir": (f"{rui._fmt(r['ramp_start_rpm'], 0)}→{rui._fmt(r['rpm'], 0)} RPM" if r["drive"] == "ramp"
                                  else f"{rui._fmt(r['rpm'], 0)} RPM"),
                        "Durum": state.get(r["state"], r["state"]), "Pencere": f"{r['windows']}/{r['planned']}",
                        "Akış verisi": "var" if r["flow"] else "hazırlanabilir",
-                       "Mekanik": "gösterim varsayımı" if r["mechanics_kind"] == "demonstration_assumption" else "beyan edilen"}
-                      for r in local], hide_index=True, use_container_width=True)
-        by = {r["run_id"]: r for r in local}
+                       "Mekanik": "gösterim varsayımı" if r["mechanics_kind"] == "demonstration_assumption" else "beyan edilen",
+                       "Açılabilir": "evet" if r["restorable"] else "hayır — " + (r["restore_error"] or "doğrulanamadı")}
+                      for r in local], hide_index=True, **figure_style.dataframe_width_kwargs())
+        by = {r["run_id"]: r for r in local if r["restorable"]}
+    if local and not by:
+        st.caption("Listelenen çalıştırmaların hiçbiri bugünkü kodla doğrulanamıyor; açılabilir kayıt yok.")
+    elif local:
         chosen_run = rui._choice(st.selectbox, "Açılacak dinamik sonuç", tuple(by), key="coupled_local_run",
                                  default=next(iter(by)),
                                  display=lambda k: (f"{by[k]['profile']} · {rui._fmt(by[k]['fold_deg'], 1)}° · "
@@ -739,7 +843,8 @@ def render_history(root: Path | None = None):
     def display(key):
         row = records[key][0]
         i = row["request"]["research"]["inputs"]
-        return f"{i['profile']} · {row['execution']['status']} · {row['execution']['windows_accepted']} pencere · {key[:8]}"
+        status = row["execution"]["status"]
+        return f"{i['profile']} · {_STATUS_SHORT.get(status, status)} · {row['execution']['windows_accepted']} pencere · {key[:8]}"
     chosen = _rui()._choice(st.selectbox, "Dinamik kayıt", tuple(options), key="coupled_history_choice",
                             default=options[-1], display=display)
     if st.button("Dinamik kaydı Sonuçlar’da aç", key="coupled_open"):

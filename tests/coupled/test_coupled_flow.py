@@ -12,6 +12,7 @@ import zipfile
 from pathlib import Path
 
 import numpy as np
+import plotly.graph_objects as go
 import pytest
 
 from pyfoldable.application import coupled_analysis as svc
@@ -300,3 +301,98 @@ def test_velocity_plane_components_vectors_and_streamlines(run):
     extra = views.flow_plane_figure(row, fc, 13, vectors=True, streamlines=True)
     names = [t.name or "" for t in extra.data]
     assert any("Hız vektörleri" in n for n in names) and any("Akım çizgileri" in n for n in names)
+
+
+def test_axial_plane_shows_induced_velocity_on_one_scale_for_every_window(run):
+    row = _row(run)
+    fc = flow.load(run, row)
+    vinf = row["run_definition"]["case"]["inflow_m_s"]
+    a, b = (views.flow_plane_figure(row, fc, w).data[0] for w in (13, 30))
+    assert (a.zmin, a.zmax) == (b.zmin, b.zmax)
+    assert a.zmin == -a.zmax > -50  # centred on zero induced velocity
+    assert np.allclose(np.asarray(a.z), -fc.plane_velocity[fc.index(13)][:, :, 2] - vinf)
+    for comp in ("swirl", "radial"):
+        s13, s30 = (views.flow_plane_figure(row, fc, w, component=comp).data[0] for w in (13, 30))
+        assert (s13.zmin, s13.zmax) == (s30.zmin, s30.zmax) and s13.zmin == -s13.zmax
+    # the 3-D plane uses the 2-D axial scale
+    surf = next(t for t in views.flow_traces(row, fc, 30) if t.type == "surface")
+    assert (surf.cmin, surf.cmax) == (a.zmin, a.zmax)
+
+
+def test_aero_and_drive_torque_get_their_own_axes(run):
+    row = _row(run)
+    fig = views.time_figure(row, (("aero_shaft_torque_nm", "Aerodinamik şaft torku"),
+                                  ("drive_torque_nm", "Tahrik (tepki) torku")), "Tork [N·m]", split=True)
+    axis = {t.name: t.yaxis for t in fig.data if t.x and t.x[0] is not None}
+    assert axis["Aerodinamik şaft torku"] != axis["Tahrik (tepki) torku"]
+
+
+def test_per_blade_time_figure_has_one_legend_entry_per_channel(run):
+    row = json.loads(json.dumps(_row(run)))
+    row["execution"]["valid_prefix_windows"] = 20  # an invalid tail must not duplicate legend entries
+    channels = (("hinge_aero_torque_nm", "Aerodinamik"), ("hinge_law_torque_nm", "Yay+sönüm+stop"))
+    fig = views.time_figure(row, channels, "M [N·m]", per_blade=True)
+    shown = [t.name for t in fig.data if t.showlegend is not False]
+    assert {"Aerodinamik", "Yay+sönüm+stop", "Kanat 1", "Kanat 2"} <= set(shown)
+    assert not any("dışı" in n and "·" in n for n in shown)
+    assert len(shown) == len(set(shown))
+
+
+def test_radial_figure_draws_every_blade(run):
+    row = _row(run)
+    rows = views.radial_rows(row, 13)
+    segments = {r["segment"] for r in rows}
+
+    def data_traces(fig):
+        return [t for t in fig.data if t.x and t.x[0] is not None]
+    assert len(data_traces(views.radial_figure(rows, "alpha_deg", "α [°]"))) == 2 * len(segments)
+    four = [{**r, "blade": b} for r in rows if r["blade"] == 0 for b in range(4)]
+    assert len(data_traces(views.radial_figure(four, "alpha_deg", "α [°]"))) == 4 * len(segments)
+
+
+def test_playback_and_vtk_mark_windows_outside_the_valid_prefix(run):
+    row = json.loads(json.dumps(_row(run)))
+    row["execution"]["valid_prefix_windows"] = 20
+    z = zipfile.ZipFile(io.BytesIO(views.vtk_zip(row)))
+    assert "valid prefix" in z.read("README.txt").decode()
+    assert "outside valid prefix" in z.read("rotor_00025.vtk").decode()[:200]
+    assert "outside valid prefix" not in z.read("rotor_00020.vtk").decode()[:200]
+    fig = views.playback_figure(row)
+    titles = {f.name: f.layout.title.text for f in fig.frames}
+    assert "geçerli önek dışı" in titles["30"] and "geçerli önek dışı" not in titles["0"]
+
+
+def _contrast(colour):
+    def lum(c):
+        ch = [int(c[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+        r, g, b = (x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4 for x in ch)
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    hi, lo = sorted((lum(colour), lum("#07111F")), reverse=True)  # app background, .streamlit/config.toml
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def test_every_hard_coded_trace_colour_meets_the_figure_style_contrast(run):
+    row = _row(run)
+    fc = flow.load(run, row)
+    ev = flow.events(row)
+    figs = [views.time_figure(row, (("theta_deg", "θ"), ("theta_rate_rad_s", "θ̇")), "x", per_blade=True),
+            views.coverage_figure(row, "alpha"), views.iterations_figure(row),
+            views.radial_figure(views.radial_rows(row, 13), "cl", "c_l [-]"),
+            views.response_timeline_figure(row, 13, ev), views.wake_radial_figure(row, fc, 13, 4),
+            views.flow_plane_figure(row, fc, 13, vectors=True, streamlines=True), views.flow_scene_figure(row, fc, 13),
+            views.playback_figure(row), go.Figure(views.flow_traces(row, fc, 13))]
+    colours = set()
+    for fig in figs:
+        for t in fig.data:
+            for part in ("line", "marker"):
+                c = getattr(getattr(t, part, None), "color", None)
+                if isinstance(c, str):
+                    colours.add(c)
+            if isinstance(getattr(t, "color", None), str):
+                colours.add(t.color)
+            per_point = getattr(getattr(t, "marker", None), "color", None)
+            if isinstance(per_point, (list, tuple)):
+                colours |= {c for c in per_point if isinstance(c, str)}
+        colours |= {s.line.color for s in fig.layout.shapes if isinstance(s.line.color, str)}
+    hexes = {c for c in colours if c.startswith("#")}
+    assert hexes and [c for c in sorted(hexes) if _contrast(c) < 3.0] == []
