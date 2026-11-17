@@ -15,7 +15,7 @@ from pyfoldable.visualization import fold_interference as fi
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tests" / "application"))
-from test_figure_style import _contrast  # noqa: E402
+from test_figure_style import _contrast, _luminance  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -167,6 +167,34 @@ def test_many_playback_events_wrap_into_rows_and_the_long_note_wraps(mesh):
     note = fig.layout.annotations[0].text
     assert "<br>" in note and "M_t = -0,075 N·m" in note
     assert "<br>" in fig.frames[2].layout.annotations[0].text
+
+
+# Rendered extents below each control's y anchor, measured in headless Edge (Plotly default font and pads):
+# the slider reaches 104 px; a button row is drawn from 9 to 42 px.
+SLIDER_PX, BUTTON_TOP_PX, BUTTON_PX = 104, 9, 42
+
+
+@pytest.mark.parametrize("n_events", [0, 4, 13])
+def test_event_rows_clear_the_slider_and_each_other_in_pixels(mesh, n_events):
+    events = {f"Olay {k}": str(k % 5) for k in range(n_events)}
+    fig = bv.playback_figure(mesh, _frames(mesh), events=events, height=580)
+    m = fig.layout.margin
+    plot_h = fig.layout.height - m.t - m.b
+    slider_bottom = -fig.layout.sliders[0].y * plot_h + SLIDER_PX
+    tops = sorted(-u.y * plot_h for u in fig.layout.updatemenus if any(b.label.startswith("Olay") for b in u.buttons))
+    assert len(tops) == math.ceil(n_events / 5)
+    assert all(t + BUTTON_TOP_PX >= slider_bottom for t in tops)
+    assert all(b - a >= BUTTON_PX - BUTTON_TOP_PX for a, b in zip(tops, tops[1:]))
+    assert max([slider_bottom] + [t + BUTTON_PX for t in tops]) <= m.b       # nothing cut off at the bottom
+    bare = bv.playback_figure(mesh, _frames(mesh), height=580).layout
+    assert plot_h == bare.height - bare.margin.t - bare.margin.b              # rows add height, not squeeze the scene
+
+
+def test_tip_marker_stays_visible_in_the_light_html_export(mesh):
+    tip = next(t for t in bv.playback_figure(mesh, _frames(mesh)).data if t.name == "Kanat 1 ucu").marker.color
+    for bg in ("#07111F", "#E5ECF6", "#FFFFFF"):      # app page, Plotly default scene wall and paper
+        hi, lo = sorted((_luminance(tip), _luminance(bg)), reverse=True)
+        assert (hi + 0.05) / (lo + 0.05) >= 3.0, bg
 
 
 def test_frame_mesh_opacity_is_applied_and_defaults_to_opaque(mesh):

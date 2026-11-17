@@ -12,7 +12,7 @@ import math
 import numpy as np
 import plotly.graph_objects as go
 
-from pyfoldable.application.figure_style import ACCENT, CONSTRUCTION, TEXT
+from pyfoldable.application.figure_style import ACCENT, CONSTRUCTION, SERIES, TEXT
 from pyfoldable.visualization import blade_surface as bs
 
 FIXED, MOVABLE, JOINT, NODATA, PLACEHOLDER = "#008579", "#DC671D", "#9AA7B4", "#B9C2CB", "#76889A"
@@ -336,7 +336,8 @@ def _frame_traces(mesh, frame, crange, colorscale, view_rotation_rad=0.0):
     tip_body = np.array([[0.0, mesh.spec.stations[-1][0], 0.0]])
     tip = view(np.asarray(frame["transforms"][0](tip_body, np.array([True])))) * 1000.0
     return [go.Mesh3d(**kw), go.Scatter3d(x=tip[:, 0], y=tip[:, 1], z=tip[:, 2], mode="markers", name="Kanat 1 ucu",
-                                          marker=dict(size=5, color=ACCENT), hoverinfo="name")]
+                                          # >= 3:1 on the dark app and on the light template of the HTML download
+                                          marker=dict(size=5, color=SERIES[2]), hoverinfo="name")]
 
 
 def _scene_arrows(spec, thrust_n=None, torque_nm=None, power_w=None):
@@ -407,14 +408,21 @@ def playback_figure(mesh, frames, *, crange=None, colorscale="Viridis", static_t
     buttons = [dict(label="▶", method="animate", args=anim(None, frame_ms)),
                dict(label="❚❚", method="animate", args=[[None], dict(mode="immediate", frame=dict(duration=0))])]
     buttons += [dict(label=lab, method="animate", args=anim(None, frame_ms * k)) for lab, k in SPEEDS]
-    menus = [dict(type="buttons", direction="left", x=0, y=-0.02, xanchor="left", yanchor="top", buttons=buttons)]
-    # Plotly never wraps updatemenu buttons, so events go in rows of five stacked below the slider.
+    # Plotly never wraps updatemenu buttons, so events go in rows of five stacked below the slider. Controls have
+    # fixed pixel heights but paper-fraction positions, so place them in pixels against the final plot height;
+    # each event row adds to the figure height instead of shrinking the scene.
     jumps = [dict(label=k, method="animate", args=jump(v)) for k, v in (events or {}).items()]
-    menus += [dict(type="buttons", direction="left", x=0, y=-0.16 - 0.08 * row, xanchor="left", yanchor="top",
-                   buttons=jumps[5 * row:5 * row + 5]) for row in range(math.ceil(len(jumps) / 5))]
-    fig.update_layout(height=height, margin=dict(l=0, r=0, t=10 + 18 * lines, b=0), updatemenus=menus,
+    rows = math.ceil(len(jumps) / 5)
+    # Rendered below their anchors (headless Edge): slider incl. its default pad 104 px, a button row 9-42 px.
+    gap, slider_px, row_px = 8, 100, 36
+    top, bottom = 10 + 18 * lines, gap + slider_px + row_px * rows + gap
+    plot_h = height - top - gap - slider_px - gap
+    menus = [dict(type="buttons", direction="left", x=0, y=-gap / plot_h, xanchor="left", yanchor="top", buttons=buttons)]
+    menus += [dict(type="buttons", direction="left", x=0, y=-(gap + slider_px + row_px * row) / plot_h, xanchor="left",
+                   yanchor="top", buttons=jumps[5 * row:5 * row + 5]) for row in range(rows)]
+    fig.update_layout(height=height + row_px * rows, margin=dict(l=0, r=0, t=top, b=bottom), updatemenus=menus,
                       annotations=note(frames[0]["text"]),
-                      sliders=[dict(x=0.32, len=0.68, y=-0.02, currentvalue=dict(prefix=""),
+                      sliders=[dict(x=0.32, len=0.68, y=-gap / plot_h, currentvalue=dict(prefix=""),
                                     steps=[dict(method="animate", label=f["label"], args=jump(f["name"])) for f in frames])],
                       scene=dict(aspectmode="data", xaxis_title="X [mm]", yaxis_title="Y [mm]", zaxis_title="Z [mm] (itki yönü)",
                                  camera=dict(eye=dict(x=0.9, y=-1.3, z=0.9))))
