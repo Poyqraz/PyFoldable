@@ -4,10 +4,19 @@ Load path (pin parallel to the shaft): the distal tang sits between two clevis p
 mid-planes are s = t_tang + t_plate + 2*gap apart along the pin. The in-plane force P (axial pull and in-plane
 shear) is shared by the two plates; the moments normal to the pin (bending from thrust, torsion) are reacted as a
 couple of opposite in-plane plate forces f = (M_n × e_z)/s. Per plate: P/2 ± f. Checks (classical hand
-formulas, no stress field): pin double shear on the most loaded plane, pin bending with the clevis–tang arm
-t_plate/2 + gap + t_tang/4, bearing in the tang and in a plate, tang net-section tension and shear-out under the
-pull. The force along the pin is carried by the pin head/collar and plate faces and is reported, not checked; the
-moment about the pin is carried by the hinge elements (spring, stops, latch), not by the pin.
+formulas, no stress field):
+
+- pin double shear on the most loaded plane: |P/2 ± f|max / (π d²/4);
+- pin bending with the clevis–tang arm a = t_plate/2 + gap + t_tang/4: 32 |P/2 ± f|max a / (π d³);
+- plate bearing: |P/2 ± f|max / (d t_plate);
+- tang edge bearing, since the tang passes M_n into the pin across its thickness:
+  |P| / (d t_tang) + 6 hypot(M_s, M_t) / (d t_tang²);
+- tang net section (width w given): max(N, 0) / ((w - d) t_tang) + 6 |M_t| / ((w - d) t_tang²);
+- tang shear-out (edge e given): max(N, 0) / (2 (e - d/2) t_tang).
+
+The force along the pin is carried by the pin head/collar and plate faces and is reported, not checked; the
+moment about the pin is carried by the hinge elements (spring, stops, latch), not by the pin. Allowables without
+a source give no margin or verdict (status 'girdi gerekli (kaynak)').
 
 These are preliminary estimates for comparing options. They are not a stress analysis, ignore stress
 concentration, fits, fatigue and the printed material's anisotropy, and do not qualify a part.
@@ -80,25 +89,32 @@ def connection_checks(loads: dict, geom: PinLugGeometry, allow: Allowables, time
         "pin_shear": (plate / area, allow.pin_shear_pa, "Pim kesmesi (çift kesme, en yüklü düzlem)"),
         "pin_bending": (32.0 * plate * (tp / 2 + geom.gap_m + tt / 4) / (math.pi * d ** 3), allow.pin_bending_pa,
                         "Pim eğilmesi (çatal–dil kolu)"),
-        "tang_bearing": (np.linalg.norm(P, axis=-1) / (d * tt), allow.tang_bearing_pa, "Dil yatak basıncı"),
+        # the tang hands the plate couple into the pin as linearly varying bearing across its thickness
+        "tang_bearing": (np.linalg.norm(P, axis=-1) / (d * tt) + 6.0 * np.hypot(Ms, Mt) / (d * tt * tt),
+                         allow.tang_bearing_pa, "Dil yatak basıncı (kenar)"),
         "plate_bearing": (plate / (d * tp), allow.plate_bearing_pa, "Çatal plakası yatak basıncı"),
     }
     pull = np.maximum(N, 0.0)
     if geom.tang_width_m is not None:
-        stresses["tang_tension"] = (pull / ((geom.tang_width_m - d) * tt), allow.tang_tension_pa, "Dil net kesit çekmesi")
+        wn = geom.tang_width_m - d
+        stresses["tang_tension"] = (pull / (wn * tt) + 6.0 * np.abs(Mt) / (wn * tt * tt), allow.tang_tension_pa,
+                                    "Dil net kesit çekmesi + eğilme")
     if geom.tang_edge_m is not None:
         stresses["tang_shear_out"] = (pull / (2.0 * (geom.tang_edge_m - d / 2) * tt), allow.tang_shear_pa,
                                       "Dil kenar yırtılması (shear-out)")
     t = None if time_s is None else np.asarray(time_s)
+    source = (allow.source or "").strip()
     rows = []
     for key, (sig, allowable, label) in stresses.items():
         j = int(np.argmax(sig))
+        verdict = bool(allowable) and bool(source)     # an unsourced allowable gives no margin or verdict
         rows.append({"key": key, "label": label, "peak_pa": float(sig[j]),
                      "time_s": None if t is None else float(t[j]), "allowable_pa": allowable,
-                     "margin": None if not allowable else float(allowable / max(sig[j], 1e-30) - 1.0),
-                     "status": "girdi gerekli" if not allowable else ("yeterli" if sig[j] <= allowable else "yetersiz")})
+                     "margin": float(allowable / max(sig[j], 1e-30) - 1.0) if verdict else None,
+                     "status": ("girdi gerekli" if not allowable else "girdi gerekli (kaynak)" if not source
+                                else "yeterli" if sig[j] <= allowable else "yetersiz")})
     missing = [k for k, v in (("tang_width_m", geom.tang_width_m), ("tang_edge_m", geom.tang_edge_m)) if v is None]
-    return {"rows": rows, "plate_force_n": plate.tolist(), "plate_spacing_m": s,
+    return {"rows": rows, "allowable_source": source, "plate_force_n": plate.tolist(), "plate_spacing_m": s,
             "pin_axial_force_n": np.asarray(loads.get("V_axial", np.zeros_like(N))).tolist(),
             "unavailable_checks": missing,
             "scope": ("Ön analitik tahmin: el formülleri, gerilme yığılması, geçme, yorulma ve baskı malzemesinin "
