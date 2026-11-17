@@ -338,6 +338,16 @@ def test_per_blade_time_figure_has_one_legend_entry_per_channel(run):
     assert len(shown) == len(set(shown))
 
 
+def test_legend_rows_do_not_squeeze_the_hinge_moment_plot(run):
+    from pyfoldable.application import figure_style
+    row = _row(run)
+    channels = (("hinge_aero_torque_nm", "Aerodinamik"), ("hinge_law_torque_nm", "Yay+sönüm+stop"))
+    fig = figure_style.apply(views.time_figure(row, channels, "M [N·m]", per_blade=True))
+    assert any(len(t.name or "") > 22 for t in fig.data if t.showlegend is not False)  # apply picks one column
+    plot = fig.layout.height - fig.layout.margin.t - fig.layout.margin.b
+    assert plot >= 300 - 24 - figure_style._AXIS_MARGIN_PX  # the nominal 300 px figure's plot area
+
+
 def test_radial_figure_draws_every_blade(run):
     row = _row(run)
     rows = views.radial_rows(row, 13)

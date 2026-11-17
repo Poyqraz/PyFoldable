@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import asdict
 import json
 import math
+import os
 from pathlib import Path
 import re
 
@@ -188,8 +189,7 @@ def render_analysis(active, family, readiness_status, repository, root: Path):
                "Aerodinamik yükler BEM ile aynı saklanan polar sürümünden DUST kaldırma çizgisiyle hesaplanır. "
                "CFD, FEA, eklem dayanımı veya yorulma değildir.")
     # Before every early return: a fragment not called in a full run stops, and with it progress and 'Durdur'.
-    if st.session_state.get(RUN):
-        _progress()
+    monitor(show_failure=True)
     ready = readiness_cached()
     if ready.status != "ready":
         st.info(ready.message)
@@ -203,7 +203,7 @@ def render_analysis(active, family, readiness_status, repository, root: Path):
     ctrl = _controls_inputs()
     token = _token(active, family, mech, ctrl)
     run_state = st.session_state.get(RUN)
-    if run_state is not None and run_state["token"] != token and svc.poll(Path(run_state["run_dir"])).get("state") not in ("queued", "running"):
+    if run_state is not None and run_state["token"] != token and _poll(Path(run_state["run_dir"])).get("state") not in ("queued", "running"):
         st.session_state.pop(RUN, None)
         run_state = None
     if family is None or readiness_status != "ready":
@@ -251,26 +251,65 @@ def render_analysis(active, family, readiness_status, repository, root: Path):
                    "durur ve kabul edilen önek kısmi geçmiş olarak saklanır.")
     if mech.declaration_kind == "demonstration_assumption":
         st.caption("Mekanik değerler gösterim varsayımıdır; sonuç ölçülmüş donanımı temsil etmez.")
-    busy = run_state is not None and svc.poll(Path(run_state["run_dir"])).get("state") in ("queued", "running")
+    busy = run_state is not None and _poll(Path(run_state["run_dir"])).get("state") in ("queued", "running")
     if st.button("Dinamik analizi başlat", type="primary", key="coupled_start", disabled=busy):
         run = svc.start_run(prep, root)
         st.session_state[RUN] = {"run_dir": str(run), "token": token}
         st.rerun()
 
 
+def _alive(pid) -> bool:
+    """Whether the supervisor process named in status.json still exists.
+    shortcut: a missing pid (queued, supervisor not started yet) counts as alive and a recycled pid after a reboot
+    as alive; 'İzlemeyi bırak' clears such a monitor. Windows os.kill(pid, 0) would terminate the process, so no probe there."""
+    if pid is None or os.name != "posix":
+        return True
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _poll(run: Path) -> dict:
+    """svc.poll, but a queued/running run whose supervisor is gone (killed, out of memory, reboot) reads as interrupted."""
+    status = svc.poll(run)
+    if status.get("state") in ("queued", "running") and not _alive(status.get("supervisor_pid")):
+        return {**status, "state": "interrupted", "message": "denetleyici süreç artık çalışmıyor, çalıştırma yarıda kaldı"}
+    return status
+
+
+def monitor(*, show_failure=False):
+    """Progress, 'Durdur' and loading of the attached run. A run that ended without a result is reported on Analiz
+    only (show_failure), not under every record; a finished, handled run stops the 2 s fragment on other pages."""
+    run_state = st.session_state.get(RUN)
+    if not run_state:
+        return
+    if not show_failure:
+        status = _poll(Path(run_state["run_dir"]))
+        if status.get("state") not in ("queued", "running") and (run_state.get("loaded") or not status.get("result_available")):
+            return
+    _progress(show_failure)
+
+
 @st.fragment(run_every=2.0)
-def _progress():
+def _progress(show_failure=True):
     run_state = st.session_state.get(RUN)
     if not run_state:
         return
     run = Path(run_state["run_dir"])
-    status = svc.poll(run)
+    status = _poll(run)
     state = status.get("state", "unknown")
     n, k = status.get("n_windows") or 1, status.get("windows_accepted") or 0
     if state in ("queued", "running"):
         st.progress(min(1.0, k / n), text=f"Çalışıyor · {k}/{n} pencere · {status.get('elapsed_s', 0)} s · aşama {status.get('phase', '…')}")
-        if st.button("Durdur", key="coupled_cancel"):
+        a, b = st.columns(2)
+        if a.button("Durdur", key="coupled_cancel"):
             svc.cancel(run)
+        b.button("İzlemeyi bırak", key="coupled_detach", on_click=st.session_state.pop, args=(RUN, None),
+                 help="Çalıştırma sürer; ilerleme bu oturumda artık gösterilmez. Kayıtlar sayfasından yeniden izlenebilir.")
         return
     if status.get("result_available") and not run_state.get("loaded"):
         try:
@@ -285,7 +324,7 @@ def _progress():
         st.session_state["_research_next_page"] = "Sonuçlar"
         st.session_state["research_results_kind"] = "Dinamik bağlaşık"
         st.rerun(scope="app")
-    elif not status.get("result_available"):
+    elif not status.get("result_available") and show_failure:
         st.error(f"Çalıştırma {state} durumunda sonuçsuz bitti: {status.get('message', '')}. Ham çıktılar: {run}")
 
 
@@ -421,8 +460,6 @@ def render_result(row, *, imported=False, root: Path | None = None):
         st.warning("Kaydın kendi sayısal denetimlerinden geçmeyenler: "
                    + "; ".join(f"{c['name']} = {_num(c['value'])} (sınır {_num(c['limit'])})" for c in failed)
                    + ". Ayrıntı: Teknik ayrıntılar.")
-    if st.session_state.get(RUN):
-        _progress()
     st.markdown(f"**{i['profile']} · {_fmt(i['rpm'], 0)} RPM · {_fmt(i['inflow_m_s'], 2)} m/s · dinamik bağlaşık analiz**")
     if imported:
         st.caption("Dosyadan açılan kayıt · çözücü yeniden çalıştırılmadı; iç tutarlılık denetlendi.")
@@ -790,13 +827,16 @@ def render_history(root: Path | None = None):
     st.markdown("**Dinamik bağlaşık sonuçlar (zamana bağlı DUST–MBDyn–preCICE)**")
     summaries = svc.local_run_summaries(root) if root is not None else []
     for r in summaries:
-        if r["state"] in ("queued", "running"):  # detached supervisors survive reloads; RUN lives only in the session
-            st.caption(f"Süren çalıştırma: {r['profile']} · {r['started'][:16].replace('T', ' ')} · "
-                       f"{r['windows'] or 0}/{r['planned'] or '?'} pencere")
-            st.button("İlerlemeyi göster / durdur", key="coupled_attach_" + r["run_id"], on_click=_attach,
-                      args=(str(svc.runs_root(root) / r["run_id"]),))
-    if st.session_state.get(RUN):
-        _progress()
+        if r["state"] not in ("queued", "running"):  # detached supervisors survive reloads; RUN lives only in the session
+            continue
+        run_dir = svc.runs_root(root) / r["run_id"]
+        line = f"{r['profile']} · {r['started'][:16].replace('T', ' ')} · {r['windows'] or 0}/{r['planned'] or '?'} pencere"
+        if _poll(run_dir).get("state") == "interrupted":
+            st.caption(f"Yarıda kaldı (denetleyici süreç yok, sonuç yazılmadı): {line} · ham çıktılar: {run_dir}")
+            continue
+        st.caption("Süren çalıştırma: " + line)
+        st.button("İlerlemeyi göster / durdur", key="coupled_attach_" + r["run_id"], on_click=_attach, args=(str(run_dir),))
+    monitor()
     local = [r for r in summaries if r["result_available"]]
     if local:
         rui = _rui()

@@ -428,12 +428,85 @@ def test_exports_are_built_only_on_request_and_kept_for_the_record(tmp_path, mon
     assert not at.exception and calls == [1]
 
 
-def _running_run(path):
+def _running_run(path, state="running", pid=None):
+    """A run folder whose status.json names a live supervisor (this test process) unless ``pid`` says otherwise."""
+    import os
     path.mkdir(parents=True)
-    (path / "status.json").write_text(json.dumps({"state": "running", "n_windows": 10, "windows_accepted": 3,
-                                                  "phase": "coupling", "started": "2026-11-17T10:00:00+0300"}))
+    (path / "status.json").write_text(json.dumps({"state": state, "n_windows": 10, "windows_accepted": 3,
+                                                  "phase": "coupling", "started": "2026-11-17T10:00:00+0300",
+                                                  "supervisor_pid": os.getpid() if pid is None else pid,
+                                                  "message": "DUST ön işlemcisi başarısız oldu."}))
     (path / "request.json").write_text("{}")
     return path
+
+
+def _dead_pid():
+    import subprocess
+    p = subprocess.Popen([sys.executable, "-c", "pass"])
+    p.wait()
+    return p.pid
+
+
+def test_failed_run_error_stays_on_analysis_and_not_under_other_records(tmp_path, monkeypatch):
+    row = _record(tmp_path, FIXTURE_RBF)
+    at = _open_record(tmp_path, monkeypatch, row)
+    run = _running_run(tmp_path / "runs" / "20261117T100000_failed", state="failed")
+    at.session_state["_coupled_run"] = {"run_dir": str(run), "token": None}
+    at.run()
+    assert not at.exception
+    assert not any("sonuçsuz bitti" in e.value for e in at.error)
+    go(at, "Karşılaştırma / kayıtlar")
+    assert not any("sonuçsuz bitti" in e.value for e in at.error)
+
+
+def test_run_whose_supervisor_is_gone_is_not_offered_as_running(tmp_path, monkeypatch):
+    store(tmp_path, monkeypatch, PROJECT_AIRFOIL_IDS)
+    bem(monkeypatch)
+    _no_toolchain(monkeypatch, tmp_path)
+    _forbid_runs(monkeypatch)
+    runs = tmp_path / "runs"
+    run = _running_run(runs / "20261117T100000_dead", pid=_dead_pid())
+    monkeypatch.setenv("PYFOLDABLE_COUPLED_RUNS", str(runs))
+    at = go(app(), "Karşılaştırma / kayıtlar")
+    assert not any(b.key == "coupled_attach_20261117T100000_dead" for b in at.button)
+    assert any("yarıda kaldı" in c.value.lower() for c in at.caption)
+    at.session_state["_coupled_run"] = {"run_dir": str(run), "token": None}  # attached earlier in the session
+    at.run()
+    assert not at.exception and not any(b.key == "coupled_cancel" for b in at.button)
+
+
+def test_monitor_of_a_running_run_can_be_detached(tmp_path, monkeypatch):
+    store(tmp_path, monkeypatch, PROJECT_AIRFOIL_IDS)
+    bem(monkeypatch)
+    _no_toolchain(monkeypatch, tmp_path)
+    _forbid_runs(monkeypatch)
+    runs = tmp_path / "runs"
+    _running_run(runs / "20261117T100000_running")
+    monkeypatch.setenv("PYFOLDABLE_COUPLED_RUNS", str(runs))
+    at = go(app(), "Karşılaştırma / kayıtlar")
+    at.button(key="coupled_attach_20261117T100000_running").click().run()
+    at.button(key="coupled_detach").click().run()
+    assert not at.exception and "_coupled_run" not in at.session_state
+    assert not any(b.key == "coupled_cancel" for b in at.button)
+
+
+@pytest.mark.parametrize("with_record", [False, True], ids=["first_run", "bem_kind"])
+def test_results_page_shows_progress_and_cancel_of_a_running_run(tmp_path, monkeypatch, with_record):
+    if with_record:
+        at = _open_record(tmp_path, monkeypatch, _record(tmp_path, FIXTURE_RBF))
+        at.radio(key="research_results_kind").set_value(at.radio(key="research_results_kind").options[0]).run()
+    else:
+        store(tmp_path, monkeypatch, PROJECT_AIRFOIL_IDS)
+        bem(monkeypatch)
+        _no_toolchain(monkeypatch, tmp_path)
+        _forbid_runs(monkeypatch)
+        at = go(app(), "Sonuçlar")
+    run = _running_run(tmp_path / "runs" / "20261117T100000_running")
+    at.session_state["_coupled_run"] = {"run_dir": str(run), "token": "inputs"}
+    at.run()
+    assert not at.exception
+    at.button(key="coupled_cancel").click().run()
+    assert not at.exception and (run / "cancel.request").is_file()
 
 
 def test_progress_and_cancel_stay_while_preparation_fails(tmp_path, monkeypatch):

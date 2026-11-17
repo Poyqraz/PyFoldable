@@ -1012,6 +1012,7 @@ def render_research(root: Path):
         _invalidate_coupled(active, repository)
     elif page == "Sonuçlar":
         from . import coupled_ui, fold_cycle_ui
+        coupled_ui.monitor()  # a running coupled job keeps its progress and 'Durdur' on every result kind
         kinds = (_BEM_KIND, "Dinamik bağlaşık", fold_cycle_ui.KIND)
         offered = tuple(k for k, on in zip(kinds, (True, bool(coupled_ui.retained()), fold_cycle_ui.active_row() is not None)) if on)
         if st.session_state.get(_KIND) not in offered:

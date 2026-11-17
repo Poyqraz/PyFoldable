@@ -28,9 +28,11 @@ _INVALID = " (kapsam/yakınsama dışı)"
 
 def _legend_px(fig):
     """figure_style.apply grows the bottom margin per legend row; the height grows too so the plot keeps its size.
-    shortcut: assumes two legend columns (apply may choose 1 or 3); measure if plots still squeeze."""
-    entries = sum(t.showlegend is not False for t in fig.data)
-    return 22 * math.ceil(entries / 2) if entries > 1 else 0
+    apply runs on data-free copies of the traces, so the row count follows its own column rule."""
+    probe = go.Figure([type(t)(name=t.name, showlegend=t.showlegend, visible=t.visible) for t in fig.data],
+                      layout=dict(showlegend=fig.layout.showlegend))
+    b = fs.apply(probe).layout.margin.b
+    return 0 if b is None else b - fs._AXIS_MARGIN_PX
 
 
 def _layout(fig, title_y, height=300):
