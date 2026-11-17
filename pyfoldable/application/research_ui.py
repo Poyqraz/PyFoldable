@@ -598,7 +598,7 @@ def _capability_panel(active, family, readiness, repository):
     st.dataframe([
         {"Yöntem": "Kararlı BEM (tam açık, hızlı)", "Durum": bem[0], "Sonraki adım": bem[1]},
         {"Yöntem": "Tam açılma–kapanma çevrimi (mekanik dinamik, açık aero modeli)", "Durum": "Hazır (keşif varsayımlarıyla)",
-         "Sonraki adım": "Aşağıda mekanizma yapılandırmasını seçin, “Çevrimi çalıştır” · ≈ 10–40 s; bağlantı kuvvet ve momentleri."},
+         "Sonraki adım": "Aşağıda mekanizma yapılandırmasını seçin, “Çevrimi çalıştır” · süre çevrim süresiyle artar; bağlantı kuvvet ve momentleri."},
         {"Yöntem": "Zamana bağlı dinamik analiz (katlanma, açılma, iz)", "Durum": dyn[0], "Sonraki adım": dyn[1]},
     ], hide_index=True, **figure_style.dataframe_width_kwargs())
     st.caption("Kararlı BEM tek bir açık konum ve sabit devir için çözer; katlanma, açılma ve zamanla değişen yük, "

@@ -14,8 +14,9 @@ from plotly.subplots import make_subplots
 from pyfoldable.visualization import blade_surface as bs
 
 from . import blade_views as bv
+from . import figure_style as fs
 
-LOADS = {"N_tension": ("Eksenel çekme N", "N"), "V_inplane": ("Düzlem içi kesme V_t", "N"), "V_axial": ("Pim yönü kesme V_z", "N"),
+LOADS ={"N_tension": ("Eksenel çekme N", "N"), "V_inplane": ("Düzlem içi kesme V_t", "N"), "V_axial": ("Pim yönü kesme V_z", "N"),
          "M_pin": ("Pim ekseni momenti M_z", "N·m"), "M_bending": ("Eğilme momenti M_t", "N·m"), "M_torsion": ("Burulma momenti M_s", "N·m")}
 CONTRIB_LABEL = {"shaft_centripetal": "Mil dönüşü (merkezcil)", "shaft_euler": "Mil ivmesi (Euler)",
                  "fold_motion": "Katlanma hareketi (θ̈, θ̇², Coriolis)", "aerodynamic": "Aerodinamik (dış parça)",
@@ -25,6 +26,40 @@ ELEMENT_LABEL = {"spring": "Geri dönüş yayı", "damper": "Sönümleyici", "fr
 FRAMES = {"lab": "Sabit (laboratuvar)", "rotor": "Rotorla birlikte", "hinge": "Menteşe yakın görünüm (rotorla)"}
 _CACHE: dict = {}                    # arrays of the most recent record
 _MESH: dict = {}
+_TIMELINE: dict = {}                 # timeline of the most recent (record, blade); only the cursor moves
+_PLAYBACK: dict = {}
+
+
+def unit_of(key):
+    return LOADS[key][1]
+
+
+def _blade(a, name, blade):
+    """One blade's column of a series stored for blade 1. Such series exist per blade (``_by_blade``) only with in-plane
+    gravity; otherwise the blades are identical and blade 1 stands for every blade."""
+    by = a.get(f"{name}_by_blade")
+    return by[:, blade] if by is not None else a[name]
+
+
+def _total(t, y, name):
+    # thin dashed high-contrast line on top: a contribution equal to the total stays visible underneath
+    return go.Scatter(x=t, y=y, name=name, line=dict(color=fs.TEXT, width=1.5, dash="dash"))
+
+
+def _operating_range(row, a, ys, blade):
+    """y-range from the 1–99 % quantiles in the operating (hold) phase outside the blade's stop contacts, so a short
+    impact does not flatten the operating loads; None when that window is empty."""
+    t, s = a["time_s"], row["case"]["schedule"]
+    t2 = s["rest_s"] + s["spinup_s"]
+    keep = (t >= t2) & (t <= t2 + s["hold_s"]) if s["hold_s"] > 0 else np.ones(len(t), bool)
+    for c in row["contacts"]:
+        if c["blade"] == blade:
+            keep &= (t < c["t_in_s"]) | (t > c["t_out_s"])
+    if keep.sum() < 2:
+        return None
+    lo, hi = np.quantile(np.concatenate([y[keep] for y in ys]), [0.01, 0.99])
+    pad = 0.1 * (hi - lo) or 0.1 * max(abs(lo), 1e-9)
+    return [float(lo - pad), float(hi + pad)]
 
 
 def spec_payload(spec: bs.BladeSpec) -> dict:
@@ -147,37 +182,73 @@ def scene_figure(row, spec, i, frame="rotor", ghosts=True, height=560):
     return fig
 
 
-def _events_lines(fig, row, rows):
-    for e in row["events"]:
-        for r in rows:
-            fig.add_vline(x=e["time_s"], line=dict(color="rgba(107,114,128,.5)", width=1, dash="dot"), row=r, col=1)
-    for e in row["events"]:
-        fig.add_annotation(x=e["time_s"], y=1.0, yref="paper", text=e["label"].split(" (")[0], showarrow=False, textangle=-90,
-                           font=dict(size=9, color="#6b7280"), xanchor="right", yanchor="top")
+def events_of(row, blade=0):
+    """Events of one blade; with in-plane gravity every blade has its own list, otherwise blade 1 stands for all."""
+    by = row.get("events_by_blade")
+    return by[blade] if by else row["events"]
+
+
+def event_clusters(events, span):
+    """Events within 1 % of the time span of a cluster's first event share one numbered marker."""
+    out = []
+    for e in sorted(events, key=lambda e: e["time_s"]):
+        if out and e["time_s"] - out[-1][0]["time_s"] <= 0.01 * span:
+            out[-1].append(e)
+        else:
+            out.append([e])
+    return out
+
+
+def _vline(fig, x, line):
+    # one line across every shared-x row (a shape per row and event made the figure slow to build and send)
+    fig.add_shape(type="line", xref="x", yref="paper", x0=x, x1=x, y0=0, y1=1, line=line)
 
 
 def timeline_figure(row, i, blade=0, height=900):
+    """Built once per (record, blade); later calls move only the cursor (the last shape)."""
     a = arrays(row)
     t = a["time_s"]
+    key = (row["result_sha256"], blade, height)
+    if key not in _TIMELINE:
+        _TIMELINE.clear()
+        _TIMELINE[key] = _timeline(row, a, blade, height)
+    fig = _TIMELINE[key]
+    fig.layout.shapes[-1].update(x0=float(t[i]), x1=float(t[i]))
+    return fig
+
+
+def _timeline(row, a, blade, height):
+    t = a["time_s"]
     fig = make_subplots(rows=5, cols=1, shared_xaxes=True, vertical_spacing=0.025,
-                        specs=[[{"secondary_y": True}]] + [[{}]] * 4,
+                        specs=[[{"secondary_y": True}], [{"secondary_y": True}], [{}], [{}], [{"secondary_y": True}]],
                         subplot_titles=("Katlanma açısı θ ve mil devri", "Açısal hız θ̇ ve ivme θ̈", "Bağlantı kuvvetleri (dış parçaya)",
                                         "Bağlantı momentleri (dil orta düzlemi)", "Dış parça itkisi ve menteşe ekseni aero momenti"))
-    fig.add_trace(go.Scatter(x=t, y=a["theta_deg"][:, blade], name="θ [°]", line=dict(color="#0b6170")), 1, 1)
-    fig.add_trace(go.Scatter(x=t, y=a["rpm"], name="Devir [RPM]", line=dict(color="#9ca3af", dash="dash")), 1, 1, secondary_y=True)
-    fig.add_trace(go.Scatter(x=t, y=a["theta_rate_rad_s"][:, blade], name="θ̇ [rad/s]"), 2, 1)
-    fig.add_trace(go.Scatter(x=t, y=a["theta_acc_rad_s2"][:, blade] / 100.0, name="θ̈ / 100 [rad/s²]", line=dict(dash="dot")), 2, 1)
+    th = a["theta_deg"][:, blade]
+    fig.add_trace(go.Scatter(x=t, y=th, name="θ", line=dict(color=fs.SERIES[0])), 1, 1)
+    fig.add_trace(go.Scatter(x=t, y=a["rpm"], name="Devir", line=dict(color=fs.CONSTRUCTION, dash="dash")), 1, 1, secondary_y=True)
+    fig.add_trace(go.Scatter(x=t, y=a["theta_rate_rad_s"][:, blade], name="θ̇"), 2, 1)
+    fig.add_trace(go.Scatter(x=t, y=a["theta_acc_rad_s2"][:, blade], name="θ̈", line=dict(dash="dot")), 2, 1, secondary_y=True)
     for k in ("N_tension", "V_inplane", "V_axial"):
-        fig.add_trace(go.Scatter(x=t, y=a[f"load_{k}"][:, blade], name=f"{LOADS[k][0]} [N]"), 3, 1)
+        fig.add_trace(go.Scatter(x=t, y=a[f"load_{k}"][:, blade], name=LOADS[k][0]), 3, 1)
     for k in ("M_pin", "M_bending", "M_torsion"):
-        fig.add_trace(go.Scatter(x=t, y=a[f"load_{k}"][:, blade], name=f"{LOADS[k][0]} [N·m]"), 4, 1)
-    fig.add_trace(go.Scatter(x=t, y=a["aero_thrust_n"][:, blade], name="Dış parça itkisi [N]"), 5, 1)
-    fig.add_trace(go.Scatter(x=t, y=a["aero_pin_torque_nm"][:, blade], name="Aero pim momenti [N·m]"), 5, 1)
-    _events_lines(fig, row, range(1, 6))
-    for r in range(1, 6):
-        fig.add_vline(x=float(t[i]), line=dict(color="#d62728", width=2), row=r, col=1)
-    fig.update_layout(height=height, margin=dict(l=10, r=10, t=40, b=10), legend=dict(orientation="h", y=-0.05),
-                      hovermode="x unified")
+        fig.add_trace(go.Scatter(x=t, y=a[f"load_{k}"][:, blade], name=LOADS[k][0]), 4, 1)
+    fig.add_trace(go.Scatter(x=t, y=a["aero_thrust_n"][:, blade], name="Dış parça itkisi"), 5, 1)
+    fig.add_trace(go.Scatter(x=t, y=a["aero_pin_torque_nm"][:, blade], name="Aero pim momenti", line=dict(dash="dot")),
+                  5, 1, secondary_y=True)
+    groups = event_clusters(events_of(row, blade), float(t[-1] - t[0]))
+    for g in groups:
+        _vline(fig, g[0]["time_s"], dict(color="rgba(154,167,180,.5)", width=1, dash="dot"))
+    fig.add_trace(go.Scatter(x=[g[0]["time_s"] for g in groups], y=[float(th[g[0]["index"]]) for g in groups],
+                             mode="markers+text", text=[str(n) for n in range(1, len(groups) + 1)], textposition="top center",
+                             customdata=[len(g) for g in groups], marker=dict(size=8, color=fs.CONSTRUCTION), name="Olaylar",
+                             hovertext=["<br>".join(f"{n}. {e['label']} · {e['time_s']:.4f} s" for e in g)
+                                        for n, g in enumerate(groups, start=1)], hoverinfo="text"), 1, 1)
+    _vline(fig, float(t[0]), dict(color="#d62728", width=2))          # cursor, moved by timeline_figure
+    for r, sec, title in ((1, False, "θ [°]"), (1, True, "Devir [RPM]"), (2, False, "θ̇ [rad/s]"), (2, True, "θ̈ [rad/s²]"),
+                          (3, False, "Kuvvet [N]"), (4, False, "Moment [N·m]"), (5, False, "İtki [N]"),
+                          (5, True, "Aero pim momenti [N·m]")):
+        fig.update_yaxes(title_text=title, row=r, col=1, secondary_y=sec)
+    fig.update_layout(height=height, margin=dict(l=10, r=10, t=40, b=10), hovermode="x unified")
     fig.update_xaxes(title_text="Zaman [s]", row=5, col=1)
     return fig
 
@@ -194,55 +265,69 @@ def angle_figure(row, key, blade=0):
     return fig
 
 
-def contribution_figure(row, key, i):
-    a = arrays(row)
+def _parts_figure(row, a, parts, total, i, blade, focus, total_name):
     t = a["time_s"]
+    parts = [(label, y) for label, y in parts if np.abs(y).max() > 0]
     fig = go.Figure()
-    for c, label in CONTRIB_LABEL.items():
-        k = f"contrib_{c}_{key}"
-        if k in a and np.abs(a[k]).max() > 0:
-            fig.add_trace(go.Scatter(x=t, y=a[k], name=label))
-    fig.add_trace(go.Scatter(x=t, y=a[f"load_{key}"][:, 0], name="Toplam (bağlantıdan geçen)", line=dict(color="#9ca3af", width=3)))
-    fig.add_vline(x=float(t[i]), line=dict(color="#d62728", width=2))
-    fig.update_layout(height=380, margin=dict(l=10, r=10, t=30, b=10), xaxis_title="Zaman [s]",
-                      yaxis_title=f"{LOADS[key][0]} [{LOADS[key][1]}]", title=dict(text="Katkılar (açıklayıcı ayrıştırma; toplam bağlantı yüküdür)", font=dict(size=13)),
-                      legend=dict(orientation="h", y=-0.25))
-    return fig
-
-
-def element_figure(row, i):
-    a = arrays(row)
-    t = a["time_s"]
-    fig = go.Figure()
-    for k, label in ELEMENT_LABEL.items():
-        y = a[f"hinge_{k}_nm"][:, 0]
-        if np.abs(y).max() > 0:
+    if len(parts) == 1:          # the only contribution is the total: one trace and a note instead of two identical lines
+        fig.add_annotation(text=f"Tek katkı: {parts[0][0]} (toplamın kendisi)", xref="paper", yref="paper", x=0.01, y=0.99,
+                           xanchor="left", yanchor="top", showarrow=False, font=dict(size=11))
+    else:
+        for label, y in parts:
             fig.add_trace(go.Scatter(x=t, y=y, name=label))
-    fig.add_trace(go.Scatter(x=t, y=a["load_M_pin"][:, 0], name="Pim ekseni momenti (toplam)", line=dict(color="#9ca3af", width=3, dash="dot")))
+    fig.add_trace(_total(t, total, total_name))
     fig.add_vline(x=float(t[i]), line=dict(color="#d62728", width=2))
-    fig.update_layout(height=360, margin=dict(l=10, r=10, t=30, b=10), xaxis_title="Zaman [s]", yaxis_title="Moment [N·m]",
-                      title=dict(text="Pim ekseni momentini taşıyan menteşe elemanları", font=dict(size=13)),
-                      legend=dict(orientation="h", y=-0.25))
+    if focus == "operating" and (rng := _operating_range(row, a, [total, *(y for _, y in parts)], blade)):
+        fig.update_yaxes(range=rng)
     return fig
 
 
-def energy_figure(row):
+def contribution_figure(row, key, i, blade=0, focus="whole"):
+    a = arrays(row)
+    parts = [(label, _blade(a, f"contrib_{c}_{key}", blade)) for c, label in CONTRIB_LABEL.items() if f"contrib_{c}_{key}" in a]
+    fig = _parts_figure(row, a, parts, a[f"load_{key}"][:, blade], i, blade, focus, "Toplam (bağlantıdan geçen)")
+    fig.update_layout(height=380, margin=dict(l=10, r=10, t=30, b=10), xaxis_title="Zaman [s]",
+                      yaxis_title=f"{LOADS[key][0]} [{LOADS[key][1]}]",
+                      title=dict(text="Katkılar (açıklayıcı ayrıştırma; toplam bağlantı yüküdür)", font=dict(size=13)))
+    return fig
+
+
+def element_figure(row, i, blade=0, focus="whole"):
+    a = arrays(row)
+    parts = [(label, a[f"hinge_{k}_nm"][:, blade]) for k, label in ELEMENT_LABEL.items()]
+    fig = _parts_figure(row, a, parts, a["load_M_pin"][:, blade], i, blade, focus, "Pim ekseni momenti (toplam)")
+    fig.update_layout(height=360, margin=dict(l=10, r=10, t=30, b=10), xaxis_title="Zaman [s]", yaxis_title="Moment [N·m]",
+                      title=dict(text="Pim ekseni momentini taşıyan menteşe elemanları", font=dict(size=13)))
+    return fig
+
+
+def energy_figure(row, blade=0):
     a = arrays(row)
     t = a["time_s"]
+    col = lambda k: _blade(a, k, blade)  # noqa: E731
     fig = go.Figure()
     for k, label in (("work_drive_j", "Mil işi (bağlantı üzerinden)"), ("work_aero_j", "Aerodinamik iş"), ("work_gravity_j", "Yerçekimi işi"),
                      ("work_actuator_j", "Aktüatör işi"), ("work_dissipated_j", "Sönümlenen enerji")):
-        if k in a and np.abs(a[k]).max() > 0:
-            fig.add_trace(go.Scatter(x=t, y=a[k], name=label))
-    fig.add_trace(go.Scatter(x=t, y=a["kinetic_j"] - a["kinetic_j"][0], name="Kinetik enerji değişimi"))
-    fig.add_trace(go.Scatter(x=t, y=a["potential_j"] - a["potential_j"][0], name="Yay/stop enerjisi değişimi"))
-    fig.add_trace(go.Scatter(x=t, y=a["energy_residual_j"], name="Denge artığı", line=dict(color="#d62728", dash="dot")))
-    fig.update_layout(height=380, margin=dict(l=10, r=10, t=30, b=10), xaxis_title="Zaman [s]", yaxis_title="Enerji [J] (kanat 1 dış parça)",
-                      legend=dict(orientation="h", y=-0.25))
+        if k in a and np.abs(col(k)).max() > 0:
+            fig.add_trace(go.Scatter(x=t, y=col(k), name=label))
+    fig.add_trace(go.Scatter(x=t, y=col("kinetic_j") - col("kinetic_j")[0], name="Kinetik enerji değişimi"))
+    fig.add_trace(go.Scatter(x=t, y=col("potential_j") - col("potential_j")[0], name="Yay/stop enerjisi değişimi"))
+    fig.add_trace(go.Scatter(x=t, y=col("energy_residual_j"), name="Denge artığı", line=dict(color="#d62728", dash="dot")))
+    fig.update_layout(height=380, margin=dict(l=10, r=10, t=30, b=10), xaxis_title="Zaman [s]",
+                      yaxis_title=f"Enerji [J] (kanat {blade + 1} dış parça)")
     return fig
 
 
 def playback(row, spec, frame="rotor", n_frames=80):
+    """Built once per (record, frame, frame count)."""
+    key = (row["result_sha256"], frame, n_frames, spec)
+    if key not in _PLAYBACK:
+        _PLAYBACK.clear()
+        _PLAYBACK[key] = _playback(row, spec, frame, n_frames)
+    return _PLAYBACK[key]
+
+
+def _playback(row, spec, frame, n_frames):
     a = arrays(row)
     t = a["time_s"]
     mesh = mesh_for(spec)
@@ -254,7 +339,7 @@ def playback(row, spec, frame="rotor", n_frames=80):
         psi = float(a["psi_rad"][j])
         thetas = [math.radians(x) for x in a["theta_deg"][j]]
         L = {k: float(a[f"load_{k}"][j][0]) for k in LOADS}
-        frames.append({"name": str(j), "label": f"{t[j]:.3f} s".replace(".", ","), "psi": psi, "field": None,
+        frames.append({"name": str(j), "label": f"{t[j]:.3f} s".replace(".", ","), "psi": psi, "field": None, "mesh_opacity": 0.45,
                        "transforms": transforms(spec, thetas, psi), "extra": arrow_traces(row, spec, j, frame),
                        "text": (f"Öngörülen hareket (mekanik model) · t = {t[j]:.4f} s · {a['rpm'][j]:.0f} RPM · θ = {math.degrees(thetas[0]):.1f}° · "
                                 f"θ̇ = {a['theta_rate_rad_s'][j][0]:.1f} rad/s · N = {L['N_tension']:.0f} N · V_t = {L['V_inplane']:.1f} N · "
@@ -270,11 +355,12 @@ def series_csv(row) -> str:
     keys = ["time_s", "rpm", "omega_dot_rad_s2"]
     per_blade = ["theta_deg", "theta_rate_rad_s", "theta_acc_rad_s2", "aero_thrust_n", "aero_pin_torque_nm", "drive_torque_nm",
                  *(f"load_{k}" for k in LOADS), *(f"hinge_{k}_nm" for k in ELEMENT_LABEL)]
+    blades = range(a["theta_deg"].shape[1])
     out = io.StringIO()
     w = csv.writer(out)
-    w.writerow(keys + [f"{k}_blade1" for k in per_blade] + ["F_x_n", "F_y_n", "F_z_n", "M_x_nm", "M_y_nm", "M_z_nm"])
+    w.writerow(keys + [f"{k}_blade{b + 1}" for k in per_blade for b in blades] + ["F_x_n", "F_y_n", "F_z_n", "M_x_nm", "M_y_nm", "M_z_nm"])
     for j in range(len(a["time_s"])):
-        w.writerow([f"{a[k][j]:.7g}" for k in keys] + [f"{a[k][j][0]:.7g}" for k in per_blade]
+        w.writerow([f"{a[k][j]:.7g}" for k in keys] + [f"{a[k][j][b]:.7g}" for k in per_blade for b in blades]
                    + [f"{x:.7g}" for x in a["F_global_n"][j]] + [f"{x:.7g}" for x in a["M_global_nm"][j]])
     return out.getvalue()
 
@@ -308,6 +394,6 @@ def coupled_figure(comp, row, blade=0):
     contact = [i for i, c in enumerate(comp["contact_active"]) if c[blade]]
     for i in contact:
         fig.add_vline(x=t[i], line=dict(color="rgba(245,158,11,.25)", width=2), row=2, col=1)
-    fig.update_layout(height=720, margin=dict(l=10, r=10, t=40, b=10), legend=dict(orientation="h", y=-0.06), hovermode="x unified")
+    fig.update_layout(height=720, margin=dict(l=10, r=10, t=40, b=10), hovermode="x unified")
     fig.update_xaxes(title_text="Zaman [s]", row=3, col=1)
     return fig
