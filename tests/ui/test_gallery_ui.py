@@ -3,6 +3,7 @@ import base64
 import shutil
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -69,8 +70,8 @@ def test_a_light_bem_card_builds_one_chart_on_click_and_names_its_source(bem_row
     assert not at.exception and len(charts(at)) == 1
     assert bem_row["result_sha256"][:8] in text(at) and "fiziksel yeterlilik yok" in text(at)
     assert "Kaynak yok" in text(at)                      # mechanism and overlay cards still say what they need
-    at.button(key="gallery_light_bem").click().run()     # light cards with a source: radial and slipstream
-    assert not at.exception and len(charts(at)) == 2
+    at.button(key="gallery_light_bem").click().run()     # light cards with a source: radial, field, link, slipstream
+    assert not at.exception and len(charts(at)) == 4
 
 
 def test_heavy_cards_wait_for_their_own_click(monkeypatch):
@@ -105,6 +106,56 @@ def test_archive_lists_exactly_the_reports_files_and_refuses_paths_outside():
     at.selectbox(key="gallery_archive_file").set_value("app_demo_20261116/03_bem_result_naca4415.jpg").run()
     at.button(key="gallery_build_archive_file").click().run()
     assert not at.exception and len(images(at)) == 1 and "ekran görüntüsü · belgeleme" in text(at)
+
+
+def test_archive_shows_text_evidence_by_content_and_refuses_binary():
+    capture = next((ROOT / "reports").rglob("capture-00/polar.bin"))      # a raw XFOIL capture: plain text
+    assert "XFOIL" in gallery_ui._archive_build({"file": capture})["text"]
+    packed = next(p for p in (ROOT / "reports").rglob("*") if p.suffix in (".gz", ".xz"))
+    with pytest.raises(ValueError, match="ikili"):
+        gallery_ui._archive_build({"file": packed})
+
+
+def test_design_section_names_the_selected_version_and_warns_for_a_test_fixture(monkeypatch):
+    fake = SimpleNamespace(stored_version=SimpleNamespace(version_label="test v1"), family_id="fixture:NACA2412",
+                           source_identity="inert unit-test fixture; seed 0", evidence_class="inert_fixture", requests=())
+    monkeypatch.setattr(gallery_ui.rui, "_families", lambda *a: {"f" * 64: fake})
+    at = section(app(), "Tasarım")
+    version = next(s for s in at.selectbox if str(s.key).startswith("gallery_design_version_"))
+    version.select_index(1).run()
+    assert not at.exception
+    assert "Test kaydı" in text(at) and "inert unit-test fixture" in text(at)
+    assert "XFOIL" not in text(at) and "Statik" not in text(at)    # nothing claimed that this version does not show
+
+
+def test_cycle_cards_follow_the_chosen_blade(monkeypatch):
+    seen = []
+    for name in ("timeline_figure", "angle_figure", "contribution_figure", "element_figure", "energy_figure"):
+        monkeypatch.setattr(gallery_ui.fcv, name, lambda *a, blade=0, **k: seen.append(blade))
+    for card in gallery_ui.CARDS:
+        if card["id"] in ("cycle_timeline", "cycle_angle", "cycle_contrib", "cycle_elements", "cycle_energy"):
+            card["build"]({"cycle": {}, "blade": 1})
+    assert seen == [1] * 5
+
+
+def test_result_cards_reuse_the_workspace_blade_and_radial_views(bem_row, tmp_path):
+    at = app()
+    at.session_state["research_saved_results"] = ((research.saved_result_json(bem_row), True),)
+    section(at, "BEM sonucu")
+    for card in ("bem_fields", "bem_radial_link", "bem_blade3d", "bem_rotation"):
+        at.button(key=f"gallery_build_{card}").click().run()
+        assert not at.exception
+    assert len(charts(at)) == 4 and "Görsel üretilemedi" not in text(at)
+    section(at, "Tasarım")
+    at.button(key="gallery_build_design_blade").click().run()
+    assert not at.exception and len(charts(at)) == 1 and "Görsel üretilemedi" not in text(at)
+    row = _coupled(tmp_path, "release_30w")
+    at.session_state["research_coupled_results"] = ((coupled_views.saved_json(row), True),)
+    section(at, "Dinamik bağlaşık")
+    for card in ("coupled_radial", "coupled_blade3d", "coupled_animation", "coupled_loads"):
+        at.button(key=f"gallery_build_{card}").click().run()
+        assert not at.exception
+    assert len(charts(at)) == 3 and "Bağlantı yükleri eki yok" in text(at)   # fixtures have no local run folder
 
 
 def _coupled(tmp_path, name):

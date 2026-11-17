@@ -19,7 +19,6 @@ LEGACY = "eski örnek boru hattı · sentetik fikstür · tasarım kanıtı değ
 SCREENSHOT = "ekran görüntüsü · belgeleme"
 _CACHE, _CACHE_MAX = "_gallery", 24
 _IMAGES = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
-_TEXT = {".md", ".txt", ".csv", ".toml", ".py", ".sh"}
 _MAX_FILE_BYTES = 8 * 2**20
 _CYCLE_SCOPE = "Öngörülen (dinamik) hareket, mekanik model varsayımlarıyla; yapısal gerilme çözülmedi."
 _COUPLED_SCOPE = "Kabul edilen MBDyn/DUST pencereleri; noktalı çizgiler geçerli önek dışıdır."
@@ -54,16 +53,67 @@ def _archive_build(ctx):
         if path.name.startswith("convergence_"):
             return gf.convergence_heatmap(doc)
         return gf.archived_json_figure(path) or {"json": doc}
-    if suffix in _TEXT:
-        return {"markdown" if suffix == ".md" else "text": path.read_text(encoding="utf-8", errors="replace")}
-    raise ValueError("Bu dosya türü galeride gösterilmez (ikili veri).")
+    data = path.read_bytes()       # by content: raw XFOIL captures (.bin, .dat, .log) are plain text
+    try:
+        text = None if b"\0" in data else data.decode("utf-8")
+    except UnicodeDecodeError:
+        text = None
+    if text is None:
+        raise ValueError("Bu dosya türü galeride gösterilmez (ikili veri).")
+    return {"markdown" if suffix == ".md" else "text": text}
 
 
 # ------------------------------------------------------------------------------------------------------- cards
+def _foil(active):
+    return next(f for f in active.design.airfoils if f.id == active.inputs.profile)
+
+
 def _airfoil(ctx):
     from . import research_views
-    active = ctx["active"]
-    return research_views.airfoil_figure(next(f for f in active.design.airfoils if f.id == active.inputs.profile))
+    return research_views.airfoil_figure(_foil(ctx["active"]))
+
+
+def _design_blade(ctx):
+    """Lofted blade at the requested fold pose, stopped at the last contact-free angle as on the Design tab."""
+    from . import blade_ui as bu
+    i = ctx["active"].inputs
+    spec = bu.bg.spec_from_active(ctx["active"], _foil(ctx["active"]))
+    rep, _ = bu.contacts_for(spec, max(-180.0, min(-0.01, i.stow_limit_deg)))
+    shown = rep.clamp(i.fold_deg)
+    return bu.bv.blade_figure(bu.mesh_for(spec), fold_deg=shown, contact_angle_deg=shown,
+                              contacts=rep if abs(shown - rep.interference_free_deg) < 0.05 else None)
+
+
+def _bem_fields(ctx):
+    from . import research_design as research, research_views
+    label, digits = rui._RADIAL_COLUMNS[ctx["field"]]
+    name, _, unit = label.partition(" [")
+    return research_views.radial_figure(research.radial_rows(ctx["row"]), ((ctx["field"], name, digits),),
+                                        unit.rstrip("]") or "boyutsuz")
+
+
+def _bem_blade(row):
+    """The Analysis blade view's default field (thrust per span) on the record's own reconstructed blade."""
+    from . import blade_ui as bu
+    return bu, bu.bg.spec_from_saved_research(row), bu.br.bem_fields(row)["dthrust_per_span"]
+
+
+def _bem_link(ctx):
+    bu, spec, f = _bem_blade(ctx["row"])
+    return bu.bv.radial_link_figure(f, hinge_radius_m=spec.hinge_radius_m)
+
+
+def _bem_blade3d(ctx):
+    bu, spec, f = _bem_blade(ctx["row"])
+    return bu.bv.blade_figure(bu.mesh_for(spec), fold_deg=0.0, field=f)
+
+
+def _bem_rotation(ctx):
+    bu, spec, f = _bem_blade(ctx["row"])
+    a, vals = ctx["row"]["aerodynamics"], [s[2] for s in f.strips]
+    return bu.bv.bem_rotation_figure(bu.mesh_for(spec, n_side=24, dr=0.006), field=f, crange=(min(vals), max(vals)),
+                                     rpm=ctx["row"]["inputs"]["rpm"],
+                                     thrust_n=a["thrust_n"], torque_nm=a["torque_nm"], power_w=a["shaft_power_w"])
 
 
 def _polar(ctx):
@@ -112,6 +162,46 @@ def _wake(ctx):
     return cv.wake_radial_figure(ctx["coupled"], fc, w, int(fc.windows[0]))
 
 
+def _flow_scene(ctx):
+    fc, w = _flow(ctx)
+    return cv.flow_scene_figure(ctx["coupled"], fc, w)
+
+
+def _coupled_radial(ctx):
+    from . import coupled_ui
+    return cv.radial_figure(cv.radial_rows(ctx["coupled"], ctx["window"]), ctx["field"],
+                            coupled_ui._RADIAL_LABELS[ctx["field"]])
+
+
+def _coupled_blade3d(ctx):
+    """Blades posed by the MBDyn states of the chosen window, coloured by DUST element thrust per span (rotor frame)."""
+    from . import blade_ui as bu
+    row, w = ctx["coupled"], ctx["window"]
+    spec, mesh = bu.coupled_spec_mesh(row)
+    R = 1000 * spec.tip_radius_m
+    return bu.bv.blade_figure(mesh, field=[bu.br.coupled_fields(row, w, b)["fz_per_span"] for b in range(spec.blade_count)],
+                              crange=bu.coupled_range(row, "fz_per_span"), transforms=bu.bg.node_transforms(row, w),
+                              view_rotation_rad=-bu.bg.rotor_azimuth(row, w),
+                              scene_ranges=((-1.15 * R, 1.15 * R), (-1.15 * R, 1.15 * R), (-0.35 * R, 0.35 * R)))
+
+
+def _coupled_animation(ctx):
+    from . import blade_ui as bu
+    spec, _ = bu.coupled_spec_mesh(ctx["coupled"])
+    return bu.animation_figure(ctx["coupled"], spec, "fz_per_span", bu.coupled_range(ctx["coupled"], "fz_per_span"), "rotor")
+
+
+def _coupled_loads(ctx):
+    """Only reads a stored, sealed connection-load companion; deriving one stays on the coupled result page."""
+    from pyfoldable.coupled import hinge_loads
+    from . import coupled_analysis
+    run_dir = coupled_analysis.local_run_dir(ctx["root"], ctx["coupled"])
+    comp = hinge_loads.load(run_dir, ctx["coupled"]) if run_dir is not None else None
+    if comp is None:
+        raise ValueError("Bağlantı yükleri eki yok: Dinamik bağlaşık > Bağlantı yükleri sekmesinden türetin.")
+    return fcv.coupled_figure(comp, ctx["coupled"], 0)
+
+
 _V02 = ("V02 sabit devir koşusu θ = −180° ve T_tip = 0 ile biter (uç tamamen geri katlanmış): bu set çökmüş uç "
         "durumunu gösterir.")
 _LEGACY_SOURCE = "configs/foldable/TIP_HINGED_250_V0x.json + data/propellers/apc_202602 (sentetik fikstür)"
@@ -129,17 +219,33 @@ _NO_COUPLED = "Analiz’de dinamik bağlaşık analiz çalıştırın veya Karş
 CARDS = [
     _card("design_airfoil", "design", "Profil kesiti", "Seçili katalog profilinin koordinatları, iki eksen aynı ölçekte.",
           _airfoil, needs=("active",), missing="Tasarım girdilerini kontrol edin.", scope="Katalog kesiti."),
+    _card("design_blade", "design", "Kanat planı / 3B ve katlanma teması",
+          "İstenen katlanma pozunda kanat yüzeyi; tanımlı yüzeyler temas ederse son temassız açıda ve temas noktasıyla.",
+          _design_blade, needs=("active",), missing="Tasarım girdilerini kontrol edin.", cost="heavy",
+          scope="Yeniden oluşturulmuş yüzey, CAD değil; temas taraması özeti Tasarım sekmesindedir. Gösterim taraması; "
+                "GEOM-03/04 niteliklendirmesi değildir."),
     _card("design_polar", "design", "Saklanan polar eğrileri", "c_l, c_d ve c_l/c_d – α; her Re/Mach hücresi bir çizgi.",
           _polar, needs=("active", "family"), missing="Yukarıdan saklanan bir polar sürümü seçin.",
-          scope="Ekli akış XFOIL tablo noktaları; ayrılmış akış ve ekstrapolasyon yok."),
+          scope="Yalnız saklanan tablo noktaları; ara değer ve ekstrapolasyon çizilmez. Verinin türü yukarıdaki kaynak "
+                "satırındadır."),
     _card("design_envelope", "design", "BEM veri kapsam haritası",
           "Devir × giriş hızı noktalarında ilk sorguların (α, Re, Mach) saklanan ızgaraya düşüp düşmediği.",
           _envelope, needs=("active", "family"), missing="Yukarıdan saklanan bir polar sürümü seçin.",
           scope="Yalnız indüksiyonsuz başlangıç sorgusu: indüksiyon iç kesitlerde α’yı düşürür; kapsam içindeki bir "
-                "nokta BEM’de yine veri dışına çıkabilir. Statik (0 m/s) itki bu verilerle hesaplanamaz."),
+                "nokta BEM’de yine veri dışına çıkabilir."),
     _card("bem_radial", "bem", "Radyal dağılımlar ve toplamlar", "α, dT/dr ve dQ/dr – yarıçap; itki, tork ve güç.",
           lambda c: gf.bem_overlay_figure([c["row"]]), needs=("row",), missing=_NO_BEM,
           scope="İdeal tam açık BEM; eklem kaybı modellenmedi, deneysel referans uyumu değerlendirilmedi."),
+    _card("bem_fields", "bem", "Seçili radyal büyüklük", "Yukarıda seçilen eleman yükü, yük yoğunluğu, α, Re veya Mach.",
+          _bem_fields, needs=("row", "field"), missing=_NO_BEM, scope="Son BEM çözümü; tam açık rotor (0°)."),
+    _card("bem_radial_link", "bem", "Radyal bağlantı grafiği", "Kanat renk ölçeğiyle aynı şeritlerde itki yoğunluğu.",
+          _bem_link, needs=("row",), missing=_NO_BEM, scope="Kesikli çizgi menteşe yarıçapı (açık konum)."),
+    _card("bem_blade3d", "bem", "Kanat üzerinde alan (3B durağan)", "Kaydın kanadında şerit başına itki yoğunluğu.",
+          _bem_blade3d, needs=("row",), missing=_NO_BEM, cost="heavy",
+          scope="Hesaplanan: BEM şeritleri, tam açık rotor (0°). Yeniden oluşturulan: kanat yüzeyi, CAD değil."),
+    _card("bem_rotation", "bem", "Dönen pervane oynatması", "Kararlı çözümün çözülen devirle dönüşü; itki, tork ve güç okları.",
+          _bem_rotation, needs=("row",), missing=_NO_BEM, cost="heavy",
+          scope="Açıklayıcı oynatma: yükler zamanla değişmez (kararlı çözüm); zamana bağlı analiz değildir."),
     _card("bem_slipstream", "bem", "Momentum akım tüpü", "BEM halka hızlarından akım tüpü rekonstrüksiyonu.",
           _slipstream, needs=("row",), missing=_NO_BEM, scope="İmpuls, momentum kuramı; girdap izi çözümü veya CFD değildir."),
     _card("bem_mechanism", "bem", "Mekanizma zaman geçmişi", "Tek rijit dış parçanın açısı ve moment terimleri.",
@@ -151,17 +257,20 @@ CARDS = [
           missing="Bindirme için yukarıdan ikinci bir tamamlanmış BEM kaydı seçin.",
           scope="Eşleşme koşulları (veri sürümü, planform, koşul) Karşılaştırma / kayıtlar’da denetlenir."),
     _card("cycle_timeline", "cycle", "Senkron zaman çizelgesi", "Açı, devir ve bağlantı yükleri olaylarla birlikte.",
-          lambda c: fcv.timeline_figure(c["cycle"], 0), needs=("cycle",), missing=_NO_CYCLE, scope=_CYCLE_SCOPE,
-          cost="heavy"),
+          lambda c: fcv.timeline_figure(c["cycle"], 0, blade=c["blade"]), needs=("cycle", "blade"), missing=_NO_CYCLE,
+          scope=_CYCLE_SCOPE, cost="heavy"),
     _card("cycle_angle", "cycle", "Yük – katlanma açısı", "Pim ekseni momenti açılma, kapanma ve stopta.",
-          lambda c: fcv.angle_figure(c["cycle"], "M_pin"), needs=("cycle",), missing=_NO_CYCLE, scope=_CYCLE_SCOPE),
-    _card("cycle_contrib", "cycle", "Katkı ayrışımı", "Pim ekseni momentinin kaynaklara ayrışımı (tüm çevrim).",
-          lambda c: fcv.contribution_figure(c["cycle"], "M_pin", 0), needs=("cycle",), missing=_NO_CYCLE,
+          lambda c: fcv.angle_figure(c["cycle"], "M_pin", blade=c["blade"]), needs=("cycle", "blade"), missing=_NO_CYCLE,
           scope=_CYCLE_SCOPE),
+    _card("cycle_contrib", "cycle", "Katkı ayrışımı", "Pim ekseni momentinin kaynaklara ayrışımı (tüm çevrim).",
+          lambda c: fcv.contribution_figure(c["cycle"], "M_pin", 0, blade=c["blade"]), needs=("cycle", "blade"),
+          missing=_NO_CYCLE, scope=_CYCLE_SCOPE),
     _card("cycle_elements", "cycle", "Menteşe elemanları", "Pim ekseni momentini taşıyan yay, sönüm, stop ve mandal.",
-          lambda c: fcv.element_figure(c["cycle"], 0), needs=("cycle",), missing=_NO_CYCLE, scope=_CYCLE_SCOPE),
+          lambda c: fcv.element_figure(c["cycle"], 0, blade=c["blade"]), needs=("cycle", "blade"), missing=_NO_CYCLE,
+          scope=_CYCLE_SCOPE),
     _card("cycle_energy", "cycle", "Enerji dengesi", "İş, kinetik ve yay/stop enerjisi ile denge artığı.",
-          lambda c: fcv.energy_figure(c["cycle"]), needs=("cycle",), missing=_NO_CYCLE, scope=_CYCLE_SCOPE),
+          lambda c: fcv.energy_figure(c["cycle"], blade=c["blade"]), needs=("cycle", "blade"), missing=_NO_CYCLE,
+          scope=_CYCLE_SCOPE),
     _card("cycle_scene", "cycle", "Konumlanmış 3B durum", "İlk örnekte kanatlar ve bağlantı kuvvet/moment okları.",
           lambda c: fcv.scene_figure(c["cycle"], fcv.spec_from_payload(c["cycle"]["geometry"]), 0),
           needs=("cycle",), missing=_NO_CYCLE, scope=_CYCLE_SCOPE + " Renkler yük değildir.", cost="heavy"),
@@ -188,6 +297,18 @@ CARDS = [
           scope="DUST tablo dışı α veya Mach’ta durur."),
     _card("coupled_iterations", "coupled", "Bağlaşım yinelemeleri", "Her pencerede preCICE yineleme sayısı.",
           lambda c: cv.iterations_figure(c["coupled"]), needs=("coupled",), missing=_NO_COUPLED, scope=_COUPLED_SCOPE),
+    _card("coupled_radial", "coupled", "Radyal dağılım", "Seçilen penceredeki büyüklük, kanat ve parça başına.",
+          _coupled_radial, needs=("coupled", "window", "field"), missing=_NO_COUPLED,
+          scope="Yalnız geçerli önekteki pencereler seçilebilir; DUST kaldırma çizgisi elemanları."),
+    _card("coupled_blade3d", "coupled", "3B kanatlar ve DUST alanı", "Seçilen pencerede konumlanmış kanatlarda eleman itkisi.",
+          _coupled_blade3d, needs=("coupled", "window"), missing=_NO_COUPLED, cost="heavy",
+          scope="Renk ölçeği tüm pencerelerde sabit; rotorla birlikte görünüm. Yeniden oluşturulan yüzey, CAD değil."),
+    _card("coupled_animation", "coupled", "3B oynatma", "Kabul edilen pencerelerin fiziksel zamanla oynatması, olay düğmeleri.",
+          _coupled_animation, needs=("coupled",), missing=_NO_COUPLED, cost="heavy",
+          scope=_COUPLED_SCOPE + " Oynatma kaba ağ kullanır."),
+    _card("coupled_loads", "coupled", "Bağlantı yükleri", "Kanat 1 mafsalının kuvvet ve momentleri, θ ile birlikte.",
+          _coupled_loads, needs=("coupled",), missing=_NO_COUPLED, cost="heavy",
+          scope="MBDyn mafsal tepkileri; yalnız saklanmış ve bu kayda ait doğrulanmış ek varsa. Yapısal yeterlilik değildir."),
     _card("coupled_response", "coupled", "Tepki zaman çizelgesi", "θ, itki, tork, menteşe momenti ve devir olaylarla.",
           _response, needs=("coupled",), missing=_NO_COUPLED, scope=_COUPLED_SCOPE),
     _card("coupled_overlay", "coupled", "İki bağlaşık kaydın hizalı karşılaştırması",
@@ -200,6 +321,9 @@ CARDS = [
           scope="DUST girdap modelinden hesaplanan hız; CFD değildir. Yalnız doğrulanmış akış eki varsa."),
     _card("coupled_wake", "coupled", "Yakın iz şiddeti", "Yarıçapa göre Σ|α|, ilk pencereyle karşılaştırmalı.",
           _wake, needs=("coupled",), missing=_NO_COUPLED, cost="heavy", scope="Yalnız doğrulanmış akış eki varsa."),
+    _card("coupled_flow_scene", "coupled", "Akış sahnesi (3B)", "Kanatlar, girdap parçacıkları, panel izi ve hız düzlemi.",
+          _flow_scene, needs=("coupled",), missing=_NO_COUPLED, cost="heavy",
+          scope="DUST girdap modeli, ilk temas penceresi; CFD değildir. Yalnız doğrulanmış akış eki varsa."),
     _card("archive_file", "archive", "Arşiv dosyası", "Seçilen dosya: şeması bilinen JSON grafik, görüntü veya metin; "
           "diğer JSON’lar tablo/ağaç olarak.", _archive_build, needs=("file",), missing="reports/ altında dosya yok.",
           scope="Arşivlenmiş dosya olduğu gibi okunur; oturum sonuçları bu dosyaların yerine geçmez.", evidence=ARCHIVE),
@@ -236,6 +360,12 @@ def _design_source(root, active, repository):
     chosen = rui._choice(st.selectbox, "Polar sürümü", (None, *candidates), key=f"gallery_design_version_{profile}",
                          default=selected if selected in candidates else None, display=show)
     family = candidates.get(chosen)
+    if family is not None:                     # the same source lines and test-fixture warning as Analysis
+        st.caption(f"Kaynak: {rui._source_summary(family)}")
+        if (note := rui._source_note(family)) is not None:
+            st.caption(note)
+        if family.evidence_class == "inert_fixture":
+            st.warning("Test kaydı: katsayılar mühendislik sonucu olarak kullanılamaz.")
     return {"active": active, "family": family, "repository": repository,
             "keys": {"active": active.identity, "family": chosen},
             "labels": {"active": f"güncel tasarım {profile} · kimlik {active.identity[:8]}",
@@ -267,10 +397,13 @@ def _bem_source(root, active, repository):
     row = records[key]
     others = {k: r for k, r in records.items() if k != key and r["aerodynamics"] and r["aerodynamics"]["status"] == "success"}
     other = _pick("İkinci BEM kaydı (bindirme)", others, "gallery_bem_other", None, gf.bem_name, optional=True)
+    fields = tuple(k for k in rui._RADIAL_COLUMNS if k not in ("element", "radius_m"))
+    field = rui._choice(st.selectbox, "Radyal büyüklük", fields, key="gallery_bem_field", default="thrust_n",
+                        display=lambda k: rui._RADIAL_COLUMNS[k][0] if k in rui._RADIAL_COLUMNS else str(k))
     return {"row": row, "other": others.get(other), "mechanism": row if row["mechanism"]["status"] == "computed" else None,
-            "keys": {"row": key, "other": other, "mechanism": key},
+            "field": field, "keys": {"row": key, "other": other, "mechanism": key, "field": field},
             "labels": {"row": "kayıt " + gf.bem_name(row), "other": "ikinci kayıt " + (gf.bem_name(others[other]) if other in others else ""),
-                       "mechanism": "kayıt " + gf.bem_name(row) + " · mekanizma"}}
+                       "mechanism": "kayıt " + gf.bem_name(row) + " · mekanizma", "field": rui._RADIAL_COLUMNS[field][0]}}
 
 
 def _cycle_source(root, active, repository):
@@ -291,8 +424,13 @@ def _cycle_source(root, active, repository):
     except (OSError, ValueError, KeyError, TypeError):          # removed or changed after it was listed
         st.warning("Seçilen çevrim kaydı doğrulanamadı (dosya silinmiş veya değişmiş olabilir).")
         return {}
-    return {"cycle": row, "other": other_row, "keys": {"cycle": key, "other": other},
-            "labels": {"cycle": "çevrim " + name(items[key]), "other": "ikinci çevrim " + (name(others[other]) if other_row else "")}}
+    blade = 0                                  # identical blades are stored once (no in-plane gravity)
+    if "events_by_blade" in row:
+        blade = rui._choice(st.radio, "Kanat", tuple(range(row["case"]["blade_count"])), key="gallery_cycle_blade",
+                            default=0, horizontal=True, display=lambda b: f"Kanat {b + 1}")
+    return {"cycle": row, "other": other_row, "blade": blade, "keys": {"cycle": key, "other": other, "blade": blade},
+            "labels": {"cycle": "çevrim " + name(items[key]), "other": "ikinci çevrim " + (name(others[other]) if other_row else ""),
+                       "blade": f"kanat {blade + 1}"}}
 
 
 def _coupled_source(root, active, repository):
@@ -311,10 +449,20 @@ def _coupled_source(root, active, repository):
     labels = cv.EVENT_LABELS
     event = rui._choice(st.radio, "Hizalama olayı", ("release", "first_contact"), key="gallery_coupled_event",
                         default="release", horizontal=True, display=lambda k: labels.get(k, str(k)))
-    return {"coupled": records[key], "other": others.get(other), "event": event, "root": root,
-            "keys": {"coupled": key, "other": other, "event": event},
-            "labels": {"coupled": "kayıt " + name(records[key]), "other": "ikinci kayıt " + (name(others[other]) if other in others else ""),
-                       "event": "hizalama: " + labels[event]}}
+    from pyfoldable.coupled import flow
+    row = records[key]
+    valid = tuple(r["window"] for r in row["series"][:row["execution"]["valid_prefix_windows"]])
+    contact = flow.events(row).get("first_contact")
+    window = rui._choice(st.selectbox, "Pencere (radyal ve 3B kartlar; geçerli önek)", valid, key="gallery_coupled_window",
+                         default=contact if contact in valid else valid[-1]) if valid else None
+    field = rui._choice(st.radio, "Radyal büyüklük", tuple(coupled_ui._RADIAL_LABELS), key="gallery_coupled_field",
+                        default="alpha_deg", horizontal=True,
+                        display=lambda k: coupled_ui._RADIAL_LABELS.get(k, str(k)).split(" [")[0])
+    return {"coupled": row, "other": others.get(other), "event": event, "root": root, "window": window, "field": field,
+            "keys": {"coupled": key, "other": other, "event": event, "window": window, "field": field},
+            "labels": {"coupled": "kayıt " + name(row), "other": "ikinci kayıt " + (name(others[other]) if other in others else ""),
+                       "event": "hizalama: " + labels[event], "window": f"pencere {window}",
+                       "field": coupled_ui._RADIAL_LABELS[field]}}
 
 
 def _archive_source(root, active, repository):

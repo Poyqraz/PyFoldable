@@ -65,6 +65,8 @@ def test_envelope_map_marks_no_induction_coverage(naca2412):
     z = {(y, x): v for y, line in zip(fig.data[0].y, fig.data[0].z) for x, v in zip(fig.data[0].x, line)}
     assert z[2400, 14] == 1 and z[2400, 0] == 0
     assert "indüksiyonsuz" in fig.layout.title.text
+    assert "statik" in fig.layout.title.text      # every 0 m/s point is outside the data, so the map says so
+    assert "statik" not in gf.envelope_map(active, family, rpms=(2400,), inflows=(14,)).layout.title.text
     _units(fig)
 
 

@@ -95,7 +95,9 @@ def envelope_map(active, family, rpms, inflows):
                              marker=dict(symbol="x", size=12, color=fs.ACCENT)))
     fig.update_xaxes(title="Giriş hızı [m/s]")
     fig.update_yaxes(title="Devir [RPM]")
-    fig.update_layout(title=dict(text="Veri kapsamı · yalnız indüksiyonsuz başlangıç sorgusu", font=dict(size=13)),
+    static = 0 in inflows and not any(line[list(inflows).index(0)] for line in z)
+    fig.update_layout(title=dict(text="Veri kapsamı · yalnız indüksiyonsuz başlangıç sorgusu"
+                                 + (" · statik (0 m/s) itki bu sürümle hesaplanamaz" if static else ""), font=dict(size=13)),
                       height=420, margin=dict(l=55, r=20, t=40, b=45))
     return fig
 
