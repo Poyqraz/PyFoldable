@@ -10,7 +10,8 @@ import streamlit as st
 from pyfoldable.core.airfoil import airfoil_coordinate_sha256
 from pyfoldable.core.profile_catalog import PROJECT_AIRFOIL_IDS, load_project_airfoil
 
-from . import figure_style, provider_design_analysis as managed, research_design as research, research_views as views
+from . import figure_style, gallery_figures, provider_design_analysis as managed, research_design as research, \
+    research_views as views
 
 _HISTORY = "research_saved_results"
 _ACTIVE = "research_active"
@@ -368,12 +369,9 @@ def _analysis_scope(active, family, readiness):
     st.markdown("**Kapsam ve model**")
     st.caption("Tam açık ana kanat (0°), eklem kaybı yok. Aynı ana kanat ve koşullarda menteşe konumu, ideal BEM yükünü değiştirmez.")
     if family is not None:
-        requests = family.requests
-        angles = tuple(set.intersection(*(set(r.alpha_rad) for r in requests)))
-        if angles:
-            re, ma = [r.reynolds for r in requests], [r.mach for r in requests]
-            domain = ((min(angles), max(angles)), (min(re), max(re)), (min(ma), max(ma)))
-            st.caption("Beyan edilen ortak veri aralığı: " + _ranges(domain))
+        grid = research._declared_grid(family)
+        if grid[0]:
+            st.caption("Beyan edilen ortak veri aralığı: " + _ranges(tuple((min(v), max(v)) for v in grid)))
     st.caption("Koşullu ilk sorgular: " + _ranges(research.initial_query_ranges(active)) +
                ". Kapsanması, yakınsamayı veya tüm denemelerin kapsanacağını göstermez.")
     if family is not None or readiness.diagnostic:
@@ -954,6 +952,10 @@ def _history(root=None):
                         "Şaft torku [N·m]": _fmt(r["aerodynamics"]["torque_nm"], 3),
                         "Şaft gücü [W]": _fmt(r["aerodynamics"]["shaft_power_w"], 3)} for k, r in zip(chosen, rows)]
             st.dataframe(summary, hide_index=True, **figure_style.dataframe_width_kwargs())
+            try:
+                _plot(gallery_figures.bem_overlay_figure(rows), "research_compare_overlay")
+            except ValueError as exc:   # a saved record without radial elements still compares by its totals
+                st.caption(str(exc))
             if root is not None:
                 _equal_point(root, rows)
             a, b = st.columns(2)

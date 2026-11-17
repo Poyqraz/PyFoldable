@@ -326,3 +326,23 @@ def test_deploy_family_shows_the_convergence_prescreen_caveat():
     deploy = research_ui._source_note(SimpleNamespace(family_id="research_axial_800_deploy_xfoil_v3:NACA2412"))
     assert "ön tarama" in deploy and "130k" in deploy and "ara değer" in deploy and "ayrılmış akış" in deploy
     assert research_ui._source_note(SimpleNamespace(family_id="research_axial_800_attached_xfoil_v1:NACA2412")) is None
+
+
+def test_comparison_of_two_records_draws_their_radial_overlay(monkeypatch):
+    from dataclasses import replace
+    from pyfoldable.application import provider_design_analysis as managed
+    root = Path(__file__).resolve().parents[2]
+    monkeypatch.setenv("PYFOLDABLE_PROVIDER_STORE", str(root / "data/research_reference/axial_800_store"))
+    repo = managed.application_provider_repository()
+    fam = {f.family_id: f for f in repo.families}
+    rows = [research.run_research(research.build_research_design(root, replace(research.defaults(root), profile=p)),
+                                  fam[f"research_axial_800_attached_xfoil_v1:{p}"], repo, None)
+            for p in ("NACA0012", "NACA2412")]
+    at = app()
+    at.session_state["research_saved_results"] = tuple((research.saved_result_json(r), True) for r in rows)
+    go(at, RECORDS)
+    before = len(at.get("plotly_chart"))
+    at.selectbox(key="research_compare_first").select_index(1).run()      # index works on Streamlit 1.40 and later
+    at.selectbox(key="research_compare_second").select_index(1).run()
+    assert not at.exception
+    assert len(at.get("plotly_chart")) == before + 1

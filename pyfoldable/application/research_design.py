@@ -868,11 +868,14 @@ def matching_action(results, repository):
     if compare_results(results)["matching_retained_provider_contract"]:
         return None
     adm = [_admission(r) for r in results]
-    contracts = [_provider_contract(r["aerodynamics"]) for r in results]
+    keys = [None if c is None else _contract_key(c["provider_policy"], c["builds"], c["grid"])
+            for c in (_provider_contract(r["aerodynamics"]) for r in results)]
+    if None not in keys and keys[0] == keys[1]:
+        return None   # same data; only declared geometry inputs (root, template) differ, which no version fixes
     for target, other in ((1, 0), (0, 1)):
-        if contracts[other] is None:
+        if keys[other] is None:
             continue
-        wanted = _contract_key(contracts[other]["provider_policy"], contracts[other]["builds"], contracts[other]["grid"])
+        wanted = keys[other]
         profile = results[target]["inputs"]["profile"]
         coordinate = results[target]["aerodynamics"]["airfoil_coordinate_sha256"]
         fam = next((f for f in repository.families
@@ -964,7 +967,7 @@ def match_operating_point(root, row, repository, quantity, target, *, rel_tol=1e
         x = None if prev is None or good[1] == prev[1] else good[0] - good[1] * (good[0] - prev[0]) / (good[1] - prev[1])
         if failed is not None and (x is None or (x - good[0]) * (failed - good[0]) > 0
                                    and abs(x - good[0]) >= abs(failed - good[0])):
-            if abs(failed - good[0]) <= _EDGE_REL * good[0]:
+            if x is not None and abs(failed - good[0]) <= _EDGE_REL * good[0]:   # no slope yet: bisect first
                 tr = lambda v: f"{v:.4g}".replace(".", ",")  # noqa: E731  (Turkish decimal comma)
                 raise ValueError(
                     f"Hedef {tr(target)} {unit} kabul edilen veri içinde ulaşılamıyor: veri içindeki son çözüm "

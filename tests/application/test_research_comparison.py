@@ -23,7 +23,8 @@ def runs():
     out = {"a": run("NACA0012", "research_axial_800_attached_xfoil_v1:NACA0012"),
            "b_v1": run("NACA2412", "research_axial_800_attached_xfoil_v1:NACA2412"),
            "b_v3": run("NACA2412", "research_axial_800_deploy_xfoil_v3:NACA2412"),
-           "b_rpm": run("NACA2412", "research_axial_800_attached_xfoil_v1:NACA2412", rpm=2300.0)}
+           "b_rpm": run("NACA2412", "research_axial_800_attached_xfoil_v1:NACA2412", rpm=2300.0),
+           "b_root": run("NACA2412", "research_axial_800_attached_xfoil_v1:NACA2412", root_mm=110.0)}
     yield out, repo
     mp.undo()
 
@@ -60,6 +61,7 @@ def test_matching_action_points_at_the_profile_version_that_shares_the_contract(
                                             if f.family_id == "research_axial_800_attached_xfoil_v1:NACA2412")
     assert research.matching_action([r["a"], r["b_v1"]], repo) is None          # already matched
     assert research.matching_action([r["a"], r["b_rpm"]], repo) is None         # same data, only the operating point differs
+    assert research.matching_action([r["a"], r["b_root"]], repo) is None        # same data, only a geometry input differs
 
 
 @pytest.mark.parametrize("quantity,key", [("thrust", "thrust_n"), ("power", "shaft_power_w")])
@@ -201,3 +203,28 @@ def test_the_exact_data_version_is_required_not_only_the_family(runs):
     row["aerodynamics"]["report_text"] = json.dumps(report)
     with pytest.raises(ValueError, match="tam veri sürümü"):
         research.match_operating_point(ROOT, row, repo, "thrust", 30.0)
+
+
+def test_a_first_step_just_past_the_data_edge_is_bisected_not_declared_unreachable(monkeypatch):
+    import json
+    from dataclasses import asdict
+    from types import SimpleNamespace as NS
+    edge, k = 2014.0, 1e-9   # thrust ~ rpm³, so the rpm² first guess (2018 RPM) overshoots the edge
+
+    def build(root, inputs):
+        blade = NS(stations=[NS(r_over_R=1.0)], radius_m=0.4)
+        return NS(rpm=inputs.rpm, design=NS(blade=blade, operating_conditions=[
+            NS(temperature_k=288.15, forward_speed_m_s=10.0)]))
+
+    def run(active, family, repo, _):
+        if active.rpm > edge:
+            return {"aerodynamics": {"status": "failure", "failure_stage": "solver_invocation"}}
+        return {"aerodynamics": {"status": "success", "thrust_n": k * active.rpm ** 3}}
+    monkeypatch.setattr(research, "build_research_design", build)
+    monkeypatch.setattr(research, "run_research", run)
+    repo = NS(families=[NS(family_id="F", stored_version=NS(content_sha256="v"), requests=[NS(mach=0.9)])])
+    inputs = {**asdict(research.defaults(ROOT)), "rpm": 2000.0}
+    row = {"inputs": inputs, "aerodynamics": {"status": "success", "report_text": json.dumps(
+        {"request": {"provider_design_admission": {"family_id": "F", "stored_version": {"content_sha256": "v"}}}})}}
+    out = research.match_operating_point(ROOT, row, repo, "thrust", k * 2012.0 ** 3)
+    assert out["rpm"] <= edge and out["row"]["aerodynamics"]["thrust_n"] == pytest.approx(k * 2012.0 ** 3, rel=1e-3)

@@ -28,6 +28,8 @@ _NO_DEFAULT_LEGEND = {"surface", "mesh3d", "cone", "streamtube", "isosurface", "
 def apply(fig):
     """Show full trace names on hover and place the legend below the plot."""
     fig.update_layout(hoverlabel_namelength=-1)
+    if fig.layout.updatemenus or fig.layout.sliders:   # playbacks size margin.b for their own controls
+        return fig
     entries = [t for t in fig.data if t.visible is not False
                and (t.showlegend or (t.showlegend is None and t.type not in _NO_DEFAULT_LEGEND))]
     # Same rule as Plotly: one trace gets a legend only when asked for explicitly.

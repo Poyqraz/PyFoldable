@@ -174,10 +174,17 @@ def test_many_playback_events_wrap_into_rows_and_the_long_note_wraps(mesh):
 SLIDER_PX, BUTTON_TOP_PX, BUTTON_PX = 104, 9, 42
 
 
+@pytest.mark.parametrize("styled", [False, True])
 @pytest.mark.parametrize("n_events", [0, 4, 13])
-def test_event_rows_clear_the_slider_and_each_other_in_pixels(mesh, n_events):
+def test_event_rows_clear_the_slider_and_each_other_in_pixels(mesh, n_events, styled):
     events = {f"Olay {k}": str(k % 5) for k in range(n_events)}
-    fig = bv.playback_figure(mesh, _frames(mesh), events=events, height=580)
+    fig = bv.playback_figure(mesh, _frames(mesh), events=events, height=580,
+                             static_traces=bv._scene_arrows(mesh.spec) if styled else ())
+    if styled:   # the app shows playbacks through figure_style.apply (research_ui._plot)
+        from pyfoldable.application import figure_style
+        margin_b = fig.layout.margin.b
+        fig = figure_style.apply(fig)
+        assert fig.layout.margin.b == margin_b
     m = fig.layout.margin
     plot_h = fig.layout.height - m.t - m.b
     slider_bottom = -fig.layout.sliders[0].y * plot_h + SLIDER_PX
