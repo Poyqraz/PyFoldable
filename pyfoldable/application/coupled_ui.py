@@ -264,6 +264,11 @@ def _alive(pid) -> bool:
     as alive; 'İzlemeyi bırak' clears such a monitor. Windows os.kill(pid, 0) would terminate the process, so no probe there."""
     if pid is None or os.name != "posix":
         return True
+    try:  # the supervisor is this app's child: a killed one stays a zombie (and os.kill succeeds) until reaped here
+        if pid > 0 and os.waitpid(pid, os.WNOHANG)[0]:
+            return False
+    except ChildProcessError:  # not our child (app restarted): fall through to the probe
+        pass
     try:
         os.kill(pid, 0)
     except ProcessLookupError:

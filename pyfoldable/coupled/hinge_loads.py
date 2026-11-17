@@ -30,7 +30,7 @@ from .mbdyn_output import parse_jnt
 COMPANION = "hinge_loads.json"
 REV, HINGE, LATCH = 400, 500, 600
 NODE_Z_OFFSET_M = 0.01
-EXTRACTOR_VERSION = 3      # bump on any change to extract(); load() then rejects older companions so they are re-derived
+EXTRACTOR_VERSION = 4     # bump on any change to extract(); load() then rejects older companions so they are re-derived
 
 
 def _sha(path: Path) -> str:
@@ -195,9 +195,8 @@ def extract(run_dir: Path, row: dict) -> dict:
             "time_s": t, "window": [s["window"] for s in series], "rpm": [s["rpm"] for s in series],
             "theta_deg": [s["theta_deg"] for s in series], "contact_active": [s["contact_active"] for s in series],
             "latch_active": [s["latch_active"] for s in series], "blades": out_blades, "peaks": peaks,
-            "peaks_per_blade": peaks_per_blade, "checks": checks, "checks_skipped_reason": checks_skipped_reason,
-            "startup_transient_windows": startup, "startup_pin_extension_windows": startup - force_span,
-            "startup_overlaps": startup_overlaps,
+            "checks": checks, "checks_skipped_reason": checks_skipped_reason,
+            "startup_transient_windows": startup, "startup_overlaps": startup_overlaps,
             "startup_note": ("MBDyn's joint reactions settle from the initial state over the first windows (numerical "
                              "transient of the constraint multipliers, decaying ≈0.7× per window); those windows are "
                              "flagged and excluded from peaks and checks."),

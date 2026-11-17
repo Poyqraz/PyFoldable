@@ -105,11 +105,10 @@ def test_peaks_cover_every_blade_and_name_the_blade(recorded):
     run, row = recorded
     c = hinge_loads.extract(run, row)
     k0 = c["startup_transient_windows"]
-    assert len(c["peaks_per_blade"]) == len(c["blades"])
     for p in c["peaks"]:
         best = max(abs(x) for b in c["blades"] for x in b[p["key"]][k0:])
         assert abs(p["value"]) == pytest.approx(best) and p["blade"] in range(len(c["blades"]))
-        assert all(pb["blade"] == b for b, per in enumerate(c["peaks_per_blade"]) for pb in per)
+        assert abs(p["value"]) == pytest.approx(max(abs(x) for x in c["blades"][p["blade"]][p["key"]][k0:]))
 
 
 def test_extract_refuses_a_joint_file_the_sealed_record_did_not_use(recorded):
@@ -186,9 +185,12 @@ def test_an_edited_companion_is_not_accepted(recorded):
     assert hinge_loads.load(run, row) is None
 
 
-def test_a_sustained_pin_moment_mismatch_from_the_first_checked_window_is_not_absorbed_into_the_start_up_span(recorded):
+def test_a_sustained_pin_moment_mismatch_from_the_first_checked_window_is_not_absorbed_into_the_start_up_span(
+        recorded, monkeypatch):
     run, row = recorded
-    c0 = hinge_loads.extract(run, row)
+    spans = []  # extract calls startup_windows for the force span first, then for the pin-moment extension
+    real = hinge_loads.startup_windows
+    monkeypatch.setattr(hinge_loads, "startup_windows", lambda *a, **k: spans.append(real(*a, **k)) or spans[-1])
     bad = copy.deepcopy(row)
     nodes = row["run_definition"]["coupling_nodes"]
     i = next(i for i, nd in enumerate(nodes) if nd["blade"] == 0 and nd["segment"] == "distal")
@@ -197,7 +199,7 @@ def test_a_sustained_pin_moment_mismatch_from_the_first_checked_window_is_not_ab
     for s in row["series"]:
         bad["window_exchange"][s["window"] - 1]["moment"][i][2] += 1.0
     c = hinge_loads.extract(run, bad)
-    force_span = c0["startup_transient_windows"] - c0["startup_pin_extension_windows"]
-    assert c["startup_transient_windows"] == force_span and c["startup_pin_extension_windows"] == 0
+    force_span = spans[0]
+    assert len(spans) == 2 and c["startup_transient_windows"] == force_span
     pin = next(ch for ch in c["checks"] if ch["name"] == "distal_pin_moment_balance_relative")
     assert not pin["passed"], pin

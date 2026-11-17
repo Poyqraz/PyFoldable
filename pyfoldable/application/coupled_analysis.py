@@ -409,8 +409,8 @@ def _restorability(path: Path, available: bool) -> dict:
             _RESTORE_CACHE[key] = {"restorable": True, "restore_error": None}
         except Exception as exc:  # only labels this row; opening still goes through read_saved_coupled_result
             msg = str(exc) if isinstance(exc, (OSError, ValueError)) else f"{type(exc).__name__}: {exc}"
-            if msg in (CASE_MISMATCH, DECK_MISMATCH):  # regenerated with today's code it differs; stays refused
-                msg = f"eski üretici sürümü — yeniden doğrulanamaz ({msg})"
+            if msg in (CASE_MISMATCH, DECK_MISMATCH):  # regenerated with today's code it differs; cause unknown, stays refused
+                msg = f"bugünkü üreticiyle yeniden üretilemiyor (eski sürüm veya değiştirilmiş kayıt) — {msg}"
             _RESTORE_CACHE[key] = {"restorable": False, "restore_error": msg}
     return _RESTORE_CACHE[key]
 
@@ -454,19 +454,16 @@ def flow_frame_bytes_bound(row: dict) -> int:
     return 28 * int(row["run_definition"]["case"]["controls"]["max_wake_particles"]) + 12 * nx * ny * nz + 65536
 
 
-def build_flow(root: Path, row: dict, *, max_frames: int = 81, extra_windows=(), readiness: tcmod.Readiness | None = None):
+def build_flow(root: Path, row: dict, *, max_frames: int = 81, readiness: tcmod.Readiness | None = None):
     """Explicit action: extract the flow companion from the record's retained DUST outputs with the
     attested toolchain (coupling venv + dust_post). Never starts a solver; verifies the result.
-    ``extra_windows`` adds valid-prefix windows to the sampled ones; the frame count is bounded so the
-    uncompressed companion stays under ``flow.MAX_INFLATED_BYTES`` (flow.load bounds the actual files)."""
+    The frame count is bounded so the uncompressed companion stays under ``flow.MAX_INFLATED_BYTES``
+    (flow.load bounds the actual files)."""
     from pyfoldable.coupled import flow
     d = local_run_dir(root, row)
     if d is None:
         raise flow.FlowCompanionError("no_run_folder", "Bu kaydın çalıştırma klasörü bu bilgisayarda yok.")
-    last = int(row["execution"]["valid_prefix_windows"])
-    if any(type(w) is not int or not 1 <= w <= last for w in extra_windows):
-        raise flow.FlowCompanionError("bad_window", f"Eklenen pencereler 1–{last} geçerli önek aralığında tam sayı olmalı.")
-    windows = sorted(set(flow.select_windows(row, max_frames)) | set(extra_windows))
+    windows = flow.select_windows(row, max_frames)
     if not windows:
         raise flow.FlowCompanionError("no_windows", "Kabul edilen pencere yok.")
     cap = flow.MAX_INFLATED_BYTES // flow_frame_bytes_bound(row)

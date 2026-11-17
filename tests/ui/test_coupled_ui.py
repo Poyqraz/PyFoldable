@@ -440,11 +440,15 @@ def _running_run(path, state="running", pid=None):
     return path
 
 
-def _dead_pid():
+def _killed_child():
+    """A killed, unreaped child (zombie), like a supervisor killed under the app; keep the Popen referenced so
+    subprocess._cleanup does not reap it."""
+    import os
     import subprocess
-    p = subprocess.Popen([sys.executable, "-c", "pass"])
-    p.wait()
-    return p.pid
+    p = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+    p.kill()
+    os.waitid(os.P_PID, p.pid, os.WEXITED | os.WNOWAIT)  # wait until it is a zombie, without reaping it
+    return p
 
 
 def test_failed_run_error_stays_on_analysis_and_not_under_other_records(tmp_path, monkeypatch):
@@ -465,7 +469,8 @@ def test_run_whose_supervisor_is_gone_is_not_offered_as_running(tmp_path, monkey
     _no_toolchain(monkeypatch, tmp_path)
     _forbid_runs(monkeypatch)
     runs = tmp_path / "runs"
-    run = _running_run(runs / "20261117T100000_dead", pid=_dead_pid())
+    child = _killed_child()
+    run = _running_run(runs / "20261117T100000_dead", pid=child.pid)
     monkeypatch.setenv("PYFOLDABLE_COUPLED_RUNS", str(runs))
     at = go(app(), "Karşılaştırma / kayıtlar")
     assert not any(b.key == "coupled_attach_20261117T100000_dead" for b in at.button)

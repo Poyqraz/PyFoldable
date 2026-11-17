@@ -254,7 +254,7 @@ def test_run_list_marks_records_that_do_not_restore(tmp_path, monkeypatch):
     rows = {r["run_id"]: r for r in svc.local_run_summaries(tmp_path)}
     assert rows[good.name]["restorable"] is True and rows[good.name]["restore_error"] is None
     assert rows[old.name]["restorable"] is False
-    assert "eski üretici sürümü" in rows[old.name]["restore_error"]
+    assert "bugünkü üreticiyle yeniden üretilemiyor (eski sürüm veya değiştirilmiş kayıt)" in rows[old.name]["restore_error"]
     (good / "result.json").write_text("{}")  # a changed file is verified again, not served from the cache
     assert svc.local_run_summaries(tmp_path)[-1]["restorable"] is False
     (old / "result.json").write_bytes(b"[" * 200000)  # one hostile record labels its own row only
@@ -262,17 +262,13 @@ def test_run_list_marks_records_that_do_not_restore(tmp_path, monkeypatch):
     assert rows[old.name]["restorable"] is False and "RecursionError" in rows[old.name]["restore_error"]
 
 
-def test_flow_window_requests_are_validated_and_bounded(run, tmp_path, monkeypatch):
+def test_flow_window_requests_are_bounded(run, tmp_path, monkeypatch):
     from pyfoldable.coupled import flow
     monkeypatch.setenv(svc.RUNS_ENV, str(tmp_path))
     row = _build(run)
     (run / "dust" / "Output").mkdir(parents=True, exist_ok=True)
     not_ready = type("R", (), {"status": "missing", "message": "no toolchain"})()
-    for extra in ([0], [31], [True], ["5"]):
-        with pytest.raises(flow.FlowCompanionError) as err:
-            svc.build_flow(tmp_path, row, extra_windows=extra, readiness=not_ready)
-        assert err.value.code == "bad_window"
-    fits = len(set(flow.select_windows(row, 2)) | {13})
+    fits = len(flow.select_windows(row, 2))
     assert fits < 30
     big = json.loads(json.dumps(row))  # a cap the UI allows: 30 worst-case frames exceed the compressed-file
     big["run_definition"]["case"]["controls"]["max_wake_particles"] = 500_000  # limit, not the inflated one
@@ -284,7 +280,7 @@ def test_flow_window_requests_are_validated_and_bounded(run, tmp_path, monkeypat
         svc.build_flow(tmp_path, row, max_frames=30, readiness=not_ready)
     assert err.value.code == "too_many_frames"
     with pytest.raises(flow.FlowCompanionError) as err:  # within bounds, it reaches the toolchain gate
-        svc.build_flow(tmp_path, row, max_frames=2, extra_windows=[13], readiness=not_ready)
+        svc.build_flow(tmp_path, row, max_frames=2, readiness=not_ready)
     assert err.value.code == "toolchain_missing"
 
 
