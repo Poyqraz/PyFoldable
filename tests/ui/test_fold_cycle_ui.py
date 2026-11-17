@@ -86,6 +86,37 @@ def test_run_uses_the_values_on_screen_and_the_new_inputs_reach_the_case():
     assert not any("geri katlayan bir moment yoktur" in w.value for w in at.warning)   # the shaft did not stop
 
 
+def test_changing_a_phase_duration_and_clicking_run_in_the_same_rerun_keeps_the_click():
+    at = go(app(), ANALYSIS)
+    _fast(at)
+    at.number_input(key="cycle_hold").set_value(0.25)
+    at.button(key="cycle_run").click().run()                     # Streamlit 1.40 keys the button by its parameters
+    assert not at.exception and at.radio(key="research_page").value == RESULTS
+    assert _stored(at)["case"]["schedule"]["hold_s"] == 0.25
+
+
+def test_default_configuration_warns_about_surface_contact_before_the_run():
+    at = go(app(), ANALYSIS)
+    assert any("temas eder" in w.value and "-66,6" in w.value for w in at.warning)
+    at.number_input(key="cycle_stowed__spring").set_value(-60.0).run()
+    assert not any("temas eder" in w.value for w in at.warning)
+
+
+def test_downloads_are_built_once_per_record_not_per_slider_step(monkeypatch):
+    from pyfoldable.application import fold_cycle_views as views
+    at = go(app(), ANALYSIS)
+    _fast(at)
+    at.button(key="cycle_run").click().run()
+    calls = []
+    real = views.series_csv
+    monkeypatch.setattr(views, "series_csv", lambda row: calls.append(1) or real(row))
+    at.button(key="cycle_downloads_build").click().run()
+    at.slider(key="cycle_index").set_value(5).run()
+    at.slider(key="cycle_index").set_value(9).run()
+    assert not at.exception and len(calls) == 1
+    assert any(b.label == "Zaman serisi CSV" for b in at.get("download_button"))
+
+
 def test_cycle_rpm_follows_the_design_unless_overridden():
     at = go(app(), ANALYSIS)
     assert at.number_input(key="cycle_rpm").value == 2400.0

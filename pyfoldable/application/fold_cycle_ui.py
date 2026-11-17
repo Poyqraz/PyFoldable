@@ -230,6 +230,14 @@ def analysis_section(active):
     if stowed < design["stow_limit_deg"] - 1e-9:
         st.warning(f"Kapalı stop {stowed:.1f}°, tasarımda beyan edilen katlanma sınırının ({design['stow_limit_deg']:.1f}°) ötesinde.")
     try:
+        free = _scan(replace(spec, distal_axial_offset_m=offset / 1000)).interference_free_deg
+        if free > stowed + 1e-6:
+            st.warning(f"Tanımlı kanat yüzeyleri {_fmt(free, 1)}°’den sonra temas eder; kapalı stop ({_fmt(stowed, 1)}°) bu açının "
+                       "ötesindedir ve mekanik model bunu engellemez. Kapalı stopu bu açıya veya daha az katlanmış bir açıya alın ya "
+                       "da dış parçanın iç parçanın üzerinden geçmesi için eksenel kaydırma δ (pim–kulak) girin.")
+    except ValueError as exc:
+        st.caption("Yüzey taraması yapılamadı: " + str(exc))
+    try:
         mech = fc.FoldMechanism(mass_kg=mass / 1000, cg_from_hinge_m=cg / 1000, inertia_cg_kg_m2=inertia, axial_offset_m=offset / 1000,
                                 spring_nm_per_rad=k, spring_preload_nm=pre, damping_nm_s_per_rad=damp, coulomb_nm=coul,
                                 stowed_stop_rad=math.radians(stowed), stop_stiffness_nm_per_rad=kc, stop_restitution=e,
@@ -250,15 +258,31 @@ def analysis_section(active):
     st.caption(f"Geometri: {spec.profile_id}, menteşe {spec.hinge_radius_m * 1000:.0f} mm, uç {spec.tip_radius_m * 1000:.0f} mm, "
                f"{spec.blade_count} kanat. Mekanizma değerleri keşif varsayımıdır; donanım ölçümü değildir.")
     sens = rui._field(st.checkbox, "Temas duyarlılığını da hesapla (üç ek çözüm)", "cycle_sensitivity", False)
-    duration = rest + up + hold + down + end
-    # the case is built from this render's widget values: a callback would solve the previous render's case
-    if st.button("Çevrimi çalıştır", key="cycle_run", disabled=case is None, type="primary",
-                 help=f"Yüzey teması taranır ve {duration:.2f} s’lik çevrim çözülür; süre çevrim süresi ve kanat sayısıyla, "
-                      "temas duyarlılığı seçiliyse belirgin biçimde uzar. Sonuçlar açılır."):
+    st.caption(f"Yüzey teması taranır ve {rest + up + hold + down + end:.2f} s’lik çevrim çözülür; hesap süresi çevrim süresi ve "
+               "kanat sayısıyla, temas duyarlılığı seçiliyse belirgin biçimde uzar.")
+    # the case is built from this render's widget values: a callback would solve the previous render's case.
+    # Parameters stay constant: Streamlit 1.40 derives the button id from them and drops a click on a changed id.
+    if st.button("Çevrimi çalıştır", key="cycle_run", disabled=case is None, type="primary", help="Sonuçlar açılır."):
         path = _run(case, preset, replace(spec, distal_axial_offset_m=offset / 1000), stowed, sens)
         if path is not None:
             _open(path)
             st.rerun()
+
+
+_SCANS: dict = {}
+
+
+def _scan(geo_spec):
+    """Full-range surface scan (≈1 s) memoised per geometry; one scan answers every stowed stop before the run."""
+    joint = "plane" if geo_spec.distal_axial_offset_m > 0 else "relief"
+    key = (geo_spec, joint)
+    rep = _SCANS.get(key)
+    if rep is None:
+        rep = fi.fold_contacts(geo_spec, joint=joint)
+        if len(_SCANS) >= 8:
+            _SCANS.pop(next(iter(_SCANS), None), None)
+        _SCANS[key] = rep
+    return rep
 
 
 def _run(case, preset, geo_spec, stowed, sensitivity):
@@ -449,12 +473,27 @@ def render_result(row):
         st.session_state["_cycle_downloads"] = row["result_sha256"]
     if st.session_state.get("_cycle_downloads") == row["result_sha256"]:
         name = f"pyfoldable_cevrim_{row['result_sha256'][:8]}"
+        csv_, json_, html = _payloads(row, spec, frame, st.session_state.get("_cycle_playback") == row["result_sha256"])
         d1, d2, d3 = st.columns(3)
-        d1.download_button("Zaman serisi CSV", views.series_csv(row), name + ".csv", "text/csv")
-        d2.download_button("Kayıt JSON", json.dumps(row, ensure_ascii=False), name + ".json", "application/json")
-        if st.session_state.get("_cycle_playback") == row["result_sha256"]:
-            d3.download_button("Oynatma HTML (çevrimdışı açılır)", views.playback(row, spec, frame).to_html(include_plotlyjs=True),
-                               name + ".html", "text/html")
+        d1.download_button("Zaman serisi CSV", csv_, name + ".csv", "text/csv")
+        d2.download_button("Kayıt JSON", json_, name + ".json", "application/json")
+        if html is not None:
+            d3.download_button("Oynatma HTML (çevrimdışı açılır)", html, name + ".html", "text/html")
+
+
+_PAYLOADS: dict = {}
+
+
+def _payloads(row, spec, frame, with_playback):
+    """Download payloads (tens of MB with the inlined plotly.js) built once per (record, frame), not per slider step."""
+    key = (row["result_sha256"], frame if with_playback else None, spec)
+    out = _PAYLOADS.get(key)
+    if out is None:
+        out = (views.series_csv(row), json.dumps(row, ensure_ascii=False),
+               views.playback(row, spec, frame).to_html(include_plotlyjs=True) if with_playback else None)
+        _PAYLOADS.clear()
+        _PAYLOADS[key] = out
+    return out
 
 
 def _connection(row, a):
