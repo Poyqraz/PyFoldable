@@ -197,10 +197,11 @@ they do not prove physical validity.
 *Local run list.* *Karşılaştırma / kayıtlar* restores every local run record once (cached per file
 mtime and size; `coupled_analysis.local_run_summaries`). Its *Açılabilir* column reads *evet*, or
 *hayır —* with the reason. A record whose case or deck differs when regenerated with today's code
-reads *eski üretici sürümü — yeniden doğrulanamaz*. It stays refused, and no open action is offered
+reads *bugünkü üreticiyle yeniden üretilemiyor (eski sürüm veya değiştirilmiş kayıt) —* followed by
+the mismatch. It stays refused, and no open action is offered
 (phase-1 one-off check of the 36 local runs: 26 restore). Companions in the run folder are
 bound to the record and re-checked on load. The hinge-load companion also carries its
-`extractor_version` (now 3), and companions from an older extractor are ignored until they are
+`extractor_version` (now 4), and companions from an older extractor are ignored until they are
 derived again ([fold cycle note §4](fold_cycle_and_connection_loads.md)).
 
 **Storage bound vs simulated duration.** The record keeps every accepted window (no thinning),

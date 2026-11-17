@@ -86,7 +86,7 @@ V_z, M_s (torsion), M_t (bending), M_z (pin axis).
   ≈ 10 windows); those windows are flagged and excluded from peaks. Blade b's moments are reported about its
   blade-plane point on the pin (the 0.01·b m preCICE label offset is shifted back). Peaks are taken over all blades
   and name the blade. A release or first contact inside the excluded start-up span is listed as a start-up overlap.
-  The companion `hinge_loads.json` carries `extractor_version` (now 3), the record digest and the sha256 of the
+  The companion `hinge_loads.json` carries `extractor_version` (now 4), the record digest and the sha256 of the
   sealed `out.jnt`. A companion from another extractor version, or one whose joint file differs, is ignored, and
   the loads must be derived again on request (*Bağlantı yüklerini türet*).
 
