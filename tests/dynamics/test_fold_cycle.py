@@ -310,3 +310,61 @@ def test_an_older_schema_record_still_verifies(passive_run):
     old["case"] = {**old["case"], "schedule": {**old["case"]["schedule"], "hold_s": 30.0}}   # predates the duration cap
     old = fc.seal(old)
     assert fc.verify(old) is old
+
+
+# ------------------------------------------------------------------------------------- WP1 review regressions
+def test_operating_angle_is_a_time_average_not_dominated_by_refined_impacts():
+    mech = replace(SPRING, damping_nm_s_per_rad=0.0, stop_restitution=1.0)
+    r = fc.run_cycle(case(mech), sensitivity=False)
+    s = r["series"]
+    t, th = np.array(s["time_s"]), np.array(s["theta_deg"])[:, 0]
+    sel = (t >= FAST.knots[2] + 0.5 * FAST.hold_s) & (t <= FAST.knots[3])
+    trapz = getattr(np, "trapezoid", None) or np.trapz
+    mean = trapz(th[sel], t[sel]) / (t[sel][-1] - t[sel][0])
+    assert r["outcome"]["operating_theta_deg"] == pytest.approx(mean, abs=1.0)
+
+
+def test_an_invalid_older_schema_case_is_still_refused(passive_run):
+    old = {k: v for k, v in passive_run.items() if k != "result_sha256"}
+    old["schema_version"] = 1
+    mech = old["case"]["mechanism"]
+    # rules added in schema 2 (actuator window, latch release sign) are tolerated for schema-1 records ...
+    old["case"] = {**old["case"], "mechanism": {**mech, "actuator_nm": -0.3, "actuator_start_s": 2.0, "actuator_end_s": 1.0,
+                                                "latch_release_s": -1.0}}
+    ok = fc.seal(old)
+    assert fc.verify(ok) is ok
+    # ... every older rule still applies
+    old["case"] = {**old["case"], "hinge_radius_m": -1.0, "mechanism": {**mech, "stop_restitution": 5.0}}
+    with pytest.raises(ValueError, match="Restitution"):
+        fc.verify(fc.seal(old))
+
+
+def test_check_grid_beyond_its_budget_fails_closed_before_integrating():
+    fast_long = fc.ShaftSchedule(operating_rpm=20000, rest_s=0.1, spinup_s=0.3, hold_s=15.0, spindown_s=0.8, end_rest_s=0.6)
+    with pytest.raises(ValueError, match="budget"):
+        fc.run_cycle(fc.CycleCase(0.27, 8, fast_long, PASSIVE, OFF, gravity="shaft_horizontal"), sensitivity=False)
+
+
+def test_tight_tolerance_sensitivity_variant_only_integrates_up_to_the_open_target(spring_run, monkeypatch):
+    real, ends = fc._integrate, {}
+
+    def spy(cs, t_end=None):
+        ends[cs.rtol] = t_end
+        return real(cs, t_end)
+    monkeypatch.setattr(fc, "_integrate", spy)
+    sens = fc.contact_sensitivity(case(), spring_run["contacts"])
+    tight = case().rtol / 100
+    assert ends[tight] <= sens["target"]["t_in_s"] + sens["rows"][0]["duration_s"] + 0.05 + 1e-9
+    assert sens["numerical_peak_change"] is not None
+    stowed = {r["variant"]: r for r in sens["stowed"]["rows"]}
+    assert not stowed["Daha sıkı tolerans (rtol/100, adım/4)"]["available"]       # not covered: not a different contact
+    assert stowed["Stop rijitliği ×2"]["available"]
+
+
+def test_latch_engaging_within_its_capture_band_adds_no_snap_torque():
+    capture = math.radians(1.0)
+    mech = replace(PASSIVE, open_latch=True, latch_capture_rad=capture)
+    model = fc._Model(case(mech))
+    th = np.array([mech.open_stop_rad - capture])
+    tau = model.elements(0.0, th, np.zeros(1), np.ones(1, bool))["latch"][0]
+    assert tau == pytest.approx(mech.latch_stiffness_nm_per_rad * 1e-3)     # the same 1 mrad preload as at the stop

@@ -15,7 +15,8 @@ torsion return spring (torque toward stowed with a preload at the stowed stop), 
 (regularised: no continuous dissipation while the joint is stationary), unilateral open and stowed stops
 (linear spring with a Kelvin–Voigt dashpot from a declared restitution, as in the coupled model; the dashpot pulls
 briefly before separation, kept for parity and reported per contact as its tensile peak), optional open latch
-(engages at the open stop, or within a declared capture band below it, before a commanded release), optional
+(engages at the open stop, or on arrival at a declared capture angle below it, and locks there with a 1 mrad preload,
+before a commanded release), optional
 actuator torque window. The distal inertia is isotropic about the CG plus an optional declared product of inertia
 I_tz (centrifugal twisting moment about the span).
 Centrifugal, Coriolis and Euler effects are *not* added as torques: they follow from the distal-body kinematics
@@ -53,6 +54,7 @@ MAX_CYCLE_DURATION_S = 20.0       # the UI solves synchronously: bounds runtime 
 STORE_COARSE_DT_S = 1.0e-2        # stored-series step away from events, switches and contacts
 EVENT_WINDOW_S = 0.05             # ± window stored at output_dt_s around events, switches and contacts
 MAX_FINE_SAMPLES = 20000          # budget of contact-refinement samples in the stored series
+MAX_CHECK_SAMPLES = 1_000_000     # budget of uniform check-grid samples × checked blades (memory and runtime of the checks)
 
 
 # ----------------------------------------------------------------------------------------------- inputs
@@ -174,8 +176,10 @@ class FoldMechanism:
 
     @property
     def latch_target_rad(self):
-        """A detent presses the blade onto its open stop: its neutral angle lies 1 mrad inside the stop."""
-        return self.open_stop_rad + 1e-3
+        """The latch locks where it engages (the open stop, or the lower edge of the capture band) with a 1 mrad preload
+        past that angle, so engagement adds the same small snap energy with or without a band; within a band it holds the
+        blade at the band edge and does not pull it onto the stop."""
+        return self.open_stop_rad - self.latch_capture_rad + 1e-3
 
     @property
     def stop_damping_nm_s_per_rad(self):
@@ -677,10 +681,22 @@ def _cumtrapz(y, t):
 
 # ------------------------------------------------------------------------------------------------- run
 def run_cycle(case: CycleCase, *, sensitivity: bool = True, extra: dict | None = None) -> dict:
-    model, segments, crossings, latch_events = _integrate(case)
     m, kn = case.mechanism, case.schedule.knots
-    N = model.N
     horiz = case.gravity == "shaft_horizontal"               # in-plane gravity is the only case in which the blades differ
+    nb = case.blade_count if horiz else 1                    # replicated blades are identical: check blade 1 only
+    J_h = m.hinge_inertia_kg_m2
+    # check grid step: 0.1 ms or finer, so ω_n·dt ≤ 0.03 for the open-hinge natural frequency at operating speed (the
+    # oscillation is lightly damped; a coarse grid aliases the powers and the central difference)
+    w_n = math.sqrt((m.spring_nm_per_rad + m.mass_kg * m.cg_from_hinge_m * case.hinge_radius_m
+                     * (case.schedule.operating_rpm * RPM) ** 2) / J_h)
+    dt_f = min(1e-4, 0.03 / w_n)
+    n_check = int(kn[-1] / dt_f + 1) * nb                    # uniform part; impact refinement adds at most as much again
+    if n_check > MAX_CHECK_SAMPLES:
+        raise ValueError(f"The consistency checks need {n_check} samples ({nb} blade(s), {kn[-1]:.2f} s at {dt_f * 1e6:.1f} µs), "
+                         f"more than the budget of {MAX_CHECK_SAMPLES}; shorten the schedule, lower the speed or use fewer "
+                         "blades.")
+    model, segments, crossings, latch_events = _integrate(case)
+    N = model.N
     contacts = _contacts(model, segments, crossings, case)
     # events on the uniform output grid; the stored grid is then dense only around events, switches and contacts
     t1 = np.unique(np.append(np.arange(0.0, kn[-1] + 0.5 * case.output_dt_s, case.output_dt_s), kn))
@@ -705,7 +721,6 @@ def run_cycle(case: CycleCase, *, sensitivity: bool = True, extra: dict | None =
     # angular acceleration recovered independently from the retained rates (finite differences); (3) energy
     el_sum = sum(res[k] for k in ELEMENTS)
     nonuni = np.gradient(thd, t, axis=0)
-    J_h = m.hinge_inertia_kg_m2
     fd_pin = comps["M_pin"] + J_h * (nonuni - res["theta_ddot"])      # pin moment with the finite-difference θ̈
     contact_any = np.zeros_like(th, bool)
     for c in contacts:
@@ -719,18 +734,12 @@ def run_cycle(case: CycleCase, *, sensitivity: bool = True, extra: dict | None =
     if m.actuator_nm:
         marks += [(m.actuator_start_s, None), (m.actuator_end_s, None)]
     sw = np.array([x for x, _ in marks])
-    # check grid: uniform 0.1 ms or finer, so ω_n·dt ≤ 0.03 for the open-hinge natural frequency at operating speed
-    # (the oscillation is lightly damped; a coarse grid aliases the powers and the central difference), both sides of
-    # every switch (a trapezoid straddling a power step is the dominant quadrature error) and a twentieth of the stop
-    # half-period inside every contact impact (stiff stops)
-    w_n = math.sqrt((m.spring_nm_per_rad + m.mass_kg * m.cg_from_hinge_m * case.hinge_radius_m
-                     * (case.schedule.operating_rpm * RPM) ** 2) / J_h)
-    dt_f = min(1e-4, 0.03 / w_n)
-    tf = np.unique(np.round(np.concatenate([np.arange(0.0, kn[-1] + 0.5 * dt_f, dt_f), sw - 1e-9, sw + 1e-9,
+    # check grid: uniform at dt_f, both sides of every switch (a trapezoid straddling a power step is the dominant
+    # quadrature error) and a twentieth of the stop half-period inside every contact impact (stiff stops)
+    tf =np.unique(np.round(np.concatenate([np.arange(0.0, kn[-1] + 0.5 * dt_f, dt_f), sw - 1e-9, sw + 1e-9,
                                             _impact_samples(case, contacts, min(dt_f, _stop_half_period(m) / 20.0))]), 12))
     tf = tf[(tf >= 0) & (tf <= kn[-1])]
-    nb = N if horiz else 1                                   # replicated blades are identical: check blade 1 only
-    ck = model if horiz else _Model(replace(case, blade_count=1))
+    ck =model if horiz else _Model(replace(case, blade_count=1))
     thf, thdf, latf = (a[:, :nb] for a in _evaluate(model, segments, tf))
     chunks = [_postprocess(ck, tf[i:i + 20000], thf[i:i + 20000], thdf[i:i + 20000], latf[i:i + 20000])[3]
               for i in range(0, len(tf), 20000)]                   # bounded memory on long schedules
@@ -759,7 +768,7 @@ def run_cycle(case: CycleCase, *, sensitivity: bool = True, extra: dict | None =
     Ef = resf["kinetic"] + resf["potential"]
     res_f = (Ef - Ef[0]) - W_in
     for e in engaged:      # the latch spring appears preloaded at engagement: energy input of the switch, not a solver error
-        res_f[tf >= e["time_s"], e["blade"]] -= 0.5 * m.latch_stiffness_nm_per_rad * (m.latch_capture_rad + 1e-3) ** 2
+        res_f[tf >= e["time_s"], e["blade"]] -= 0.5 * m.latch_stiffness_nm_per_rad * 1e-3 ** 2
     E_scale = max(1e-9, float(np.abs(_cumtrapz(np.abs(resf["drive_power"]), tf)).max()))
     on_t = lambda a: np.stack([np.interp(t, tf, a[:, b]) for b in range(nb)], 1)  # noqa: E731
     energy_residual = on_t(res_f)
@@ -783,7 +792,8 @@ def run_cycle(case: CycleCase, *, sensitivity: bool = True, extra: dict | None =
         ch["passed"] = None if ch["limit"] is None else bool(ch["value"] <= ch["limit"])
     returned = th[-1] < m.stowed_stop_rad + math.radians(2.0)
     opened = th.max(0) > m.open_stop_rad - math.radians(2.0)
-    eq_open = float(np.degrees(th[(t > kn[2] + 0.5 * case.schedule.hold_s) & (t <= kn[3]), 0].mean())) \
+    # mean on the uniform event grid: the stored grid is dense inside impacts and would weight them
+    eq_open = float(np.degrees(th1[(t1 > kn[2] + 0.5 * case.schedule.hold_s) & (t1 <= kn[3]), 0].mean())) \
         if case.schedule.hold_s > 0 else None
 
     def rd(a, n=5):
@@ -852,24 +862,50 @@ def case_from_dict(d) -> CycleCase:
                      rtol=d["rtol"], max_step_s=d["max_step_s"])
 
 
+# rules added in schema 2, each with the neutral value its retry substitutes (every older rule ran before it and passed)
+_SCHEMA2_RULES = (("cycle duration", lambda d: {**d, "schedule": {}}),
+                  ("actuator_end_s > actuator_start_s", lambda d: {**d, "mechanism": {**d["mechanism"], "actuator_nm": 0.0}}),
+                  ("latch release time", lambda d: {**d, "mechanism": {**d["mechanism"], "latch_release_s": 0.0}}))
+
+
+def _legacy_case(d) -> CycleCase:
+    """Schema-1 case validated by every rule except those added in schema 2 (duration cap, actuator window, release sign)."""
+    while True:
+        try:
+            return case_from_dict(d)
+        except ValueError as e:
+            fix = next((f for msg, f in _SCHEMA2_RULES if msg in str(e)), None)
+            if fix is None:
+                raise
+            d = fix(d)
+
+
 def contact_sensitivity(case: CycleCase, reference_contacts) -> dict:
     """Governing contacts (largest |peak| over all blades) at the open and the stowed stop under a finer integration and
-    under half/double stop stiffness. Each variant integrates the real schedule up to just after the later target."""
+    under half/double stop stiffness. The stiffness variants integrate the real schedule up to just after the later target;
+    the finer integration (several times costlier) only up to just after the open target, so it has no stowed row unless
+    the stowed target ends before that."""
     def governing(cs, stop, blade=None):
         return max((c for c in cs if c["stop"] == stop and blade in (None, c["blade"])),
                    key=lambda c: abs(c["peak_torque_nm"]), default=None)
     targets = {s: governing(reference_contacts, s) for s in ("open", "stowed")}
     if targets["open"] is None:
         return {"available": False, "reason": "Açık stopa temas yok."}
-    t_end = min(case.schedule.knots[-1], max(c["t_out_s"] for c in targets.values() if c) + 0.05)
+    end = lambda cs: min(case.schedule.knots[-1], max(c["t_out_s"] for c in cs if c) + 0.05)  # noqa: E731
     k = case.mechanism.stop_stiffness_nm_per_rad
-    runs = {"Referans": reference_contacts}
-    for label, cs in (("Daha sıkı tolerans (rtol/100, adım/4)", replace(case, rtol=case.rtol / 100, max_step_s=case.max_step_s / 4)),
-                      ("Stop rijitliği ×0,5", replace(case, mechanism=replace(case.mechanism, stop_stiffness_nm_per_rad=k / 2))),
-                      ("Stop rijitliği ×2", replace(case, mechanism=replace(case.mechanism, stop_stiffness_nm_per_rad=k * 2)))):
+    runs = {"Referans": (reference_contacts, case.schedule.knots[-1])}
+    for label, cs, t_end in (
+            ("Daha sıkı tolerans (rtol/100, adım/4)", replace(case, rtol=case.rtol / 100, max_step_s=case.max_step_s / 4),
+             end([targets["open"]])),
+            ("Stop rijitliği ×0,5", replace(case, mechanism=replace(case.mechanism, stop_stiffness_nm_per_rad=k / 2)),
+             end(targets.values())),
+            ("Stop rijitliği ×2", replace(case, mechanism=replace(case.mechanism, stop_stiffness_nm_per_rad=k * 2)),
+             end(targets.values()))):
         model, segments, crossings, _ = _integrate(cs, t_end)
-        runs[label] = _contacts(model, segments, crossings, cs, t_end)
-    out = {s: (_sensitivity_rows(tgt, {label: governing(cc, s, tgt["blade"]) for label, cc in runs.items()}) if tgt
+        runs[label] = (_contacts(model, segments, crossings, cs, t_end), t_end)
+    # a run that stops before the target ends has no counterpart (an earlier contact would be a different one)
+    out = {s: (_sensitivity_rows(tgt, {label: governing(cc, s, tgt["blade"]) if te >= tgt["t_out_s"] else None
+                                       for label, (cc, te) in runs.items()}) if tgt
                else {"available": False, "reason": "Kapalı stopa darbe yok."}) for s, tgt in targets.items()}
     return {**out["open"], "stowed": out["stowed"]}
 
@@ -907,8 +943,7 @@ def verify(row: dict) -> dict:
         raise ValueError("Not a PyFoldable fold-cycle record.")
     if seal(row)["result_sha256"] != row.get("result_sha256"):
         raise ValueError("Fold-cycle record digest does not match its content.")
-    # schema 1 predates the duration cap and the actuator/latch input checks: its case is checked by digest and shape only
-    blades = case_from_dict(row["case"]).blade_count if row["schema_version"] == SCHEMA_VERSION else row["case"]["blade_count"]
+    blades = (case_from_dict if row["schema_version"] == SCHEMA_VERSION else _legacy_case)(row["case"]).blade_count
     s = row["series"]
     n = len(s.get("time_s", ()))
     if n < 2 or any(isinstance(v, list) and v and len(v) != n for v in s.values()):
