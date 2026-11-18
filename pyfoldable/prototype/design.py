@@ -34,6 +34,9 @@ from pathlib import Path
 
 TEMPLATE = "configs/designs/TIP_HINGED_250_CANONICAL.toml"
 MIN_LUG_MM = 2.0
+MIN_ZONE_MM = 10.0                            # hinge-zone half-width floor (the loft samples the zone every w/4)
+LUG_PROUD_MM = 0.2                            # full-depth lug faces stand proud of the blade's extreme surface point:
+#                                               a face tangent to the blade surface made OCC fusions fail silently
 IN_TO_MM = 25.4
 
 MATERIALS = {
@@ -60,6 +63,13 @@ class Planform:
     chord_scale: float = 1.0
     twist_scale: float = 1.0
     blade_count: int = 2
+    # local hinge-zone shaping (0: none): chord and twist scaled by 1 − (1 − k)·b(r) with a cosine bump b of
+    # half-width ``hinge_zone_mm`` centred on the joint plane; a new planform identity, not the template's
+    hinge_zone_mm: float = 0.0               # inboard half-width (proximal side)
+    hinge_zone_outboard_mm: float | None = None  # outboard half-width (distal side); None: same as inboard
+    hinge_zone_center_mm: float = 0.0
+    hinge_chord_factor: float = 1.0
+    hinge_twist_factor: float = 1.0
 
     @property
     def tip_radius_mm(self):
@@ -86,6 +96,10 @@ class Connection:
     stowed_angle_deg: float = -140.0          # required backward travel: owner decision (template declares −180°);
     #                                           the 4 mm stop nose doubles as the folded stop at ≈ 144°
     body_clearance_mm: float = 0.5            # required nominal clearance between the segments outside the joint
+    # joint play measured on a printed fit pair (``fit.apply``); None: the worst-case model play is used
+    measured_axial_play_mm: float | None = None
+    measured_tilt_deg: float | None = None
+    play_record_sha256: str | None = None     # SHA-256 of the fit record the measured play came from
 
 
 @dataclass(frozen=True)
@@ -166,14 +180,14 @@ class PrototypeDesign:
 
     @cached_property
     def lug_thicknesses_mm(self):
-        """(t_p, t_d): explicit values, or full depth from the blade's far surface over the boss disk to the
-        interface (each lug then engages its whole blade section; the thickness follows the offset)."""
+        """(t_p, t_d): explicit values, or full depth from the blade's far surface over the boss disk (plus
+        ``LUG_PROUD_MM``) to the interface (each lug then engages its whole blade section; it follows the offset)."""
         c, zi = self.connection, self.interface_z_mm
         tp, td = c.lug_thickness_proximal_mm, c.lug_thickness_distal_mm
         if tp is None:
-            tp = zi - c.lug_gap_mm / 2.0 - self.body_band_at_pin_mm("proximal")[0]
+            tp = zi - c.lug_gap_mm / 2.0 - (self.body_band_at_pin_mm("proximal")[0] - LUG_PROUD_MM)
         if td is None:
-            td = self.body_band_at_pin_mm("distal")[1] - zi - c.lug_gap_mm / 2.0
+            td = self.body_band_at_pin_mm("distal")[1] + LUG_PROUD_MM - zi - c.lug_gap_mm / 2.0
         return float(tp), float(td)
 
     @property
@@ -259,6 +273,20 @@ def validate(d: PrototypeDesign) -> list[str]:
     positive.update({k: v for k, v in (("lug_thickness_proximal_mm", c.lug_thickness_proximal_mm),
                                        ("lug_thickness_distal_mm", c.lug_thickness_distal_mm)) if v is not None})
     errs += [f"{k} pozitif olmalı." for k, v in positive.items() if not (math.isfinite(v) and v > 0)]
+    if p.hinge_zone_mm:
+        if not (math.isfinite(p.hinge_zone_mm) and p.hinge_zone_mm >= MIN_ZONE_MM):
+            errs.append(f"Menteşe bölgesi yarı genişliği ≥ {MIN_ZONE_MM:.0f} mm olmalı.")
+        elif abs(p.hinge_zone_center_mm - c.hinge_radius_mm) > 1e-6:
+            errs.append("Menteşe bölgesi biçimlendirmesi menteşe düzlemine ortalanmalı (yarıçapı r_j ile aynı).")
+        elif p.hinge_zone_outboard_mm is not None and not (math.isfinite(p.hinge_zone_outboard_mm)
+                                                            and p.hinge_zone_outboard_mm >= MIN_ZONE_MM):
+            errs.append(f"Menteşe bölgesi dış yarı genişliği ≥ {MIN_ZONE_MM:.0f} mm olmalı.")
+        elif r and not (r[0] <= c.hinge_radius_mm - p.hinge_zone_mm
+                        and c.hinge_radius_mm + (p.hinge_zone_outboard_mm or p.hinge_zone_mm) <= r[-1]):
+            errs.append("Menteşe bölgesi istasyon aralığının içinde kalmalı.")
+        for k, v in (("hinge_chord_factor", p.hinge_chord_factor), ("hinge_twist_factor", p.hinge_twist_factor)):
+            if not (math.isfinite(v) and 0.2 <= v <= 1.5):
+                errs.append(f"{k} 0,2 ile 1,5 arasında olmalı.")
     if c.axial_offset_mm <= 0:
         errs.append("Ofset δ > 0 olmalı: v1 distal parçayı proksimalin üstüne (itki tarafına) yerleştirir.")
     if not errs and r and r[0] + 10 < c.hinge_radius_mm < r[-1] - 10:
@@ -272,6 +300,16 @@ def validate(d: PrototypeDesign) -> list[str]:
     nonneg = dict(hole_clearance_mm=c.hole_clearance_mm, lug_gap_mm=c.lug_gap_mm, face_gap_mm=c.face_gap_mm,
                   relief_clearance_mm=c.relief_clearance_mm, nose_extension_mm=c.nose_extension_mm)
     errs += [f"{k} negatif olamaz." for k, v in nonneg.items() if not (math.isfinite(v) and v >= 0)]
+    measured = (c.measured_axial_play_mm, c.measured_tilt_deg, c.play_record_sha256)
+    if any(v is not None for v in measured):
+        if any(v is None for v in measured):
+            errs.append("Ölçülen boşluk eksenel boşluk, eğilme açısı ve kayıt özetiyle birlikte girilmeli.")
+        elif (not all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) and v >= 0
+                      for v in measured[:2])
+              or not (isinstance(c.play_record_sha256, str) and len(c.play_record_sha256) == 64
+                      and all(ch in "0123456789abcdef" for ch in c.play_record_sha256))):
+            errs.append("Ölçülen boşluk değerleri sonlu ve negatif olmayan sayılar, kayıt özeti 64 karakterlik onaltılık "
+                        "SHA-256 olmalı.")
     if c.lug_gap_mm <= 0:
         errs.append("Lug aralığı sıfırdan büyük olmalı (dönen yüzeyler).")
     if c.boss_radius_mm <= d.hole_diameter_mm / 2 + pm.wall_mm:
@@ -300,16 +338,44 @@ def validate(d: PrototypeDesign) -> list[str]:
 
 
 def planform_from_template(root: Path, *, diameter_mm=13.0 * IN_TO_MM, chord_scale=1.0, twist_scale=1.0,
-                           profile_id="NACA2412", template_id="project_250") -> Planform:
+                           profile_id="NACA2412", template_id="project_250", hinge_zone_mm=0.0,
+                           hinge_zone_center_mm=0.0, hinge_chord_factor=1.0, hinge_twist_factor=1.0,
+                           hinge_zone_outboard_mm=None) -> Planform:
     """The research template's stations scaled exactly as the research workflow scales them (chord by diameter
-    ratio × chord scale, twist × twist scale), so BEM in *Analiz* can run on the same planform."""
+    ratio × chord scale, twist × twist scale), so BEM in *Analiz* can run on the same planform; with an optional local
+    hinge-zone shaping (stations inserted every quarter half-width, values from the linear template interpolation)."""
     from pyfoldable.core.config import load_design_config
     design = load_design_config(Path(root) / TEMPLATE)
     scale = diameter_mm / 1000.0 / design.blade.diameter_m
     R = diameter_mm / 2.0
     stations = tuple((round(s.r_over_R * R, 6), round(s.chord_m * 1000 * scale * chord_scale, 6),
                       round(math.degrees(s.twist_rad) * twist_scale, 6)) for s in design.blade.stations)
-    return Planform(profile_id, diameter_mm, stations, template_id, chord_scale, twist_scale, design.blade.blade_count)
+    if hinge_zone_mm > 0:
+        stations = hinge_zone_stations(stations, hinge_zone_center_mm, hinge_zone_mm, hinge_chord_factor,
+                                       hinge_twist_factor, hinge_zone_outboard_mm)
+    return Planform(profile_id, diameter_mm, stations, template_id, chord_scale, twist_scale, design.blade.blade_count,
+                    hinge_zone_mm, hinge_zone_outboard_mm if hinge_zone_mm > 0 else None,
+                    hinge_zone_center_mm if hinge_zone_mm > 0 else 0.0, hinge_chord_factor, hinge_twist_factor)
+
+
+def hinge_zone_stations(stations, center_mm, half_width_mm, chord_factor, twist_factor, outboard_mm=None):
+    """Stations with a cosine-blended local chord/twist scaling about the joint (outside the zone: unchanged); the
+    outboard half-width may differ from the inboard one."""
+    r = [s[0] for s in stations]
+    w_in, w_out = half_width_mm, outboard_mm or half_width_mm
+    marks = [center_mm + w_in * k / 4.0 for k in range(-4, 1)] + [center_mm + w_out * k / 4.0 for k in range(1, 5)]
+    grid = sorted({*r, *(round(x, 6) for x in marks if r[0] < x < r[-1])})
+
+    def interp(x, i):
+        k = next(j for j in range(len(r) - 1) if r[j] <= x <= r[j + 1])
+        w = (x - r[k]) / (r[k + 1] - r[k])
+        return stations[k][i] + w * (stations[k + 1][i] - stations[k][i])
+
+    def bump(x):
+        u = (x - center_mm) / w_out if x > center_mm else (center_mm - x) / w_in
+        return 0.5 * (1.0 + math.cos(math.pi * u)) if u < 1.0 else 0.0
+    return tuple((x, round(interp(x, 1) * (1 - (1 - chord_factor) * bump(x)), 6),
+                  round(interp(x, 2) * (1 - (1 - twist_factor) * bump(x)), 6)) for x in grid)
 
 
 def default_design(root: Path, **planform_kwargs) -> PrototypeDesign:

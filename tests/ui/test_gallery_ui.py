@@ -112,8 +112,8 @@ def test_archive_lists_exactly_the_reports_files_and_refuses_paths_outside():
 
 def test_archive_does_not_list_a_link_that_points_outside_reports(tmp_path):
     (tmp_path / "reports").mkdir()
-    (tmp_path / "outside.txt").write_text("dış")
-    (tmp_path / "reports/inside.txt").write_text("iç")
+    (tmp_path / "outside.txt").write_text("dış", encoding="utf-8")       # CI 3.10 runs with an ASCII locale
+    (tmp_path / "reports/inside.txt").write_text("iç", encoding="utf-8")
     (tmp_path / "reports/link.txt").symlink_to(tmp_path / "outside.txt")
     assert gallery_ui.archive_files(tmp_path) == ["inside.txt"]
 

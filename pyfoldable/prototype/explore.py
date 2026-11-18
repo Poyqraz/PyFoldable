@@ -18,21 +18,28 @@ from . import cad, checks, loads, mass, strength
 from .design import planform_from_template, validate, with_changes
 
 MAX_CANDIDATES = 24
-PLANFORM_AXES = ("planform.twist_scale", "planform.chord_scale", "planform.profile_id")
+PLANFORM_AXES = ("planform.twist_scale", "planform.chord_scale", "planform.profile_id", "planform.hinge_zone_mm",
+                 "planform.hinge_zone_outboard_mm", "planform.hinge_chord_factor", "planform.hinge_twist_factor")
 REFERENCE_RPM = 6000.0
 
 
 def candidate_design(base, root, params: dict):
     plan = {k.split(".", 1)[1]: v for k, v in params.items() if k in PLANFORM_AXES}
-    d = base
-    if plan:
-        p = base.planform
-        kw = dict(diameter_mm=p.diameter_mm, chord_scale=p.chord_scale, twist_scale=p.twist_scale,
-                  profile_id=p.profile_id, template_id=p.template_id)
-        kw.update(plan)
-        d = replace(d, planform=planform_from_template(root, **kw))
     rest = {k: v for k, v in params.items() if k not in PLANFORM_AXES}
-    return with_changes(d, **rest) if rest else d
+    d = with_changes(base, **rest) if rest else base
+    p = base.planform
+    if plan or (p.hinge_zone_mm > 0 and d.connection.hinge_radius_mm != base.connection.hinge_radius_mm):
+        kw = dict(diameter_mm=p.diameter_mm, chord_scale=p.chord_scale, twist_scale=p.twist_scale,
+                  profile_id=p.profile_id, template_id=p.template_id, hinge_zone_mm=p.hinge_zone_mm,
+                  hinge_chord_factor=p.hinge_chord_factor, hinge_twist_factor=p.hinge_twist_factor,
+                  hinge_zone_outboard_mm=p.hinge_zone_outboard_mm)
+        kw.update(plan)
+        kw["hinge_zone_center_mm"] = d.connection.hinge_radius_mm         # the zone follows the joint
+        d = replace(d, planform=planform_from_template(root, **kw))
+    if params and d.connection.play_record_sha256 is not None:            # play was measured on the base geometry only
+        d = with_changes(d, **{"connection.measured_axial_play_mm": None, "connection.measured_tilt_deg": None,
+                               "connection.play_record_sha256": None})
+    return d
 
 
 def evaluate(d, rpm=None) -> dict:

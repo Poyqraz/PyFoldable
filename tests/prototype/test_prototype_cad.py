@@ -144,8 +144,8 @@ def test_full_depth_lugs_engage_their_blades_and_thin_mid_lugs_are_flagged(base)
         d = pd.with_changes(base, **{"connection.axial_offset_mm": delta})
         eng = checks.lug_engagement(d)
         assert min(eng.values()) == pytest.approx(1.0)
-        assert d.lug_bands_mm[0][0] == pytest.approx(d.body_band_at_pin_mm("proximal")[0])
-        assert d.lug_bands_mm[1][1] == pytest.approx(d.body_band_at_pin_mm("distal")[1])
+        assert d.lug_bands_mm[0][0] == pytest.approx(d.body_band_at_pin_mm("proximal")[0] - pd.LUG_PROUD_MM)
+        assert d.lug_bands_mm[1][1] == pytest.approx(d.body_band_at_pin_mm("distal")[1] + pd.LUG_PROUD_MM)
     thin = pd.with_changes(base, **{"connection.axial_offset_mm": 9.5, "connection.lug_thickness_proximal_mm": 4.0,
                                     "connection.lug_thickness_distal_mm": 4.0})
     assert checks.lug_engagement(thin)["distal"] < 0.6
@@ -207,3 +207,33 @@ def test_export_writes_millimetre_step_and_meshes_that_read_back(parts, tmp_path
     assert len(out["files"]) == len((tmp_path / "SHA256SUMS").read_text().splitlines())
     text = (tmp_path / "summary.md").read_text(encoding="utf-8")
     assert "Physical qualification: **false**" in text and "azami devir" in text
+
+
+def test_closely_spaced_loft_sections_are_merged_so_the_lug_fuses(base):
+    # a hinge-zone station 1.1 mm from a grid section made the spline loft fail its boolean with the boss silently
+    shaped = pd.with_changes(base, planform=pd.planform_from_template(
+        ROOT, hinge_zone_mm=30.0, hinge_zone_center_mm=99.0, hinge_twist_factor=0.5))
+    radii = cad._radii(shaped, shaped.hub_radius_mm - 1.5, 99.0)
+    assert min(b - a for a, b in zip(radii, radii[1:])) >= 3.0
+    parts = cad.build(shaped)
+    assert parts.proximal.is_valid() and parts.distal.is_valid()
+
+
+@pytest.mark.parametrize("params", [{"twist_scale": 0.86},
+                                    {"hinge_zone_mm": 45.0, "hinge_zone_center_mm": 99.0, "hinge_twist_factor": 0.35}])
+def test_full_depth_lugs_fuse_without_a_tangent_face(base, params):
+    # a lug face tangent to the blade's extreme point (ts 0.86) or a steep twist gradient between irregular loft
+    # sections (zone) left the boss as a separate body; both now build one valid solid per part
+    d = pd.with_changes(base, planform=pd.planform_from_template(ROOT, **params))
+    parts = cad.build(d)
+    assert parts.proximal.is_valid() and parts.distal.is_valid()
+    assert d.lug_thicknesses_mm[0] > d.interface_z_mm - d.connection.lug_gap_mm / 2 - d.body_band_at_pin_mm("proximal")[0]
+
+
+def test_offset_with_play_matches_the_pass_rule_and_both_criteria(parts, base):
+    # pass rule with play: worst-case gap ≥ 0; nominal: gap ≥ body clearance. The offset needed satisfies both.
+    sw = checks.sweep(parts)
+    delta, need = base.connection.axial_offset_mm, base.connection.body_clearance_mm
+    assert sw["required_offset_with_play_mm"] == pytest.approx(
+        max(sw["required_offset_mm"], delta + max(0.0, -sw["min_gap_play_mm"])))
+    assert sw["required_offset_mm"] == pytest.approx(delta + max(0.0, need - sw["min_gap_mm"]))

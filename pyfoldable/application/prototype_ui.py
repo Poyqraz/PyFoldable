@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import copy
 import io
+import json
 import math
 import tempfile
 import zipfile
@@ -20,12 +21,14 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from pyfoldable.core.profile_catalog import PROJECT_AIRFOIL_IDS
-from pyfoldable.prototype import cad, checks, design, explore, export, loads, strength
+from pyfoldable.prototype import cad, checks, design, explore, export, fit, loads, strength, study
 
 from . import figure_style
 from . import research_ui as rui
 
 _BUILD, _EXPLORE, _EXPORT, _OFFSETS = "_proto_build", "_proto_explore", "_proto_export", "_proto_offsets"
+_FIT, _FIT_ERROR = "_proto_fit_record", "_proto_fit_error"
+KIT = Path("reports/prototype_13in_20261118/fit_kit_B")      # committed measurement kit (predictions + template)
 FOLD_STEP_DEG = 10.0
 MESH_TOL_MM, MESH_ANGLE_RAD = 0.3, 0.5
 PROXIMAL, DISTAL, HARDWARE = "#4C78A8", "#E45756", figure_style.CONSTRUCTION
@@ -37,6 +40,10 @@ _INPUTS = {
         ("planform.chord_scale", "Kord çarpanı", 0.2, 3.0),
         ("planform.twist_scale", "Burulma çarpanı", 0.0, 3.0),
         ("connection.hinge_radius_mm", "Menteşe yarıçapı r_j [mm]", 20.0, 300.0),
+        ("planform.hinge_zone_mm", "Menteşe bölgesi iç yarı genişliği [mm] (0: yok)", 0.0, 150.0),
+        ("planform.hinge_zone_outboard_mm", "Menteşe bölgesi dış yarı genişliği [mm] (boş: iç ile aynı)", 1.0, 150.0),
+        ("planform.hinge_chord_factor", "Menteşe bölgesi kord çarpanı", 0.2, 1.5),
+        ("planform.hinge_twist_factor", "Menteşe bölgesi burulma çarpanı", 0.2, 1.5),
     ),
     "Bağlantı (tek lug, tek pim)": (
         ("connection.axial_offset_mm", "Eksenel ofset δ = z_B − z_A [mm]", -30.0, 30.0),
@@ -132,6 +139,7 @@ def _inputs(base) -> dict:
 def _design(root, values):
     v = dict(values)
     plan = {k.split(".", 1)[1]: v.pop(k) for k in list(v) if k.startswith("planform.")}
+    plan["hinge_zone_center_mm"] = v["connection.hinge_radius_mm"]          # the shaping zone follows the joint
     v["print_model.bed_mm"] = tuple(v.pop(f"print_model.bed_mm.{i}") for i in range(3))
     return design.with_changes(design.default_design(root, **plan), **v)
 
@@ -275,6 +283,67 @@ def _alignment(al):
                f"{'evet' if al['hardware_inside_relief'] else 'hayır'}.")
 
 
+def envelope_figures(d, sw):
+    """Deployed joint seen from the tip, folded plan envelope and the offset each required travel would need."""
+    al, env, curve = study.alignment_sections(d), study.envelope(d, sw), study.required_by_travel(d, sw)
+    side = go.Figure()
+    for key, color, name in (("proximal", PROXIMAL, "Proksimal uç kesiti (z = 0)"),
+                             ("distal", DISTAL, "Distal kök kesiti (z = δ)")):
+        side.add_trace(go.Scatter(x=al[key][:, 0], y=al[key][:, 1], fill="toself", name=name, line=dict(color=color)))
+    for key, color in (("lug_proximal", PROXIMAL), ("lug_distal", DISTAL)):
+        x0, x1, z0, z1 = al[key]
+        side.add_shape(type="rect", x0=x0, x1=x1, y0=z0, y1=z1, line=dict(color=color, dash="dash"))
+    px, zb, zt = al["pin"]
+    side.add_trace(go.Scatter(x=[px, px], y=[zb, zt], name="Pim seti", line=dict(color=HARDWARE, width=5)))
+    for z, label in ((0.0, "düzlem A"), (al["delta_mm"], "düzlem B")):
+        side.add_hline(y=z, line=dict(color=figure_style.CONSTRUCTION, dash="dot"), annotation_text=label)
+    side.update_layout(height=380, xaxis_title="x, veter [mm] (hücum kenarı solda)", yaxis_title="z, şaft [mm]")
+    side.update_yaxes(scaleanchor="x")
+    plan = go.Figure([
+        go.Scatter(x=env["proximal"][:, 0], y=env["proximal"][:, 1], fill="toself", name="Proksimal", line=dict(color=PROXIMAL)),
+        go.Scatter(x=env["distal"][:, 0], y=env["distal"][:, 1], name="Distal, açık", line=dict(color=DISTAL, dash="dot")),
+        go.Scatter(x=env["folded"][:, 0], y=env["folded"][:, 1], fill="toself", name=f"Distal, {abs(env['fold_deg']):.0f}° katlı",
+                   line=dict(color=DISTAL)),
+    ])
+    t = np.linspace(0.0, 2.0 * np.pi, 181)
+    for r, dash, name in ((env["deployed_radius_mm"], "dot", "Açık uç dairesi"),
+                          (env["folded_radius_mm"], "solid", f"Katlı zarf R {env['folded_radius_mm']:.0f} mm")):
+        plan.add_trace(go.Scatter(x=r * np.cos(t), y=r * np.sin(t), name=name,
+                                  line=dict(color=figure_style.CONSTRUCTION, dash=dash, width=1)))
+    if env["critical"]:
+        plan.add_trace(go.Scatter(x=[env["critical"][0]], y=[env["critical"][1]], mode="markers",
+                                  name=f"Belirleyici temas ({abs(env['critical_angle_deg']):.0f}°)",
+                                  marker=dict(symbol="star", size=13, color=figure_style.ACCENT)))
+    plan.update_layout(height=480, xaxis_title="x [mm]", yaxis_title="y, açıklık [mm]")
+    plan.update_xaxes(range=[-90, 90])
+    plan.update_yaxes(range=[-10, 175], scaleanchor="x")
+    need = go.Figure([go.Scatter(x=[c["travel_deg"] for c in curve], y=[c["required_mm"] for c in curve], name="Nominal"),
+                      go.Scatter(x=[c["travel_deg"] for c in curve], y=[c["required_with_play_mm"] for c in curve],
+                                 name="Boşlukla", line=dict(dash="dash"))])
+    need.add_hrect(y0=5.0, y1=6.0, fillcolor=figure_style.SERIES[0], opacity=0.15, line_width=0,
+                   annotation_text="sahip hedefi 5–6 mm")
+    need.update_layout(height=360, xaxis_title="Gerekli katlanma [°]", yaxis_title="Gereken ofset [mm]")
+    return side, plan, need
+
+
+def _envelope(d, sw):
+    side, plan, need = envelope_figures(d, sw)
+    b = study.offset_budget(d, sw)
+    st.markdown(f"**Açık hizalama:** basamak δ {_f(d.connection.axial_offset_mm)} mm; menteşe kesitinin düşey yüksekliği "
+                f"{_f(b['section_height_mm'])} mm (kord {_f(b['chord_mm'])} mm, burulma {_f(b['twist_deg'], 1)}°, yerel hatve "
+                f"{_f(b['pitch_at_joint_in'])} in; 0,75R hatvesi {_f(b['pitch_075R_in'])} in).")
+    rui._plot(side, "proto_alignment_side")
+    rui._plot(plan, "proto_envelope_plan")
+    st.markdown(f"**Gereken ofset bütçesi:** gereken {_f(b['required_mm'], 1)} mm = mekanizma tabanı "
+                f"{_f(b['mechanism_floor_mm'], 1)} mm (kesit kalınlığı + gerekli boşluk; düz kanatta bile) + kanat payı "
+                f"{_f(b['blade_term_mm'], 1)} mm (menteşe çevresindeki kesitlerin kord × sin β yüksekliği). Boşlukla "
+                f"{_f(b['required_with_play_mm'], 1)} mm ({sw['play'].get('source', 'model')}).")
+    rui._plot(need, "proto_offset_by_travel")
+    st.caption("Belirleyici temas genellikle distal firar kenarı kökünün proksimal hücum kenarı bölgesinin üstünden "
+               "geçtiği yerdir (pimden yaklaşık bir veter içeride). Pim konumu bunu az değiştirir; pimi geri almak "
+               "merkezkaç oturmasını kaldırır.")
+
+
 def _mass(mp):
     st.dataframe([{"Parça": label, "Kütle [g]": _r(mp[k].mass_g), **{f"CG {a} [mm]": _r(c) for a, c in zip("xyz", mp[k].cg_mm)},
                    "Yöntem": mp[k].method}
@@ -373,7 +442,8 @@ def _results(r):
         st.warning(reason)
     if failed:
         st.warning("Basılabilirlik kontrolü geçmedi: " + " · ".join(failed))
-    tabs = st.tabs(("3B montaj", "Katlanma açıklığı", "Açık hizalama", "Kütle", "Yükler ve dayanım", "Basılabilirlik"))
+    tabs = st.tabs(("3B montaj", "Katlanma açıklığı", "Açık hizalama ve katlı zarf", "Kütle", "Yükler ve dayanım",
+                    "Basılabilirlik"))
     with tabs[0]:
         st.caption("Mavi proksimal (göbek ile), kırmızı distal, gri pim seti; oynatma distali pim etrafında "
                    f"{FOLD_STEP_DEG:.0f}°’lik adımlarla kapalı açıya kadar döndürür. Önizleme ağı kabadır; ölçüler katılardan.")
@@ -382,6 +452,7 @@ def _results(r):
         _clearance(r["sweep"])
     with tabs[2]:
         _alignment(r["alignment"])
+        _envelope(d, r["sweep"])
     with tabs[3]:
         _mass(r["mass"])
     with tabs[4]:
@@ -481,6 +552,61 @@ def _candidates(ex, d):
               help="Yalnız keşif eksenlerinin değerleri yüklenir; sonra geometriyi yeniden oluşturun.")
 
 
+# ------------------------------------------------------------------------------------------- measurement record
+def _measurement(root: Path, d):
+    st.subheader("Ölçüm prototipi (B uyum çifti ve delik kuponu)")
+    st.caption("Kupon ve kısa uyum çifti pim geçmesi, eksenel/eğilme boşluğu, sürtünme ve stop oturması için basılıp "
+               "ölçülür; B’yi güçlü pervane olarak seçmez. Kit ve protokol: " + KIT.as_posix() + "/README.md.")
+    kit = Path(root) / KIT
+    try:
+        pred = json.loads((kit / "predictions.json").read_text(encoding="utf-8"))
+        tpl = (kit / "fit_record_template.json").read_text(encoding="utf-8")
+    except (OSError, ValueError) as exc:
+        st.info(f"Ölçüm kiti bulunamadı ({type(exc).__name__}).")
+        return
+    st.download_button("Ölçüm kaydı şablonunu indir (JSON)", tpl.encode("utf-8"), "fit_record_template.json",
+                       "application/json", key="proto_fit_template")
+    text = st.text_area("Doldurulmuş ölçüm kaydı (JSON yapıştırın)", key="proto_fit_text", height=140)
+    st.button("Kaydı doğrula ve tasarıma uygula", key="proto_fit_apply", disabled=not text.strip(),
+              on_click=_apply_record, args=(pred,))      # a callback: the whole run below sees the new state
+    if st.session_state.get(_FIT_ERROR):
+        st.error("Ölçüm kaydı kullanılamadı (hiçbir şey uygulanmadı): " + st.session_state[_FIT_ERROR])
+    held = st.session_state.get(_FIT)
+    if held is not None and not design.validate(d):
+        out = fit.apply(d, held["record"], held["pred"])
+        st.dataframe([{"Büyüklük": r["quantity"], "Model": r["model"], "Ölçüm": r["measured"], "Birim": r["unit"],
+                       "Not": r["note"]} for r in out["rows"]], hide_index=True, **figure_style.dataframe_width_kwargs())
+        for w in out["warnings"]:
+            st.warning(w)
+        st.button("Ölçüm kaydını kaldır", key="proto_fit_clear", on_click=lambda: st.session_state.pop(_FIT, None))
+
+
+def _apply_record(pred):
+    st.session_state.pop(_FIT, None)                     # fail closed: a failed paste never leaves an older record
+    st.session_state.pop(_FIT_ERROR, None)
+    try:
+        st.session_state[_FIT] = {"record": fit.parse(st.session_state.get("proto_fit_text", ""), pred), "pred": pred}
+    except fit.RecordError as exc:
+        st.session_state[_FIT_ERROR] = str(exc)
+
+
+def _with_record(d):
+    """The design with an applied fit record (measured clearance and play); its identity changes with the record."""
+    held = st.session_state.get(_FIT)
+    if held is None:
+        return d
+    try:
+        out = fit.apply(d, held["record"], held["pred"])
+    except ValueError as exc:                      # e.g. a pin outside the hinge section: the editor shows the error
+        st.error(f"Ölçüm kaydı bu tasarıma uygulanamadı: {exc}")
+        return d
+    c = out["design"].connection
+    st.info(f"Ölçüm kaydı uygulanıyor (özet {out['record_sha256'][:12]}): delik boşluğu {_f(c.hole_clearance_mm)} mm, "
+            f"eksenel boşluk {_f(c.measured_axial_play_mm)} mm, eğilme {_f(c.measured_tilt_deg)}°; boşluklu açıklık "
+            "kontrolü model yerine bu ölçümü kullanır.")
+    return out["design"]
+
+
 # ---------------------------------------------------------------------------------------------------------- page
 def render_prototype(root: Path):
     head = st.container()
@@ -499,6 +625,7 @@ def render_prototype(root: Path):
     if d is None:
         st.error("Tasarım kurulamadı: " + problem)
         return
+    d0, d = d, _with_record(d)
     errors = design.validate(d)
     if not errors:
         st.caption(_planes(d))
@@ -525,3 +652,4 @@ def render_prototype(root: Path):
     else:
         _results(res["result"])
     _exploration(root, d, errors)
+    _measurement(root, d0)

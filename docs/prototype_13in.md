@@ -87,21 +87,57 @@ Near 180° the nose returns over the proximal and meets it. **The nose doubles a
 that happens at about 144° for offsets up to about 10 mm. A shallower nose folds further, but its root bending then
 governs the strength (2 mm nose: about 2050 RPM at SF 2).
 
-### Why 5–6 mm does not clear the template blade
+### Required offset: a limit of the blade shape, not of the mechanism
 
 A backward fold about a pin near the quarter chord carries every distal point through the direction straight
-inboard of the pin. Each one passes over the proximal planform, so the whole distal must pass above (δ > 0) or
-below the proximal. The required δ is about half the summed height of the overlapping twisted sections, plus the
-clearance. On the template planform (twist 31° at the root, 17° at the joint, 37–30 mm chord) these sections are
-12–22 mm tall.
+inboard of the pin, so the whole distal must pass above (δ > 0) or below the proximal.
 
-The check runs on the actual solids (see *Method*). At δ = 5.5 mm the bodies clash from 57°, with a worst
-interference of 5.2 mm at −105°. Clearing the fold needs δ ≈ 11.2 mm nominally (11.5 mm rechecked, 0.81 mm clear), or
-≈ 12.5 mm with worst-case joint play.
+**The governing contact.** Beyond about 105–110° of fold, the distal trailing-edge root passes over the proximal
+leading-edge region about one chord inboard of the pin. In the CAD sweep, this point lies about 22 mm from the pin,
+near y ≈ 77 mm. Positive twist lifts the leading edge, so:
 
-Flatter blades (lower pitch) need less offset: twist ×0.6 clears with play at 9.5 mm, and 5–6 mm clears a 140° fold
-only at twist ×0.25–0.35 (2–2.5 in pitch; with worst-case play 6.7–7.4 mm). On the template blade, 5–6 mm
-clears about 55–60°. The smallest practical adjustments are listed under *Results*.
+- the trailing edge is the lowest edge of the upper segment, at z_B − 0.75 c sin β;
+- the leading edge is the highest edge of the lower segment, at +0.25 c sin β.
+
+The offset must therefore clear the **whole** vertical extent of the sections near the joint. Half of it is not
+enough; an earlier version of this note said half, and that was wrong. The budget, checked against every swept
+variant in `reports/prototype_13in_20261118/study/offset_study.csv`:
+
+    δ_req ≈ H_j + c_b + r        H_j = vertical extent of the joint section ≈ c_j sin β_j + t_j cos β_j
+
+Here c_b is the required body clearance (0.5 mm). The residual r is a few tenths of a millimetre, because the
+proximal section one chord inboard is taller. Split into two parts:
+
+- **mechanism floor**, t_j cos β_j + c_b plus the joint play: what this topology needs even for a flat blade.
+  It is about 4.1 mm with the 3.7 mm thick printable NACA2412 section at the joint. The flat-blade variant
+  (twist 0) confirms it in CAD: 4.1 mm for a 140° fold, with a blade term of about 0.
+- **blade term**, c_j sin β_j + r: set by the chord and pitch near the joint. On the template planform (30.4 mm
+  chord, 17° at r_j, 7.5 in local pitch) it is about 7 mm, which gives 11.2 mm. The 5–6 mm target is therefore a
+  limit of the template blade, not of the one-lug, one-pin mechanism.
+
+**What does not help:**
+
+- **Pin chordwise position.** The crossing happens for any pin ahead of mid-chord. Moving the pin 3 mm aft lowers
+  the requirement by only about 0.2 mm, but the centrifugal seating moment at 6000 RPM falls from about 600 to
+  33 N·mm. At 6 mm aft the distal no longer seats. Moving the pin forward leaves no room for the stop ahead of the
+  relief ring. The pin stays at the quarter chord.
+- **A narrow hinge-zone change** (±30 mm). The proximal section about one chord inboard keeps its height.
+- **An asymmetric zone with a short outboard side.** At 120–140° the distal sections 20–45 mm from the joint also
+  cross the proximal.
+
+**What does help:**
+
+- **Lower pitch over the crossing region, on both sides of the joint.** On a 13×5.5-class blade (twist ×0.86), a
+  ±45 mm cosine-blended zone with chord ×0.85 and twist ×0.45 brings the 140° requirement to 5.9 mm (5.2 mm for
+  90°). This is candidate E, set at δ = 6.0 mm. The cost is the local pitch: about 2.8 in at the joint, rising to about 4.1 in at 0.75R. Its
+  aerodynamic effect is not evaluated: there is no polar for the printable section.
+- **A shorter required fold.** The offset needed at each fold is plotted per candidate in
+  `study/alignment_envelope_*.png`.
+- **A larger joint radius.** At r_j = 110 mm the template blade needs 9.3 mm, at the cost of a larger folded
+  radius.
+
+**Joint play** adds about 1.0–1.2 mm at 140° with the worst-case model (φ = 3.1°), and up to 3 mm near 180°. The measured play from the fit pair replaces
+that model; see *Measurement prototype*.
 
 ## Method
 
@@ -127,6 +163,17 @@ clears about 55–60°. The smallest practical adjustments are listed under *Res
   the pin by g. The worst-case gap at distance s from the pin is the gap minus g minus φ·s. The default joint
   (c_h 0.2, g 0.3, R_b 5.5) gives φ = 3.1° and a 3.9 mm droop at the tip. This is a significant result for the
   print: tighten g and the hole fit after the coupon test.
+
+  This model is a worst case: it adds the axial float to the full tilt. When a fit record is applied, the measured a
+  and φ replace it, and the page and summary name the source.
+- **Solid construction robustness (this revision):**
+  - The loft sections are evenly spaced, about 4 mm apart. Irregular station-plus-grid spacing with steep twist
+    gradients made OpenCASCADE booleans with the bosses return an empty intersection.
+  - Full-depth lug faces stand 0.2 mm proud of the blade's extreme point. A face tangent to the blade surface did
+    not fuse.
+  - In both failures the separate-body check (one valid solid per part) stopped the build; nothing was exported.
+  - Candidates A–D were generated before this change at commit `8dac1dc`. Regenerating them now gives slightly
+    different solids, with lugs 0.2 mm thicker.
 - **Mass properties (`mass`):**
   - Solid volume, CG and inertia tensor from OCC (GProp), with a declared print model:
     m = ρ (V_shell + f (V − V_shell)), where V_shell = min(V, A·w). The thin blades are all perimeter walls, so
@@ -174,9 +221,51 @@ droop of 3.2–3.9 mm.
   chord/twist scales and hinge, so BEM can run on it once the polar coverage fits the operating point (inputs not
   supplied).
 
+## Measurement prototype (candidate B's joint, before any full-size print)
+
+`reports/prototype_13in_20261118/fit_kit_B/` holds the first physical experiment:
+
+- the hole coupon;
+- B's short joint-fit pair at CAD hole clearances 0.1/0.2/0.3 mm. The proximal stub has a clamp block, and the
+  distal stub has a load tab with a hole 30 mm from the pin axis;
+- the protocol (`README.md`), the model predictions (`predictions.json`) and the record template.
+
+It measures pin fit, axial float, tilt, break-away friction, open-stop seating, the folded-stop angle and the part
+masses. It does **not** select B as the powered propeller. The fit pair is B's because B's joint dimensions (Ø3 pin,
+R_b 5.5, g 0.3) are those of every candidate, including E.
+
+The record is loaded in *Prototip → Ölçüm prototipi*, or with `fit.parse` / `fit.apply`:
+
+- It is refused if anything is missing, out of range or unknown, or if it belongs to another kit (design SHA-256).
+- Applying it sets the hole clearance to the printed one and stores the measured axial float a and tilt
+  φ = max(0, Δ − a)/(2L) in the design record, with the record's SHA-256.
+- The full-travel clearance check then uses the measured play instead of the worst-case model; the design identity
+  changes, so earlier results go stale.
+- Warnings name a stop that does not seat, a coupon that disagrees with the printed clearance, a transfer to
+  different joint dimensions, a folded stop short of the required travel, and a mass more than 15 % off the model.
+- The break-away torque gives the speed at which the centrifugal stop moment overcomes zero-load friction.
+
+## Next full-size prototype: decision rule after the fit measurements
+
+1. Apply the fit record to candidate E (`E_offset6_ts0p86_zone45_travel140/design.json`) and build it.
+2. If the clearance with the measured play is ≥ 0 at δ = 6.0 mm, print E at 6.0 mm. With E's governing gap at
+   about 24 mm from the pin, with a 0.6 mm nominal gap at 6.0 mm, this needs roughly a + 24 mm · φ ≤ 0.6 mm, for
+   example a = 0.1 mm and φ ≤ 1.2°.
+   - E's lugs are thinner than B's: about 4.7/5.0 mm against 6.9/7.3 mm.
+   - Hole-limited tilt scales roughly with 1/t, so allow up to about 1.45 × the tilt measured on B.
+   - The app marks the transfer as approximate. A fit pair of E's own joint settles it.
+3. Otherwise print E at the "with play" required offset that the page reports, rounded up to 0.5 mm.
+4. If the stop does not seat, or the folded stop is short of the required travel, correct the stop before any
+   full-size print.
+5. If the owner does not accept E's lower pitch near the joint, the alternative is the 13×5.5-class blade without
+   shaping at its reported offset (about 10 mm for 140°).
+
+Owner decisions remain: the required fold travel, the pitch, the speed, the motor and the thrust.
+
 ## Measurement plan for the first print (before operating tests)
 
-1. Hole coupon: choose the running fit for the real pin and record the printed hole diameters.
+1. Hole coupon and fit pair: follow `fit_kit_B/README.md` (the coupon picks the running fit; the fit pair gives
+   play, friction and stop seating).
 2. Weigh each printed part and the hardware. Measure the distal CG (balance on a knife edge in two directions) and
    its inertia about the pin (bifilar or compound-pendulum swing). Compare with `summary.md`.
 3. Measure lug thicknesses, the assembled gap g and the radial play. Measure the tip droop and wobble with the pin
@@ -196,8 +285,12 @@ droop of 3.2–3.9 mm.
   256 mm bed.
 - **Required fold travel:** assumed 140°; the template declares 180°. A deeper fold needs a shallower nose (weaker
   stop) or a different stop.
-- **Accepted deployed step:** 5.5 mm with a 50° fold, 9.5 mm on a flatter blade (3.8 in pitch), or 12.5 mm on the
-  template blade (6.3 in pitch).
+- **Accepted deployed step and blade shape:**
+  - 6.0 mm with lower pitch near the joint (E);
+  - about 10 mm on a 13×5.5-class blade without shaping;
+  - 9.5 mm on a flatter blade (B, 3.8 in at 0.75R);
+  - 12.5 mm on the template blade (6.3 in at 0.75R);
+  - 5.5 mm with a 50° fold (A).
 - **Hub/motor interface:** the hub is a placeholder (Ø30 × 12 mm, Ø5 bore).
 - **Pin procurement:** a turned ISO 2341-A pin with a DIN 6799 groove, or an alternative (for example a grooved
   Ø3 shaft with two E-clips).

@@ -71,7 +71,9 @@ and loads, and exporting its package.
 Repository size limits what goes into git:
 
 - **Every candidate:** the documents, drawings, design records and `SHA256SUMS`.
-- **Candidate B only:** the 3MF meshes and the part STEP files, as the recommended first-print geometry.
+- **Candidate B only:** the 3MF meshes and the part STEP files. They were committed as the first-print geometry
+  of the first increment. The owner has since chosen B's coupon and fit pair as a measurement prototype only, so
+  these files do not select B as the powered propeller.
 
 The STL copies and the assembly STEP files of all candidates, and the geometry files of A, C and D, stay local. The
 `SHA256SUMS` lines for those files describe that local generation. To regenerate them, from the repository root with
@@ -84,7 +86,47 @@ the `[cad]` extra:
 STEP files carry a write timestamp, so regenerated STEP bytes differ from the listed sums while the geometry is the
 same (the tests compare re-imported volumes).
 
+Candidates A–D were generated at commit `8dac1dc`. Two later changes alter regenerated solids slightly:
+
+- evenly spaced loft sections;
+- full-depth lugs 0.2 mm proud of the blade.
+
+To reproduce their exact geometry, check out `8dac1dc`. Regenerating them now also gives a different design identity,
+because the design record gained fields. Their "with play" required offsets were computed with the 0.5 mm nominal
+clearance added. The current rule is the larger of the nominal requirement and zero interference with play. For
+example, D needs about 6.9 mm, not 7.4 mm.
+
+## Second increment (same day): offset study, compact candidate E, measurement kit
+
+- `study/offset_study.csv` and `study/study.json`: required offset for each variant at δ = 6 mm, by required fold
+  travel, nominal and with the worst-case model play. Each row also gives the mechanism floor and blade term, the
+  governing angle and the centrifugal seating at 6000 RPM. The estimates are taken from the gap at 6 mm and are not
+  clipped, so a margin shows as a value below 6 mm.
+- `study/alignment_envelope_B.png` and `_E.png`, one figure per candidate:
+  - the deployed joint seen from the tip (planes A/B, lug bands, pin set);
+  - the folded plan envelope with the governing contact;
+  - the gap over the travel;
+  - the offset needed for each required travel.
+- `E_offset6_ts0p86_zone45_travel140/`: the compact candidate, a 13×5.5-class blade (twist ×0.86) with a ±45 mm
+  hinge zone (chord ×0.85, twist ×0.45), δ 6.0 mm and a 140° fold. Its full manufacturing outputs follow the
+  candidate-folder layout above.
+- `fit_kit_B/`: the measurement prototype, with its own README: the hole coupon, B's fit pair at CAD clearances
+  0.1/0.2/0.3 mm with a clamp block and a 30 mm load tab, `predictions.json`, `fit_record_template.json` and
+  `SHA256SUMS`.
+
+Regenerate all of it with `./venv/bin/python -m pyfoldable.prototype.study reports/prototype_13in_20261118`. It takes
+about 10 minutes and overwrites these folders.
+
+## What is committed (second increment)
+
+- `study/`: everything.
+- `fit_kit_B/`: everything except `stl/` and `step/`. The 3MF files are the printing set. The fit-pair STEP files
+  are about 17 MB each, so they stay local; they are regenerable and listed in the kit's `SHA256SUMS`.
+- `E_offset6_ts0p86_zone45_travel140/`: the documents, drawings, design record and `3mf/`. STEP and STL stay local.
+
 ## Print first
 
-`hole_coupon` and the `fit_proximal` / `fit_distal` pair, for any candidate. Then follow the measurement plan in
-`docs/prototype_13in.md` before printing a full rotor.
+The measurement kit `fit_kit_B/`, following its README: the coupon first, then the fit pair at the clearance the
+coupon picks. Enter the record in *Prototip → Ölçüm prototipi*, then apply the decision rule in
+`docs/prototype_13in.md` (*Next full-size prototype*) before printing any full rotor. The kit is a measurement
+prototype; it does not select B as the powered propeller.

@@ -84,15 +84,20 @@ def heightmap(shape, bounds, h=GRID_MM, dilate=False) -> HeightMap:
 
 
 def joint_play(d) -> dict:
+    """Worst-case model play, or the play measured on a printed fit pair when the design carries it."""
     c = d.connection
     tp, td = d.lug_thicknesses_mm
     phi_holes = c.hole_clearance_mm / td + c.hole_clearance_mm / tp
     phi_faces = c.lug_gap_mm / c.boss_radius_mm
-    phi = min(phi_holes, phi_faces)
-    return {"radial_play_mm": c.hole_clearance_mm, "axial_play_mm": c.lug_gap_mm,
-            "tilt_rad": phi, "tilt_deg": math.degrees(phi),
-            "tilt_limited_by": "delik boşluğu" if phi_holes <= phi_faces else "lug yüz aralığı",
-            "tip_droop_mm": c.lug_gap_mm + phi * (d.planform.tip_radius_mm - c.hinge_radius_mm)}
+    model = min(phi_holes, phi_faces)
+    measured = None not in (c.play_record_sha256, c.measured_axial_play_mm, c.measured_tilt_deg)
+    phi = math.radians(c.measured_tilt_deg) if measured else model
+    axial = c.measured_axial_play_mm if measured else c.lug_gap_mm
+    return {"radial_play_mm": c.hole_clearance_mm, "axial_play_mm": axial,
+            "tilt_rad": phi, "tilt_deg": math.degrees(phi), "model_tilt_rad": model,
+            "source": f"ölçüm (kayıt {c.play_record_sha256[:12]})" if measured else "model (en kötü durum)",
+            "tilt_limited_by": "ölçüm" if measured else ("delik boşluğu" if phi_holes <= phi_faces else "lug yüz aralığı"),
+            "tip_droop_mm": axial + phi * (d.planform.tip_radius_mm - c.hinge_radius_mm)}
 
 
 def sweep(parts, step_deg=1.0) -> dict:
@@ -161,7 +166,9 @@ def sweep(parts, step_deg=1.0) -> dict:
         "body_clear": bool(len(bad) == 0),
         "full_travel_clear_with_play": bool(gpr.min() >= 0.0 and stop_ok),
         "required_offset_mm": c.axial_offset_mm + max(0.0, need - gr[i_min]),
-        "required_offset_with_play_mm": c.axial_offset_mm + max(0.0, need - gpr[i_min_p]),
+        # both criteria: nominal gap ≥ body clearance and worst-case gap with play ≥ 0 (the pass rule above)
+        "required_offset_with_play_mm": max(c.axial_offset_mm + max(0.0, need - gr[i_min]),
+                                            c.axial_offset_mm + max(0.0, -gpr[i_min_p])),
         "joint_running_gap_mm": c.lug_gap_mm, "play": play, "body_clearance_mm": need,
         "method": f"sütun yöntemi {GRID_MM} mm ızgara, {step_deg}° adım; tesselasyon 0,05 mm",
     }

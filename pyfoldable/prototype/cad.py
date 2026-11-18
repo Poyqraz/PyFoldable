@@ -79,17 +79,15 @@ def _loft(d: PrototypeDesign, radii, z_offset, chord_of=None):
     return b3d.Solid.make_loft(wires, ruled=False)
 
 
-def _radii(d: PrototypeDesign, r0, r1, step=8.0):
-    st = [s[0] for s in d.planform.stations]
-    grid = set(np.round(np.linspace(r0, r1, max(2, int(math.ceil((r1 - r0) / step)) + 1)), 6))
-    grid |= {round(r, 6) for r in st if r0 < r < r1}
-    out = sorted(grid)
-    keep = [out[0]]
-    for r in out[1:]:                                        # drop near-duplicates (loft needs distinct sections)
-        if r - keep[-1] > 1.0:
-            keep.append(r)
-    keep[-1] = r1
-    return keep
+def _radii(d: PrototypeDesign, r0, r1, step=4.0):
+    """Evenly spaced loft sections (about ``step`` apart, at least four per hinge-zone half-width). The planform is
+    linear between stations, so dense even sampling represents it (a station kink is rounded over one spacing);
+    irregular station + grid spacing with steep twist gradients made OCC booleans of the spline loft with the bosses
+    fail silently (empty intersection)."""
+    p = d.planform
+    if p.hinge_zone_mm > 0:
+        step = min(step, p.hinge_zone_mm / 4.0, (p.hinge_zone_outboard_mm or p.hinge_zone_mm) / 4.0)
+    return [float(r) for r in np.linspace(r0, r1, max(2, int(math.ceil((r1 - r0) / step)) + 1))]
 
 
 def _single(shape, what):
@@ -236,6 +234,34 @@ def fit_test(parts: Parts):
     keep_d = _box(b3d, -big, big, rj - 30.0, rj + L, -big, big)
     return (_single(parts.meta["proximal_blade"] & keep_p, "fit proximal"),
             _single(parts.distal & keep_d, "fit distal"))
+
+
+def fit_fixture(parts: Parts, clamp_mm=(20.0, 8.0), tab_mm=(12.0, 14.0, 3.0), lever_mm=30.0):
+    """The fit pair as a measurement fixture: the proximal stub gets a flat clamp block on its inboard cut end (vise
+    jaws on its z faces keep the rotor plane level) and the distal stub a flat load tab on its outboard cut end with
+    a Ø3.2 hole on the span line through the pin at ``lever_mm`` from the pin (force or weight → torque about the pin;
+    up/down load → tilt). Returns (proximal, distal, lever_mm)."""
+    b3d = _b3d()
+    d = parts.design
+    c = d.connection
+    rj, L, px = c.hinge_radius_mm, d.fit_section_mm, c.pin_x_mm
+    fp, fd = fit_test(parts)
+    y_in = rj - L
+    sec = section_points(d, y_in)
+    zc = 0.5 * (sec[:, 2].min() + sec[:, 2].max())
+    block = _box(b3d, sec[:, 0].min(), sec[:, 0].max(), y_in - clamp_mm[0], y_in + 1.0,
+                 zc - clamp_mm[1] / 2.0, zc + clamp_mm[1] / 2.0)
+    prox = _single(fp + block, "fit proximal with clamp block")
+    y_out = rj + L
+    w, length, t = tab_mm
+    if not (lever_mm - L >= 3.0 and L + length - lever_mm >= 3.0):           # hole on the tab, ≥ 3 mm from its ends
+        raise RuntimeError("Load-tab hole does not fit on the tab (adjust the lever or the tab length).")
+    out = section_points(d, y_out, c.axial_offset_mm)
+    zt = float(out[np.abs(out[:, 0] - px) <= 2.0, 2].max())                      # upper surface near the pin x
+    tab = _box(b3d, px - w / 2.0, px + w / 2.0, y_out - 1.0, y_out + length, zt - t, zt)
+    tab = tab - _zcyl(b3d, px, rj + lever_mm, zt - t - 1.0, zt + 1.0, 1.6)
+    dist = _single(fd + tab, "fit distal with load tab")
+    return prox, dist, float(lever_mm)
 
 
 def hole_coupon(d: PrototypeDesign, steps=(0.0, 0.1, 0.2, 0.3, 0.4)):

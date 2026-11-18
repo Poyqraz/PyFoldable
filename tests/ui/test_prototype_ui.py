@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from test_research_release_ui import ANALYSIS, app, go  # noqa: E402
 
 PAGE = "Prototip"
+ROOT = Path(__file__).resolve().parents[2]
 META = {"stop_x_mm": (-14.0, -6.1), "stop_z_mm": (-1.4, 2.6), "nose_z_mm": (-1.4, 5.0)}
 TETRA = (np.array([[0.0, 99.0, 0.0], [10.0, 99.0, 0.0], [0.0, 120.0, 0.0], [0.0, 99.0, 5.0]]),
          np.array([[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]]))
@@ -31,7 +32,8 @@ def specs(at):
 
 
 def downloads(at):
-    return list(at.get("download_button"))
+    """Result downloads (the measurement-record template is always offered when the kit exists)."""
+    return [b for b in at.get("download_button") if b.key != "proto_fit_template"]
 
 
 def _sweep():
@@ -93,7 +95,7 @@ def test_page_renders_without_cad_and_builds_only_on_the_button(fake):
     assert not fake and "azami devir" not in at.warning[0].value      # the owner input leaves the missing list
     at.button(key="proto_build").click().run()
     assert not at.exception and len(fake) == 1
-    assembly, clearance = specs(at)
+    assembly, clearance, side, plan, need = specs(at)
     assert len(assembly["frames"]) == 15                                  # 0, −10 … −140 (the default stowed angle)
     assert [s["label"] for s in assembly["layout"]["sliders"][0]["steps"]][-2:] == ["-130", "-140"]
     names = [tr.get("name") for tr in clearance["data"]]
@@ -109,7 +111,7 @@ def test_page_renders_without_cad_and_builds_only_on_the_button(fake):
     go(at, PAGE)                                    # navigation keeps inputs and the result; nothing reruns
     assert at.number_input(key="proto_operating.max_rpm").value == 5200.0
     assert at.number_input(key="proto_connection.lug_interface_z_mm").value is None
-    assert len(fake) == 1 and len(specs(at)) == 2
+    assert len(fake) == 1 and len(specs(at)) == 5
 
 
 def test_changed_input_marks_the_result_stale_and_removes_the_download(fake, monkeypatch):
@@ -128,13 +130,13 @@ def test_changed_input_marks_the_result_stale_and_removes_the_download(fake, mon
     assert not at.exception and not downloads(at) and not specs(at)
     assert "güncel değil" in text(at) and len(fake) == 1
     at.number_input(key="proto_connection.axial_offset_mm").set_value(5.5).run()    # back to the built design
-    assert len(specs(at)) == 2 and len(downloads(at)) == 1
+    assert len(specs(at)) == 5 and len(downloads(at)) == 1
 
 
 def test_evaluate_failure_is_an_error_and_replaces_an_earlier_success(fake, monkeypatch):
     at = go(app(), PAGE)
     at.button(key="proto_build").click().run()
-    assert len(specs(at)) == 2
+    assert len(specs(at)) == 5
 
     def boom(d, rpm=None):
         raise RuntimeError("çekirdek hatası")
@@ -201,7 +203,7 @@ def test_real_cad_build_shows_the_clearance_chart_and_exports_a_zip():
     at = go(app(), PAGE)
     at.button(key="proto_build").click().run(timeout=240)
     assert not at.exception and "Geometri oluşturulamadı" not in text(at)
-    assembly, clearance = specs(at)
+    assembly, clearance, side, plan, need = specs(at)
     assert clearance["data"][0]["name"] == "Nominal boşluk"
     assert sum(len(tr["i"]) for tr in assembly["data"]) < 10000           # a coarse preview mesh, not the sweep mesh
     parts = at.session_state["_proto_build"]["result"]["parts"]    # the playback poses the distal like distal_at
@@ -214,3 +216,69 @@ def test_real_cad_build_shows_the_clearance_chart_and_exports_a_zip():
     names = zipfile.ZipFile(io.BytesIO(at.session_state["_proto_export"]["zip"])).namelist()
     assert any(n.endswith("/summary.md") for n in names) and any(n.endswith(".step") for n in names)
     assert any(n.endswith("/SHA256SUMS") for n in names)
+
+
+def test_alignment_tab_shows_the_deployed_step_the_folded_envelope_and_the_offset_budget(fake):
+    at = go(app(), PAGE)
+    at.button(key="proto_build").click().run()
+    assert not at.exception
+    _, _, side, plan, need = specs(at)
+    assert [tr["name"] for tr in side["data"]][:2] == ["Proksimal uç kesiti (z = 0)", "Distal kök kesiti (z = δ)"]
+    assert any(str(tr.get("name", "")).startswith("Katlı zarf R") for tr in plan["data"])
+    assert [tr["name"] for tr in need["data"]] == ["Nominal", "Boşlukla"]
+    t = text(at)
+    assert "Gereken ofset bütçesi" in t and "mekanizma tabanı" in t and "kanat payı" in t
+
+
+def test_hinge_zone_inputs_follow_the_joint_and_reach_the_built_design(fake):
+    at = go(app(), PAGE)
+    at.number_input(key="proto_planform.hinge_zone_mm").set_value(45.0).run()
+    at.number_input(key="proto_planform.hinge_twist_factor").set_value(0.5).run()
+    assert not at.exception and not at.error
+    at.button(key="proto_build").click().run()
+    d = at.session_state["_proto_build"]["result"]["design"]
+    assert d.planform.hinge_zone_mm == 45.0 and d.planform.hinge_zone_center_mm == d.connection.hinge_radius_mm
+    assert d.section(99.0)[1] == pytest.approx(0.5 * prototype_ui.design.default_design(ROOT).section(99.0)[1])
+
+
+def _kit(tmp_path):
+    from pyfoldable.prototype import fit
+    from pyfoldable.prototype import design as pd
+    d = pd.with_changes(pd.default_design(ROOT, twist_scale=0.6), **{"connection.axial_offset_mm": 9.5})
+    pred = fit.predictions(d, 30.0, (9.0, 6.0), 144.0)
+    (tmp_path / "predictions.json").write_text(json.dumps(pred), encoding="utf-8")
+    (tmp_path / "fit_record_template.json").write_text(fit.template(pred), encoding="utf-8")
+    rec = json.loads(fit.template(pred))
+    rec.update(print_printer="P1S", print_material="PLA", print_nozzle_mm=0.4, print_layer_mm=0.2, print_walls=3,
+               print_infill_fraction=1.0, pin_measured_diameter_mm=2.99, coupon_fit=["sıkı", "sıkı", "akıcı", "akıcı", "boşluklu"],
+               fit_pair_clearance_mm=0.2, lug_thickness_proximal_mm=6.8, lug_thickness_distal_mm=7.2, axial_float_mm=0.1,
+               tilt_load_n=2.0, tilt_range_at_tab_mm=0.4, friction_breakaway_n=0.3, stop_gap_mm=0.0, stop_seats=True)
+    return json.dumps(rec, ensure_ascii=False)
+
+
+def test_a_fit_record_is_validated_applied_to_the_design_and_removable(fake, monkeypatch, tmp_path):
+    monkeypatch.setattr(prototype_ui, "KIT", tmp_path)
+    good = _kit(tmp_path)
+    at = go(app(), PAGE)
+    assert any(b.key == "proto_fit_template" for b in at.get("download_button"))
+    before = at.session_state["_proto_fit_record"] if "_proto_fit_record" in at.session_state else None
+    assert before is None
+    at.text_area(key="proto_fit_text").set_value(good.replace('"P1S"', "null")).run()
+    at.button(key="proto_fit_apply").click().run()
+    assert "Ölçüm kaydı kullanılamadı" in text(at) and "print_printer" in text(at)
+    assert "Ölçüm kaydı uygulanıyor" not in text(at)
+    at.text_area(key="proto_fit_text").set_value(good).run()
+    at.button(key="proto_fit_apply").click().run()
+    assert not at.exception and "Ölçüm kaydı uygulanıyor" in text(at)          # in the same run, no lag
+    assert any("Eksenel boşluk" in list(df.value.get("Büyüklük", [])) for df in at.dataframe)
+    at.button(key="proto_build").click().run()
+    d = at.session_state["_proto_build"]["result"]["design"]
+    assert d.connection.measured_axial_play_mm == pytest.approx(0.1) and d.connection.play_record_sha256
+    at.button(key="proto_fit_clear").click().run()
+    assert "Ölçüm kaydı uygulanıyor" not in text(at) and "güncel değil" in text(at)    # the measured build is now stale
+    at.text_area(key="proto_fit_text").set_value(good).run()
+    at.button(key="proto_fit_apply").click().run()
+    assert "Ölçüm kaydı uygulanıyor" in text(at)
+    at.text_area(key="proto_fit_text").set_value("[" * 5000).run()
+    at.button(key="proto_fit_apply").click().run()                         # a failed paste drops the older record
+    assert not at.exception and "Ölçüm kaydı kullanılamadı" in text(at) and "Ölçüm kaydı uygulanıyor" not in text(at)
