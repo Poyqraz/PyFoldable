@@ -292,6 +292,65 @@ The full distributions are in `spanwise_loading.csv`; the figure panel shows 600
 It also shows the spanwise thrust loading, the angle of attack against geometric twist, and the section
 polars at the five chords.
 
+## Equal thrust at equal inflow: the compromise between offset and blade shape
+
+This section supports a decision; it is not a qualification. At equal RPM, E's lower thrust comes with lower power,
+so the comparison that matters is at **equal useful output**: the same thrust at the same forward speed.
+
+`aero.run_decision` solves, fail-closed on the same printable-section polars, the speed each blade needs for the
+reference's thrust at the reference's inflow.
+
+- **Points:** six (V, reference RPM) pairs with the reference at J ≈ 0.22–0.30, inside the fail-closed coverage.
+- **Thrust:** 1.75–7.41 N per rotor.
+- **Blades:**
+  - the reference: twist ×0.86, no zone;
+  - F2: ±45 mm zone, twist ×0.7;
+  - F1: ±45 mm zone, chord ×0.85, twist ×0.6;
+  - E: ±45 mm zone, chord ×0.85, twist ×0.45.
+- **Per blade, from CAD:**
+  - the offset each fold travel needs, from the sweep at δ = 6 mm;
+  - the structural speed limit at SF 2, at its own offset rounded up to 0.5 mm;
+  - the folded envelope.
+- **Outputs:** `reports/prototype_13in_20261118/aero/equal_thrust.csv` and `compromise_options.csv`.
+
+| Blade | Pitch at 0.75R | Offset for 110° / 140° (nominal) | With worst-case play | RPM for equal thrust | Power | η change | Limit at SF 2 | Stress/limit vs reference |
+|---|---|---|---|---|---|---|---|---|
+| reference | 5.5 in | 10.0 / 10.0 mm | 11.0 mm | ×1.00 | ×1.00 | — | 2800 RPM | — |
+| F2 | 4.7 in | 8.1 / 8.1 mm (set 8.5) | 9.1 mm | ×1.09–1.11 | ×1.03–1.05 | −0.01 to −0.02 | 3110 RPM | −2 to −3 % |
+| F1 | 4.5 in | 6.4 / 6.4 mm (set 6.5) | 7.3–7.5 mm | ×1.15–1.16 | ×1.05–1.08 | −0.03 to −0.04 | 3100 RPM | +7 to +10 % |
+| E | 4.1 in | 5.6 / 5.9 mm (set 6.0) | 6.4–7.1 mm | ×1.21–1.23 | ×1.10–1.13 | −0.05 to −0.07 | 3290 RPM | +6 to +9 % |
+
+Notes on the table:
+
+- **Not covered.** Three equal-thrust solutions fall outside the fail-closed coverage: E at 4 m/s, and F1 and E at
+  6 m/s / 5000 RPM. They are not reported.
+- **Stress/limit.** This is (required RPM / own limit)², compared with the reference at the same point. Centrifugal
+  stresses scale with Ω².
+- **Folded envelope.** It is about 210 mm at 110° and 206 mm at 140° for all four blades. The joint radius sets it,
+  not the blade.
+
+What it means:
+
+- **Above the structural limit.** Every one of these operating points is above every option's SF 2 limit: the stress
+  ratio is 1.1–5.0 times the allowable at SF 2. The current joint (Ø3 pin, 4 mm stop nose) limits all options to
+  about 2800–3300 RPM. A stronger joint (a Ø4 pin, a wider or deeper nose root) is needed before powered use,
+  whatever offset is chosen. E's lower pitch makes it spin faster for the same thrust. Its smaller offset gives a
+  higher limit, which nearly cancels this. F2 is the only option structurally no worse than the reference.
+- **Blade shape costs RPM more than power.** At equal thrust and inflow, E needs about 22 % more RPM and about 11 %
+  more power. Halving the shaping (F1) roughly halves both, for 0.5 mm more offset. F2 needs about 10 % more RPM
+  and 4 % more power, for 2.5 mm more offset than E.
+- **Fold travel.** For the reference, F1 and F2, the offset needed is the same at 110° and 140°, because the
+  governing crossing happens near 105°. 140° then costs nothing and gives the slimmer folded rotor (89 against
+  126 mm wide). Only E gains anything from a shorter travel: 0.3 mm at 110°.
+
+### Not supported by this model
+
+- **Static thrust** comes only from the clamp diagnostic (E: about ×1.18 RPM and ×1.07 power for equal static
+  thrust). It is not fail-closed, and the solver's choice of branch is unverified.
+- **The joint-step flow effect** (the 6–10 mm axial step, the bosses, the stop nose, the face gap) is unresolved for
+  every option. A smaller step presumably costs less, but this model cannot say how much. The printed A/B thrust
+  test below remains the way to measure it.
+
 ## Joint step: unresolved
 
 In both blades the deployed distal sits δ = 6 mm higher along the shaft than the proximal. This makes an

@@ -31,6 +31,14 @@ def specs(at):
     return [json.loads(c.proto.spec) for c in at.get("plotly_chart")]
 
 
+def _arr(x):
+    """A plotly JSON array: a list or a base64 typed array ({dtype, bdata})."""
+    import base64
+    if isinstance(x, dict):
+        return np.frombuffer(base64.b64decode(x["bdata"]), dtype=x["dtype"])
+    return np.asarray(x, dtype=float)
+
+
 def downloads(at):
     """Result downloads (the measurement kit and record template are always offered when a kit exists)."""
     return [b for b in at.get("download_button")
@@ -41,7 +49,8 @@ def _sweep():
     th = [-float(a) for a in range(2, 181)]
     gap = [2.0 + a / 40 for a in th]
     return {"angles_deg": th, "gap_mm": gap, "gap_play_mm": [g - 0.8 for g in gap],
-            "nose_gap_mm": [float("inf") if -a < 10 else 3.0 + a / 30 for a in th], "where": [None] * len(th),
+            "nose_gap_mm": [float("inf") if -a < 10 else 3.0 + a / 30 for a in th],
+            "where": [(-2.6, 74.9, 24.3)] * len(th),
             "min_gap_mm": -1.75, "min_gap_angle_deg": -150.0, "min_gap_play_mm": -2.55, "min_gap_play_angle_deg": -150.0,
             "required_travel_deg": 150.0, "body_clear_to_deg": 59.0, "folded_stop_deg": 91.0, "clear_travel_deg": 59.0,
             "full_travel_clear": False, "body_clear": False, "full_travel_clear_with_play": False,
@@ -99,6 +108,12 @@ def test_page_renders_without_cad_and_builds_only_on_the_button(fake):
     assembly, clearance, side, plan, need = specs(at)
     assert len(assembly["frames"]) == 15                                  # 0, −10 … −140 (the default stowed angle)
     assert [s["label"] for s in assembly["layout"]["sliders"][0]["steps"]][-2:] == ["-130", "-140"]
+    scene = assembly["layout"]["scene"]                     # fixed ranges over every pose: the playback does not rescale
+    assert scene["aspectmode"] == "manual"
+    for axis in "xyz":
+        lo, hi = scene[f"{axis}axis"]["range"]
+        pts = np.concatenate([_arr(fr["data"][0][axis]) for fr in assembly["frames"]] + [_arr(assembly["data"][0][axis])])
+        assert lo <= pts.min() and pts.max() <= hi
     names = [tr.get("name") for tr in clearance["data"]]
     assert names == ["Nominal boşluk", "En kötü oynama ile", "Stop burnu boşluğu"]
     labels = [a["text"] for a in clearance["layout"]["annotations"]]
@@ -223,12 +238,16 @@ def test_alignment_tab_shows_the_deployed_step_the_folded_envelope_and_the_offse
     at = go(app(), PAGE)
     at.button(key="proto_build").click().run()
     assert not at.exception
-    _, _, side, plan, need = specs(at)
+    assembly, _, side, plan, need = specs(at)
     assert [tr["name"] for tr in side["data"]][:2] == ["Proksimal uç kesiti (z = 0)", "Distal kök kesiti (z = δ)"]
+    for fig in (side, plan):                                  # equal aspect without collapsing in a wide column
+        assert fig["layout"]["xaxis"]["constrain"] == "domain" and fig["layout"]["xaxis"]["range"]
+    assert assembly["layout"]["scene"]["camera"]["eye"]["z"] < 1.0                 # close enough to read the joint
     assert any(str(tr.get("name", "")).startswith("Katlı zarf R") for tr in plan["data"])
     assert [tr["name"] for tr in need["data"]] == ["Nominal", "Boşlukla"]
     t = text(at)
     assert "Gereken ofset bütçesi" in t and "mekanizma tabanı" in t and "kanat payı" in t
+    assert "Belirleyici nokta" in t and "None" not in " ".join(str(v) for df in at.dataframe for v in df.value.to_numpy().ravel())
 
 
 def test_hinge_zone_inputs_follow_the_joint_and_reach_the_built_design(fake):

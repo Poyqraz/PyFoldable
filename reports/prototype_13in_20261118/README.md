@@ -66,6 +66,19 @@ rejection reasons) is in `exploration_offset_x_twist.csv`.
 `browser/` holds screenshots of the *Prototip* page building candidate B, playing its fold, plotting its clearance
 and loads, and exporting its package.
 
+The `browser/E_*.jpg` files are the walkthrough of E. It was run in a headless Chrome over the DevTools protocol,
+against the local app, because the in-app pane could not render while the app window was in the background. Each
+step went through the normal inputs and buttons:
+
+- the deployed and 140° folded 3-D assembly;
+- the clearance chart with the governing contact;
+- the deployed joint seen from the tip;
+- the folded plan;
+- the folded-dimension table;
+- the measurement-kit section.
+
+The kit zip downloaded there was checked file by file against its `SHA256SUMS`.
+
 ## What is committed
 
 Repository size limits what goes into git:
@@ -125,7 +138,10 @@ example, D needs about 6.9 mm, not 7.4 mm.
   - XFOIL polars of the chord-dependent printable section, with provenance;
   - fail-closed and clamp-diagnostic BEM tables;
   - spanwise loading;
-  - `aero_comparison.png`.
+  - `aero_comparison.png`;
+  - `equal_thrust.csv` and `compromise_options.csv`: the speed and power for equal thrust at equal inflow, and per
+    blade option (reference, F2, F1, E) the offset by fold travel, the folded envelope and the SF 2 speed limit.
+    These come from `aero.run_decision`.
 
   It covers the blade-shape effect only; the joint step is unresolved. Regenerate with
   `./venv/bin/python -m pyfoldable.prototype.aero reports/prototype_13in_20261118/aero`, which needs the pinned

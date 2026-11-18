@@ -208,9 +208,14 @@ def assembly_figure(parts, sweep):
     stowed = parts.design.connection.stowed_angle_deg
     angles = [float(a) for a in np.arange(0.0, stowed, -FOLD_STEP_DEG)] + [stowed]
     vd, fd = _mesh(parts.distal)
-    static = [_mesh_trace(*_mesh(parts.proximal), PROXIMAL, "Proksimal + göbek")]
-    static += [_mesh_trace(*_mesh(s), HARDWARE, f"Donanım: {name}") for name, s in parts.hardware.items()]
+    meshes = [(_mesh(parts.proximal), PROXIMAL, "Proksimal + göbek")]
+    meshes += [(_mesh(s), HARDWARE, f"Donanım: {name}") for name, s in parts.hardware.items()]
+    static = [_mesh_trace(*m, color, name) for m, color, name in meshes]
     clear = sweep["clear_travel_deg"]
+    # one fixed scene box over every pose, so the playback does not rescale from frame to frame
+    pts = np.vstack([m[0] for m, _, _ in meshes] + [_rotate(vd, parts.pin_axis, a) for a in angles])
+    lo, hi = pts.min(axis=0) - 2.0, pts.max(axis=0) + 2.0
+    box = (hi - lo) / (hi - lo).max()
 
     def distal(a):
         return _mesh_trace(_rotate(vd, parts.pin_axis, a), fd, DISTAL, "Distal")
@@ -225,8 +230,12 @@ def assembly_figure(parts, sweep):
     fig.update_layout(
         height=620, title_text=title(0.0), margin=dict(l=0, r=0, t=40, b=90),
         legend=dict(x=0, y=1, xanchor="left", yanchor="top"),
-        scene=dict(aspectmode="data", xaxis_title="x [mm] (veter)", yaxis_title="y [mm] (açıklık)",
-                   zaxis_title="z [mm] (mil, itki +z)"),
+        scene=dict(aspectmode="manual", aspectratio=dict(x=float(box[0]), y=float(box[1]), z=float(box[2])),
+                   camera=dict(eye=dict(x=0.55, y=-0.45, z=0.55)),
+                   xaxis=dict(title="x [mm] (veter)", range=[float(lo[0]), float(hi[0])], autorange=False, nticks=5),
+                   yaxis=dict(title="y [mm] (açıklık)", range=[float(lo[1]), float(hi[1])], autorange=False),
+                   zaxis=dict(title="z [mm] (mil, itki +z)", range=[float(lo[2]), float(hi[2])], autorange=False,
+                              nticks=4)),
         updatemenus=[dict(type="buttons", showactive=False, direction="left", x=0, y=0, xanchor="left", yanchor="top",
                           buttons=[dict(label="▶", method="animate", args=[None, play]),
                                    dict(label="❚❚", method="animate", args=[[None], still])])],
@@ -270,6 +279,11 @@ def _clearance(sw):
         f"{_f(sw['min_gap_play_mm'])} mm @ {_f(sw['min_gap_play_angle_deg'], 0)}°  \n"
         f"**Gereken ofset:** nominal ≈ {_f(sw['required_offset_mm'], 1)} mm · oynama ile ≈ "
         f"{_f(sw['required_offset_with_play_mm'], 1)} mm (açıktan tahmin; o ofsette yeniden oluşturup doğrulayın)")
+    k = sw["angles_deg"].index(sw["min_gap_angle_deg"]) if sw["min_gap_angle_deg"] in sw["angles_deg"] else None
+    where = sw["where"][k] if k is not None else None
+    if where:
+        st.markdown(f"**Belirleyici nokta:** x {_f(where[0], 1)} mm, y {_f(where[1], 1)} mm (pimden {_f(where[2], 1)} mm), "
+                    f"{_f(-sw['min_gap_angle_deg'], 0)}° katlanmada: distal alt yüzeyi proksimal üst yüzeyine en yakın.")
     p = sw["play"]
     if sw.get("min_gap_transferred_mm") is not None:
         st.markdown(f"**Aktarılmış ölçümle (yalnız keşif, karar değil):** en küçük boşluk "
@@ -305,7 +319,9 @@ def envelope_figures(d, sw):
     side.add_trace(go.Scatter(x=[px, px], y=[zb, zt], name="Pim seti", line=dict(color=HARDWARE, width=5)))
     for z, label in ((0.0, "düzlem A"), (al["delta_mm"], "düzlem B")):
         side.add_hline(y=z, line=dict(color=figure_style.CONSTRUCTION, dash="dot"), annotation_text=label)
-    side.update_layout(height=380, xaxis_title="x, veter [mm] (hücum kenarı solda)", yaxis_title="z, şaft [mm]")
+    xs = np.concatenate([al["proximal"][:, 0], al["distal"][:, 0]])
+    side.update_layout(height=420, xaxis_title="x, veter [mm] (hücum kenarı solda)", yaxis_title="z, şaft [mm]")
+    side.update_xaxes(range=[float(xs.min()) - 3.0, float(xs.max()) + 6.0], constrain="domain")
     side.update_yaxes(scaleanchor="x")
     plan = go.Figure([
         go.Scatter(x=env["proximal"][:, 0], y=env["proximal"][:, 1], fill="toself", name="Proksimal", line=dict(color=PROXIMAL)),
@@ -322,8 +338,8 @@ def envelope_figures(d, sw):
         plan.add_trace(go.Scatter(x=[env["critical"][0]], y=[env["critical"][1]], mode="markers",
                                   name=f"Belirleyici temas ({abs(env['critical_angle_deg']):.0f}°)",
                                   marker=dict(symbol="star", size=13, color=figure_style.ACCENT)))
-    plan.update_layout(height=480, xaxis_title="x [mm]", yaxis_title="y, açıklık [mm]")
-    plan.update_xaxes(range=[-90, 90])
+    plan.update_layout(height=680, xaxis_title="x [mm]", yaxis_title="y, açıklık [mm]")
+    plan.update_xaxes(range=[-90, 90], constrain="domain")
     plan.update_yaxes(range=[-10, 175], scaleanchor="x")
     need = go.Figure([go.Scatter(x=[c["travel_deg"] for c in curve], y=[c["required_mm"] for c in curve], name="Nominal"),
                       go.Scatter(x=[c["travel_deg"] for c in curve], y=[c["required_with_play_mm"] for c in curve],
@@ -353,9 +369,10 @@ def _envelope(d, sw):
     st.dataframe([{"Katlanma [°]": r["fold_deg"], "Katlanmış stop izin veriyor": "evet" if r["reachable"] else "hayır",
                    "Zarf çapı [mm]": _r(r["envelope_diameter_mm"], 1), "Boy, kanat ekseni [mm]": _r(r["length_mm"], 1),
                    "En [mm]": _r(r["width_mm"], 1),
-                   "Çap küçülmesi": f"{1 - r['envelope_diameter_mm'] / (2 * d.planform.tip_radius_mm):.0%}",
-                   "Gereken ofset [mm]": _r(r["required_offset_mm"], 1),
-                   "Boşlukla [mm]": _r(r["required_offset_with_play_mm"], 1)} for r in dims],
+                   "Çap küçülmesi": f"{max(0.0, 1 - r['envelope_diameter_mm'] / (2 * d.planform.tip_radius_mm)):.0%}",
+                   "Gereken ofset [mm]": "—" if r["required_offset_mm"] is None else f"{r['required_offset_mm']:.1f}",
+                   "Boşlukla [mm]": "—" if r["required_offset_with_play_mm"] is None
+                   else f"{r['required_offset_with_play_mm']:.1f}"} for r in dims],
                  hide_index=True, **figure_style.dataframe_width_kwargs())
     st.caption("Belirleyici temas genellikle distal firar kenarı kökünün proksimal hücum kenarı bölgesinin üstünden "
                "geçtiği yerdir (pimden yaklaşık bir veter içeride). Pim konumu bunu az değiştirir; pimi geri almak "

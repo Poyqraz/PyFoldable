@@ -192,3 +192,22 @@ def test_pinned_xfoil_generates_one_printable_section_cell_with_provenance(ds):
     assert table.metadata["airfoil_coordinate_sha256"] == airfoil_coordinate_sha256(aero.section_airfoil(d, 23.0))
     assert table.source == "xfoil-subprocess:6.99" and (table.reynolds, table.mach) == (60e3, 0.15)
     aero.check_family(d, 23.0, family)
+
+
+def test_rpm_for_thrust_solves_equal_thrust_at_equal_inflow_and_refuses_uncovered_points(monkeypatch):
+    from types import SimpleNamespace
+    d = SimpleNamespace(planform=SimpleNamespace(diameter_mm=330.2))
+    D = 0.3302
+
+    def fake(dd, polars, rpm, J, **kw):                   # T = k n² (1 − J/0.5); covered only for 0.15 ≤ J ≤ 0.45
+        if not 0.15 <= J <= 0.45:
+            return {"status": "failed", "failure_kind": "alpha outside polar data", "rpm": rpm, "J": J}
+        n = rpm / 60.0
+        return {"status": "ok", "solution_clamped_elements": 0, "rpm": rpm, "J": J, "thrust_n": 2e-3 * n * n * (1 - J / 0.5),
+                "power_w": 3e-5 * n ** 3, "eta": 0.5}
+    monkeypatch.setattr(aero, "run_point", fake)
+    V, target = 6.0, 5.0
+    r = aero.rpm_for_thrust(d, None, target, V)
+    assert r["status"] == "ok" and abs(r["thrust_n"] - target) < 0.02
+    assert 0.15 <= V / (r["rpm"] / 60 * D) <= 0.45
+    assert aero.rpm_for_thrust(d, None, 500.0, V)["status"] == "not covered"     # needs J below the covered range

@@ -202,7 +202,7 @@ def figure(d, sweep, title=""):
     a3.plot([c["travel_deg"] for c in curve], [c["required_with_play_mm"] for c in curve], "s-", ms=3, label="boşlukla")
     a3.axhspan(5.0, 6.0, color="#14B8A6", alpha=0.15, label="sahip hedefi 5–6 mm")
     a3.axhline(budget["mechanism_floor_mm"], color="0.3", ls="--", lw=0.8,
-               label=f"mekanizma tabanı t + c_b = {budget['mechanism_floor_mm']:.1f} mm")
+               label=f"mekanizma tabanı t + c_b = {budget['mechanism_floor_mm']:.1f} mm (tam geçişte, ≳ 110°)")
     a3.set(xlabel="gerekli katlanma [°]", ylabel="gereken ofset [mm]",
            title=f"Gereken ofset: mekanizma {budget['mechanism_floor_mm']:.1f} + kanat {budget['blade_term_mm']:.1f} mm")
     a3.legend(fontsize=8)

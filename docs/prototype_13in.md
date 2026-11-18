@@ -316,14 +316,25 @@ The break-away torque gives the speed at which the centrifugal stop moment overc
      evidence for δ'.
 4. **Stop.** If the stop does not seat, or the folded stop is short of the required travel, correct the stop
    geometry and repeat steps 2 and 3 before any full-size print.
-5. **Blade shape: the main trade-off.**
-   - E's compact step costs aerodynamics. In the static diagnostic, E gives about 28 % less thrust at equal RPM,
-     and needs about ×1.18 the RPM for equal thrust.
-   - Before E reaches structurally safe speeds, the stop-nose root limits it to about 3300 RPM at SF 2.
-   - If the owner does not accept that, the alternative is the unmodified 13×5.5-class blade, at about 10 mm for
-     140°; it needs its own fit kit.
-   - Either way, a thrust-stand A/B test (continuous E against stepped E, and E against the reference) resolves
-     what the strip-theory model cannot (`docs/prototype_13in_aero.md`).
+5. **Blade shape: the main trade-off** (equal thrust at equal inflow, fail-closed BEM; see the decision section in
+   `docs/prototype_13in_aero.md`):
+   - E (6.0 mm) needs about ×1.22 the RPM and ×1.11 the power of the unmodified 13×5.5-class blade.
+   - F1 (6.5 mm; zone chord ×0.85, twist ×0.6) needs about ×1.15 and ×1.06.
+   - F2 (8.5 mm; zone twist ×0.7) needs about ×1.10 and ×1.04.
+   - The reference needs 10 mm.
+   - All four fold to about 206 mm at 140° (89 mm wide), and the offset needed is the same at 110° and 140° except
+     for E.
+6. **Structure first.** Every useful operating point is above every option's SF 2 limit (about 2800–3300 RPM) with
+   the Ø3 pin and the 4 mm nose. A stronger joint is the next mechanical change, whatever offset is chosen.
+7. **Recommended next full-size candidate:** F1, at δ 6.5 mm with a 140° fold.
+   - **Why F1:** it is 0.5 mm above the 5–6 mm target, keeps the 206 mm folded envelope, and halves E's
+     aerodynamic penalty. Structurally it is close to E.
+   - **Measurement:** E's kit stays the first physical experiment, because its joint is nearly F1's (same pin, boss
+     and gap; δ 6.0 against 6.5). Its play transfers to F1 for exploration only. Before a full F1 rotor, print F1's
+     own fit pair (the page's kit generator) for the direct verdict.
+   - **If the owner rejects F1:** F2 is the choice if a larger step is acceptable; E if the step must stay ≤ 6 mm.
+   - **Not settled by the model:** the static performance (diagnostic only) and the joint-step flow effect
+     (unresolved). A printed A/B thrust test settles both.
 
 **Compactness by fold angle.** The *Prototip* page lists, for each fold angle:
 

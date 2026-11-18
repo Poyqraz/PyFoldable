@@ -308,6 +308,51 @@ def run_point(d, polars, rpm: float, J: float, *, bounds="error", settings=SETTI
                           "dQ_dr_nm_per_m": e.solution.differential_torque_nm_m} for e in res.elements]}
 
 
+def rpm_for_thrust(d, polars, thrust_n: float, speed_m_s: float, j_range=(0.15, 0.45), grid=12, tol_n=0.01, **kw):
+    """Speed at which the blade gives ``thrust_n`` at forward speed V (equal thrust, equal inflow), fail-closed: the
+    root is bracketed on a grid of usable points inside ``j_range`` and bisected; every evaluation used must be
+    usable (no polar query or converged state outside the data). Otherwise the row says "not covered"."""
+    D = d.planform.diameter_mm / 1000.0
+    lo_rpm, hi_rpm = 60.0 * speed_m_s / (j_range[1] * D), 60.0 * speed_m_s / (j_range[0] * D)
+    pts = [run_point(d, polars, r, speed_m_s / (r / 60.0 * D), **kw) for r in np.linspace(lo_rpm, hi_rpm, grid)]
+    ok = [r for r in pts if usable(r)]
+    base = {"speed_m_s": speed_m_s, "target_thrust_n": thrust_n}
+    pair = next(((a, b) for a, b in zip(ok, ok[1:]) if (a["thrust_n"] - thrust_n) * (b["thrust_n"] - thrust_n) <= 0), None)
+    if pair is None:
+        return {**base, "status": "not covered", "reason": f"no usable bracket in J {j_range} "
+                f"({len(ok)}/{grid} grid points usable)"}
+    a, b = pair
+    for _ in range(40):
+        rpm = 0.5 * (a["rpm"] + b["rpm"])
+        m = run_point(d, polars, rpm, speed_m_s / (rpm / 60.0 * D), **kw)
+        if not usable(m):
+            return {**base, "status": "not covered", "reason": f"midpoint {rpm:.0f} RPM not usable"}
+        if abs(m["thrust_n"] - thrust_n) <= tol_n:
+            break
+        a, b = (a, m) if (a["thrust_n"] - thrust_n) * (m["thrust_n"] - thrust_n) <= 0 else (m, b)
+    return {**base, "status": "ok", "rpm": m["rpm"], "J": m["J"], "thrust_n": m["thrust_n"], "power_w": m["power_w"],
+            "eta": m.get("eta")}
+
+
+def equal_thrust(ds: dict, polars: dict, reference: str, points) -> list[dict]:
+    """For each (V, reference RPM): the reference's thrust there, then every design's RPM and power for that thrust
+    at that V (fail-closed)."""
+    rows = []
+    for speed, ref_rpm in points:
+        d0 = ds[reference]
+        D = d0.planform.diameter_mm / 1000.0
+        r0 = run_point(d0, polars[reference], ref_rpm, speed / (ref_rpm / 60.0 * D))
+        if not usable(r0):
+            rows.append({"design": reference, "speed_m_s": speed, "status": "not covered", "reason": "reference point"})
+            continue
+        for k, d in ds.items():
+            r = rpm_for_thrust(d, polars[k], r0["thrust_n"], speed)
+            if r["status"] == "ok":
+                r.update(rpm_ratio=r["rpm"] / ref_rpm, power_ratio=r["power_w"] / r0["power_w"])
+            rows.append({"design": k, "reference_rpm": ref_rpm, **r})
+    return rows
+
+
 def compare(ds: dict, polars: dict, rpms, advance_ratios, **kw) -> list[dict]:
     return [{"design": k, **run_point(d, polars[k], rpm, J, **kw)}
             for rpm in rpms for J in advance_ratios for k, d in ds.items()]
@@ -468,6 +513,51 @@ def run_report(root, folder, preflight=PREFLIGHT) -> dict:
     }
     (folder / "aero_summary.json").write_text(json.dumps(summary, indent=1, ensure_ascii=False), encoding="utf-8")
     return {"summary": summary, "rows": rows, "clamp_diagnostic": diag}
+
+
+COMPROMISE = {   # blade-shape options at the same joint radius (twist ×0.86 base = the 13×5.5-class reference)
+    "reference": {"planform.twist_scale": 0.86},
+    "F2": {"planform.twist_scale": 0.86, "planform.hinge_zone_mm": 45.0, "planform.hinge_twist_factor": 0.7},
+    "F1": {"planform.twist_scale": 0.86, "planform.hinge_zone_mm": 45.0, "planform.hinge_chord_factor": 0.85,
+           "planform.hinge_twist_factor": 0.6},
+    "E": None,                                                    # study.E_PARAMS
+}
+EQUAL_THRUST_POINTS = ((4.0, 3000.0), (6.0, 4000.0), (6.0, 5000.0), (8.0, 5000.0), (8.0, 6000.0), (10.0, 6000.0))
+
+
+def run_decision(root, folder) -> dict:
+    """Decision table for the next design: per blade option the offset each fold travel needs (CAD sweep), the folded
+    size, the structural speed limit at its own offset, and the speed and power for equal thrust at equal inflow
+    against the reference (fail-closed BEM on the saved printable-section polars)."""
+    from . import explore, study
+    from .design import default_design, with_changes
+    root, folder = Path(root), Path(folder)
+    base = with_changes(default_design(root), **{"connection.axial_offset_mm": study.REPORT_OFFSET_MM})
+    ds = {k: explore.candidate_design(base, root, study.E_PARAMS if v is None else v) for k, v in COMPROMISE.items()}
+    record = json.loads((folder / "polars_printable_section.json").read_text(encoding="utf-8"))
+    check_record(root, record)
+    polars = {k: schedule(d, families_from_record(d, record)) for k, d in ds.items()}
+    eq = equal_thrust(ds, polars, "reference", EQUAL_THRUST_POINTS)
+    options = []
+    for k, d in ds.items():
+        row = study.study_row(k, d)                             # sweep at δ = 6 mm: offsets by travel, seating
+        offset = math.ceil(row["req_140_mm"] * 2.0) / 2.0 if "req_140_mm" in row else None
+        limit, dims = None, {}
+        if offset is not None:
+            r = explore.evaluate(with_changes(d, **{"connection.axial_offset_mm": offset}))
+            limit = (r.get("governing") or {}).get("rpm_limit")
+            if "sweep" in r:
+                dims = {x["fold_deg"]: x["envelope_diameter_mm"] for x in study.folded_dimensions(r["parts"].design, r["sweep"])}
+        options.append({**row, "offset_for_140_mm": offset, "rpm_limit_sf2": limit,
+                        "envelope_110_mm": dims.get(110), "envelope_140_mm": dims.get(140)})
+    for r in eq:                                                # structural consequence of the equal-thrust speed
+        lim = next((o["rpm_limit_sf2"] for o in options if o["variant"] == r["design"]), None)
+        if r.get("status") == "ok" and lim:
+            r["rpm_over_limit"] = r["rpm"] / lim
+            r["stress_vs_limit"] = (r["rpm"] / lim) ** 2               # centrifugal stresses scale with Ω²
+    _csv(folder / "equal_thrust.csv", eq)
+    _csv(folder / "compromise_options.csv", options)
+    return {"equal_thrust": eq, "options": options}
 
 
 if __name__ == "__main__":                                    # python -m pyfoldable.prototype.aero <report folder>
