@@ -233,6 +233,119 @@ E_PARAMS = {"planform.twist_scale": 0.86, "planform.hinge_zone_mm": 45.0, "planf
 B_PARAMS = {"planform.twist_scale": 0.6, "connection.axial_offset_mm": 9.5}
 
 
+F1_PARAMS = {"planform.twist_scale": 0.86, "planform.hinge_zone_mm": 45.0, "planform.hinge_chord_factor": 0.85,
+             "planform.hinge_twist_factor": 0.6, "connection.axial_offset_mm": 6.5}
+F1S_PARAMS = {**F1_PARAMS, "connection.pin_diameter_mm": 4.0, "connection.nose_depth_mm": 4.0,
+              "connection.nose_extension_mm": 4.0}   # the strengthened F1 chosen from joint_sizing.csv
+SIZING_AXES = {"connection.pin_diameter_mm": (3.0, 4.0, 5.0), "connection.nose_depth_mm": (4.0, 5.0, 6.0),
+               "connection.nose_extension_mm": (2.0, 3.0, 4.0)}
+SIZING_EXTRA = ({"connection.pin_diameter_mm": 4.0, "connection.boss_radius_mm": 6.5, "connection.nose_depth_mm": 5.0,
+                 "connection.nose_extension_mm": 3.0},
+                {"connection.pin_diameter_mm": 5.0, "connection.boss_radius_mm": 6.5, "connection.nose_depth_mm": 5.0,
+                 "connection.nose_extension_mm": 3.0})
+SIZING_RPM = 6000.0                                       # reference speed for the stresses (limits scale with Ω²)
+
+
+def sizing_row(d) -> dict:
+    """One joint variant in the actual assembly: solids, full-travel clearance and folded stop, mass, centrifugal
+    seating and stop force, every single-lug check with its speed limit at the safety factor, printability."""
+    from . import checks, loads, mass, strength
+    from .design import validate
+    c = d.connection
+    row = {"pin_mm": c.pin_diameter_mm, "boss_radius_mm": c.boss_radius_mm, "nose_depth_mm": c.nose_depth_mm,
+           "nose_extension_mm": c.nose_extension_mm, "offset_mm": c.axial_offset_mm, "identity": d.identity[:12]}
+    errs = validate(d)
+    if errs:
+        return {**row, "reason": " · ".join(errs)}
+    try:
+        parts = cad.build(d)
+        sw = checks.sweep(parts)
+        mp = mass.properties(parts)
+        ld = loads.deployed(mp["distal"], d, parts.meta, SIZING_RPM)
+        rows = strength.checks(ld, d, parts.meta)
+        est = required_by_travel(d, sw, (-c.stowed_angle_deg,))[0]
+        gov = strength.governing(rows)
+        failed = [r["check"] for r in checks.printability(d, {}) if not r["ok"]]
+    except Exception as exc:                                  # a geometric conflict or failed check is a result
+        return {**row, "reason": f"{type(exc).__name__}: {exc}"}
+    x0, x1 = parts.meta["stop_x_mm"]
+    return {**row, "governing": gov["key"] if gov else None, "rpm_limit_sf2": gov["rpm_limit"] if gov else None,
+            **{f"limit_{r['key']}": r["rpm_limit"] for r in rows},
+            "folded_stop_deg": sw["folded_stop_deg"], "required_mm": est["required_mm"],
+            "required_with_play_mm": est["required_with_play_mm"], "seated": bool(ld["seated"]),
+            "stop_force_6000_n": ld["stop_force_n"], "stop_lever_mm": ld["stop_lever_mm"], "nose_width_mm": x1 - x0,
+            "lugs_mm": [round(t, 2) for t in d.lug_thicknesses_mm], "pin_length_mm": d.pin_length_mm,
+            "distal_g": mp["distal"].mass_g, "blade_g": mp["blade"].mass_g, "pin_set_g": mp["pin_set"].mass_g,
+            "printability_failed": " · ".join(failed), "reason": ""}
+
+
+def joint_sizing(root, folder) -> list[dict]:
+    """Bounded joint-sizing grid on the F1 aerodynamic baseline (δ 6.5 mm, 140° travel); writes joint_sizing.csv."""
+    import csv
+    import itertools
+    from pathlib import Path
+
+    from . import explore
+    from .design import default_design
+    root, folder = Path(root), Path(folder)
+    base = explore.candidate_design(default_design(root), root, F1_PARAMS)
+    keys = list(SIZING_AXES)
+    grid = [dict(zip(keys, v)) for v in itertools.product(*SIZING_AXES.values())] + list(SIZING_EXTRA)
+    rows = [sizing_row(explore.candidate_design(base, root, p)) for p in grid]
+    cols = sorted({k for r in rows for k in r}, key=lambda k: (k.startswith("limit_"), k))
+    folder.mkdir(parents=True, exist_ok=True)
+    with open(folder / "joint_sizing.csv", "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=cols, lineterminator="\n")
+        w.writeheader()
+        w.writerows(rows)
+    return rows
+
+
+def run_candidate(root, folder, name, params, compare=None) -> dict:
+    """One candidate end to end: evaluation, the alignment/envelope figure, folded size and the operating envelope
+    with the distal's BEM loads (``aero.operating_envelope``; ``compare`` adds the envelope rows of other parameter
+    sets for reference), then the manufacturing export (solids, assembly views, drawing, hardware list, calculation
+    summary, SHA-256 over everything in the folder) and its own measurement kit."""
+    import csv
+    import json
+    from pathlib import Path
+
+    from . import aero, cad, explore, export, fit, mass
+    from .design import default_design, with_changes
+    root, folder = Path(root), Path(folder)
+    build = lambda n, p: with_changes(explore.candidate_design(default_design(root), root, p), name=f"13in-{n}")  # noqa: E731
+    d = build(name, params)
+    r = explore.evaluate(d)
+    if "parts" not in r or "sweep" not in r:
+        raise RuntimeError(f"{name} could not be evaluated: {r['reasons']}")
+    out_dir = folder / f"{name}_candidate"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    figure(d, r["sweep"], f"{name}: δ {d.connection.axial_offset_mm:.1f} mm, pim Ø{d.connection.pin_diameter_mm:g}, "
+           f"gerekli katlanma {-d.connection.stowed_angle_deg:.0f}°").savefig(out_dir / "alignment_envelope.png", dpi=110)
+    record = json.loads((folder / "aero" / "polars_printable_section.json").read_text(encoding="utf-8"))
+    aero.check_record(root, record)
+    env = [{"candidate": name, **e} for e in aero.operating_envelope(
+        d, aero.schedule(d, aero.families_from_record(d, record)), r["parts"], r["mass"]["distal"])]
+    for other, p in (compare or {}).items():
+        try:                                                  # a comparison that cannot be built is a row, not a stop
+            od = build(other, p)
+            op = cad.build(od)
+            env += [{"candidate": other, **e} for e in aero.operating_envelope(
+                od, aero.schedule(od, aero.families_from_record(od, record)), op, mass.properties(op)["distal"])]
+        except Exception as exc:                              # noqa: BLE001
+            env.append({"candidate": other, "reason": f"{type(exc).__name__}: {exc}"})
+    dims = folded_dimensions(d, r["sweep"])
+    for fname, rows in (("operating_envelope.csv", env), ("folded_dimensions.csv", dims)):
+        cols = list(dict.fromkeys(k for row in rows for k in row))
+        with open(out_dir / fname, "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=cols, lineterminator="\n")
+            w.writeheader()
+            w.writerows(rows)
+    export.export_candidate(r["parts"], out_dir, r)
+    fit.export_kit(d, folder / f"fit_kit_{name}")
+    return {"design": d, "evaluation": r, "envelope": env, "folded": dims, "budget": offset_budget(d, r["sweep"])}
+
+
 def study_row(label, d):
     """Build, sweep and seat one variant; any failure is a row with its reason."""
     from . import loads, mass

@@ -243,9 +243,18 @@ Two kits are committed. Each holds:
 
 The kits:
 
-- `reports/prototype_13in_20261118/fit_kit_E/`: **E's own joint**, the next compact candidate. δ 6.0 mm, lugs
-  4.72/5.05 mm, a pin of 12.5 mm under the head, E's stop nose and pad, printed with the rotor plane on the bed.
+- `reports/prototype_13in_20261118/fit_kit_F1S/`: **the strengthened F1 joint, the kit to print.**
+  - δ 6.5 mm, a Ø4 pin of 13.28 mm under the head, lugs 5.16/5.38 mm;
+  - a stop nose 4 mm deep, reaching 4 mm ahead of the leading edge;
+  - a Ø4.0–4.4 mm coupon.
+
+  It is the default kit in the page. See *Strengthened F1 candidate* below.
+- `reports/prototype_13in_20261118/fit_kit_E/`: E's joint (δ 6.0 mm, Ø3 pin, lugs 4.72/5.05 mm). It is now used for
+  printer calibration only: hole shrinkage, face flatness, the friction trend. It is not evidence about F1S.
 - `reports/prototype_13in_20261118/fit_kit_B/`: B's joint (δ 9.5 mm, lugs 6.92/7.30 mm), kept as a reference.
+- All three kits were regenerated in this revision. The design record gained the pin-set field (`pin_nominal_mm`),
+  which changes every design identity. A record made from an older copy of a kit would be refused as "another kit";
+  nothing has been printed or measured yet.
 
 Choosing a kit does not select that candidate as the powered propeller. Each kit measures pin fit, axial float,
 tilt, break-away friction, open-stop seating, the folded-stop angle and the part masses. Measure the axial float and
@@ -302,18 +311,20 @@ The break-away torque gives the speed at which the centrifugal stop moment overc
 
 ## Next full-size prototype: from the measurements to the print
 
-1. **Coupon (E kit).** Rate the holes and pick the smallest running fit.
-2. **Fit pair (E kit)** at that clearance: assemble it and measure a, Δ (≥ 3 repeats), friction, stop seating, the
-   folded-stop angle and the masses. Fill the record.
-3. **Apply the record** with kit E selected. The basis is direct. Build E and read the clearance tab.
-   - **At δ = 6.0 mm**, E's nominal gap at the governing point is about 0.6 mm at about 24 mm from the pin. The
-     verdict needs roughly a + 24 mm · φ ≤ 0.6 mm − margin; with the typical margin, a + 24 mm · φ ≤ 0.44 mm, for
-     example a = 0.1 mm and φ ≤ 0.8°.
-   - **If it passes**, export E from the page with the record applied. Its `design.json` carries the measured play and
-     its basis. Print the full rotor: the hub with both proximal segments, two distal segments and two pin sets.
-   - **If it fails**, the page reports the with-play offset. Choose δ' (rounded up to 0.5 mm), generate the fit kit for
-     E at δ' in the page, print and measure it, and repeat this step. The record from δ = 6.0 mm is only transferred
-     evidence for δ'.
+1. **Coupon (F1S kit, Ø4.0–4.4 mm).** Rate the holes and pick the smallest running fit. E's coupon may also be
+   printed to calibrate the printer; it is not required.
+2. **Fit pair (F1S kit)** at that clearance: assemble it with the Ø4 pin set, and measure a, Δ (≥ 3 repeats),
+   friction, stop seating, the folded-stop angle and the masses. Fill the record.
+3. **Apply the record** with kit F1S selected. The basis is direct. Build F1S and read the clearance tab.
+   - **At δ = 6.5 mm**, F1S's nominal gap at the governing point is 0.58 mm. The verdict needs roughly
+     a + 24 mm · φ ≤ 0.58 mm − margin; with the typical margin, a + 24 mm · φ ≤ 0.41 mm, for example a = 0.1 mm and
+     φ ≤ 0.75°.
+   - **If it passes**, export F1S from the page with the record applied. Its `design.json` carries the measured play
+     and its basis. Print the full rotor: the hub with both proximal segments, two distal segments and two Ø4 pin
+     sets.
+   - **If it fails**, the page reports the with-play offset (at most about 7.5 mm with the worst-case model). Choose δ'
+     (rounded up to 0.5 mm), generate the fit kit for F1S at δ' in the page, print and measure it, and repeat this
+     step. The record from δ = 6.5 mm is only transferred evidence for δ'.
 4. **Stop.** If the stop does not seat, or the folded stop is short of the required travel, correct the stop
    geometry and repeat steps 2 and 3 before any full-size print.
 5. **Blade shape: the main trade-off** (equal thrust at equal inflow, fail-closed BEM; see the decision section in
@@ -326,7 +337,7 @@ The break-away torque gives the speed at which the centrifugal stop moment overc
      for E.
 6. **Structure first.** Every useful operating point is above every option's SF 2 limit (about 2800–3300 RPM) with
    the Ø3 pin and the 4 mm nose. A stronger joint is the next mechanical change, whatever offset is chosen.
-7. **Recommended next full-size candidate:** F1, at δ 6.5 mm with a 140° fold.
+7. **Recommended next full-size candidate:** F1, at δ 6.5 mm with a 140° fold; its strengthened joint is F1S (below).
    - **Why F1:** it is 0.5 mm above the 5–6 mm target, keeps the 206 mm folded envelope, and halves E's
      aerodynamic penalty. Structurally it is close to E.
    - **Measurement:** E's kit stays the first physical experiment, because its joint is nearly F1's (same pin, boss
@@ -335,6 +346,112 @@ The break-away torque gives the speed at which the centrifugal stop moment overc
    - **If the owner rejects F1:** F2 is the choice if a larger step is acceptable; E if the step must stay ≤ 6 mm.
    - **Not settled by the model:** the static performance (diagnostic only) and the joint-step flow effect
      (unresolved). A printed A/B thrust test settles both.
+
+## Strengthened F1 candidate (F1S): one coherent joint
+
+**Aerodynamic baseline: F1.** Twist ×0.86, with a ±45 mm hinge zone (chord ×0.85, twist ×0.6), at δ = 6.5 mm and a
+140° required fold. 6.5 mm is a **nominal** offset:
+
+- the nominal requirement is 6.42 mm, a 0.58 mm gap at 106°;
+- with the worst-case play model it is 7.46 mm (−0.96 mm at 140°, `compromise_options.csv`).
+
+That with-play verdict is decided only by play measured directly on F1S's own fit pair. At 6.5 mm it needs roughly
+a + 24 mm · φ + k·u ≤ 0.58 mm.
+
+**Sizing in the actual assembly** (`study.joint_sizing`, `F1S_sizing/joint_sizing.csv`): 29 variants, each built
+and swept over the full fold. Each row records:
+
+- every single-lug check and its speed limit at SF 2;
+- the folded stop;
+- the clearance needed;
+- the centrifugal seating, the stop force, mass and printability.
+
+What the grid shows:
+
+- **Nose depth breaks the fold.** A deeper stop nose (5 or 6 mm instead of 4 mm) is stronger in bending, but it
+  meets the proximal earlier. The folded stop falls from 144° to 138° and 134°, so it would block the required 140°.
+  **The nose depth stays at 4 mm.**
+- **Nose extension works.** Extending the nose and pad 4 mm ahead of the leading edge, instead of 2 mm, doubles the
+  nose width. It also lengthens the lever from the pin, so the stop force drops from 66 N to 54 N at 6000 RPM. The
+  nose-root limit rises from 3100 to 4700 RPM, and the fold is unaffected (144°).
+- **Then the pin governs.** With the stronger stop, the Ø3 pin limits the joint in bending (about 3900 RPM). A Ø4 pin
+  raises that to about 6050 RPM.
+- **Ø5 gains nothing.** The bigger hole in the same boss lowers the lug's hole-edge peak limit (5540 against
+  5750 RPM), and it adds 2 g.
+- **A larger boss (R_b 6.5 mm) cannot be built.** It leaves no blade under the stop pad at the joint's leading edge.
+
+**The chosen joint (F1S)**, `study.F1S_PARAMS`, in `F1S_candidate/` and `fit_kit_F1S/`:
+
+| Item | F1S | F1 (Ø3 pin, nose 2 mm ahead) |
+|---|---|---|
+| Pin set | ISO 2341-A Ø4 (head Ø6 × 1), 13.28 mm under the head; 2 × DIN 433 4.3 × 8 × 0.5; DIN 6799 size 3.2 | Ø3 set |
+| Hole, boss, relief | Ø4.2 (clearance 0.2, chosen from the coupon), R_b 5.5, relief 6.1 mm | Ø3.2, 5.5, 6.1 |
+| Lugs, gap, stack | 5.16 / 5.38 mm, g 0.3, stack 10.84 mm | about 4.9 / 5.1 mm |
+| Stop | nose 4 mm deep, 4 mm ahead of the LE; pad 4 mm | nose 4 mm deep, 2 mm ahead |
+| Folded stop / required travel | 144° / 140° | 144° / 140° |
+| Seating | distal CG 3.23 mm aft of the pin: seated at every speed | seated |
+| Mass | blade 25.41 g (distal 3.53 g, pin set 1.95 g) | 24.5 g |
+| Limits at SF 2, centrifugal only | nose root 4700, lug FE peak 5750, pin bending 6050, bearing 6380, net section 7880 RPM | nose root 3100, pin bending 3840 RPM |
+
+**Tolerances:**
+
+- The hole clearance comes from the F1S coupon (Ø4.0–4.4 mm). The fit pair is exported at 0.1, 0.2 and 0.3 mm.
+- The lug gap stays at 0.3 mm. With about ±0.1 mm z variation per printed face, a 0.2 mm gap could bind.
+- The verdict margin adds k = 2 times the measured play uncertainty and the print variation.
+
+E's kit can calibrate the printer (hole shrinkage, face flatness, friction trend). It is neither a prerequisite for
+F1S nor evidence about it.
+
+**Operating envelope** (`F1S_candidate/operating_envelope.csv`): the highest speed at which every check holds at SF 2
+and the distal stays seated. The loads are centrifugal plus the distal's own BEM thrust and in-plane drag. The
+assumptions are the declared exploratory PLA allowables, the steel pin values and ISA sea-level air; the table is
+for one rotor with two blades.
+
+| Condition | F1S max RPM | Inflow V | Rotor thrust | Shaft power | Limited by | F1 baseline max RPM / thrust |
+|---|---|---|---|---|---|---|
+| J 0.20 (fail-closed) | 4750 | 5.2 m/s | 3.61 N | 39 W | stop-nose root | 3125 / 1.42 N |
+| J 0.25 (fail-closed) | 4740 | 6.5 m/s | 2.86 N | 35 W | stop-nose root | 3125 / 1.04 N |
+| J 0.30 (fail-closed) | 4730 | 7.8 m/s | 2.00 N | 29 W | stop-nose root | 3120 / 0.65 N |
+| static (clamp diagnostic, **not supported**) | 4760 | 0 | 5.94 N | 46 W | stop-nose root | below polar coverage |
+
+Notes on the envelope:
+
+- **Supported band.** The polar data starts at about 3000 RPM, so the fail-closed band is 3000–4750 RPM.
+- **Distal loads at the limit.** At 4750 RPM the distal carries about 1.0 N of thrust and 0.18 N of drag per blade,
+  and the stop carries 33 N.
+- **Not included.** Fatigue, creep, impact, gusts and the joint-step flow effect are not in these numbers.
+
+### Remaining trade-off
+
+- **Offset.** 6.5 mm nominal. It becomes about 7.5 mm if the measured play is as large as the worst-case model.
+  The measured play decides; a design at 7.5 mm would make the measurement moot but is 1.5 mm above the target.
+- **Folding.** 140° is kept, because the nose depth is fixed at 4 mm. Strengthening further by nose depth would cost
+  travel (138° at 5 mm); by extension it adds a larger bump ahead of the leading edge.
+- **Performance.** F1's blade needs about ×1.15 the RPM and ×1.06 the power of the unshaped 13×5.5-class blade at
+  equal thrust and inflow. The strengthened joint lifts the structural speed from about 3100 to about 4700 RPM, so
+  F1S can reach roughly 2.5 times F1's thrust within the same safety factor. The 4 mm nose ahead of the leading edge
+  is a local aerodynamic disturbance that no model here resolves.
+
+### Owner information needed to turn the what-if cases into an operating requirement
+
+- **Motor and drive:**
+  - the motor model and KV;
+  - its rated and peak current or power;
+  - the ESC and the battery (cell count and voltage range).
+
+  With these, `core.motor_bem_coupling` gives the loaded RPM and torque on F1S's BEM model.
+- **Thrust requirement:**
+  - the required thrust per rotor for static or hover, and for the flight case(s);
+  - the aircraft mass;
+  - the number of rotors;
+  - the thrust-to-weight margin.
+- **Flight conditions:** the forward-speed range, so J; altitude or temperature; the duty cycle (time at maximum
+  power).
+- **RPM limit:** the maximum RPM, including fault or over-speed cases the controller allows.
+- **Folding scenario:** whether the blade folds in flight or only for stowage, and the minimum deploy RPM the
+  friction measurement must meet.
+- **Structural policy:** the required safety factor, the fatigue life (cycles or hours), and the printer and
+  filament data that replace the exploratory allowables.
 
 **Compactness by fold angle.** The *Prototip* page lists, for each fold angle:
 

@@ -295,3 +295,19 @@ def test_uncertainty_edge_cases_and_folded_stop_boundary(kit_design, pred):
     assert rows[110]["reachable"] and not rows[140]["reachable"]     # the nose has already penetrated at the stop angle
     empty = {"angles_deg": th, "gap_mm": [float("inf")] * len(th), "gap_play_mm": [float("inf")] * len(th)}
     assert study.required_by_travel(kit_design, empty, (60,))[0]["required_mm"] is None
+
+
+def test_a_pin_size_change_brings_its_matched_pin_set(kit_design):
+    from pyfoldable.prototype import explore
+    d = explore.candidate_design(kit_design, ROOT, {"connection.pin_diameter_mm": 4.0})
+    assert d.hardware.pin_nominal_mm == 4.0 and d.hardware.washer_id_mm == pytest.approx(4.3)
+    assert not [e for e in pd.validate(d) if "Pim seti" in e]
+
+
+def test_committed_f1s_kit_belongs_to_the_strengthened_f1_with_its_pin_set():
+    from pyfoldable.prototype import explore, study
+    pred = json.loads((ROOT / "reports/prototype_13in_20261118/fit_kit_F1S/predictions.json").read_text(encoding="utf-8"))
+    d = pd.with_changes(explore.candidate_design(pd.default_design(ROOT), ROOT, study.F1S_PARAMS), name="13in-F1S")
+    assert pred["kit_design_sha256"] == d.identity and pred["pin_diameter_mm"] == 4.0
+    assert d.hardware.pin_nominal_mm == 4.0 and d.connection.axial_offset_mm == 6.5
+    assert pred["folded_stop_deg"] >= -d.connection.stowed_angle_deg                  # the stronger stop keeps the fold

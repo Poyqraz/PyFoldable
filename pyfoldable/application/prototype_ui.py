@@ -28,8 +28,9 @@ from . import research_ui as rui
 
 _BUILD, _EXPLORE, _EXPORT, _OFFSETS = "_proto_build", "_proto_explore", "_proto_export", "_proto_offsets"
 _FIT, _FIT_ERROR, _KITGEN = "_proto_fit_record", "_proto_fit_error", "_proto_kitgen"
-KITS = {  # committed measurement kits (predictions, record template, printing set, protocol)
-    "E": ("E · sonraki kompakt aday (kendi bağlantısı)", Path("reports/prototype_13in_20261118/fit_kit_E")),
+KITS = {  # committed measurement kits (predictions, record template, printing set, protocol); the first is the default
+    "F1S": ("F1S · güçlendirilmiş bağlantı (basılacak kit)", Path("reports/prototype_13in_20261118/fit_kit_F1S")),
+    "E": ("E · yazıcı kalibrasyonu", Path("reports/prototype_13in_20261118/fit_kit_E")),
     "B": ("B · referans", Path("reports/prototype_13in_20261118/fit_kit_B")),
 }
 KIT_FILES = ("README.md", "predictions.json", "fit_record_template.json", "design.json", "SHA256SUMS")
@@ -53,7 +54,7 @@ _INPUTS = {
         ("connection.axial_offset_mm", "Eksenel ofset δ = z_B − z_A [mm]", -30.0, 30.0),
         ("connection.lug_interface_z_mm", "Lug arayüz düzlemi z_i [mm] (boş: δ/2)", -30.0, 30.0),
         ("connection.pin_x_mm", "Pim x, çeyrek veterden [mm]", -30.0, 30.0),
-        ("connection.pin_diameter_mm", "Pim Ø [mm]", 1.0, 10.0),
+        ("connection.pin_diameter_mm", "Pim Ø [mm] (katalog: 3, 4, 5)", 1.0, 10.0),
         ("connection.hole_clearance_mm", "Delik boşluğu, çapsal [mm]", 0.0, 1.0),
         ("connection.lug_thickness_proximal_mm", "Proksimal lug kalınlığı [mm] (boş: tam derinlik)", 0.5, 30.0),
         ("connection.lug_thickness_distal_mm", "Distal lug kalınlığı [mm] (boş: tam derinlik)", 0.5, 30.0),
@@ -92,7 +93,7 @@ _AXES = (  # (design path, label, options, default) of the exploration grid; emp
     ("planform.twist_scale", "Burulma çarpanı", (1.0, 0.8, 0.6, 0.45, 0.35, 0.25), (1.0, 0.6, 0.35)),
     ("connection.lug_thickness_proximal_mm", "Proksimal lug kalınlığı [mm] (isteğe bağlı)", (3.0, 4.0, 5.0, 6.0), ()),
     ("connection.lug_thickness_distal_mm", "Distal lug kalınlığı [mm] (isteğe bağlı)", (3.0, 4.0, 5.0, 6.0), ()),
-    ("connection.pin_diameter_mm", "Pim Ø [mm] (isteğe bağlı)", (2.5, 3.0, 4.0), ()),
+    ("connection.pin_diameter_mm", "Pim Ø [mm] (isteğe bağlı)", (3.0, 4.0, 5.0), ()),
 )
 _PROTRUSIONS = (
     ("proximal_boss_below_surface_mm", "Proksimal lug, alt yüzeyin altında"),
@@ -145,6 +146,7 @@ def _design(root, values):
     plan = {k.split(".", 1)[1]: v.pop(k) for k in list(v) if k.startswith("planform.")}
     plan["hinge_zone_center_mm"] = v["connection.hinge_radius_mm"]          # the shaping zone follows the joint
     v["print_model.bed_mm"] = tuple(v.pop(f"print_model.bed_mm.{i}") for i in range(3))
+    v["hardware"] = design.hardware_for_pin(v["connection.pin_diameter_mm"])   # the pin set follows the pin
     return design.with_changes(design.default_design(root, **plan), **v)
 
 
@@ -624,7 +626,7 @@ def _measurement(root: Path, d):
                                key="proto_kitgen_zip")
     generated = gen is not None and gen["identity"] == d.identity and "pred" in gen
     options = {**{k: v[0] for k, v in KITS.items()}, **({"G": "Bu tasarım için oluşturulan kit"} if generated else {})}
-    choice = rui._choice(st.radio, "Ölçüm kiti", tuple(options), horizontal=True, key="proto_fit_kit", default="E",
+    choice = rui._choice(st.radio, "Ölçüm kiti", tuple(options), horizontal=True, key="proto_fit_kit", default=next(iter(options)),
                          display=lambda k: options.get(k, str(k)))
     if choice == "G":
         pred, tpl, kit = gen["pred"], fit.template(gen["pred"]), Path(gen["name"])

@@ -348,3 +348,14 @@ def test_kit_generator_writes_the_editor_design_kit_and_goes_stale_on_change(fak
     at.number_input(key="proto_connection.axial_offset_mm").set_value(7.0).run()
     assert not any(b.key == "proto_kitgen_zip" for b in at.get("download_button"))
     assert "oluşturulan ölçüm kiti bu tasarıma ait değil" in text(at)
+
+
+def test_pin_diameter_input_switches_to_the_matched_pin_set(fake):
+    at = go(app(), PAGE)
+    at.number_input(key="proto_connection.pin_diameter_mm").set_value(4.0).run()
+    assert not at.exception and not at.error
+    at.button(key="proto_build").click().run()
+    d = at.session_state["_proto_build"]["result"]["design"]
+    assert d.hardware.pin_nominal_mm == 4.0 and d.hardware.clip_od_mm == pytest.approx(7.3)
+    at.number_input(key="proto_connection.pin_diameter_mm").set_value(3.5).run()
+    assert any("katalog pim seti yok" in e.value for e in at.error)

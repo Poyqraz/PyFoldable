@@ -2,7 +2,7 @@
 
 A measurement prototype for pin fit, joint play, friction and stop seating. It is **not** a selection of this candidate
 as the powered propeller, and it qualifies nothing physically. All files are in millimetres. Kit design identity:
-`7088bb223bda9251addc846876c7e370e33fdbf57ef3b8afa19c2d98c9a8acd7`; the record must carry the same identity.
+`aec6d6a9b84d00beb7271197907040ba3f20420022f14aae04071ece2789b8c3`; the record must carry the same identity.
 
 ## Parts and print
 

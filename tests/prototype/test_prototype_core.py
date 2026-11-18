@@ -135,3 +135,19 @@ def test_aero_case_has_no_speed_scaling_limit(base):
     pm = _point_mass(4.0, (4.0, 120.0, 5.0))
     rows = strength.checks(loads.deployed(pm, base, META, 6000.0, thrust_n=3.0, drag_n=1.0, aero_radius_mm=130.0), base, META)
     assert all(r["rpm_limit"] is None for r in rows) and strength.governing(rows) is None
+
+
+@pytest.mark.parametrize("pin", [3.0, 4.0, 5.0])
+def test_pin_sets_match_their_pin(base, pin):
+    hw = pd.hardware_for_pin(pin)
+    assert hw.pin_nominal_mm == pin and hw.washer_id_mm > pin and hw.head_diameter_mm > pin
+    assert pin - 1.0 <= hw.groove_diameter_mm < pin and hw.clip_od_mm > pin
+    d = pd.with_changes(base, hardware=hw, **{"connection.pin_diameter_mm": pin})
+    assert not any("Pim seti" in e for e in pd.validate(d))
+
+
+def test_a_pin_without_its_pin_set_is_refused(base):
+    d = pd.with_changes(base, **{"connection.pin_diameter_mm": 4.0})          # Ø3 washers and clip on a Ø4 pin
+    assert any("Pim seti" in e for e in pd.validate(d))
+    with pytest.raises(ValueError):
+        pd.hardware_for_pin(3.5)

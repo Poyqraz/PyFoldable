@@ -15,7 +15,7 @@ import time
 from dataclasses import replace
 
 from . import cad, checks, loads, mass, strength
-from .design import planform_from_template, validate, with_changes, without_measurement
+from .design import PIN_SETS, hardware_for_pin, planform_from_template, validate, with_changes, without_measurement
 
 MAX_CANDIDATES = 24
 PLANFORM_AXES = ("planform.twist_scale", "planform.chord_scale", "planform.profile_id", "planform.hinge_zone_mm",
@@ -36,6 +36,9 @@ def candidate_design(base, root, params: dict):
         kw.update(plan)
         kw["hinge_zone_center_mm"] = d.connection.hinge_radius_mm         # the zone follows the joint
         d = replace(d, planform=planform_from_template(root, **kw))
+    pin = d.connection.pin_diameter_mm
+    if pin != d.hardware.pin_nominal_mm and any(abs(pin - k) < 1e-9 for k in PIN_SETS):
+        d = replace(d, hardware=hardware_for_pin(pin))                    # the pin set follows the pin
     if params and d.connection.play_record_sha256 is not None:            # play was measured on the base geometry only
         d = without_measurement(d)
     return d

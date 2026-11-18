@@ -112,6 +112,7 @@
   },
   "hardware": {
     "pin_standard": "ISO 2341-A Ø3 (kafa Ø5×1) + DIN 6799 kanalı (Ø2,3 × 0,64)",
+    "pin_nominal_mm": 3.0,
     "head_diameter_mm": 5.0,
     "head_height_mm": 1.0,
     "washer_od_mm": 6.0,

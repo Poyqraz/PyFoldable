@@ -1,0 +1,163 @@
+{
+  "planform": {
+    "profile_id": "NACA2412",
+    "diameter_mm": 330.2,
+    "stations": [
+      [
+        33.02,
+        36.9824,
+        26.66
+      ],
+      [
+        54.0,
+        35.304,
+        22.835058
+      ],
+      [
+        65.25,
+        33.648248,
+        19.566528
+      ],
+      [
+        66.04,
+        33.483274,
+        19.265594
+      ],
+      [
+        76.5,
+        30.60418,
+        14.986399
+      ],
+      [
+        87.75,
+        27.672396,
+        10.986388
+      ],
+      [
+        99.0,
+        25.82776,
+        8.778563
+      ],
+      [
+        99.06,
+        25.82166,
+        8.772026
+      ],
+      [
+        110.25,
+        24.147207,
+        8.28486
+      ],
+      [
+        121.5,
+        23.11834,
+        8.423104
+      ],
+      [
+        132.08,
+        21.903381,
+        8.038026
+      ],
+      [
+        132.75,
+        21.698249,
+        8.004958
+      ],
+      [
+        144.0,
+        17.6856,
+        6.875254
+      ],
+      [
+        161.798,
+        10.5664,
+        4.3
+      ]
+    ],
+    "template_id": "project_250",
+    "chord_scale": 1.0,
+    "twist_scale": 0.86,
+    "blade_count": 2,
+    "hinge_zone_mm": 45.0,
+    "hinge_zone_outboard_mm": null,
+    "hinge_zone_center_mm": 99.0,
+    "hinge_chord_factor": 0.85,
+    "hinge_twist_factor": 0.6
+  },
+  "connection": {
+    "hinge_radius_mm": 99.0,
+    "axial_offset_mm": 6.5,
+    "lug_interface_z_mm": null,
+    "pin_x_mm": 0.0,
+    "pin_diameter_mm": 4.0,
+    "hole_clearance_mm": 0.2,
+    "lug_thickness_proximal_mm": null,
+    "lug_thickness_distal_mm": null,
+    "lug_gap_mm": 0.3,
+    "boss_radius_mm": 5.5,
+    "relief_clearance_mm": 0.6,
+    "face_gap_mm": 0.3,
+    "nose_depth_mm": 4.0,
+    "nose_extension_mm": 4.0,
+    "pad_depth_mm": 4.0,
+    "stowed_angle_deg": -140.0,
+    "body_clearance_mm": 0.5,
+    "measured_axial_play_mm": null,
+    "measured_tilt_deg": null,
+    "play_record_sha256": null,
+    "measured_play_basis": null,
+    "measured_axial_play_u_mm": null,
+    "measured_tilt_u_deg": null,
+    "print_z_u_mm": null
+  },
+  "hardware": {
+    "pin_standard": "ISO 2341-A Ø4 (kafa Ø6×1) + DIN 6799 kanalı (Ø3,2 × 0,64)",
+    "pin_nominal_mm": 4.0,
+    "head_diameter_mm": 6.0,
+    "head_height_mm": 1.0,
+    "washer_od_mm": 8.0,
+    "washer_id_mm": 4.3,
+    "washer_thickness_mm": 0.5,
+    "clip_od_mm": 7.3,
+    "clip_thickness_mm": 0.6,
+    "groove_diameter_mm": 3.2,
+    "groove_width_mm": 0.64,
+    "pin_end_mm": 0.8
+  },
+  "print_model": {
+    "material": "PLA",
+    "infill_fraction": 1.0,
+    "wall_mm": 1.2,
+    "layer_mm": 0.2,
+    "min_te_thickness_mm": 0.8,
+    "te_blend_start": 0.5,
+    "bed_mm": [
+      256.0,
+      256.0,
+      256.0
+    ],
+    "orientation": "Rotor düzlemi tablada (z yukarı); pim ekseni yazıcı z ekseninde, lug yükü katmanlar boyunca."
+  },
+  "operating": {
+    "max_rpm": null,
+    "required_thrust_n": null,
+    "motor": null,
+    "distal_thrust_n": null,
+    "distal_drag_n": null,
+    "distal_aero_radius_mm": null,
+    "what_if_rpm": [
+      3000.0,
+      4000.0,
+      5000.0,
+      6000.0,
+      7000.0,
+      8000.0
+    ],
+    "safety_factor": 2.0
+  },
+  "hub_radius_mm": 15.0,
+  "hub_height_mm": 12.0,
+  "hub_bore_mm": 5.0,
+  "fit_section_mm": 22.0,
+  "name": "13in-F1S"
+}

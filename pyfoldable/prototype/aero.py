@@ -300,7 +300,8 @@ def run_point(d, polars, rpm: float, J: float, *, bounds="error", settings=SETTI
             "solution_clamped_elements": sum(bool(e.solution.clamped_dimensions) for e in res.elements),
             "alpha_query_deg": [math.degrees(env.alpha_rad_min), math.degrees(env.alpha_rad_max)],
             "reynolds_query": [env.reynolds_min, env.reynolds_max], "mach_query": [env.mach_min, env.mach_max],
-            "elements": [{"r_mm": e.solution.radius_m * 1000, "chord_mm": e.solution.chord_m * 1000,
+            "elements": [{"r_mm": e.solution.radius_m * 1000, "width_mm": e.width_m * 1000,
+                          "chord_mm": e.solution.chord_m * 1000,
                           "twist_deg": math.degrees(e.solution.twist_rad),
                           "alpha_deg": math.degrees(e.solution.angle_of_attack_rad), "reynolds": e.solution.reynolds,
                           "mach": e.solution.mach, "cl": e.solution.cl, "cd": e.solution.cd,
@@ -513,6 +514,100 @@ def run_report(root, folder, preflight=PREFLIGHT) -> dict:
     }
     (folder / "aero_summary.json").write_text(json.dumps(summary, indent=1, ensure_ascii=False), encoding="utf-8")
     return {"summary": summary, "rows": rows, "clamp_diagnostic": diag}
+
+
+def distal_aero_loads(d, row) -> dict:
+    """Aerodynamic forces on one blade's distal segment from a solved BEM row: the rotor densities include the blade
+    count, so per blade thrust = Σ dT/dr·Δr / N along +z and in-plane drag = Σ (dQ/dr)/r·Δr / N toward +x (opposing
+    rotation), both placed at the thrust-weighted radius. Annuli are assigned by their centre radius."""
+    n = d.planform.blade_count
+    r0 = d.connection.hinge_radius_mm + d.connection.face_gap_mm
+    els = [e for e in row["elements"] if e["r_mm"] >= r0]
+    t = [e["dT_dr_n_per_m"] * e["width_mm"] / 1000.0 for e in els]
+    thrust = math.fsum(t) / n
+    drag = math.fsum(e["dQ_dr_nm_per_m"] / (e["r_mm"] / 1000.0) * e["width_mm"] / 1000.0 for e in els) / n
+    radius = (math.fsum(e["r_mm"] * ti for e, ti in zip(els, t)) / math.fsum(t)) if math.fsum(t) > 0 else \
+        float(np.mean([e["r_mm"] for e in els]))
+    return {"thrust_n": thrust, "drag_n": drag, "radius_mm": radius}
+
+
+def max_rpm(feasible, lo=500.0, hi=12000.0, tol=10.0, bracket=False):
+    """Largest speed in [lo, hi] for which ``feasible`` holds, assuming it fails above some speed; None if even
+    ``lo`` fails. ``bracket``: return (last feasible, first infeasible tested) instead."""
+    if not feasible(lo):
+        return None
+    if feasible(hi):
+        return (hi, None) if bracket else hi
+    while hi - lo > tol:
+        mid = 0.5 * (lo + hi)
+        lo, hi = (mid, hi) if feasible(mid) else (lo, mid)
+    return (lo, hi) if bracket else lo
+
+
+def envelope_point(d, polars, parts, distal, rpm, J, bounds="error") -> dict:
+    """Strength at one speed and advance ratio with the distal's own BEM thrust and drag added to the centrifugal
+    load (``loads.deployed``); covered only if the BEM point is usable."""
+    from . import loads, strength
+    r = run_point(d, polars, rpm, J, bounds=bounds)
+    out = {"rpm": rpm, "J": J, "bounds": bounds, "covered": usable(r)}
+    if not out["covered"]:
+        return {**out, "reason": r.get("failure_kind") or "polar data clamped"}
+    aero_d = distal_aero_loads(d, r)
+    ld = loads.deployed(distal, d, parts.meta, rpm, aero_d["thrust_n"], aero_d["drag_n"], aero_d["radius_mm"])
+    rows = strength.checks(ld, d, parts.meta)
+    worst = min(rows, key=lambda x: x["margin"] if x["margin"] is not None else math.inf)
+    return {**out, "speed_m_s": r["forward_speed_m_s"], "thrust_n": r["thrust_n"], "power_w": r["power_w"],
+            "eta": r.get("eta"), "distal_thrust_n": aero_d["thrust_n"], "distal_drag_n": aero_d["drag_n"],
+            "distal_radius_mm": aero_d["radius_mm"], "seated": bool(ld["seated"]), "stop_force_n": ld["stop_force_n"],
+            "min_margin": worst["margin"], "governing": worst["key"],
+            "ok": bool(ld["seated"] and worst["margin"] is not None and worst["margin"] >= 0.0)}
+
+
+def operating_envelope(d, polars, parts, distal, advance_ratios=(0.2, 0.25, 0.3), static=True,
+                       grid=tuple(range(1000, 9001, 250)), tol=10.0) -> list[dict]:
+    """Highest speed per advance ratio at which every single-lug check holds at the safety factor and the distal stays
+    seated, with centrifugal plus the distal's BEM aerodynamic loads (fail-closed). Polar coverage is a band (low
+    speeds fall below the Reynolds data), so a speed grid is scanned first; the upper edge of the first contiguous
+    feasible run is then refined by bisection. The static row uses the clamp diagnostic and is labelled so. Each row
+    says what limits it: strength (the governing check), seating, polar coverage or the end of the speed range."""
+    out = []
+    cases = [(J, "error") for J in advance_ratios] + ([(0.0, "clamp")] if static else [])
+    for J, bounds in cases:
+        basis = "fail-closed" if bounds == "error" else "clamp diagnostic (not supported)"
+        cache = {}
+
+        def point(rpm):
+            if rpm not in cache:
+                cache[rpm] = envelope_point(d, polars, parts, distal, float(rpm), J, bounds)
+            return cache[rpm]
+
+        def feasible(rpm):
+            q = point(rpm)
+            return q["covered"] and q["ok"]
+        covered = [r for r in grid if point(r)["covered"]]
+        first = next((i for i, r in enumerate(grid) if feasible(r)), None)
+        if first is None:
+            q = point(covered[0]) if covered else point(grid[0])
+            out.append({"J": J, "basis": basis, "max_rpm": None, "covered_from_rpm": covered[0] if covered else None,
+                        "limited_by": "polar coverage" if not covered else ("seating" if not q.get("seated")
+                                                                            else q["governing"])})
+            continue
+        last = first
+        while last + 1 < len(grid) and feasible(grid[last + 1]):
+            last += 1
+        if last + 1 == len(grid):
+            top, above = float(grid[last]), None
+        else:
+            top, hi = max_rpm(feasible, lo=float(grid[last]), hi=float(grid[last + 1]), tol=tol, bracket=True)
+            above = point(hi)                              # the infeasible speed the bisection actually tested
+        limit = ("speed range end" if above is None else "polar coverage" if not above["covered"] else
+                 "seating" if not above.get("seated") else above["governing"])
+        at = point(top)
+        out.append({"J": J, "basis": basis, "max_rpm": top, "covered_from_rpm": covered[0] if covered else None,
+                    "limited_by": limit, **{k: at.get(k) for k in (
+                        "speed_m_s", "thrust_n", "power_w", "eta", "distal_thrust_n", "distal_drag_n", "distal_radius_mm",
+                        "stop_force_n", "min_margin")}})
+    return out
 
 
 COMPROMISE = {   # blade-shape options at the same joint radius (twist ×0.86 base = the 13×5.5-class reference)

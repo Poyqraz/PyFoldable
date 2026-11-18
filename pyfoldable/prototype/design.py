@@ -114,6 +114,7 @@ class Hardware:
     (E-clip, size 2.3) and DIN 433 washers under the head and under the clip. Dimensions are catalogue nominals;
     verify against the supplier's drawing before ordering."""
     pin_standard: str = "ISO 2341-A Ø3 (kafa Ø5×1) + DIN 6799 kanalı (Ø2,3 × 0,64)"
+    pin_nominal_mm: float = 3.0               # the pin this set belongs to (must equal connection.pin_diameter_mm)
     head_diameter_mm: float = 5.0
     head_height_mm: float = 1.0
     washer_od_mm: float = 6.0
@@ -124,6 +125,27 @@ class Hardware:
     groove_diameter_mm: float = 2.3
     groove_width_mm: float = 0.64
     pin_end_mm: float = 0.8                   # pin length beyond the groove
+
+
+PIN_SETS = {   # catalogue nominals (ISO 2341-A head, DIN 433 washer, DIN 6799 retaining washer); verify with the supplier
+    3.0: dict(pin_standard="ISO 2341-A Ø3 (kafa Ø5×1) + DIN 6799 kanalı (Ø2,3 × 0,64)", head_diameter_mm=5.0,
+              head_height_mm=1.0, washer_od_mm=6.0, washer_id_mm=3.2, washer_thickness_mm=0.5, clip_od_mm=6.0,
+              clip_thickness_mm=0.6, groove_diameter_mm=2.3, groove_width_mm=0.64),
+    4.0: dict(pin_standard="ISO 2341-A Ø4 (kafa Ø6×1) + DIN 6799 kanalı (Ø3,2 × 0,64)", head_diameter_mm=6.0,
+              head_height_mm=1.0, washer_od_mm=8.0, washer_id_mm=4.3, washer_thickness_mm=0.5, clip_od_mm=7.3,
+              clip_thickness_mm=0.6, groove_diameter_mm=3.2, groove_width_mm=0.64),
+    5.0: dict(pin_standard="ISO 2341-A Ø5 (kafa Ø8×1,6) + DIN 6799 kanalı (Ø4 × 0,74)", head_diameter_mm=8.0,
+              head_height_mm=1.6, washer_od_mm=9.0, washer_id_mm=5.3, washer_thickness_mm=1.0, clip_od_mm=9.3,
+              clip_thickness_mm=0.7, groove_diameter_mm=4.0, groove_width_mm=0.74),
+}
+
+
+def hardware_for_pin(pin_mm: float) -> "Hardware":
+    """The matched pin set (head, washers, E-clip groove) for a catalogued pin diameter."""
+    key = next((k for k in PIN_SETS if abs(k - pin_mm) < 1e-9), None)
+    if key is None:
+        raise ValueError(f"Ø{pin_mm:g} için katalog pim seti yok (seçenekler: {', '.join(f'Ø{k:g}' for k in PIN_SETS)}).")
+    return Hardware(pin_nominal_mm=key, **PIN_SETS[key])
 
 
 @dataclass(frozen=True)
@@ -333,6 +355,9 @@ def validate(d: PrototypeDesign) -> list[str]:
         errs.append("Malzeme PLA veya ABS olmalı.")
     if h.groove_diameter_mm >= c.pin_diameter_mm or h.head_diameter_mm <= c.pin_diameter_mm:
         errs.append("Pim kanalı pimden küçük, kafa pimden büyük olmalı.")
+    if abs(h.pin_nominal_mm - c.pin_diameter_mm) > 1e-9 or h.washer_id_mm <= c.pin_diameter_mm:
+        errs.append(f"Pim seti Ø{h.pin_nominal_mm:g} pim içindir, bağlantı Ø{c.pin_diameter_mm:g}: eşleşen seti kullanın "
+                    "(design.hardware_for_pin).")
     if not 0 < d.hub_bore_mm < 2 * d.hub_radius_mm - 4:
         errs.append("Göbek deliği göbekten en az 2 mm et bırakmalı.")
     o = d.operating

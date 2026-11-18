@@ -211,3 +211,47 @@ def test_rpm_for_thrust_solves_equal_thrust_at_equal_inflow_and_refuses_uncovere
     assert r["status"] == "ok" and abs(r["thrust_n"] - target) < 0.02
     assert 0.15 <= V / (r["rpm"] / 60 * D) <= 0.45
     assert aero.rpm_for_thrust(d, None, 500.0, V)["status"] == "not covered"     # needs J below the covered range
+
+
+def test_distal_aero_loads_are_per_blade_and_outboard_of_the_joint():
+    from types import SimpleNamespace
+    d = SimpleNamespace(planform=SimpleNamespace(blade_count=2),
+                        connection=SimpleNamespace(hinge_radius_mm=99.0, face_gap_mm=0.3))
+    els = [{"r_mm": r, "width_mm": 10.0, "dT_dr_n_per_m": 100.0, "dQ_dr_nm_per_m": 2.0} for r in (80.0, 120.0, 140.0)]
+    out = aero.distal_aero_loads(d, {"elements": els})
+    assert out["thrust_n"] == pytest.approx(2 * 100.0 * 0.01 / 2)                 # two outboard annuli, one blade
+    assert out["drag_n"] == pytest.approx((2.0 / 0.12 + 2.0 / 0.14) * 0.01 / 2)
+    assert out["radius_mm"] == pytest.approx(130.0)
+
+
+def test_max_rpm_finds_the_last_feasible_speed_and_reports_none_when_nothing_passes():
+    assert aero.max_rpm(lambda n: n <= 4321.0, lo=500.0, hi=9000.0, tol=1.0) == pytest.approx(4321.0, abs=1.0)
+    assert aero.max_rpm(lambda n: False) is None
+    assert aero.max_rpm(lambda n: True, hi=9000.0) == 9000.0
+
+
+def test_envelope_finds_the_strength_limit_inside_a_coverage_band(monkeypatch):
+    # coverage starts above 1600 RPM (low Reynolds below); strength holds up to 4700 RPM
+    def fake_point(d, polars, parts, distal, rpm, J, bounds="error"):
+        if rpm < 1600.0:
+            return {"rpm": rpm, "covered": False, "reason": "Reynolds outside polar data"}
+        return {"rpm": rpm, "covered": True, "ok": rpm <= 4700.0, "seated": True, "governing": "stop_nose_root",
+                "min_margin": (4700.0 / rpm) ** 2 - 1, "speed_m_s": 1.0, "thrust_n": rpm / 1000, "power_w": 1.0,
+                "eta": 0.5, "distal_thrust_n": 0.1, "distal_drag_n": 0.01, "distal_radius_mm": 130.0, "stop_force_n": 40.0}
+    monkeypatch.setattr(aero, "envelope_point", fake_point)
+    rows = aero.operating_envelope(None, None, None, None, advance_ratios=(0.2,), static=False)
+    assert rows[0]["max_rpm"] == pytest.approx(4700.0, abs=15.0) and rows[0]["limited_by"] == "stop_nose_root"
+    assert rows[0]["covered_from_rpm"] == pytest.approx(1750.0, abs=250.0)
+
+
+def test_max_rpm_can_return_its_final_bracket():
+    lo, hi = aero.max_rpm(lambda n: n <= 4321.0, lo=500.0, hi=9000.0, tol=1.0, bracket=True)
+    assert lo <= 4321.0 < hi and hi - lo <= 1.0
+
+
+def test_a_failing_sizing_point_is_a_row_with_its_reason(monkeypatch):
+    from pyfoldable.prototype import cad, study
+    from pyfoldable.prototype import design as pd
+    monkeypatch.setattr(cad, "build", lambda d: (_ for _ in ()).throw(RuntimeError("no room for the stop")))
+    row = study.sizing_row(pd.default_design(ROOT))
+    assert "no room for the stop" in row["reason"] and row["pin_mm"] == 3.0

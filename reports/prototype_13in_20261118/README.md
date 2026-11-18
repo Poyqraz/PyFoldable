@@ -164,16 +164,50 @@ offset.
 Regenerate all of it with `./venv/bin/python -m pyfoldable.prototype.study reports/prototype_13in_20261118`. It takes
 about 12 minutes and overwrites these folders.
 
+## Strengthened F1 candidate (F1S)
+
+- `F1S_sizing/joint_sizing.csv`: the bounded sizing grid on the F1 aerodynamic baseline at δ 6.5 mm. It covers
+  pin Ø3/4/5, stop-nose depth 4/5/6 mm, nose extension 2/3/4 mm, and boss R 6.5 mm for Ø4 and Ø5. Each row was built
+  and swept in the full assembly and records:
+  - every single-lug check's speed limit at SF 2;
+  - the folded stop and the clearance needed;
+  - the centrifugal seating and stop force;
+  - mass and printability.
+- `F1S_candidate/`: the chosen joint, with the full manufacturing outputs:
+  - parts, assembly STEP and drawing;
+  - hardware list and calculation summary;
+  - `alignment_envelope.png`, `folded_dimensions.csv`;
+  - `operating_envelope.csv`, with the F1 baseline rows for comparison.
+
+  The joint: Ø4 pin, boss R 5.5 mm, nose 4 mm deep and 4 mm ahead of the leading edge. δ is 6.5 mm nominal; with
+  the worst-case play model it needs 7.5 mm.
+- `fit_kit_F1S/`: F1S's own measurement kit, for its direct verdict:
+  - a Ø4.0–4.4 mm hole coupon;
+  - fit pairs at 0.1, 0.2 and 0.3 mm clearance with a clamp block and load tab;
+  - protocol, predictions and record template.
+
+  E's kit is only for printer calibration.
+
+Regenerate F1S with
+`./venv/bin/python -c "from pathlib import Path; from pyfoldable.prototype import study; study.run_candidate(Path.cwd(), Path('reports/prototype_13in_20261118'), 'F1S', study.F1S_PARAMS, compare={'F1': study.F1_PARAMS})"`.
+Regenerate the sizing grid with `study.joint_sizing(Path.cwd(), Path('reports/prototype_13in_20261118/F1S_sizing'))`.
+It needs the saved polars in `aero/`.
+
 ## What is committed (second increment)
 
 - `study/`: everything.
-- `fit_kit_E/` and `fit_kit_B/`: everything except `stl/` and `step/`. The 3MF files are the printing set. The fit-pair STEP files
+- `fit_kit_F1S/`, `fit_kit_E/` and `fit_kit_B/`: everything except `stl/` and `step/`.
+- `F1S_candidate/`: the documents, drawings, design record, CSVs, figure and `3mf/`. STEP and STL stay local.
+- `F1S_sizing/`: everything. The 3MF files are the printing set. The fit-pair STEP files
   are about 17 MB each, so they stay local; they are regenerable and listed in the kit's `SHA256SUMS`.
 - `E_offset6_ts0p86_zone45_travel140/`: the documents, drawings, design record and `3mf/`. STEP and STL stay local.
 
 ## Print first
 
-E's measurement kit `fit_kit_E/`, following its README: the coupon first, then the fit pair at the clearance the
-coupon picks. Enter the record in *Prototip → Ölçüm prototipi*, then apply the decision rule in
-`docs/prototype_13in.md` (*Next full-size prototype*) before printing any full rotor. The kit is a measurement
-prototype; it does not select B as the powered propeller.
+F1S's measurement kit `fit_kit_F1S/`, following its README: the coupon first, then the fit pair at the clearance
+the coupon picks, with the Ø4 pin set. Enter the record in *Prototip → Ölçüm prototipi*, where F1S is the default
+kit, then apply the decision rule in `docs/prototype_13in.md` (*Next full-size prototype*) before printing any full
+rotor.
+
+`fit_kit_E/` may be printed beforehand to calibrate the printer. It is not evidence about F1S. The kits are
+measurement prototypes; none of them qualifies a powered propeller.

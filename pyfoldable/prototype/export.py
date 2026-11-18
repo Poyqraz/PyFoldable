@@ -126,7 +126,7 @@ def drawing(parts, report, path_pdf, path_svg_prefix):
         ax.axhline(z, color="0.6", lw=0.5, ls="--")
         ax.text(py + 13, z + 0.05, lab, fontsize=8, color="0.25")
     ax.axvline(py, color="0.3", lw=0.6, ls="-.")
-    ax.text(py + 0.2, q1 + 3.2, "pim ekseni", fontsize=8)
+    ax.text(py + 0.3, 0.97, "pim ekseni", fontsize=8, va="top", transform=ax.get_xaxis_transform())   # inside the axes
     ax.set_xlim(py - 16, py + 26); ax.set_aspect("equal")
     ax.set_xlabel("y [mm] (açıklık)"); ax.set_ylabel("z [mm] (mil ekseni, itki tarafı +z)")
     hw = d.hardware
