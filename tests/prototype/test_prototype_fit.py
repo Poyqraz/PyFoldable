@@ -33,7 +33,8 @@ def _record(pred, **over):
                coupon_hole_mm=[None, 3.02, 3.12, None, None], fit_pair_clearance_mm=0.2,
                lug_thickness_proximal_mm=6.6, lug_thickness_distal_mm=7.0, axial_float_mm=0.12,
                tilt_load_n=2.0, tilt_range_at_tab_mm=0.72, friction_breakaway_n=0.5, stop_gap_mm=0.0,
-               stop_seats=True, folded_stop_deg=142.0, mass_fit_proximal_g=8.1, mass_fit_distal_g=5.7, notes="")
+               stop_seats=True, folded_stop_deg=142.0, mass_fit_proximal_g=8.1, mass_fit_distal_g=5.7, notes="",
+               measurement_resolution_mm=0.02, repeat_count=1, axial_float_spread_mm=None, tilt_range_spread_mm=None)
     rec.update(over)
     return json.dumps(rec, ensure_ascii=False)
 
@@ -227,3 +228,70 @@ def test_committed_kit_belongs_to_the_current_b_design():
     base = pd.with_changes(pd.default_design(ROOT), **{"connection.axial_offset_mm": study.REPORT_OFFSET_MM})
     b = pd.with_changes(explore.candidate_design(base, ROOT, study.B_PARAMS), name="13in-B")
     assert pred["kit_design_sha256"] == b.identity          # regenerate the kit when the design record changes
+
+
+def test_direct_play_sets_the_verdict_with_an_expanded_uncertainty_margin(kit_design, pred):
+    rec = fit.parse(_record(pred, measurement_resolution_mm=0.02, repeat_count=3, axial_float_spread_mm=0.03,
+                            tilt_range_spread_mm=0.12, lug_thickness_proximal_mm=pred["lug_thicknesses_mm"][0] - 0.15,
+                            lug_thickness_distal_mm=pred["lug_thicknesses_mm"][1]), pred)
+    u = fit.uncertainty(rec, pred)
+    reading = 0.02 / math.sqrt(12) * math.sqrt(2)
+    assert u["axial_mm"] == pytest.approx(math.hypot(reading, 0.03 / fit.D2[3]))
+    assert u["tilt_rad"] == pytest.approx(math.hypot(math.hypot(reading, 0.12 / fit.D2[3]), u["axial_mm"]) / 60.0)
+    assert u["print_z_mm"] == pytest.approx(max(0.2 / math.sqrt(12), 0.15 / math.sqrt(3)))
+    d = fit.apply(kit_design, rec, pred)["design"]
+    assert d.connection.measured_play_basis == "direct"
+    jp = checks.joint_play(d)
+    assert jp["source"].startswith("ölçüm (doğrudan") and jp["k"] == 2.0
+    s = 24.0
+    margin = 2.0 * math.sqrt(u["axial_mm"] ** 2 + (s * u["tilt_rad"]) ** 2 + 2 * u["print_z_mm"] ** 2)
+    g = checks.gap_with_play(1.0, s, jp)
+    assert g == pytest.approx(1.0 - jp["axial_play_mm"] - jp["tilt_rad"] * s - margin)
+
+
+def test_transferred_play_supports_exploration_but_the_verdict_keeps_the_model(kit_design, pred):
+    rec = fit.parse(_record(pred), pred)
+    other = pd.with_changes(kit_design, **{"connection.axial_offset_mm": 6.0})
+    d = fit.apply(other, rec, pred)["design"]
+    assert d.connection.measured_play_basis == "transferred"
+    jp = checks.joint_play(d)
+    model = checks.joint_play(other)
+    assert jp["source"].startswith("model") and jp["tilt_rad"] == pytest.approx(model["tilt_rad"])
+    assert jp["transferred"]["tilt_rad"] == pytest.approx(0.01) and jp["transferred"]["axial_play_mm"] == pytest.approx(0.12)
+    assert checks.gap_with_play(1.0, 24.0, jp) == pytest.approx(1.0 - model["axial_play_mm"] - model["tilt_rad"] * 24.0)
+    assert checks.gap_with_play(1.0, 24.0, jp["transferred"]) > checks.gap_with_play(1.0, 24.0, jp)
+
+
+def test_committed_e_kit_belongs_to_the_current_e_design():
+    from pyfoldable.prototype import explore, study
+    pred = json.loads((ROOT / "reports/prototype_13in_20261118/fit_kit_E/predictions.json").read_text(encoding="utf-8"))
+    base = pd.with_changes(pd.default_design(ROOT), **{"connection.axial_offset_mm": study.REPORT_OFFSET_MM})
+    e = pd.with_changes(explore.candidate_design(base, ROOT, study.E_PARAMS), name="13in-E")
+    assert pred["kit_design_sha256"] == e.identity
+    assert pred["lug_thicknesses_mm"] == pytest.approx(list(e.lug_thicknesses_mm))
+
+
+def test_folded_dimensions_by_fold_angle(kit_design):
+    from pyfoldable.prototype import study
+    th = [-float(a) for a in range(2, 181)]
+    sw = {"angles_deg": th, "gap_mm": [2.0] * len(th), "gap_play_mm": [1.0] * len(th), "folded_stop_deg": 144.0}
+    rows = {r["fold_deg"]: r for r in study.folded_dimensions(kit_design, sw, (0, 90, 140, 180))}
+    R = kit_design.planform.tip_radius_mm
+    assert rows[0]["envelope_diameter_mm"] == pytest.approx(2 * R, abs=1.0)
+    assert rows[140]["envelope_diameter_mm"] < rows[90]["envelope_diameter_mm"] < rows[0]["envelope_diameter_mm"]
+    assert rows[140]["reachable"] and not rows[180]["reachable"]                 # beyond the folded stop
+    assert rows[140]["width_mm"] > 0 and rows[140]["length_mm"] < 2 * R
+
+
+def test_uncertainty_edge_cases_and_folded_stop_boundary(kit_design, pred):
+    from pyfoldable.prototype import study
+    one = fit.uncertainty(fit.parse(_record(pred, repeat_count=1, axial_float_spread_mm=0.5), pred), pred)
+    assert one["axial_mm"] == pytest.approx(0.02 / math.sqrt(12) * math.sqrt(2))     # one reading: no spread term
+    many = fit.uncertainty(fit.parse(_record(pred, repeat_count=30, axial_float_spread_mm=0.3), pred), pred)
+    assert many["axial_mm"] >= 0.3 / fit.D2[10] - 1e-12                              # capped d2: conservative
+    th = [-float(a) for a in range(2, 181)]
+    sw = {"angles_deg": th, "gap_mm": [2.0] * len(th), "gap_play_mm": [1.0] * len(th), "folded_stop_deg": 140.0}
+    rows = {r["fold_deg"]: r for r in study.folded_dimensions(kit_design, sw, (110, 140))}
+    assert rows[110]["reachable"] and not rows[140]["reachable"]     # the nose has already penetrated at the stop angle
+    empty = {"angles_deg": th, "gap_mm": [float("inf")] * len(th), "gap_play_mm": [float("inf")] * len(th)}
+    assert study.required_by_travel(kit_design, empty, (60,))[0]["required_mm"] is None

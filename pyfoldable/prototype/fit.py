@@ -20,7 +20,7 @@ import json
 import math
 from pathlib import Path
 
-from .design import PrototypeDesign, to_json, with_changes
+from .design import MEASURED_FIELDS, PrototypeDesign, to_json, with_changes
 
 SCHEMA = "pyfoldable.prototype.fit_record/1"
 MAX_BYTES = 64_000
@@ -51,6 +51,11 @@ FIELDS = {
     "stop_gap_mm": ("num", (0.0, 5.0), True, "distal elle açık tutulurken burun–ped aralığı [mm] (sentil)"),
     "stop_seats": ("bool", None, True, "burun pede tam yüzeyle oturuyor mu (ışık testi)"),
     "folded_stop_deg": ("num", (0.0, 180.0), False, "katlanmış stop açısı [°] (açıölçer)"),
+    "measurement_resolution_mm": ("num", (0.001, 0.5), True, "boşluk ölçümünde kullanılan aletin çözünürlüğü [mm]"),
+    "repeat_count": ("int", (1, 50), True, "eksenel boşluk ve Δ ölçümlerinin tekrar sayısı (birden çok uyum çiftinde "
+                                           "toplam)"),
+    "axial_float_spread_mm": ("num", (0.0, 3.0), False, "tekrarlar arasında eksenel boşluğun aralığı (en büyük − en küçük) [mm]"),
+    "tilt_range_spread_mm": ("num", (0.0, 20.0), False, "tekrarlar arasında Δ'nın aralığı [mm]"),
     "mass_fit_proximal_g": ("num", (0.1, 500.0), False, "uyum çifti proksimal kütlesi [g]"),
     "mass_fit_distal_g": ("num", (0.1, 500.0), False, "uyum çifti distal kütlesi [g]"),
     "notes": ("text", None, False, "serbest not"),
@@ -143,6 +148,34 @@ def measured_play(rec: dict, pred: dict) -> dict:
     return {"axial_mm": a, "tilt_rad": tilt, "tilt_deg": math.degrees(tilt), "lever_mm": L}
 
 
+D2 = {2: 1.128, 3: 1.693, 4: 2.059, 5: 2.326, 6: 2.534, 7: 2.704, 8: 2.847, 9: 2.970, 10: 3.078}
+
+
+def uncertainty(rec: dict, pred: dict) -> dict:
+    """Standard uncertainties of the measured play and of one printed surface's z.
+
+    - reading: each play value is a difference of two readings with resolution r: u = r/√12·√2;
+    - spread: with n repeats (over one or more printed pairs) the range R gives s = R/d₂(n) (range method), the
+      variation a new print can show, so it is not divided by √n;
+    - tilt: u_φ = √(u_Δ² + u_a²)/(2L);
+    - print variation of one surface: max(layer/√12, largest measured lug-thickness deviation/√3).
+    The verdict uses the expanded margin k·√(u_a² + (s u_φ)² + 2 u_print²) at each distance s (``checks.gap_with_play``).
+    """
+    reading = rec["measurement_resolution_mm"] / math.sqrt(12.0) * math.sqrt(2.0)
+    n = rec["repeat_count"]
+
+    def spread(key):
+        r = rec.get(key)
+        return r / D2[min(n, 10)] if n >= 2 and r else 0.0
+    ua = math.hypot(reading, spread("axial_float_spread_mm"))
+    ud = math.hypot(reading, spread("tilt_range_spread_mm"))
+    dev = max(abs(rec["lug_thickness_proximal_mm"] - pred["lug_thicknesses_mm"][0]),
+              abs(rec["lug_thickness_distal_mm"] - pred["lug_thicknesses_mm"][1]))
+    layer = rec["print_layer_mm"]
+    return {"axial_mm": ua, "tilt_rad": math.hypot(ud, ua) / (2.0 * pred["lever_mm"]),
+            "print_z_mm": max(layer / math.sqrt(12.0), dev / math.sqrt(3.0)), "k": 2.0}
+
+
 def record_sha256(rec: dict) -> str:
     return hashlib.sha256(json.dumps(rec, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
 
@@ -152,23 +185,28 @@ def apply(d: PrototypeDesign, rec: dict, pred: dict, deploy_moment_per_rpm2=None
     from .checks import joint_play
     sha = record_sha256(rec)
     play = measured_play(rec, pred)
+    u = uncertainty(rec, pred)
     c = d.connection
+    kit = with_changes(d, name=pred["kit_design_name"],
+                       **{"connection.hole_clearance_mm": pred["model_play"]["radial_play_mm"],
+                          **{f"connection.{k}": None for k in MEASURED_FIELDS}})
+    basis = "direct" if kit.identity == pred["kit_design_sha256"] else "transferred"
     new = with_changes(d, **{"connection.hole_clearance_mm": float(rec["fit_pair_clearance_mm"]),
                              "connection.measured_axial_play_mm": play["axial_mm"],
                              "connection.measured_tilt_deg": play["tilt_deg"],
-                             "connection.play_record_sha256": sha})
+                             "connection.play_record_sha256": sha, "connection.measured_play_basis": basis,
+                             "connection.measured_axial_play_u_mm": u["axial_mm"],
+                             "connection.measured_tilt_u_deg": math.degrees(u["tilt_rad"]),
+                             "connection.print_z_u_mm": u["print_z_mm"]})
     model = joint_play(d)
     step = coupon_step(pred["coupon_steps_mm"], rec["coupon_fit"])
     torque = rec["friction_breakaway_n"] * pred["lever_mm"]
     span = d.planform.tip_radius_mm - c.hinge_radius_mm
     warnings = []
-    kit = with_changes(d, name=pred["kit_design_name"],
-                       **{"connection.hole_clearance_mm": pred["model_play"]["radial_play_mm"],
-                          "connection.measured_axial_play_mm": None, "connection.measured_tilt_deg": None,
-                          "connection.play_record_sha256": None})
-    if kit.identity != pred["kit_design_sha256"]:
-        warnings.append("Bu tasarım ölçülen kit tasarımı değil (kimlik farklı): ölçülen boşluk başka bir geometriye "
-                        "aktarılıyor ve yalnız yaklaşık; bu tasarımın uyum çiftini basıp ölçün.")
+    if basis == "transferred":
+        warnings.append("Bu tasarım ölçülen kit tasarımı değil (kimlik farklı): ölçülen boşluk aktarılmış sayılır ve "
+                        "yalnız keşifte gösterilir; baskı boşluğu kararı en kötü durum modelini kullanır. Karar için bu "
+                        "tasarımın kendi uyum çiftini basıp ölçün.")
     if rec["tilt_range_at_tab_mm"] < rec["axial_float_mm"]:
         warnings.append("Yük deliğindeki düşey hareket Δ eksenel boşluktan küçük: ölçümü tekrarlayın (eğilme 0 alındı).")
     if rec["axial_float_mm"] == 0 or play["tilt_rad"] == 0:
@@ -214,11 +252,15 @@ def apply(d: PrototypeDesign, rec: dict, pred: dict, deploy_moment_per_rpm2=None
         _row("Açık stop aralığı", 0.0, rec["stop_gap_mm"], "mm", "oturuyor" if rec["stop_seats"] else "oturmuyor"),
         _row("Katlanmış stop açısı", pred["folded_stop_deg"], rec["folded_stop_deg"], "°"),
         _row("Sürtünme momenti", None, torque, "N·mm", "sıfır yükte koparma"),
+        _row("Eksenel boşluk belirsizliği u", None, u["axial_mm"], "mm", "çözünürlük + tekrar aralığı"),
+        _row("Eğilme belirsizliği u", None, math.degrees(u["tilt_rad"]), "°", "çözünürlük + tekrar aralığı"),
+        _row("Baskı yüzeyi z belirsizliği u", None, u["print_z_mm"], "mm", "katman / lug kalınlığı sapması"),
         _row("Uyum çifti kütlesi, proksimal", pred["fit_masses_g"][0], masses[0], "g"),
         _row("Uyum çifti kütlesi, distal", pred["fit_masses_g"][1], masses[1], "g"),
     ]
     rpm = math.sqrt(torque / deploy_moment_per_rpm2) if deploy_moment_per_rpm2 and deploy_moment_per_rpm2 > 0 else None
-    return {"design": new, "record_sha256": sha, "play": play, "coupon_step_mm": step, "friction_torque_nmm": torque,
+    return {"design": new, "record_sha256": sha, "play": play, "uncertainty": u, "basis": basis,
+            "coupon_step_mm": step, "friction_torque_nmm": torque,
             "self_deploy_rpm": rpm, "rows": rows, "warnings": warnings}
 
 
@@ -290,9 +332,14 @@ as the powered propeller, and it qualifies nothing physically. All files are in 
 - Hardware per fit pair: one pin {d.hardware.pin_standard}, two DIN 433 washers (Ø{d.hardware.washer_id_mm:g} ×
   Ø{d.hardware.washer_od_mm:g} × {d.hardware.washer_thickness_mm:g} mm), one DIN 6799 E-clip; pin length under the head
   {d.pin_length_mm:.1f} mm. Measure the actual pin diameter.
-- The joint dimensions of this kit (pin Ø, R_b, lug gap) are those of every candidate, but its lugs
-  ({tp:.2f} / {td:.2f} mm) are thicker than a 6 mm-offset candidate's. Hole-limited tilt scales roughly with 1/t, so
-  measured play transfers to such a design only approximately (the app warns).
+- Print orientation (as the full parts): {d.print_model.orientation}
+- Joint of this kit: δ {d.connection.axial_offset_mm:g} mm, lugs {tp:.2f} / {td:.2f} mm (full depth, 0.2 mm proud of the
+  blade), lug gap {d.connection.lug_gap_mm:g} mm, boss radius {d.connection.boss_radius_mm:g} mm, pin Ø{d.connection.pin_diameter_mm:g};
+  stop nose {d.connection.nose_depth_mm:g} mm deep reaching {d.connection.nose_extension_mm:g} mm ahead of the leading edge onto a
+  {d.connection.pad_depth_mm:g} mm pad.
+- Play measured on this kit is **direct** evidence only for this design (same identity apart from the hole
+  clearance) and then sets its print-clearance verdict with the expanded uncertainty. Applied to any other design it
+  is **transferred**: shown for exploration, while that design's verdict keeps the worst-case model.
 
 ## Sequence and measurements
 
@@ -307,6 +354,10 @@ as the powered propeller, and it qualifies nothing physically. All files are in 
 5. **Tilt.** Hang/push a known load (about 2 N) up and then down at the tab hole; measure the total vertical movement Δ
    of the tab at the hole. Tilt φ = max(0, Δ − a) / (2 L), L = {pred['lever_mm']:.1f} mm. Model (worst case):
    {pred['model_play']['tilt_deg']:.2f}°.
+   **Repeat a and Δ at least three times** (reassemble between repeats; if you print two fit pairs, measure both) and
+   record the count, the mean values and the range (largest − smallest) of each, with the instrument resolution. The
+   verdict subtracts k = 2 times the combined uncertainty (resolution, repeat range, print variation from the lug
+   thicknesses) from the worst-case gap.
 6. **Friction.** Rotor plane level, distal open on its stop. Pull at the tab hole with a spring scale, horizontally and
    perpendicular to the lever, toward the fold direction (toward the trailing edge); record the force at which folding
    starts. Torque T = F L.

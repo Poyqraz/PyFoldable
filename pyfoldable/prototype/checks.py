@@ -22,6 +22,7 @@ from dataclasses import dataclass
 import numpy as np
 
 GRID_MM = 0.25
+UNCERTAINTY_K = 2.0                       # coverage factor of a measured play's expanded uncertainty (≈ 95 %)
 OFF_STOP_DEG = 2.0
 NOSE_FREE_DEG = 10.0
 
@@ -84,20 +85,40 @@ def heightmap(shape, bounds, h=GRID_MM, dilate=False) -> HeightMap:
 
 
 def joint_play(d) -> dict:
-    """Worst-case model play, or the play measured on a printed fit pair when the design carries it."""
+    """Play for the print-clearance verdict: measured on this design's own kit (``direct``, with its expanded
+    uncertainty k·u), otherwise the worst-case model. Play transferred from another geometry is returned under
+    ``transferred`` for exploration only; it never sets the verdict."""
+    from .design import MEASURED_FIELDS
     c = d.connection
     tp, td = d.lug_thicknesses_mm
     phi_holes = c.hole_clearance_mm / td + c.hole_clearance_mm / tp
     phi_faces = c.lug_gap_mm / c.boss_radius_mm
     model = min(phi_holes, phi_faces)
-    measured = None not in (c.play_record_sha256, c.measured_axial_play_mm, c.measured_tilt_deg)
-    phi = math.radians(c.measured_tilt_deg) if measured else model
-    axial = c.measured_axial_play_mm if measured else c.lug_gap_mm
-    return {"radial_play_mm": c.hole_clearance_mm, "axial_play_mm": axial,
-            "tilt_rad": phi, "tilt_deg": math.degrees(phi), "model_tilt_rad": model,
-            "source": f"ölçüm (kayıt {c.play_record_sha256[:12]})" if measured else "model (en kötü durum)",
-            "tilt_limited_by": "ölçüm" if measured else ("delik boşluğu" if phi_holes <= phi_faces else "lug yüz aralığı"),
-            "tip_droop_mm": axial + phi * (d.planform.tip_radius_mm - c.hinge_radius_mm)}
+    measured = all(getattr(c, k) is not None for k in MEASURED_FIELDS)
+    m = {"axial_play_mm": c.measured_axial_play_mm, "tilt_rad": math.radians(c.measured_tilt_deg or 0.0),
+         "u_axial_mm": c.measured_axial_play_u_mm, "u_tilt_rad": math.radians(c.measured_tilt_u_deg or 0.0),
+         "u_print_mm": c.print_z_u_mm, "k": UNCERTAINTY_K} if measured else None
+    span = d.planform.tip_radius_mm - c.hinge_radius_mm
+    if measured and c.measured_play_basis == "direct":
+        out = {**m, "source": f"ölçüm (doğrudan, kayıt {c.play_record_sha256[:12]})", "tilt_limited_by": "ölçüm"}
+    else:
+        out = {"axial_play_mm": c.lug_gap_mm, "tilt_rad": model, "u_axial_mm": 0.0, "u_tilt_rad": 0.0,
+               "u_print_mm": 0.0, "k": 0.0, "source": "model (en kötü durum)",
+               "tilt_limited_by": "delik boşluğu" if phi_holes <= phi_faces else "lug yüz aralığı"}
+        if measured:
+            out["transferred"] = {**m, "source": f"aktarılmış ölçüm (kayıt {c.play_record_sha256[:12]}; yalnız keşif)"}
+    out.update(radial_play_mm=c.hole_clearance_mm, tilt_deg=math.degrees(out["tilt_rad"]), model_tilt_rad=model,
+               tip_droop_mm=out["axial_play_mm"] + out["tilt_rad"] * span)
+    return out
+
+
+def gap_with_play(gap, s, play):
+    """Worst-case vertical gap at distance s from the pin: gap − a − φ·s − k·√(u_a² + (s·u_φ)² + 2·u_print²).
+    Conservative: u_φ already contains u_a (φ = (Δ − a)/2L), so treating a and φ as independent overstates the
+    variance by about u_a²·s/L; the print-variation term dominates in practice."""
+    s = np.asarray(s, dtype=float)
+    margin = play["k"] * np.sqrt(play["u_axial_mm"] ** 2 + (s * play["u_tilt_rad"]) ** 2 + 2 * play["u_print_mm"] ** 2)
+    return gap - play["axial_play_mm"] - play["tilt_rad"] * s - margin
 
 
 def sweep(parts, step_deg=1.0) -> dict:
@@ -123,7 +144,7 @@ def sweep(parts, step_deg=1.0) -> dict:
     body = outside & ~nose
     play = joint_play(d)
     angles = -np.arange(OFF_STOP_DEG, 180.0 + 1e-9, step_deg)
-    gap, gap_play, nose_gap, where = [], [], [], []
+    gap, gap_play, nose_gap, where, gap_transfer = [], [], [], [], []
     for a in angles:
         t = math.radians(a)
         ct, st = math.cos(t), math.sin(t)
@@ -137,11 +158,15 @@ def sweep(parts, step_deg=1.0) -> dict:
         nose_gap.append(float(g[ns].min()) if (ns.any() and -a >= NOSE_FREE_DEG) else np.inf)
         if not sel.any():
             gap.append(np.inf); gap_play.append(np.inf); where.append(None)
+            if "transferred" in play:
+                gap_transfer.append(np.inf)
             continue
         k = np.flatnonzero(sel)[np.argmin(g[sel])]
         gap.append(float(g[k]))
-        gp = g[sel] - play["axial_play_mm"] - play["tilt_rad"] * s[sel]
+        gp = gap_with_play(g[sel], s[sel], play)
         gap_play.append(float(gp.min()))
+        if "transferred" in play:
+            gap_transfer.append(float(gap_with_play(g[sel], s[sel], play["transferred"]).min()))
         where.append((float(x[k]), float(y[k]), float(s[k])))
     gap, gap_play, nose_gap = np.array(gap), np.array(gap_play), np.array(nose_gap)
     need = c.body_clearance_mm
@@ -170,8 +195,17 @@ def sweep(parts, step_deg=1.0) -> dict:
         "required_offset_with_play_mm": max(c.axial_offset_mm + max(0.0, need - gr[i_min]),
                                             c.axial_offset_mm + max(0.0, -gpr[i_min_p])),
         "joint_running_gap_mm": c.lug_gap_mm, "play": play, "body_clearance_mm": need,
+        **_transferred(gap_transfer, in_req, c.axial_offset_mm, c.axial_offset_mm + max(0.0, need - gr[i_min])),
         "method": f"sütun yöntemi {GRID_MM} mm ızgara, {step_deg}° adım; tesselasyon 0,05 mm",
     }
+
+
+def _transferred(gap_transfer, in_req, delta, nominal_required):
+    """Exploratory with-play result for play transferred from another geometry (never the verdict)."""
+    if not gap_transfer:
+        return {"min_gap_transferred_mm": None, "required_offset_transferred_mm": None}
+    g = float(np.where(in_req, np.array(gap_transfer), np.inf).min())
+    return {"min_gap_transferred_mm": g, "required_offset_transferred_mm": max(nominal_required, delta + max(0.0, -g))}
 
 
 def exact_distance(parts, fold_deg, with_hardware=False):

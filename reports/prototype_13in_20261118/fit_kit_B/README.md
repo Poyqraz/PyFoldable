@@ -2,7 +2,7 @@
 
 A measurement prototype for pin fit, joint play, friction and stop seating. It is **not** a selection of this candidate
 as the powered propeller, and it qualifies nothing physically. All files are in millimetres. Kit design identity:
-`e950544fa8ddc82c571acd93266dc09fcd7d0b8042243570809717c414ff6bab`; the record must carry the same identity.
+`7088bb223bda9251addc846876c7e370e33fdbf57ef3b8afa19c2d98c9a8acd7`; the record must carry the same identity.
 
 ## Parts and print
 
@@ -15,9 +15,14 @@ as the powered propeller, and it qualifies nothing physically. All files are in 
 - Hardware per fit pair: one pin ISO 2341-A Ø3 (kafa Ø5×1) + DIN 6799 kanalı (Ø2,3 × 0,64), two DIN 433 washers (Ø3.2 ×
   Ø6 × 0.5 mm), one DIN 6799 E-clip; pin length under the head
   17.0 mm. Measure the actual pin diameter.
-- The joint dimensions of this kit (pin Ø, R_b, lug gap) are those of every candidate, but its lugs
-  (6.92 / 7.30 mm) are thicker than a 6 mm-offset candidate's. Hole-limited tilt scales roughly with 1/t, so
-  measured play transfers to such a design only approximately (the app warns).
+- Print orientation (as the full parts): Rotor düzlemi tablada (z yukarı); pim ekseni yazıcı z ekseninde, lug yükü katmanlar boyunca.
+- Joint of this kit: δ 9.5 mm, lugs 6.92 / 7.30 mm (full depth, 0.2 mm proud of the
+  blade), lug gap 0.3 mm, boss radius 5.5 mm, pin Ø3;
+  stop nose 4 mm deep reaching 2 mm ahead of the leading edge onto a
+  4 mm pad.
+- Play measured on this kit is **direct** evidence only for this design (same identity apart from the hole
+  clearance) and then sets its print-clearance verdict with the expanded uncertainty. Applied to any other design it
+  is **transferred**: shown for exploration, while that design's verdict keeps the worst-case model.
 
 ## Sequence and measurements
 
@@ -32,6 +37,10 @@ as the powered propeller, and it qualifies nothing physically. All files are in 
 5. **Tilt.** Hang/push a known load (about 2 N) up and then down at the tab hole; measure the total vertical movement Δ
    of the tab at the hole. Tilt φ = max(0, Δ − a) / (2 L), L = 30.0 mm. Model (worst case):
    3.13°.
+   **Repeat a and Δ at least three times** (reassemble between repeats; if you print two fit pairs, measure both) and
+   record the count, the mean values and the range (largest − smallest) of each, with the instrument resolution. The
+   verdict subtracts k = 2 times the combined uncertainty (resolution, repeat range, print variation from the lug
+   thicknesses) from the worst-case gap.
 6. **Friction.** Rotor plane level, distal open on its stop. Pull at the tab hole with a spring scale, horizontally and
    perpendicular to the lever, toward the fold direction (toward the trailing edge); record the force at which folding
    starts. Torque T = F L.
@@ -73,6 +82,10 @@ record is applied to; the measured clearance becomes its hole clearance.
 | `stop_gap_mm` | distal elle açık tutulurken burun–ped aralığı [mm] (sentil) |
 | `stop_seats` | burun pede tam yüzeyle oturuyor mu (ışık testi) |
 | `folded_stop_deg` | katlanmış stop açısı [°] (açıölçer) |
+| `measurement_resolution_mm` | boşluk ölçümünde kullanılan aletin çözünürlüğü [mm] |
+| `repeat_count` | eksenel boşluk ve Δ ölçümlerinin tekrar sayısı (birden çok uyum çiftinde toplam) |
+| `axial_float_spread_mm` | tekrarlar arasında eksenel boşluğun aralığı (en büyük − en küçük) [mm] |
+| `tilt_range_spread_mm` | tekrarlar arasında Δ'nın aralığı [mm] |
 | `mass_fit_proximal_g` | uyum çifti proksimal kütlesi [g] |
 | `mass_fit_distal_g` | uyum çifti distal kütlesi [g] |
 | `notes` | serbest not |

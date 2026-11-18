@@ -129,8 +129,13 @@ proximal section one chord inboard is taller. Split into two parts:
 
 - **Lower pitch over the crossing region, on both sides of the joint.** On a 13×5.5-class blade (twist ×0.86), a
   ±45 mm cosine-blended zone with chord ×0.85 and twist ×0.45 brings the 140° requirement to 5.9 mm (5.2 mm for
-  90°). This is candidate E, set at δ = 6.0 mm. The cost is the local pitch: about 2.8 in at the joint, rising to about 4.1 in at 0.75R. Its
-  aerodynamic effect is not evaluated: there is no polar for the printable section.
+  90°). This is candidate E, set at δ = 6.0 mm. The cost is the local pitch: about 2.8 in at the joint, rising to about 4.1 in at 0.75R.
+  The aerodynamic screening ([prototype_13in_aero.md](prototype_13in_aero.md)) puts a number on it. It uses real
+  XFOIL polars of the printable sections and BEM, for the blade shape only; the joint step is unresolved:
+  - fail-closed, at J = 0.2 E gives 40–48 % less thrust than the unmodified 13×5.5-class blade, for 40–43 % less
+    power;
+  - at J = 0.3 E gives 58–71 % less thrust;
+  - static (diagnostic tier), E needs about ×1.18 the RPM and ×1.07 the power for the same thrust.
 - **A shorter required fold.** The offset needed at each fold is plotted per candidate in
   `study/alignment_envelope_*.png`.
 - **A larger joint radius.** At r_j = 110 mm the template blade needs 9.3 mm, at the cost of a larger folded
@@ -210,6 +215,12 @@ droop of 3.2–3.9 mm.
 
 ## Aerodynamic evidence
 
+Candidate E against the unmodified 13×5.5-class blade is screened in [prototype_13in_aero.md](prototype_13in_aero.md).
+The polars are real XFOIL output for the chord-dependent printable-section family. The BEM covers the blade-shape
+effect only. The joint-step effect is unresolved: the DUST route rejects an axial offset, and strip theory cannot
+represent the step. The decisive next step is a printed A/B thrust-stand test, continuous E against stepped E. The
+bullets below record the first increment's state.
+
 - The aero sections remain catalog `NACA2412`. The printable trailing edge (0.8 mm) makes them
   `NACA2412-te0.80mm-x0.50`.
 - The retained NACA2412 polar families apply only approximately. An XFOIL family for the modified section, with
@@ -221,51 +232,113 @@ droop of 3.2–3.9 mm.
   chord/twist scales and hinge, so BEM can run on it once the polar coverage fits the operating point (inputs not
   supplied).
 
-## Measurement prototype (candidate B's joint, before any full-size print)
+## Measurement prototypes (before any full-size print)
 
-`reports/prototype_13in_20261118/fit_kit_B/` holds the first physical experiment:
+Two kits are committed. Each holds:
 
 - the hole coupon;
-- B's short joint-fit pair at CAD hole clearances 0.1/0.2/0.3 mm. The proximal stub has a clamp block, and the
-  distal stub has a load tab with a hole 30 mm from the pin axis;
+- the short joint-fit pair at CAD hole clearances 0.1/0.2/0.3 mm, with a clamp block on the proximal stub and a load
+  tab on the distal stub, its hole 30 mm from the pin axis;
 - the protocol (`README.md`), the model predictions (`predictions.json`) and the record template.
 
-It measures pin fit, axial float, tilt, break-away friction, open-stop seating, the folded-stop angle and the part
-masses. It does **not** select B as the powered propeller. The fit pair is B's because B's joint dimensions (Ø3 pin,
-R_b 5.5, g 0.3) are those of every candidate, including E.
+The kits:
 
-The record is loaded in *Prototip → Ölçüm prototipi*, or with `fit.parse` / `fit.apply`:
+- `reports/prototype_13in_20261118/fit_kit_E/`: **E's own joint**, the next compact candidate. δ 6.0 mm, lugs
+  4.72/5.05 mm, a pin of 12.5 mm under the head, E's stop nose and pad, printed with the rotor plane on the bed.
+- `reports/prototype_13in_20261118/fit_kit_B/`: B's joint (δ 9.5 mm, lugs 6.92/7.30 mm), kept as a reference.
 
-- It is refused if anything is missing, out of range or unknown, or if it belongs to another kit (design SHA-256).
-- Applying it sets the hole clearance to the printed one and stores the measured axial float a and tilt
-  φ = max(0, Δ − a)/(2L) in the design record, with the record's SHA-256.
-- The full-travel clearance check then uses the measured play instead of the worst-case model; the design identity
-  changes, so earlier results go stale.
-- Warnings name a stop that does not seat, a coupon that disagrees with the printed clearance, a transfer to
-  different joint dimensions, a folded stop short of the required travel, and a mass more than 15 % off the model.
-- The break-away torque gives the speed at which the centrifugal stop moment overcomes zero-load friction.
+Choosing a kit does not select that candidate as the powered propeller. Each kit measures pin fit, axial float,
+tilt, break-away friction, open-stop seating, the folded-stop angle and the part masses. Measure the axial float and
+Δ at least three times (reassembling between repeats; over two printed pairs if possible). Record the count, the means,
+the ranges and the instrument resolution.
 
-## Next full-size prototype: decision rule after the fit measurements
+**The record.** Load it in *Prototip → Ölçüm prototipi* (choose the kit), or with `fit.parse` / `fit.apply`:
 
-1. Apply the fit record to candidate E (`E_offset6_ts0p86_zone45_travel140/design.json`) and build it.
-2. If the clearance with the measured play is ≥ 0 at δ = 6.0 mm, print E at 6.0 mm. With E's governing gap at
-   about 24 mm from the pin, with a 0.6 mm nominal gap at 6.0 mm, this needs roughly a + 24 mm · φ ≤ 0.6 mm, for
-   example a = 0.1 mm and φ ≤ 1.2°.
-   - E's lugs are thinner than B's: about 4.7/5.0 mm against 6.9/7.3 mm.
-   - Hole-limited tilt scales roughly with 1/t, so allow up to about 1.45 × the tilt measured on B.
-   - The app marks the transfer as approximate. A fit pair of E's own joint settles it.
-3. Otherwise print E at the "with play" required offset that the page reports, rounded up to 0.5 mm.
-4. If the stop does not seat, or the folded stop is short of the required travel, correct the stop before any
-   full-size print.
-5. If the owner does not accept E's lower pitch near the joint, the alternative is the 13×5.5-class blade without
-   shaping at its reported offset (about 10 mm for 140°).
+- It is refused if anything is missing, out of range, unknown or hostile, or if it belongs to another kit (design
+  SHA-256).
+- Applying it sets the hole clearance to the printed one. It stores in the design record the measured axial float a,
+  the tilt φ = max(0, Δ − a)/(2L), their standard uncertainties, the print variation, the record's SHA-256 and the
+  **basis**.
+
+**Direct versus transferred play:**
+
+- **Direct:** the record comes from this design's own kit, with the same identity apart from the hole clearance. The
+  measured play then **sets the print-clearance verdict**, with an expanded uncertainty margin. The worst-case gap at
+  distance s from the pin is
+
+      g(s) − a − φ s − k √(u_a² + (s u_φ)² + 2 u_print²),   k = 2
+
+  where:
+  - u_a and u_Δ each combine the reading resolution (r/√12·√2 for a difference of two readings) with the repeat range
+    R / d₂(n), the variation a new print can show, so it is not divided by √n;
+  - u_φ = √(u_Δ² + u_a²)/(2L);
+  - u_print = max(layer/√12, largest lug-thickness deviation/√3) is the print variation of each of the two facing
+    surfaces.
+
+  With typical inputs the margin is about 0.17 mm, and the print variation dominates. Typical inputs here: a 0.01 mm
+  dial, three repeats with 0.02/0.05 mm ranges, 0.2 mm layers.
+
+  The margin is slightly conservative. φ is computed from a, so treating a and φ as independent overstates the
+  variance by about u_a²·s/L.
+- **Generated kits.** A kit generated in the page for the editor's design can be selected as the record source. Its
+  record is then direct evidence for exactly that design.
+- **Transferred:** the record comes from any other design, for example B's kit applied to E, or E's kit after δ
+  changes. The measured play is shown **for exploration only**, as "aktarılmış". The verdict keeps the worst-case
+  model.
+
+A change of δ, lug thickness, pin, boss or planform is a different joint. Measure its own fit pair: the kit generator
+in the page writes one in a minute or two.
+
+Warnings name:
+
+- a design that is not the kit's;
+- a stop that does not seat;
+- a coupon that disagrees with the printed clearance;
+- zero play, or Δ smaller than a;
+- a folded stop short of the required travel;
+- a mass more than 15 % off the model.
+
+The break-away torque gives the speed at which the centrifugal stop moment overcomes zero-load friction.
+
+## Next full-size prototype: from the measurements to the print
+
+1. **Coupon (E kit).** Rate the holes and pick the smallest running fit.
+2. **Fit pair (E kit)** at that clearance: assemble it and measure a, Δ (≥ 3 repeats), friction, stop seating, the
+   folded-stop angle and the masses. Fill the record.
+3. **Apply the record** with kit E selected. The basis is direct. Build E and read the clearance tab.
+   - **At δ = 6.0 mm**, E's nominal gap at the governing point is about 0.6 mm at about 24 mm from the pin. The
+     verdict needs roughly a + 24 mm · φ ≤ 0.6 mm − margin; with the typical margin, a + 24 mm · φ ≤ 0.44 mm, for
+     example a = 0.1 mm and φ ≤ 0.8°.
+   - **If it passes**, export E from the page with the record applied. Its `design.json` carries the measured play and
+     its basis. Print the full rotor: the hub with both proximal segments, two distal segments and two pin sets.
+   - **If it fails**, the page reports the with-play offset. Choose δ' (rounded up to 0.5 mm), generate the fit kit for
+     E at δ' in the page, print and measure it, and repeat this step. The record from δ = 6.0 mm is only transferred
+     evidence for δ'.
+4. **Stop.** If the stop does not seat, or the folded stop is short of the required travel, correct the stop
+   geometry and repeat steps 2 and 3 before any full-size print.
+5. **Blade shape: the main trade-off.**
+   - E's compact step costs aerodynamics. In the static diagnostic, E gives about 28 % less thrust at equal RPM,
+     and needs about ×1.18 the RPM for equal thrust.
+   - Before E reaches structurally safe speeds, the stop-nose root limits it to about 3300 RPM at SF 2.
+   - If the owner does not accept that, the alternative is the unmodified 13×5.5-class blade, at about 10 mm for
+     140°; it needs its own fit kit.
+   - Either way, a thrust-stand A/B test (continuous E against stepped E, and E against the reference) resolves
+     what the strip-theory model cannot (`docs/prototype_13in_aero.md`).
+
+**Compactness by fold angle.** The *Prototip* page lists, for each fold angle:
+
+- the envelope diameter of the folded rotor, and its length and width;
+- whether the 4 mm nose, as the folded stop at 144°, allows that angle;
+- the offset needed, nominal and with play.
+
+The table is in the *Açık hizalama ve katlı zarf* tab, and is also given in the PR.
 
 Owner decisions remain: the required fold travel, the pitch, the speed, the motor and the thrust.
 
 ## Measurement plan for the first print (before operating tests)
 
-1. Hole coupon and fit pair: follow `fit_kit_B/README.md` (the coupon picks the running fit; the fit pair gives
-   play, friction and stop seating).
+1. Hole coupon and fit pair: follow `fit_kit_E/README.md`. E is the next compact candidate; `fit_kit_B/` is the
+   reference. The coupon picks the running fit; the fit pair gives play, friction and stop seating.
 2. Weigh each printed part and the hardware. Measure the distal CG (balance on a knife edge in two directions) and
    its inertia about the pin (bifilar or compound-pendulum swing). Compare with `summary.md`.
 3. Measure lug thicknesses, the assembled gap g and the radial play. Measure the tip droop and wobble with the pin

@@ -34,6 +34,8 @@ from pathlib import Path
 
 TEMPLATE = "configs/designs/TIP_HINGED_250_CANONICAL.toml"
 MIN_LUG_MM = 2.0
+MEASURED_FIELDS = ("measured_axial_play_mm", "measured_tilt_deg", "play_record_sha256", "measured_play_basis",
+                   "measured_axial_play_u_mm", "measured_tilt_u_deg", "print_z_u_mm")
 MIN_ZONE_MM = 10.0                            # hinge-zone half-width floor (the loft samples the zone every w/4)
 LUG_PROUD_MM = 0.2                            # full-depth lug faces stand proud of the blade's extreme surface point:
 #                                               a face tangent to the blade surface made OCC fusions fail silently
@@ -100,6 +102,10 @@ class Connection:
     measured_axial_play_mm: float | None = None
     measured_tilt_deg: float | None = None
     play_record_sha256: str | None = None     # SHA-256 of the fit record the measured play came from
+    measured_play_basis: str | None = None    # "direct": measured on this design's own kit; "transferred": another
+    measured_axial_play_u_mm: float | None = None   # standard uncertainties of the measurement (``fit.uncertainty``)
+    measured_tilt_u_deg: float | None = None
+    print_z_u_mm: float | None = None         # print variation of one surface (standard uncertainty)
 
 
 @dataclass(frozen=True)
@@ -300,12 +306,17 @@ def validate(d: PrototypeDesign) -> list[str]:
     nonneg = dict(hole_clearance_mm=c.hole_clearance_mm, lug_gap_mm=c.lug_gap_mm, face_gap_mm=c.face_gap_mm,
                   relief_clearance_mm=c.relief_clearance_mm, nose_extension_mm=c.nose_extension_mm)
     errs += [f"{k} negatif olamaz." for k, v in nonneg.items() if not (math.isfinite(v) and v >= 0)]
-    measured = (c.measured_axial_play_mm, c.measured_tilt_deg, c.play_record_sha256)
+    measured = tuple(getattr(c, k) for k in MEASURED_FIELDS)
+    numbers = (c.measured_axial_play_mm, c.measured_tilt_deg, c.measured_axial_play_u_mm, c.measured_tilt_u_deg,
+               c.print_z_u_mm)
     if any(v is not None for v in measured):
         if any(v is None for v in measured):
-            errs.append("Ölçülen boşluk eksenel boşluk, eğilme açısı ve kayıt özetiyle birlikte girilmeli.")
+            errs.append("Ölçülen boşluk; eksenel boşluk, eğilme, belirsizlikler, dayanak ve kayıt özetiyle birlikte "
+                        "girilmeli.")
+        elif c.measured_play_basis not in ("direct", "transferred"):
+            errs.append("Ölçülen boşluğun dayanağı 'direct' veya 'transferred' olmalı.")
         elif (not all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) and v >= 0
-                      for v in measured[:2])
+                      for v in numbers)
               or not (isinstance(c.play_record_sha256, str) and len(c.play_record_sha256) == 64
                       and all(ch in "0123456789abcdef" for ch in c.play_record_sha256))):
             errs.append("Ölçülen boşluk değerleri sonlu ve negatif olmayan sayılar, kayıt özeti 64 karakterlik onaltılık "
@@ -395,6 +406,11 @@ def with_changes(d: PrototypeDesign, **changes) -> PrototypeDesign:
     for head, value in groups.items():
         out[head] = replace(getattr(d, head), **value) if isinstance(value, dict) else value
     return replace(d, **out)
+
+
+def without_measurement(d: PrototypeDesign) -> PrototypeDesign:
+    """The design with no measured play (a geometry change makes a measurement on the old geometry inapplicable)."""
+    return with_changes(d, **{f"connection.{k}": None for k in MEASURED_FIELDS})
 
 
 def to_json(d: PrototypeDesign) -> str:

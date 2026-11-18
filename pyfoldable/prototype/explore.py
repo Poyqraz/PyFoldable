@@ -15,7 +15,7 @@ import time
 from dataclasses import replace
 
 from . import cad, checks, loads, mass, strength
-from .design import planform_from_template, validate, with_changes
+from .design import planform_from_template, validate, with_changes, without_measurement
 
 MAX_CANDIDATES = 24
 PLANFORM_AXES = ("planform.twist_scale", "planform.chord_scale", "planform.profile_id", "planform.hinge_zone_mm",
@@ -37,8 +37,7 @@ def candidate_design(base, root, params: dict):
         kw["hinge_zone_center_mm"] = d.connection.hinge_radius_mm         # the zone follows the joint
         d = replace(d, planform=planform_from_template(root, **kw))
     if params and d.connection.play_record_sha256 is not None:            # play was measured on the base geometry only
-        d = with_changes(d, **{"connection.measured_axial_play_mm": None, "connection.measured_tilt_deg": None,
-                               "connection.play_record_sha256": None})
+        d = without_measurement(d)
     return d
 
 

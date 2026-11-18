@@ -32,8 +32,9 @@ def specs(at):
 
 
 def downloads(at):
-    """Result downloads (the measurement-record template is always offered when the kit exists)."""
-    return [b for b in at.get("download_button") if b.key != "proto_fit_template"]
+    """Result downloads (the measurement kit and record template are always offered when a kit exists)."""
+    return [b for b in at.get("download_button")
+            if b.key not in ("proto_fit_template", "proto_fit_kit_zip", "proto_kitgen_zip")]
 
 
 def _sweep():
@@ -248,19 +249,25 @@ def _kit(tmp_path):
     pred = fit.predictions(d, 30.0, (9.0, 6.0), 144.0)
     (tmp_path / "predictions.json").write_text(json.dumps(pred), encoding="utf-8")
     (tmp_path / "fit_record_template.json").write_text(fit.template(pred), encoding="utf-8")
+    (tmp_path / "SHA256SUMS").write_text("", encoding="utf-8")
+    (tmp_path / "3mf").mkdir()
+    (tmp_path / "3mf" / "hole_coupon.3mf").write_bytes(b"3mf")
     rec = json.loads(fit.template(pred))
     rec.update(print_printer="P1S", print_material="PLA", print_nozzle_mm=0.4, print_layer_mm=0.2, print_walls=3,
                print_infill_fraction=1.0, pin_measured_diameter_mm=2.99, coupon_fit=["sıkı", "sıkı", "akıcı", "akıcı", "boşluklu"],
                fit_pair_clearance_mm=0.2, lug_thickness_proximal_mm=6.8, lug_thickness_distal_mm=7.2, axial_float_mm=0.1,
-               tilt_load_n=2.0, tilt_range_at_tab_mm=0.4, friction_breakaway_n=0.3, stop_gap_mm=0.0, stop_seats=True)
+               tilt_load_n=2.0, tilt_range_at_tab_mm=0.4, friction_breakaway_n=0.3, stop_gap_mm=0.0, stop_seats=True,
+               measurement_resolution_mm=0.01, repeat_count=3, axial_float_spread_mm=0.02, tilt_range_spread_mm=0.05)
     return json.dumps(rec, ensure_ascii=False)
 
 
 def test_a_fit_record_is_validated_applied_to_the_design_and_removable(fake, monkeypatch, tmp_path):
-    monkeypatch.setattr(prototype_ui, "KIT", tmp_path)
+    monkeypatch.setattr(prototype_ui, "KITS", {"E": ("E (test kiti)", tmp_path)})
     good = _kit(tmp_path)
     at = go(app(), PAGE)
     assert any(b.key == "proto_fit_template" for b in at.get("download_button"))
+    names = zipfile.ZipFile(io.BytesIO(prototype_ui._kit_zip(str(tmp_path), ""))).namelist()
+    assert f"{tmp_path.name}/predictions.json" in names and f"{tmp_path.name}/3mf/hole_coupon.3mf" in names
     before = at.session_state["_proto_fit_record"] if "_proto_fit_record" in at.session_state else None
     assert before is None
     at.text_area(key="proto_fit_text").set_value(good.replace('"P1S"', "null")).run()
@@ -270,6 +277,7 @@ def test_a_fit_record_is_validated_applied_to_the_design_and_removable(fake, mon
     at.text_area(key="proto_fit_text").set_value(good).run()
     at.button(key="proto_fit_apply").click().run()
     assert not at.exception and "Ölçüm kaydı uygulanıyor" in text(at)          # in the same run, no lag
+    assert "aktarılmış" in text(at) and "en kötü durum modelinde" in text(at)      # B-like kit on the default design
     assert any("Eksenel boşluk" in list(df.value.get("Büyüklük", [])) for df in at.dataframe)
     at.button(key="proto_build").click().run()
     d = at.session_state["_proto_build"]["result"]["design"]
@@ -282,3 +290,42 @@ def test_a_fit_record_is_validated_applied_to_the_design_and_removable(fake, mon
     at.text_area(key="proto_fit_text").set_value("[" * 5000).run()
     at.button(key="proto_fit_apply").click().run()                         # a failed paste drops the older record
     assert not at.exception and "Ölçüm kaydı kullanılamadı" in text(at) and "Ölçüm kaydı uygulanıyor" not in text(at)
+
+
+def test_kit_generator_writes_the_editor_design_kit_and_goes_stale_on_change(fake, monkeypatch, tmp_path):
+    from pyfoldable.prototype import fit
+    monkeypatch.setattr(prototype_ui, "KITS", {"E": ("E (test kiti)", tmp_path)})
+    _kit(tmp_path)
+    made = []
+
+    def fake_kit(d, folder, clearances=fit.FIT_PAIR_CLEARANCES_MM):
+        made.append(d.identity)
+        (folder / "3mf").mkdir(parents=True)
+        (folder / "3mf" / "fit_proximal_c0p20.3mf").write_bytes(b"3mf")
+        (folder / "README.md").write_text("# kit", encoding="utf-8")
+        return {"predictions": fit.predictions(d, 30.0, (8.0, 2.5), 144.0), "files": []}
+    monkeypatch.setattr(fit, "export_kit", fake_kit)
+    at = go(app(), PAGE)
+    at.number_input(key="proto_connection.axial_offset_mm").set_value(6.5).run()
+    at.button(key="proto_kitgen").click().run()
+    assert not at.exception and len(made) == 1
+    gen = at.session_state["_proto_kitgen"]
+    names = zipfile.ZipFile(io.BytesIO(gen["zip"])).namelist()
+    assert any(n.endswith("3mf/fit_proximal_c0p20.3mf") for n in names) and gen["name"].startswith("fit_kit_13in-v1_")
+    assert any(b.key == "proto_kitgen_zip" for b in at.get("download_button"))
+    at.radio(key="proto_fit_kit").set_value("G").run()                 # the generated kit is a record source
+    pred = at.session_state["_proto_kitgen"]["pred"]
+    rec = json.loads(fit.template(pred))
+    rec.update(print_printer="P1S", print_material="PLA", print_nozzle_mm=0.4, print_layer_mm=0.2, print_walls=3,
+               print_infill_fraction=1.0, pin_measured_diameter_mm=3.0, coupon_fit=["sıkı", "akıcı", "akıcı", "akıcı", "boşluklu"],
+               fit_pair_clearance_mm=0.2, lug_thickness_proximal_mm=pred["lug_thicknesses_mm"][0],
+               lug_thickness_distal_mm=pred["lug_thicknesses_mm"][1], axial_float_mm=0.1, tilt_load_n=2.0,
+               tilt_range_at_tab_mm=0.5, friction_breakaway_n=0.3, stop_gap_mm=0.0, stop_seats=True,
+               measurement_resolution_mm=0.01, repeat_count=3, axial_float_spread_mm=0.02, tilt_range_spread_mm=0.05)
+    at.text_area(key="proto_fit_text").set_value(json.dumps(rec, ensure_ascii=False)).run()
+    at.button(key="proto_fit_apply").click().run()
+    assert not at.exception and "doğrudan" in text(at) and "13in-v1" in text(at)
+    at.button(key="proto_fit_clear").click().run()
+    at.number_input(key="proto_connection.axial_offset_mm").set_value(7.0).run()
+    assert not any(b.key == "proto_kitgen_zip" for b in at.get("download_button"))
+    assert "oluşturulan ölçüm kiti bu tasarıma ait değil" in text(at)

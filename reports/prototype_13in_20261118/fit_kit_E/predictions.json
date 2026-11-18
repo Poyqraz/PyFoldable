@@ -1,0 +1,49 @@
+{
+ "kit_design_sha256": "b7739a8e808be1544985a3014b5b2dd8d19a5e28c8f4af0c8a0e8b81cbf7435e",
+ "kit_design_name": "13in-E",
+ "coupon_steps_mm": [
+  0.0,
+  0.1,
+  0.2,
+  0.3,
+  0.4
+ ],
+ "fit_pair_clearances_mm": [
+  0.1,
+  0.2,
+  0.3
+ ],
+ "lever_mm": 30.0,
+ "fit_masses_g": [
+  8.343517281198936,
+  2.4625770620653937
+ ],
+ "folded_stop_deg": 144.0,
+ "pin_diameter_mm": 3.0,
+ "lug_thicknesses_mm": [
+  4.717204362814128,
+  5.05471713370555
+ ],
+ "lug_gap_mm": 0.3,
+ "boss_radius_mm": 5.5,
+ "model_play": {
+  "axial_play_mm": 0.3,
+  "tilt_rad": 0.05454545454545454,
+  "u_axial_mm": 0.0,
+  "u_tilt_rad": 0.0,
+  "u_print_mm": 0.0,
+  "k": 0.0,
+  "source": "model (en kötü durum)",
+  "tilt_limited_by": "lug yüz aralığı",
+  "radial_play_mm": 0.2,
+  "tilt_deg": 3.1252243370772175,
+  "model_tilt_rad": 0.05454545454545454,
+  "tip_droop_mm": 3.905454545454545
+ },
+ "print_model": {
+  "material": "PLA",
+  "wall_mm": 1.2,
+  "infill_fraction": 1.0,
+  "layer_mm": 0.2
+ }
+}

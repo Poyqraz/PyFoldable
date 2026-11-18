@@ -69,9 +69,12 @@ def required_by_travel(d, sweep, travels=range(10, 181, 10)) -> list[dict]:
         sel = a <= T + 1e-9
         if not sel.any():
             continue
-        nominal = delta + need - float(g[sel].min())
-        out.append({"travel_deg": int(round(T)), "required_mm": nominal,
-                    "required_with_play_mm": max(nominal, delta - float(gp[sel].min()))})
+        gmin, gpmin = float(g[sel].min()), float(gp[sel].min())
+        if not (math.isfinite(gmin) and math.isfinite(gpmin)):       # no overlap up to this travel: nothing to clear
+            out.append({"travel_deg": int(round(T)), "required_mm": None, "required_with_play_mm": None})
+            continue
+        nominal = delta + need - gmin
+        out.append({"travel_deg": int(round(T)), "required_mm": nominal, "required_with_play_mm": max(nominal, delta - gpmin)})
     return out
 
 
@@ -108,6 +111,29 @@ def envelope(d, sweep) -> dict:
     return {"proximal": prox, "distal": dist, "folded": folded, "fold_deg": fold, "pivot": pivot,
             "folded_radius_mm": radius, "deployed_radius_mm": d.planform.tip_radius_mm,
             "critical": sweep["where"][k], "critical_angle_deg": float(a[k])}
+
+
+def folded_dimensions(d, sweep, angles=(0, 60, 90, 110, 140, 160, 180)) -> list[dict]:
+    """Folded rotor size per fold angle (all blades, aerodynamic outlines; the stop nose adds about 2 mm ahead of the
+    leading edge at the joint): envelope diameter about the shaft, length along the blade axis and width across it,
+    with the offset each fold needs (from ``required_by_travel``) and whether the folded stop allows it. Length is
+    along blade 1's axis, which is the blade axis for two blades."""
+    c = d.connection
+    pivot = np.array([c.pin_x_mm, c.hinge_radius_mm])
+    prox, dist = outline(d, "proximal"), outline(d, "distal")
+    n = d.planform.blade_count
+    stop = sweep.get("folded_stop_deg")
+    out = []
+    for a in angles:
+        blade = np.vstack([prox, rotate(dist, pivot, -a)])
+        pts = np.vstack([rotate(blade, np.zeros(2), 360.0 * k / n) for k in range(n)])
+        need = required_by_travel(d, sweep, (max(a, 2),))[0] if a > 0 else None
+        out.append({"fold_deg": int(a), "reachable": bool(stop is None or a < stop),   # the nose touches at the stop
+                    "envelope_diameter_mm": float(2.0 * np.hypot(*pts.T).max()),
+                    "length_mm": float(np.ptp(pts[:, 1])), "width_mm": float(np.ptp(pts[:, 0])),
+                    "required_offset_mm": None if need is None else need["required_mm"],
+                    "required_offset_with_play_mm": None if need is None else need["required_with_play_mm"]})
+    return out
 
 
 def alignment_sections(d) -> dict:
@@ -260,8 +286,7 @@ def run_report(root, folder) -> dict:
             out[name] = {"eligible": r["eligible"], "reasons": r["reasons"], "budget": offset_budget(d, r["sweep"])}
         if name == "E" and "parts" in r:
             export.export_candidate(r["parts"], folder / "E_offset6_ts0p86_zone45_travel140", r)
-        if name == "B":
-            fit.export_kit(d, folder / "fit_kit_B")
+        fit.export_kit(d, folder / f"fit_kit_{name}")             # B: reference kit; E: the next compact candidate
     (folder / "study" / "study.json").write_text(json.dumps(export._jsonable(out), indent=1, ensure_ascii=False),
                                                  encoding="utf-8")
     return out

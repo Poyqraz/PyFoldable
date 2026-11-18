@@ -27,8 +27,12 @@ from . import figure_style
 from . import research_ui as rui
 
 _BUILD, _EXPLORE, _EXPORT, _OFFSETS = "_proto_build", "_proto_explore", "_proto_export", "_proto_offsets"
-_FIT, _FIT_ERROR = "_proto_fit_record", "_proto_fit_error"
-KIT = Path("reports/prototype_13in_20261118/fit_kit_B")      # committed measurement kit (predictions + template)
+_FIT, _FIT_ERROR, _KITGEN = "_proto_fit_record", "_proto_fit_error", "_proto_kitgen"
+KITS = {  # committed measurement kits (predictions, record template, printing set, protocol)
+    "E": ("E · sonraki kompakt aday (kendi bağlantısı)", Path("reports/prototype_13in_20261118/fit_kit_E")),
+    "B": ("B · referans", Path("reports/prototype_13in_20261118/fit_kit_B")),
+}
+KIT_FILES = ("README.md", "predictions.json", "fit_record_template.json", "design.json", "SHA256SUMS")
 FOLD_STEP_DEG = 10.0
 MESH_TOL_MM, MESH_ANGLE_RAD = 0.3, 0.5
 PROXIMAL, DISTAL, HARDWARE = "#4C78A8", "#E45756", figure_style.CONSTRUCTION
@@ -267,7 +271,11 @@ def _clearance(sw):
         f"**Gereken ofset:** nominal ≈ {_f(sw['required_offset_mm'], 1)} mm · oynama ile ≈ "
         f"{_f(sw['required_offset_with_play_mm'], 1)} mm (açıktan tahmin; o ofsette yeniden oluşturup doğrulayın)")
     p = sw["play"]
-    st.caption(f"Oynama modeli: eğilme {_f(p['tilt_deg'])}° ({p['tilt_limited_by']} sınırlıyor), uç sarkması "
+    if sw.get("min_gap_transferred_mm") is not None:
+        st.markdown(f"**Aktarılmış ölçümle (yalnız keşif, karar değil):** en küçük boşluk "
+                    f"{_f(sw['min_gap_transferred_mm'])} mm · gereken ofset ≈ {_f(sw['required_offset_transferred_mm'], 1)} mm "
+                    f"({p['transferred']['source']}).")
+    st.caption(f"Karar oynaması: {p.get('source', 'model')}. Eğilme {_f(p['tilt_deg'])}° ({p['tilt_limited_by']}), uç sarkması "
                f"{_f(p['tip_droop_mm'])} mm; radyal {_f(p['radial_play_mm'])} mm, eksenel {_f(p['axial_play_mm'])} mm. "
                f"Yöntem: {sw['method']}. En küçük boşluk ve gereken ofset yalnız gerekli katlanma aralığını kapsar.")
 
@@ -339,6 +347,16 @@ def _envelope(d, sw):
                 f"{_f(b['blade_term_mm'], 1)} mm (menteşe çevresindeki kesitlerin kord × sin β yüksekliği). Boşlukla "
                 f"{_f(b['required_with_play_mm'], 1)} mm ({sw['play'].get('source', 'model')}).")
     rui._plot(need, "proto_offset_by_travel")
+    dims = study.folded_dimensions(d, sw)
+    st.markdown(f"**Katlı ölçüler** (tüm kanatlar, aerodinamik dış hatlar; stop burnu menteşede hücum kenarının ≈ "
+                f"{_f(d.connection.nose_extension_mm, 0)} mm önüne çıkar). Açık çap {_f(2 * d.planform.tip_radius_mm, 1)} mm.")
+    st.dataframe([{"Katlanma [°]": r["fold_deg"], "Katlanmış stop izin veriyor": "evet" if r["reachable"] else "hayır",
+                   "Zarf çapı [mm]": _r(r["envelope_diameter_mm"], 1), "Boy, kanat ekseni [mm]": _r(r["length_mm"], 1),
+                   "En [mm]": _r(r["width_mm"], 1),
+                   "Çap küçülmesi": f"{1 - r['envelope_diameter_mm'] / (2 * d.planform.tip_radius_mm):.0%}",
+                   "Gereken ofset [mm]": _r(r["required_offset_mm"], 1),
+                   "Boşlukla [mm]": _r(r["required_offset_with_play_mm"], 1)} for r in dims],
+                 hide_index=True, **figure_style.dataframe_width_kwargs())
     st.caption("Belirleyici temas genellikle distal firar kenarı kökünün proksimal hücum kenarı bölgesinin üstünden "
                "geçtiği yerdir (pimden yaklaşık bir veter içeride). Pim konumu bunu az değiştirir; pimi geri almak "
                "merkezkaç oturmasını kaldırır.")
@@ -553,19 +571,66 @@ def _candidates(ex, d):
 
 
 # ------------------------------------------------------------------------------------------- measurement record
+@st.cache_data(show_spinner=False, max_entries=4)
+def _kit_zip(folder: str, sums: str) -> bytes:
+    """Printing set and protocol of a kit (3MF, README, predictions, record template, design, SHA-256 sums); STEP and
+    STL copies stay out (large, regenerable). ``sums`` keys the cache to the kit's content."""
+    return _zip_kit(Path(folder))
+
+
+def _zip_kit(base: Path) -> bytes:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for f in [*(base / n for n in KIT_FILES), *sorted((base / "3mf").glob("*.3mf"))]:
+            if f.is_file():
+                z.write(f, f"{base.name}/{f.relative_to(base).as_posix()}")
+    return buf.getvalue()
+
+
 def _measurement(root: Path, d):
-    st.subheader("Ölçüm prototipi (B uyum çifti ve delik kuponu)")
-    st.caption("Kupon ve kısa uyum çifti pim geçmesi, eksenel/eğilme boşluğu, sürtünme ve stop oturması için basılıp "
-               "ölçülür; B’yi güçlü pervane olarak seçmez. Kit ve protokol: " + KIT.as_posix() + "/README.md.")
-    kit = Path(root) / KIT
-    try:
-        pred = json.loads((kit / "predictions.json").read_text(encoding="utf-8"))
-        tpl = (kit / "fit_record_template.json").read_text(encoding="utf-8")
-    except (OSError, ValueError) as exc:
-        st.info(f"Ölçüm kiti bulunamadı ({type(exc).__name__}).")
-        return
-    st.download_button("Ölçüm kaydı şablonunu indir (JSON)", tpl.encode("utf-8"), "fit_record_template.json",
-                       "application/json", key="proto_fit_template")
+    st.subheader("Ölçüm prototipi (delik kuponu ve kısa uyum çifti)")
+    st.caption("Kupon ve uyum çifti pim geçmesi, eksenel/eğilme boşluğu, sürtünme ve stop oturması için basılıp ölçülür; "
+               "bir kiti seçmek o adayı güçlü pervane olarak seçmez. Bir kitin ölçümü yalnız kendi tasarımı için doğrudan "
+               "kanıttır; başka tasarıma uygulanınca aktarılmış sayılır (yalnız keşif, karar en kötü durum modelinde).")
+    st.caption("Düzenleyicideki tasarım kitlerden farklıysa (ör. başka bir δ), ölçüm ancak kendi uyum çiftiyle doğrudan "
+               "kanıt olur:")
+    if st.button("Bu tasarımın ölçüm kitini oluştur (≈ 1–2 dk)", key="proto_kitgen", disabled=bool(design.validate(d))):
+        st.session_state[_KITGEN] = _make_kit(d)
+    gen = st.session_state.get(_KITGEN)
+    if gen is not None:
+        if gen["identity"] != d.identity:
+            st.warning("Girdiler değişti: oluşturulan ölçüm kiti bu tasarıma ait değil ve gizlendi; yeniden oluşturun.")
+        elif "error" in gen:
+            st.error("Ölçüm kiti oluşturulamadı: " + gen["error"])
+        else:
+            st.download_button(f"{gen['name']}.zip indir", gen["zip"], f"{gen['name']}.zip", "application/zip",
+                               key="proto_kitgen_zip")
+    generated = gen is not None and gen["identity"] == d.identity and "pred" in gen
+    options = {**{k: v[0] for k, v in KITS.items()}, **({"G": "Bu tasarım için oluşturulan kit"} if generated else {})}
+    choice = rui._choice(st.radio, "Ölçüm kiti", tuple(options), horizontal=True, key="proto_fit_kit", default="E",
+                         display=lambda k: options.get(k, str(k)))
+    if choice == "G":
+        pred, tpl, kit = gen["pred"], fit.template(gen["pred"]), Path(gen["name"])
+    else:
+        kit = Path(root) / KITS[choice][1]
+        try:
+            pred = json.loads((kit / "predictions.json").read_text(encoding="utf-8"))
+            tpl = (kit / "fit_record_template.json").read_text(encoding="utf-8")
+            sums = (kit / "SHA256SUMS").read_text(encoding="utf-8")
+        except (OSError, ValueError) as exc:
+            st.info(f"Ölçüm kiti bulunamadı ({type(exc).__name__}).")
+            return
+    tp, td = pred["lug_thicknesses_mm"]
+    st.caption(f"Kit {pred['kit_design_name']} (kimlik {pred['kit_design_sha256'][:12]}): lug {_f(tp)} / {_f(td)} mm, "
+               f"uyum çifti delik boşlukları {', '.join(_f(c) for c in pred['fit_pair_clearances_mm'])} mm, yük kolu "
+               f"{_f(pred['lever_mm'])} mm, katlanmış stop {_f(pred['folded_stop_deg'], 0)}°. Protokol: kitin README.md "
+               "dosyası.")
+    a, b = st.columns(2)
+    if choice != "G":                                    # the generated kit's zip is offered by its own button above
+        a.download_button("Ölçüm kitini indir (3MF + protokol, zip)", _kit_zip(str(kit), sums), f"{kit.name}.zip",
+                          "application/zip", key="proto_fit_kit_zip")
+    b.download_button("Ölçüm kaydı şablonunu indir (JSON)", tpl.encode("utf-8"), f"{kit.name}_record.json",
+                      "application/json", key="proto_fit_template")
     text = st.text_area("Doldurulmuş ölçüm kaydı (JSON yapıştırın)", key="proto_fit_text", height=140)
     st.button("Kaydı doğrula ve tasarıma uygula", key="proto_fit_apply", disabled=not text.strip(),
               on_click=_apply_record, args=(pred,))      # a callback: the whole run below sees the new state
@@ -579,6 +644,19 @@ def _measurement(root: Path, d):
         for w in out["warnings"]:
             st.warning(w)
         st.button("Ölçüm kaydını kaldır", key="proto_fit_clear", on_click=lambda: st.session_state.pop(_FIT, None))
+
+
+def _make_kit(d):
+    """Explicit action: the measurement kit of the editor's design (coupon, fit pairs, protocol, record template)."""
+    name = f"fit_kit_{d.name}_{d.identity[:8]}"
+    with st.spinner("Ölçüm kiti kuruluyor (kupon, üç uyum çifti, protokol)…"):
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                out = fit.export_kit(d, Path(tmp) / name)
+                return {"identity": d.identity, "name": name, "zip": _zip_kit(Path(tmp) / name),
+                        "pred": out["predictions"]}
+        except Exception as exc:  # noqa: BLE001 - a failed kit is a visible result, never a stale success
+            return {"identity": d.identity, "error": f"{type(exc).__name__}: {exc}"}
 
 
 def _apply_record(pred):
@@ -601,9 +679,14 @@ def _with_record(d):
         st.error(f"Ölçüm kaydı bu tasarıma uygulanamadı: {exc}")
         return d
     c = out["design"].connection
-    st.info(f"Ölçüm kaydı uygulanıyor (özet {out['record_sha256'][:12]}): delik boşluğu {_f(c.hole_clearance_mm)} mm, "
-            f"eksenel boşluk {_f(c.measured_axial_play_mm)} mm, eğilme {_f(c.measured_tilt_deg)}°; boşluklu açıklık "
-            "kontrolü model yerine bu ölçümü kullanır.")
+    verdict = ("boşluklu açıklık kararı bu ölçümü k = 2 genişletilmiş belirsizlikle kullanır" if out["basis"] == "direct"
+               else "aktarılmış ölçüm (başka tasarımın kiti): yalnız keşifte gösterilir, boşluklu açıklık kararı en kötü "
+                    "durum modelinde kalır")
+    st.info(f"Ölçüm kaydı uygulanıyor (kit {held['pred']['kit_design_name']} {held['pred']['kit_design_sha256'][:8]}, "
+            f"özet {out['record_sha256'][:12]}, "
+            f"{'doğrudan' if out['basis'] == 'direct' else 'aktarılmış'}): delik boşluğu {_f(c.hole_clearance_mm)} mm, "
+            f"eksenel boşluk {_f(c.measured_axial_play_mm)} ± {_f(c.measured_axial_play_u_mm, 3)} mm, eğilme "
+            f"{_f(c.measured_tilt_deg)} ± {_f(c.measured_tilt_u_deg, 3)}° (standart belirsizlik); {verdict}.")
     return out["design"]
 
 

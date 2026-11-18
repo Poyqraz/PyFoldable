@@ -1,6 +1,6 @@
 {
  "schema": "pyfoldable.prototype.fit_record/1",
- "kit_design_sha256": "e950544fa8ddc82c571acd93266dc09fcd7d0b8042243570809717c414ff6bab",
+ "kit_design_sha256": "7088bb223bda9251addc846876c7e370e33fdbf57ef3b8afa19c2d98c9a8acd7",
  "print_printer": null,
  "print_material": null,
  "print_nozzle_mm": null,
@@ -32,6 +32,10 @@
  "stop_gap_mm": null,
  "stop_seats": null,
  "folded_stop_deg": null,
+ "measurement_resolution_mm": null,
+ "repeat_count": null,
+ "axial_float_spread_mm": null,
+ "tilt_range_spread_mm": null,
  "mass_fit_proximal_g": null,
  "mass_fit_distal_g": null,
  "notes": ""

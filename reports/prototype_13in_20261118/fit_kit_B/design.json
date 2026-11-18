@@ -59,7 +59,11 @@
     "body_clearance_mm": 0.5,
     "measured_axial_play_mm": null,
     "measured_tilt_deg": null,
-    "play_record_sha256": null
+    "play_record_sha256": null,
+    "measured_play_basis": null,
+    "measured_axial_play_u_mm": null,
+    "measured_tilt_u_deg": null,
+    "print_z_u_mm": null
   },
   "hardware": {
     "pin_standard": "ISO 2341-A Ø3 (kafa Ø5×1) + DIN 6799 kanalı (Ø2,3 × 0,64)",

@@ -114,19 +114,50 @@ example, D needs about 6.9 mm, not 7.4 mm.
   0.1/0.2/0.3 mm with a clamp block and a 30 mm load tab, `predictions.json`, `fit_record_template.json` and
   `SHA256SUMS`.
 
+- `fit_kit_E/`: **E's own measurement kit**, the one to print first. δ 6.0 mm, lugs 4.72/5.05 mm, pin 12.5 mm under
+  the head, E's stop nose and pad. It has the same layout as `fit_kit_B/`, which stays as a reference.
+
+  Play measured on a kit is direct evidence only for its own design. Applied to another design it is "transferred":
+  shown for exploration, while that design's verdict keeps the worst-case model (`docs/prototype_13in.md`).
+
+- `aero/`: the aerodynamic screening of E against the unmodified 13×5.5-class blade
+  (`docs/prototype_13in_aero.md`):
+  - XFOIL polars of the chord-dependent printable section, with provenance;
+  - fail-closed and clamp-diagnostic BEM tables;
+  - spanwise loading;
+  - `aero_comparison.png`.
+
+  It covers the blade-shape effect only; the joint step is unresolved. Regenerate with
+  `./venv/bin/python -m pyfoldable.prototype.aero reports/prototype_13in_20261118/aero`, which needs the pinned
+  XFOIL operator bundle.
+
+Candidate E's folded size (all blades, aerodynamic outlines; the stop nose adds about 2 mm ahead of the leading edge
+at the joint). The deployed diameter is 330.2 mm, and the 4 mm nose stops the fold at 144°.
+
+| Fold | Envelope Ø | Length × width | Smaller by | Offset needed (nominal / with worst-case play) |
+|---|---|---|---|---|
+| 90° | 242.5 mm | 210.8 × 132.2 mm | 27 % | 5.2 / 6.1 mm |
+| 110° | 209.9 mm | 209.8 × 126.0 mm | 36 % | 5.6 / 6.4 mm |
+| 140° | 206.0 mm | 205.8 × 89.0 mm | 38 % | 5.9 / 7.1 mm |
+| 160–180° | about 202 mm | — | 39 % | not reachable with the 4 mm nose |
+
+Beyond about 110° the envelope is set by the joint radius (r_j = 99 mm), not by the folded distal. 140° buys about
+4 mm of diameter over 110° and a much slimmer folded rotor (89 against 126 mm wide), and costs 0.3 mm of nominal
+offset.
+
 Regenerate all of it with `./venv/bin/python -m pyfoldable.prototype.study reports/prototype_13in_20261118`. It takes
-about 10 minutes and overwrites these folders.
+about 12 minutes and overwrites these folders.
 
 ## What is committed (second increment)
 
 - `study/`: everything.
-- `fit_kit_B/`: everything except `stl/` and `step/`. The 3MF files are the printing set. The fit-pair STEP files
+- `fit_kit_E/` and `fit_kit_B/`: everything except `stl/` and `step/`. The 3MF files are the printing set. The fit-pair STEP files
   are about 17 MB each, so they stay local; they are regenerable and listed in the kit's `SHA256SUMS`.
 - `E_offset6_ts0p86_zone45_travel140/`: the documents, drawings, design record and `3mf/`. STEP and STL stay local.
 
 ## Print first
 
-The measurement kit `fit_kit_B/`, following its README: the coupon first, then the fit pair at the clearance the
+E's measurement kit `fit_kit_E/`, following its README: the coupon first, then the fit pair at the clearance the
 coupon picks. Enter the record in *Prototip → Ölçüm prototipi*, then apply the decision rule in
 `docs/prototype_13in.md` (*Next full-size prototype*) before printing any full rotor. The kit is a measurement
 prototype; it does not select B as the powered propeller.
