@@ -21,6 +21,10 @@ use the [README's PowerShell commands](../../README.md#kurulum) and the same
 interpreter for pip, tests and Streamlit. Avoid mixing Conda base with another
 environment's NumPy/PyArrow binaries.
 
+The printable-prototype CAD (`pyfoldable/prototype`, *Prototip* page) needs the optional extra
+`./venv/bin/python -m pip install -e ".[cad]"` (build123d 0.9.1 on OpenCASCADE, about 180 MB of wheels; licences
+in `THIRD_PARTY_NOTICES.md`). CI installs it; without it the CAD tests skip and the page reports the missing extra.
+
 | Operation | Canonical command / status |
 | --- | --- |
 | Full CI-equivalent test invocation | `./venv/bin/python -m pytest tests/ -q` |
@@ -52,6 +56,7 @@ workspace execution: configs/reports/test fixtures/apps are not all wheel data.
 | Fold cycle, pin-and-lug, coupled hinge loads | `tests/dynamics/test_fold_cycle.py`, `test_pin_lug.py`, `tests/coupled/test_coupled_hinge_loads.py`, `tests/application/test_fold_cycle_views.py`, `tests/ui/test_fold_cycle_ui.py` |
 | Lofted blade, *Görseller* gallery | `tests/visualization/test_blade_surface.py`, `test_fold_interference.py`, `test_blade_views.py`, `tests/application/test_gallery_figures.py`, `tests/ui/test_blade3d_ui.py`, `test_gallery_ui.py` |
 | Coupled DUST–MBDyn–preCICE route | `tests/coupled/`, `tests/ui/test_coupled_ui.py` (see the toolchain section below) |
+| Printable prototype (CAD, clearance, loads, exports) | `tests/prototype/` (CAD tests need `pip install -e ".[cad]"` and skip without it; ≈ 3 min), `tests/ui/test_prototype_ui.py` |
 | Streamlit lifecycle | Relevant `tests/ui/`; include navigation and source-change invalidation, not just initial render |
 | Licensing/package metadata | `tests/test_license_policy.py`; build only when packaging changes |
 | Documentation only | Verify every new path/link, command evidence, state/claim against code; inspect diff for accidental behavior or archived-report changes |

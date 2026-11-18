@@ -95,3 +95,21 @@ to unit chord). Their source links and content identities are in `catalog.json`.
 
 NumPy, SciPy, tomli, matplotlib, pytest, NeuralFoil, and other install-time tools are
 dependencies rather than vendored source. Each retains its own license.
+
+## Optional CAD extra (`[cad]`, not distributed with the Project)
+
+The manufacturing-geometry package `pyfoldable/prototype` imports the optional `[cad]` extra, which the user
+installs from PyPI; the Project does not vendor or redistribute these packages, and their own licences remain
+controlling. Verified versions (Python 3.10, 2026-11-18):
+
+- build123d 0.9.1 — Apache License 2.0 (<https://github.com/gumyr/build123d>)
+- cadquery-ocp 7.8.1.1.post1 — Python bindings to Open CASCADE Technology (OCP: Apache License 2.0; the bundled
+  Open CASCADE Technology libraries: GNU LGPL 2.1 with the Open CASCADE exception)
+  (<https://github.com/CadQuery/OCP>, <https://dev.opencascade.org/resources/licensing>)
+- vtk 9.3.1 (dependency of cadquery-ocp) — BSD 3-Clause
+- transitive dependencies resolved by pip, among them ezdxf (MIT), py-lib3mf (BSD 2-Clause), svgpathtools (MIT),
+  anytree (Apache 2.0), ipython (BSD 3-Clause), trianglesolver (MIT) and ocpsvg (Apache 2.0)
+
+Shared-library use of the LGPL components is dynamic (as installed by pip); users who redistribute an environment
+containing them must meet the LGPL terms, including providing the library source and allowing relinking. GPL
+meshing tools (for example gmsh) are intentionally not imported by the Project.

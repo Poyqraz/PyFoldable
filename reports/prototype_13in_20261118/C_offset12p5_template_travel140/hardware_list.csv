@@ -1,0 +1,8 @@
+item,qty,spec,material
+Pin,2,"ISO 2341-A Ø3 (kafa Ø5×1) + DIN 6799 kanalı (Ø2,3 × 0,64); shank length under head 20.74 mm, groove start 19.30 mm under the head",steel (4.6 or better)
+Washer,4,DIN 433 3.2×6.0×0.5 mm,steel
+Retaining washer (E-clip),2,"DIN 6799 size 2.3 (OD ≈ 6.0 mm, t 0.6 mm)",spring steel
+Rotor hub with proximal segments,1,rotor_hub_proximal.stl/.3mf (print),PLA
+Distal segment,2,distal.stl/.3mf (print),PLA
+Fit-test sections,1,fit_proximal + fit_distal (print first),PLA
+Hole coupon,1,hole_coupon (holes Ø3.0 + 0.0…0.4 mm),PLA

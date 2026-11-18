@@ -1,0 +1,148 @@
+[
+ {
+  "candidate": "A_offset5p5_template_travel50",
+  "label": "Owner offset 5.5 mm; template planform; fold limited to 50°",
+  "eligible": true,
+  "reasons": [],
+  "required_travel_deg": 50.0,
+  "clear_travel_deg": 50.0,
+  "body_clear_to_deg": 50.0,
+  "folded_stop_deg": 144.0,
+  "min_gap_mm": 1.030891280779672,
+  "min_gap_angle_deg": -50.0,
+  "min_gap_play_mm": 0.04331464882484215,
+  "required_offset_mm": 5.5,
+  "required_offset_with_play_mm": 5.956685351175158,
+  "step_mm": 5.5,
+  "lug_mm": [
+   5.421709338790306,
+   5.58313030274333
+  ],
+  "stack_mm": 11.304839641533636,
+  "distal_g": 4.1056263638563975,
+  "blade_g": 26.350041380121873,
+  "rotor_print": "46.6×207.3×24.3 mm",
+  "chordwise_cg_mm": 3.7285232069332954,
+  "pin_n_6000": 271.475202160703,
+  "stop_n_6000": 77.88206565329914,
+  "governing": {
+   "key": "stop_nose_root",
+   "label": "Stop burnu kök eğilmesi",
+   "rpm_limit": 3216.992561375409
+  },
+  "tip_droop_mm": 3.905454545454545,
+  "identity": "70a31c7b9836151eb007c9ddb516ed58f4d631cc14d170f8f103a3a43aae647d",
+  "files": 30,
+  "seconds": 87
+ },
+ {
+  "candidate": "B_offset9p5_twist0p6_travel140",
+  "label": "Flatter planform (twist ×0.6, lower pitch); 9.5 mm offset; 140° fold",
+  "eligible": true,
+  "reasons": [],
+  "required_travel_deg": 140.0,
+  "clear_travel_deg": 140.0,
+  "body_clear_to_deg": 140.0,
+  "folded_stop_deg": 144.0,
+  "min_gap_mm": 2.182290856723311,
+  "min_gap_angle_deg": -103.0,
+  "min_gap_play_mm": 0.6390928244139957,
+  "required_offset_mm": 9.5,
+  "required_offset_with_play_mm": 9.5,
+  "step_mm": 9.5,
+  "lug_mm": [
+   6.717850534476349,
+   7.10379253335511
+  ],
+  "stack_mm": 14.121643067831458,
+  "distal_g": 4.325957814616269,
+  "blade_g": 26.85221300633849,
+  "rotor_print": "53.0×206.0×17.4 mm",
+  "chordwise_cg_mm": 3.4773055134269555,
+  "pin_n_6000": 277.7338787289235,
+  "stop_n_6000": 75.49001947863543,
+  "governing": {
+   "key": "stop_nose_root",
+   "label": "Stop burnu kök eğilmesi",
+   "rpm_limit": 3012.276100133227
+  },
+  "tip_droop_mm": 3.905454545454545,
+  "identity": "eb1c40c24c2d6cd22269d156a86f687bb1bf7d2fbe32e75fe7428a440ac78f9e",
+  "files": 30,
+  "seconds": 72
+ },
+ {
+  "candidate": "C_offset12p5_template_travel140",
+  "label": "Template planform kept; 12.5 mm offset (clears with worst-case play); 140° fold",
+  "eligible": true,
+  "reasons": [],
+  "required_travel_deg": 140.0,
+  "clear_travel_deg": 140.0,
+  "body_clear_to_deg": 140.0,
+  "folded_stop_deg": 144.0,
+  "min_gap_mm": 1.8078673047802627,
+  "min_gap_angle_deg": -105.0,
+  "min_gap_play_mm": 0.5363984412559789,
+  "required_offset_mm": 12.5,
+  "required_offset_with_play_mm": 12.5,
+  "step_mm": 12.5,
+  "lug_mm": [
+   8.921709338790304,
+   9.08313030274333
+  ],
+  "stack_mm": 18.304839641533633,
+  "distal_g": 4.595644832056307,
+  "blade_g": 27.65579001666532,
+  "rotor_print": "46.6×207.3×24.3 mm",
+  "chordwise_cg_mm": 3.142489746840893,
+  "pin_n_6000": 286.3218770174933,
+  "stop_n_6000": 73.47532479435881,
+  "governing": {
+   "key": "stop_nose_root",
+   "label": "Stop burnu kök eğilmesi",
+   "rpm_limit": 2542.8030814566278
+  },
+  "tip_droop_mm": 3.2372242032663823,
+  "identity": "4c2c3b5c380458dd8a13a8c1fe9a30d7e34c7de62d517a7c048b5f8f4cf93458",
+  "files": 30,
+  "seconds": 93
+ },
+ {
+  "candidate": "D_offset6_twist0p35_travel140",
+  "label": "Owner offset 6 mm on a flat planform (twist ×0.35, ≈2.2 in pitch); 140° fold",
+  "eligible": false,
+  "reasons": [
+   "Nominal açık, en kötü boşlukla girişim 0.9 mm @ -99° (gereken ofset ≈ 7.4 mm)"
+  ],
+  "required_travel_deg": 140.0,
+  "clear_travel_deg": 140.0,
+  "body_clear_to_deg": 140.0,
+  "folded_stop_deg": 144.0,
+  "min_gap_mm": 0.6478530653298673,
+  "min_gap_angle_deg": -99.0,
+  "min_gap_play_mm": -0.9130240074226743,
+  "required_offset_mm": 6.0,
+  "required_offset_with_play_mm": 7.413024007422674,
+  "step_mm": 6.0,
+  "lug_mm": [
+   4.575573800980174,
+   5.194120168346172
+  ],
+  "stack_mm": 10.069693969326346,
+  "distal_g": 4.048492261474064,
+  "blade_g": 26.187092116130437,
+  "rotor_print": "54.1×206.0×12.9 mm",
+  "chordwise_cg_mm": 3.8610063997140425,
+  "pin_n_6000": 269.3720179408437,
+  "stop_n_6000": 78.04663410852939,
+  "governing": {
+   "key": "pin_bending",
+   "label": "Pim eğilmesi (P·a/2)",
+   "rpm_limit": 3696.6119713223648
+  },
+  "tip_droop_mm": 3.905454545454545,
+  "identity": "4ad25a2ced13d0ead45c2e029d1de060742f8287dbeb782633b624373a7532e9",
+  "files": 30,
+  "seconds": 74
+ }
+]
