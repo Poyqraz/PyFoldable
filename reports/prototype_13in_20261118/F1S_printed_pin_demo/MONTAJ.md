@@ -42,10 +42,27 @@ parçayı kaydedin.
 
 ## Yığın (CAD)
 
-Lug yığını q1 − p0 = 10,84 mm. Kanal bu yığının 0,15 mm üstünde başlar
-(taşıma bölgesinin dışında), genişliği 1,80 mm, kanal dibi Ø3,0 mm. Klips
-1,6 mm; nominal eksenel boşluk 0,35 mm. Basılı lug'lar toplamda
-0,35 mm'ye kadar kalın çıksa da klips takılır. Metal referans (pim
+Lug yığını q1 − p0 = 10,84 mm (iki lug + aralarındaki 0,30 mm). Kanal bu yığının
+0,15 mm üstünde başlar (taşıma bölgesinin dışında), genişliği 1,80 mm,
+kanal dibi Ø3,0 mm; klips 1,6 mm.
+
+Boy referansları (kafa altından ölçülür):
+
+- **kanalın yakın kenarı: 10,99 mm** — kayıtta ölçülen değer (`pin_head_to_groove_near_mm`);
+- kanalın uzak kenarı: 12,79 mm (yakın kenar + klips + klips boşluğu).
+
+Eksenel hareket (açık montaj, proksimal kafaya oturmuş):
+
+- **uçtan uca eksenel boşluk: 0,65 mm** (CAD katılarından da aynı bulundu);
+- bunun **0,30 mm**'si nominal lug arası aralıktır: distal proksimale doğru yalnız bu kadar iner
+  (metal tasarımın çalışma aralığı);
+- **0,35 mm**'si tek taraflı, klips tarafı montaj payıdır: distal nominal konumundan bu kadar
+  yükselebilir (0,15 mm kalın basılan lug payı + 0,20 mm klipsin
+  kanal içindeki boşluğu).
+
+Basılı lug'lar toplamda 0,35 mm'ye kadar kalın çıksa da klips takılır (bu durumda
+uçtan uca boşluk o kadar azalır). Klips tarafındaki pay nedeniyle distal, metal modelden fazla sallanabilir: yüz sınırı
+≈ 6,8° (metal model 3,1°). Metal referans (pim
 ISO 2341-A Ø4 (kafa Ø6×1) + DIN 6799 kanalı (Ø3,2 × 0,64), iki pul ve segman) ayrı bir yığındır; bu pim onun boyunu kopyalamaz.
 
 ## Kontrol listesi

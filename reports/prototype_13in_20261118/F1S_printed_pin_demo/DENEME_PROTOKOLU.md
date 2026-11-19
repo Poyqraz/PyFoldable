@@ -12,7 +12,9 @@ Kumpas (0,01–0,02 mm), sentil takımı (isteğe bağlı), açıölçer, telefo
 ## Adımlar
 
 1. **Ölçüler.** Üç pimin çapını iki dik yönde ölçün; isterseniz lug kalınlıklarını ve kanal–kafa altı boyunu da
-   ölçün. Kullanılan pimi kaydedin (`pin_variant_mm`, `pin_diameter_a_mm`, `pin_diameter_b_mm`).
+   ölçün. Kullanılan pimi kaydedin (`pin_variant_mm`, `pin_diameter_a_mm`, `pin_diameter_b_mm`). Kafa altından
+   kanalın kafaya **yakın** kenarına boyu kumpasın derinlik ucuyla ölçün (`pin_head_to_groove_near_mm`; CAD
+   10,99 mm; uzak kenar CAD 12,79 mm).
 2. **Geçme.** Kullanılan pimle kupon deliklerini (`coupon_fit`) ve mafsal deliklerini (`insertion_fit`) değerlendirin.
    Pimin elle çıkıp çıkmadığını yazın (`removal_by_hand`).
 3. **Klips.** Takma (`clip_installs`) ve tırnakla çıkarma (`clip_removes`). Deneme boyunca yerinde kalıp kalmadığı
@@ -20,9 +22,15 @@ Kumpas (0,01–0,02 mm), sentil takımı (isteğe bağlı), açıölçer, telefo
 4. **Serbest dönüş.** Distal açık stoptan katlı konuma kadar takılmadan dönüyor mu (`rotation_free`)? Takıldığı açıyı
    ve yeri yazın.
 5. **Açık stop.** Burun pede oturuyor mu (ışık testi, `open_stop_seats`); sentil varsa aralık (`stop_gap_mm`).
+   **Uçtan uca eksenel boşluk** (sentil varsa): distal'i proksimal lug'a bastırın, klipsi kanalın uzak kenarına itin
+   ve distal üst yüzü ile klips arasındaki aralığı ölçün (`end_play_total_mm`). CAD: uçtan uca
+   0,65 mm = nominal lug arası 0,30 mm + tek taraflı klips tarafı payı
+   0,35 mm. Bu, metal kitin eksenel boşluk ölçümü değildir.
 6. **Katlanma.** Elle ulaşılan katlanma açısı (`folded_stop_deg`). Model: yararlı hareket ≈ 143°,
-   en dar ara konum θ ≈ -103°. Görülen temas veya sürtünmeyi yeriyle yazın
-   (`interference_observed`) ve fotoğraflayın.
+   en dar ara konum θ ≈ -103° (nominal dikey açıklık 0,48 mm, pimden 19 mm uzakta). Distal tam sallandığında model bu konumda temas bekler: ihtiyatlı sınırla (yüz sınırı, 4,4–6,8°) tahmini açıklık -1,42 ile -0,85 mm; klipste dayanma varsayımıyla (4,4–4,5°) -0,87 ile -0,85 mm. Önce distal'i bastırmadan, kendi
+   ağırlığıyla katlayın; sonra distal ucunu hafifçe proksimale doğru bastırarak tekrarlayın. Görülen temas veya
+   sürtünmeyi, bastırarak mı bastırmadan mı olduğunu belirterek yeriyle yazın (`interference_observed`) ve
+   fotoğraflayın. Bu geometrik bir gözlemdir.
 7. **Çevrimler.** Açık → katlı → açık bir çevrimdir. Beyan edilen sayıda çevrim yapın (öneri: 10, sonra toplam 50,
    sonra toplam 200) ve her aşamada şunları kontrol edin:
    - aşınma, beyazlama ve toz (`wear_observed`);

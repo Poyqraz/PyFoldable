@@ -36,6 +36,8 @@
 | Diğer pimlerin çapı ve geçmesi | |
 | Mafsal deliğine takılma (girmez / sıkı / akıcı / boşluklu) | |
 | Pim elle çıkıyor mu | |
+| Kafa altı → kanalın yakın kenarı [mm] | |
+| Uçtan uca eksenel boşluk [mm] (sentil) | |
 | Klips takıldı / çıkarıldı / yerinde kaldı | |
 | Serbest dönüş | |
 | Açık stop oturuyor mu; aralık [mm] | |

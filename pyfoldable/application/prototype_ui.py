@@ -772,9 +772,18 @@ def _printed_pin(root: Path):
                      f"kanal dibi Ø{_f(g['groove_root_mm'], 1)} mm (yaylanarak oturur)"},
                     {"Bileşen": "Mafsal deliği (metal tasarım)", "Değer": f"Ø{_f(g['hole_diameter_mm'])} mm, değiştirilmedi"},
                     {"Bileşen": "Lug yığını (katılardan)", "Değer": f"{_f(g['stack_mm'])} mm; kanal {_f(g['groove_start_above_stack_mm'])} mm "
-                     f"üstünde; nominal eksenel boşluk {_f(g['float_nominal_mm'])} mm; pul yok"},
+                     f"üstünde; kafa altı → kanal yakın / uzak kenarı {_f(g['grip_near_flank_mm'])} / "
+                     f"{_f(g['grip_far_flank_mm'])} mm; pul yok"},
+                    {"Bileşen": "Eksenel hareket (açık montaj)", "Değer": f"uçtan uca {_f(g['end_play_total_mm'])} mm = "
+                     f"nominal lug arası {_f(g['inter_lug_gap_mm'])} (aşağı) + tek taraflı klips tarafı payı "
+                     f"{_f(g['clip_side_allowance_mm'])} mm (yukarı); sallanma ≤ {_f(min(g['rocking']['worst_deg'].values()), 1)}–"
+                     f"{_f(max(g['rocking']['worst_deg'].values()), 1)}°"},
                     {"Bileşen": "Elle katlanma (model)", "Değer": f"yararlı {_f(f['useful_travel_deg'], 0)}°, en dar "
-                     f"{_f(f['tightest_angle_deg'], 0)}° ({_f(f['min_gap_mm'])} mm), burun {_f(f['folded_stop_deg'], 0)}°"},
+                     f"{_f(f['tightest_angle_deg'], 0)}° (nominal {_f(f['min_gap_mm'])} mm"
+                     + (f"; tam sallanmada tahmini {_f(min(f['tightest_gap_with_rocking_mm'].values()))}…"
+                        f"{_f(max((f.get('tightest_gap_with_rocking_clip_bearing_mm') or f['tightest_gap_with_rocking_mm']).values()))} mm: "
+                        "temas beklenir" if f.get("tightest_gap_with_rocking_mm") else "")
+                     + f"), burun {_f(f['folded_stop_deg'], 0)}°"},
                     {"Bileşen": "Çakışma / erişim", "Değer": ("açık, en dar ve katlı konumda çakışma yok" if all(
                         v < 1e-3 for v in pred["interference_mm3"].values()) else "ÇAKIŞMA VAR") + "; pim ve klips yolları "
                      + ("açık" if pred["access"]["pin_path_clear"] and pred["access"]["clip_path_clear"] else "KAPALI")}],

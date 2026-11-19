@@ -45,7 +45,7 @@ pim deliğe göre seçilir, delik pime göre değiştirilmez.
 | `MONTAJ.md` | parça listesi, pim seçimi, montaj ve söküm, klips takma/çıkarma |
 | `DENEME_PROTOKOLU.md` | elle deneme adımları, çevrimler, fotoğraflar, bu denemeden ne öğrenilir |
 | `deneme_kaydi.json` | deneme kaydı (yazıcı, malzeme, filament önceden dolduruldu; etiketle farklıysa düzeltin) |
-| `gorseller/` | patlatılmış montaj, pim ekseninden kesit, açık / en dar / katlı konumlar |
+| `gorseller/` | patlatılmış montaj, pim ekseninden kesit, açık / en dar / katlı konumlar; iki plakanın ve montajın CAD önizlemesi (`onizleme_*.png`, dilimleyici önizlemesi değil) |
 | `3mf/`, `stl/` | baskı yönünde geometri (mm, %100 ölçek); `step/`: montaj konumunda CAD (açık) |
 | `predictions.json`, `design.json`, `SHA256SUMS` | model değerleri, tasarım kaydı, dosya özetleri |
 

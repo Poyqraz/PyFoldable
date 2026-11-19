@@ -398,8 +398,29 @@ been sliced.
 
 - lug stack q1 − p0 = 10.84 mm;
 - groove 0.15 mm above the stack, 1.8 mm wide;
-- nominal axial float 0.35 mm; the clip still fits if the printed lugs are up to 0.35 mm thicker in total;
+- grip references from the head underside: groove near flank 10.99 mm (the value measured in the trial), far flank
+  12.79 mm;
 - pin length 15.59 mm.
+
+**End play** (open assembly, proximal on the head), reproduced from the solids by translating the distal:
+
+- **total end play: 0.65 mm**;
+- of which the **nominal inter-lug gap is 0.30 mm**. This is the metal design's running gap, and the only travel
+  toward the proximal;
+- and the **one-sided, clip-side assembly allowance is 0.35 mm** above the nominal pose: 0.15 mm for thicker printed
+  lugs plus 0.20 mm of clip slack in the groove.
+
+The clip still fits if the printed lugs are up to 0.35 mm thicker in total (end play then shrinks by as much). The
+clip-side room lets the distal rock more than in the metal model (3.1°). The bounds:
+
+- the conservative face limit (the metal model's convention, total end play / R_b) gives up to 4.4–6.8° depending on
+  the pin;
+- assuming the distal pivots under the clip, (g + a)/(R_b + r_clip), it gives 4.4–4.5°.
+
+At the tightest pose the nominal 0.48 mm gap becomes negative under full rocking with either bound (estimated with the
+tip tilted down, dropping the inter-lug gap at the boss edge). So contact is expected when the distal is pressed or
+tilted. The trial records whether contact occurs with and without pressing; this is a
+geometric observation.
 
 The metal reference stack (about 11.84 mm with two washers) is a separate configuration and is not copied.
 

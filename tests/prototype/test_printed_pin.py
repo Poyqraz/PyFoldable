@@ -37,7 +37,7 @@ def _trial(pred, f1s, **over):
     rec = json.loads(pp.template(pred, fit.declared_prefill(f1s)))
     rec.update(print_nozzle_mm=0.4, print_layer_mm=0.2, print_walls=3, print_infill_fraction=1.0,
                print_slicer="Bambu Studio 02.09", pin_print_orientation="dik, kafa tablada", pin_variant_mm=3.9,
-               pin_diameter_a_mm=3.93, insertion_fit="akıcı", clip_installs=True, clip_retains=True,
+               pin_diameter_a_mm=3.93, pin_head_to_groove_near_mm=11.0, end_play_total_mm=0.6, insertion_fit="akıcı", clip_installs=True, clip_retains=True,
                rotation_free=True, open_stop_seats=True, cycle_count=50)
     rec.update(over)
     return json.dumps(rec, ensure_ascii=False)
@@ -67,9 +67,25 @@ def test_retention_is_consistent_and_its_reduced_section_is_outside_the_bearing_
     g = chk["geometry"]
     assert g["groove_start_above_stack_mm"] > 0.0
     assert g["clip_mouth_mm"] < g["groove_root_mm"] < g["clip_seat_mm"] < min(pp.PIN_DIAMETERS_MM)
-    assert g["float_nominal_mm"] == pytest.approx(pp.SPEC.stack_allowance_mm + pp.SPEC.groove_slack_mm)
-    assert 0.1 <= g["float_nominal_mm"] <= 0.4
-    assert g["assembles_up_to_extra_stack_mm"] == pytest.approx(g["float_nominal_mm"])
+    s = pp.SPEC
+    assert g["clip_side_allowance_mm"] == pytest.approx(s.stack_allowance_mm + s.groove_slack_mm)       # 0.35
+    assert g["end_play_total_mm"] == pytest.approx(g["inter_lug_gap_mm"] + g["clip_side_allowance_mm"])  # 0.65
+    assert g["assembles_up_to_extra_stack_mm"] == pytest.approx(g["clip_side_allowance_mm"])
+    # grip references: head underside to the groove's near flank (measured in the trial) and to its far flank
+    assert g["grip_near_flank_mm"] == pytest.approx(g["stack_mm"] + s.stack_allowance_mm)
+    assert g["grip_far_flank_mm"] == pytest.approx(g["grip_near_flank_mm"] + s.clip_thickness_mm + s.groove_slack_mm)
+
+
+def test_end_play_is_reproduced_from_the_solids(chk, f1s):
+    """Distal translation in the open assembly: down onto the proximal lug, up to the clip at the far flank."""
+    g, e = chk["geometry"], chk["geometry"]["end_play_from_solids_mm"]
+    assert e["below_nominal"] == pytest.approx(f1s.connection.lug_gap_mm, abs=0.005) == pytest.approx(g["inter_lug_gap_mm"])
+    assert e["above_nominal"] == pytest.approx(g["clip_side_allowance_mm"], abs=0.005)
+    assert e["total"] == pytest.approx(g["end_play_total_mm"], abs=0.01)
+    r = chk["geometry"]["rocking"]
+    assert r["faces_deg"] > f1s.connection.lug_gap_mm / f1s.connection.boss_radius_mm * 57.29   # more than the metal model
+    for p in pp.PIN_DIAMETERS_MM:
+        assert r["worst_deg"][f"{p:.2f}"] == pytest.approx(min(r["faces_deg"], r["holes_deg"][f"{p:.2f}"]))
     assert g["head_diameter_mm"] <= g["spot_face_diameter_mm"]
 
 
@@ -109,6 +125,12 @@ def test_metal_and_printed_pin_records_cannot_be_swapped(pred, f1s):
         pp.parse(_trial(pred, f1s, schema=fit.SCHEMA), pred)
 
 
+def test_record_names_the_grip_and_end_play_references_unambiguously():
+    assert "pin_grip_length_mm" not in pp.FIELDS and "axial_float_mm" not in pp.FIELDS
+    assert "yakın" in pp.FIELDS["pin_head_to_groove_near_mm"][3]
+    assert "uçtan uca" in pp.FIELDS["end_play_total_mm"][3] and "uzak" in pp.FIELDS["end_play_total_mm"][3]
+
+
 def test_unmeasured_fields_stay_empty_and_required_observations_are_enforced(pred, f1s):
     assert pp.parse(_trial(pred, f1s, pin_diameter_b_mm=None, folded_stop_deg=None), pred)["folded_stop_deg"] is None
     with pytest.raises(fit.RecordError, match="cycle_count"):
@@ -133,7 +155,11 @@ def test_package_is_self_contained_print_oriented_and_carries_no_operating_limit
     assert first <= names and {n for n in names if n.startswith("3mf/")} == first
     assert {"00_ONCE_BENI_OKU.md", "BASKI_REHBERI.md", "MONTAJ.md", "DENEME_PROTOKOLU.md", "BASKI_VE_DENEME_KAYDI.md",
             "deneme_kaydi.json", "predictions.json", "design.json", "SHA256SUMS",
-            "gorseller/patlatilmis_montaj.png", "gorseller/pim_kesiti.png", "gorseller/katlanma_konumlari.png"} <= names
+            "gorseller/patlatilmis_montaj.png", "gorseller/pim_kesiti.png", "gorseller/katlanma_konumlari.png",
+            "gorseller/onizleme_01A_kucuk_parcalar.png", "gorseller/onizleme_01B_mafsal_cifti.png",
+            "gorseller/onizleme_montaj_acik.png"} <= names
+    objs = pp.read_3mf(tmp_path / "3mf/01B_mafsal_cifti.3mf")         # the preview reads the actual print file
+    assert len(objs) == 2 and all(V[:, 2].min() == pytest.approx(0.0, abs=1e-3) for _, V, _ in objs)
     assert any(n.startswith("step/") for n in names) and any(n.startswith("stl/") for n in names)
     docs = {n: (tmp_path / n).read_text(encoding="utf-8") for n in names if n.endswith(".md")}
     assert not any("README" in t for t in docs.values())
@@ -178,3 +204,47 @@ def test_committed_package_matches_the_code_and_states_the_angle_convention(f1s)
     proto = (base / "DENEME_PROTOKOLU.md").read_text(encoding="utf-8")
     assert f"{p['fold']['useful_travel_deg']:.0f}°" in proto and "negatif" in proto
     assert "negatif" in (base / "MONTAJ.md").read_text(encoding="utf-8")
+    g = p["geometry"]
+    for name in ("MONTAJ.md", "DENEME_PROTOKOLU.md"):
+        doc = (base / name).read_text(encoding="utf-8")
+        assert "uçtan uca" in doc and "0,65" in doc and "0,30" in doc and "0,35" in doc, name
+    assert "10,99" in (base / "MONTAJ.md").read_text(encoding="utf-8")     # near flank, the measured grip
+    assert "nominal eksenel boşluk" not in " ".join((base / n).read_text(encoding="utf-8") for n in ("MONTAJ.md",
+                                                                                                    "DENEME_PROTOKOLU.md"))
+    assert g["end_play_total_mm"] == pytest.approx(0.65, abs=0.01)
+
+
+def test_checksummed_packages_are_checked_out_byte_exact():
+    """Every file a committed SHA256SUMS covers must be exempt from newline conversion (else a CRLF checkout fails)."""
+    import shutil
+    import subprocess
+    if shutil.which("git") is None or not (ROOT / ".git").exists():
+        pytest.skip("not a git checkout")
+    base = ROOT / "reports/prototype_13in_20261118"
+    paths = []
+    for sums in sorted(base.glob("*/SHA256SUMS")):
+        paths.append(sums.relative_to(ROOT).as_posix())
+        paths += [(sums.parent / line.split("  ", 1)[1]).relative_to(ROOT).as_posix()
+                  for line in sums.read_text(encoding="utf-8").splitlines() if line.strip()]
+    out = subprocess.run(["git", "-c", "safe.directory=*", "check-attr", "text", "--", *paths], cwd=ROOT,
+                         capture_output=True, text=True, check=True).stdout.splitlines()
+    assert len(out) == len(paths) and all(line.endswith(": text: unset") for line in out), \
+        [line for line in out if not line.endswith(": text: unset")][:5]
+
+
+def test_protocol_handles_a_sweep_without_an_overlapping_tightest_column(f1s):
+    pred = {"kit_design_sha256": "0" * 64, "geometry": {"rocking": {}, "end_play_total_mm": 0.65, "inter_lug_gap_mm": 0.3,
+                                                         "clip_side_allowance_mm": 0.35, "grip_near_flank_mm": 11.0,
+                                                         "grip_far_flank_mm": 12.8},
+            "fold": {"useful_travel_deg": 143.0, "tightest_angle_deg": -2.0, "min_gap_mm": None,
+                     "tightest_distance_from_pin_mm": None, "tightest_gap_with_rocking_mm": None,
+                     "tightest_gap_with_rocking_clip_bearing_mm": None}}
+    assert "tanımsız" in pp._protocol_doc(f1s, pred)
+
+
+def test_rocking_bounds_are_ordered_and_contact_is_expected_under_both(chk):
+    r, f = chk["geometry"]["rocking"], chk["fold"]
+    assert r["metal_model_faces_deg"] < r["faces_clip_bearing_deg"] < r["faces_deg"]
+    assert all(v < 0.0 for v in f["tightest_gap_with_rocking_clip_bearing_mm"].values())   # robust to the convention
+    assert all(a <= b for a, b in zip(f["tightest_gap_with_rocking_mm"].values(),
+                                      f["tightest_gap_with_rocking_clip_bearing_mm"].values()))

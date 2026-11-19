@@ -11,7 +11,11 @@ Selected arrangement (one, not a family):
   on a Ø3.0 groove root shared by all three pins, and a grip tab for removal. It is not a scaled DIN 6799.
 - **No washers:** the head and the clip bear on the lugs' washer-seat faces, which print on the bed.
 - **Length:** taken from the regenerated solids. Head underside to the groove's near flank is the lug stack
-  q1 − p0 plus an allowance for thicker printed lugs. The nominal axial float is that allowance plus the groove slack.
+  q1 − p0 plus an allowance for thicker printed lugs; the far flank adds the clip thickness and the groove slack.
+- **End play** (open assembly, proximal on the head): the distal can drop by the inter-lug gap (the metal design's
+  running gap, the only travel toward the proximal) and rise by the clip-side allowance (thick-lug allowance + clip
+  slack). Total end play = inter-lug gap + clip-side allowance; ``end_play_from_solids`` reproduces it from the
+  solids. The extra clip-side room lets the distal rock more than the metal model allows (``rocking``).
 - **Joint:** the F1S fit-test section, with the same pivot, lugs, stop, blade sections and hole. It is trimmed for
   printing like the metal kit's fit pair, but has no clamp block or load tab, so nothing but the joint limits the
   hand fold.
@@ -75,7 +79,8 @@ FIELDS = {
     "pin_diameter_a_mm": ("num", (1.0, 10.0), True, "kullanılan pimin taşıma bölgesinde ölçülen çapı [mm]"),
     "pin_diameter_b_mm": ("num", (1.0, 10.0), False, "aynı kesitte ilk ölçüme dik ölçülen çap [mm] (ovallik)"),
     "other_pins_note": ("text", None, False, "diğer pim çeşitlerinin ölçülen çapı ve deliklerdeki geçmesi"),
-    "pin_grip_length_mm": ("num", (3.0, 40.0), False, "kafa altından kanalın yakın kenarına ölçülen boy [mm]"),
+    "pin_head_to_groove_near_mm": ("num", (3.0, 40.0), False, "kafa altından kanalın kafaya yakın kenarına (uzak kenarına değil) "
+                                                              "ölçülen boy [mm] (kumpas derinlik ucu)"),
     "lug_thickness_proximal_mm": ("num", (0.5, 30.0), False, "proksimal lug ölçülen kalınlığı [mm]"),
     "lug_thickness_distal_mm": ("num", (0.5, 30.0), False, "distal lug ölçülen kalınlığı [mm]"),
     "coupon_fit": ("fits", None, False, "kullanılan pimle kupon deliği başına geçme: " + " / ".join(fit.FITS)),
@@ -86,7 +91,9 @@ FIELDS = {
     "clip_removes": ("bool", None, False, "klips tırnakla/elle çıkarılabildi mi"),
     "clip_retains": ("bool", None, True, "deneme boyunca klips yerinde kaldı mı"),
     "rotation_free": ("bool", None, True, "distal tüm hareket boyunca elle takılmadan dönüyor mu"),
-    "axial_float_mm": ("num", (0.0, 3.0), False, "eksenel boşluk [mm] (sentil; ölçülmediyse null)"),
+    "end_play_total_mm": ("num", (0.0, 3.0), False, "uçtan uca eksenel boşluk [mm]: distal proksimal lug'a "
+                                                     "bastırılmış, klips kanalın uzak kenarına itilmişken distal üst yüzü "
+                                                     "ile klips arasındaki sentil ölçüsü (ölçülmediyse null)"),
     "open_stop_seats": ("bool", None, True, "açık konumda burun pede oturuyor mu (ışık testi)"),
     "stop_gap_mm": ("num", (0.0, 5.0), False, "açık stop aralığı [mm] (sentil)"),
     "folded_stop_deg": ("num", (0.0, 180.0), False, "elle ulaşılan katlanma açısı [°] (açıölçer)"),
@@ -171,6 +178,35 @@ def _vol(a, b):
     return 0.0 if x is None else float(x.volume)
 
 
+def _free_travel(moving, fixed, sign, hi=2.0, tol=1e-3):
+    """Largest z translation (sign ±1) of ``moving`` before it overlaps ``fixed`` (bisection, overlap > 1e-4 mm³)."""
+    b3d = cad._b3d()
+    if _vol(moving, fixed) > 1e-4:
+        raise RuntimeError("Parts overlap at the nominal pose.")
+    lo = 0.0
+    while hi - lo > tol:
+        mid = (lo + hi) / 2.0
+        if _vol(moving.translate(b3d.Vector(0, 0, sign * mid)), fixed) > 1e-4:
+            hi = mid
+        else:
+            lo = mid
+    return lo
+
+
+def end_play_from_solids(demo: dict) -> dict:
+    """Distal axial travel in the open assembly with the proximal on the head: down onto the proximal lug, and up to
+    the clip pushed against the groove's far flank (the clip's own slack measured against the pin)."""
+    b3d = cad._b3d()
+    parts = demo["parts"]
+    hw = parts.hardware
+    slack = _free_travel(hw["clip"], hw["pin"], +1)
+    clip_far = hw["clip"].translate(b3d.Vector(0, 0, slack))
+    down = _free_travel(parts.distal, parts.proximal, -1)
+    up = _free_travel(parts.distal, clip_far, +1)
+    return {"below_nominal": down, "above_nominal": up, "total": down + up, "clip_slack": slack,
+            "method": "katıların z ötelemesiyle ikiye bölme, 0,001 mm"}
+
+
 def _finite(x):
     return None if x is None or not math.isfinite(x) else float(x)
 
@@ -212,20 +248,57 @@ def check(demo: dict) -> dict:
                     for dx in np.arange(1.0, 16.0, 1.0) for body in (parts.proximal, parts.distal))
     h = d.hardware
     g0, g1, top = _groove_z(stack, s)
+    (_, p1), (q0, _) = d.lug_bands_mm
+    lug_gap = q0 - p1                                                              # inter-lug running gap
+    side = s.stack_allowance_mm + s.groove_slack_mm                                 # clip-side assembly allowance
+    tp, td = d.lug_thicknesses_mm
+    # tilt about an in-plane axis (radians). faces: total end play over the boss radius, the codebase's metal-model
+    # convention (checks.joint_play: lug gap / R_b) and the conservative bound; clip: the distal pivots under the clip
+    # (outer radius r_c) and drops at the boss edge, (g + a)/(R_b + r_c). holes: c/t_d + c/t_p with the CAD pin.
+    rb = d.connection.boss_radius_mm
+    r_clip = s.clip_seat_mm / 2.0 + s.clip_arm_mm
+    faces = (lug_gap + side) / rb
+    faces_clip = (lug_gap + side) / (rb + r_clip)
+    holes = {f"{p:.2f}": (d.hole_diameter_mm - p) / td + (d.hole_diameter_mm - p) / tp for p in PIN_DIAMETERS_MM}
+    worst = {k: min(faces, v) for k, v in holes.items()}
+    worst_clip = {k: min(faces_clip, v) for k, v in holes.items()}
     geometry = {
-        "stack_mm": stack, "pin_length_mm": top, "grip_mm": g1 - s.head_height_mm,
+        "stack_mm": stack, "pin_length_mm": top,
+        "grip_near_flank_mm": g0 - s.head_height_mm, "grip_far_flank_mm": g1 - s.head_height_mm,
         "groove_start_above_stack_mm": g0 - s.head_height_mm - stack, "groove_width_mm": g1 - g0,
         "groove_root_mm": s.groove_root_mm, "groove_depth_mm": {f"{p:.2f}": (p - s.groove_root_mm) / 2 for p in PIN_DIAMETERS_MM},
         "clip_seat_mm": s.clip_seat_mm, "clip_mouth_mm": s.clip_mouth_mm, "clip_thickness_mm": s.clip_thickness_mm,
-        "float_nominal_mm": s.stack_allowance_mm + s.groove_slack_mm,
-        "assembles_up_to_extra_stack_mm": s.stack_allowance_mm + s.groove_slack_mm,
+        "inter_lug_gap_mm": lug_gap, "thick_lug_allowance_mm": s.stack_allowance_mm,
+        "clip_groove_slack_mm": s.groove_slack_mm, "clip_side_allowance_mm": side, "end_play_total_mm": lug_gap + side,
+        "end_play_from_solids_mm": end_play_from_solids(demo),
+        "assembles_up_to_extra_stack_mm": side,
+        "rocking": {"faces_deg": math.degrees(faces), "faces_clip_bearing_deg": math.degrees(faces_clip),
+                    "holes_deg": {k: math.degrees(v) for k, v in holes.items()},
+                    "worst_deg": {k: math.degrees(v) for k, v in worst.items()},
+                    "worst_clip_bearing_deg": {k: math.degrees(v) for k, v in worst_clip.items()},
+                    "metal_model_faces_deg": math.degrees(lug_gap / rb),
+                    "note": "yüz sınırı (ihtiyatlı, metal modelin kuralı) = uçtan uca eksenel boşluk / göbek yarıçapı; "
+                            "klips dayanmalı = boşluk / (göbek yarıçapı + klips dış yarıçapı); delik sınırı = "
+                            "c/t_d + c/t_p (CAD); en kötüsü = min(yüz, delik)"},
         "head_diameter_mm": s.head_diameter_mm,
         "spot_face_diameter_mm": 2 * (max(h.washer_od_mm, h.clip_od_mm, h.head_diameter_mm) / 2 + cad.SPOT_CLEAR_MM),
         "hole_diameter_mm": d.hole_diameter_mm,
         "diametral_clearance_cad_mm": {f"{p:.2f}": d.hole_diameter_mm - p for p in PIN_DIAMETERS_MM},
     }
+    s_k = sw["where"][k][2] if sw["where"][k] else None
+
+    def with_rocking(tilts):
+        # distal tip tilted down (worst direction); it drops by the inter-lug gap at the boss edge (radius R_b) and
+        # rocks about that edge, so a point at radial distance s from the pin drops g + φ·(s − R_b). An estimate at
+        # the nominal tightest column only: a geometric expectation, not a clearance acceptance.
+        if s_k is None or not math.isfinite(gap[k]):
+            return None
+        return {kk: float(gap[k]) - (lug_gap + v * max(0.0, s_k - rb)) for kk, v in tilts.items()}
     fold = {"useful_travel_deg": travel, "tightest_angle_deg": configs["tightest"],
             "min_gap_mm": _finite(float(gap[k])), "folded_stop_deg": sw["folded_stop_deg"],
+            "tightest_distance_from_pin_mm": s_k,
+            "tightest_gap_with_rocking_mm": with_rocking(worst),
+            "tightest_gap_with_rocking_clip_bearing_mm": with_rocking(worst_clip),
             "body_contact_deg": float(-ang[np.flatnonzero(gap < 0.0)[0]]) if (gap < 0.0).any() else None,
             "metal_design_required_travel_deg": sw["required_travel_deg"], "method": sw["method"]}
     return {"geometry": geometry, "fold": fold, "configurations": configs, "interference_mm3": inter,
@@ -264,6 +337,11 @@ def parse(text: str, pred: dict) -> dict:
     return fit.parse(text, pred, fields=FIELDS, schema=SCHEMA)
 
 
+def _cad(pred, key):
+    v = (pred.get("geometry") or {}).get(key)
+    return "–" if v is None else f"{v:.2f}"
+
+
 def classify(rec: dict, pred: dict, d: PrototypeDesign) -> dict:
     """A printed-pin observation: shown, never applied to a design and never direct evidence for the metal pin."""
     diffs = fit.process_differences(d, rec)
@@ -299,6 +377,9 @@ def classify(rec: dict, pred: dict, d: PrototypeDesign) -> dict:
                  "altında: engelin yerini kaydedin.")
     rows = [("Pim çeşidi (CAD) [mm]", rec["pin_variant_mm"]), ("Pim çapı ölçülen [mm]", rec["pin_diameter_a_mm"]),
             ("Pim çapı dik yön [mm]", b), ("Deliğe takılma", rec["insertion_fit"]),
+            ("Kafa altı → kanal yakın kenarı [mm] (CAD)",
+             f"{rec.get('pin_head_to_groove_near_mm')} ({_cad(pred, 'grip_near_flank_mm')})"),
+            ("Uçtan uca eksenel boşluk [mm] (CAD)", f"{rec.get('end_play_total_mm')} ({_cad(pred, 'end_play_total_mm')})"),
             ("Serbest dönüş", rec["rotation_free"]), ("Açık stop oturuyor", rec["open_stop_seats"]),
             ("Elle katlanma [°]", rec.get("folded_stop_deg")), ("Model yararlı hareket [°]", travel),
             ("Klips takıldı / çıktı / yerinde kaldı",
@@ -397,18 +478,20 @@ def _views(demo, chk, folder):
             ax.plot(line[:, 0], line[:, 1], color=col, lw=lw, label=lab if k == 0 else None)
     zh = demo["z_head_mm"]
     g0, g1, _ = _groove_z(stack, s)
-    marks = ((p0, "p0: kafa altı / proksimal pul yüzü"), (p1, "p1"), (q0, "q0"), (q1, "q1: distal pul yüzü"),
-             (zh + g0, "kanal yakın kenarı"), (zh + g1, "kanal uzak kenarı"))
-    for z, lab in marks:
+    marks = ((p0, "p0: kafa altı / proksimal pul yüzü", "center"), (p1, "p1", "top"), (q0, "q0", "bottom"),
+             (q1, "q1: distal pul yüzü", "top"), (zh + g0, "kanal yakın kenarı", "bottom"),
+             (zh + g1, "kanal uzak kenarı", "center"))
+    for z, lab, va in marks:                       # paired planes 0.15–0.3 mm apart: labels above/below their line
         ax.axhline(z, color="0.6", lw=0.5, ls=":")
-        ax.text(py + 7.5, z, f"{lab} ({_tr(z)})", fontsize=7, va="center")
-    ax.set_xlim(py - 12, py + 16); ax.set_ylim(zh - 1.5, zh + g["pin_length_mm"] + 2.0); ax.set_aspect("equal")
+        ax.text(py + 7.5, z, f"{lab} ({_tr(z)})", fontsize=7, va=va)
+    ax.set_xlim(py - 12, py + 16); ax.set_ylim(zh - 4.5, zh + g["pin_length_mm"] + 2.0); ax.set_aspect("equal")
     ax.set_xlabel("y [mm] (açıklık)"); ax.set_ylabel("z [mm] (pim ekseni ∥ mil)")
     ax.set_title(f"Pim ekseninden kesit (x = {_tr(px)} mm), açık konum", fontsize=11)
-    ax.text(0.02, 0.02, f"lug yığını q1 − p0 = {_tr(stack)} mm · kanal yığının {_tr(g['groove_start_above_stack_mm'])} mm "
-            f"üstünde (taşıma bölgesi dışında)\nklips {_tr(s.clip_thickness_mm, 1)} + kanal boşluğu "
-            f"{_tr(s.groove_slack_mm, 1)} mm · nominal eksenel boşluk {_tr(g['float_nominal_mm'])} mm · pim boyu "
-            f"{_tr(g['pin_length_mm'])} mm · pul yok",
+    ax.text(0.02, 0.02, f"lug yığını q1 − p0 = {_tr(stack)} mm · kafa altı → kanal yakın kenarı {_tr(g['grip_near_flank_mm'])}, "
+            f"uzak kenarı {_tr(g['grip_far_flank_mm'])} mm · pim boyu {_tr(g['pin_length_mm'])} mm · pul yok\n"
+            f"uçtan uca eksenel boşluk {_tr(g['end_play_total_mm'])} mm = lug arası {_tr(g['inter_lug_gap_mm'])} (aşağı) + "
+            f"klips tarafı payı {_tr(g['clip_side_allowance_mm'])} (yukarı: kalın lug payı {_tr(s.stack_allowance_mm)} + "
+            f"klips boşluğu {_tr(s.groove_slack_mm)})",
             transform=ax.transAxes, fontsize=8, va="bottom", bbox=dict(fc="white", ec="0.7"))
     ax.legend(loc="upper left", fontsize=8)
     out.append(("gorseller/pim_kesiti.png", fig))
@@ -445,6 +528,126 @@ def _views(demo, chk, folder):
     return paths
 
 
+def read_3mf(path):
+    """[(object name, vertices (n, 3) in plate mm, triangles (m, 3))] of every build item, transforms applied."""
+    import xml.etree.ElementTree as ET
+    import zipfile
+    core = "{http://schemas.microsoft.com/3dmanufacturing/core/2015/02}"
+    with zipfile.ZipFile(path) as z:
+        root = ET.fromstring(z.read(next(n for n in z.namelist() if n.endswith(".model"))))
+    objs = {o.get("id"): o for o in root.iter(core + "object")}
+
+    def tf(s):
+        if not s:
+            return np.eye(3), np.zeros(3)
+        v = [float(x) for x in s.split()]
+        return np.array(v[:9]).reshape(3, 3), np.array(v[9:12])
+
+    def walk(oid, R, tr):
+        o = objs[oid]
+        mesh = o.find(core + "mesh")
+        if mesh is not None:
+            V = np.array([[float(v.get(a)) for a in "xyz"] for v in mesh.iter(core + "vertex")])
+            F = np.array([[int(x.get(a)) for a in ("v1", "v2", "v3")] for x in mesh.iter(core + "triangle")])
+            yield V @ R + tr, F
+        comps = o.find(core + "components")
+        for c in ([] if comps is None else comps.findall(core + "component")):
+            Rc, tc = tf(c.get("transform"))
+            yield from walk(c.get("objectid"), Rc @ R, tc @ R + tr)
+    out = []
+    for item in root.iter(core + "item"):
+        R, tr = tf(item.get("transform"))
+        oid = item.get("objectid")
+        out += [(objs[oid].get("name") or oid, V, F) for V, F in walk(oid, R, tr)]
+    return out
+
+
+def _color(name):
+    return (PIN_C if "_pim_" in name else CLIP_C if "_klips" in name else PROX_C if "proksimal" in name
+            else DIST_C if "distal" in name else "#C9A227")
+
+
+def _scene(ax, meshes):
+    """All triangles of a 3D view in ONE collection, so matplotlib depth-sorts faces across parts (one collection
+    per part draws whole parts over each other). ``meshes``: [(vertices, triangles, color)]."""
+    import matplotlib.colors as mcolors
+    from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+    light = np.array([-0.4, -0.5, 0.77]) / np.linalg.norm([-0.4, -0.5, 0.77])
+    tris, colors = [], []
+    for V, F, color in meshes:
+        tri = V[F]
+        n = np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0])
+        n /= np.linalg.norm(n, axis=1, keepdims=True) + 1e-12
+        tris.append(tri)
+        colors.append(np.clip(np.array(mcolors.to_rgb(color))[None, :] * (0.35 + 0.65 * np.abs(n @ light))[:, None], 0, 1))
+    ax.add_collection3d(Poly3DCollection(np.vstack(tris), facecolors=np.vstack(colors), edgecolors="none"))
+    allv = np.vstack([V for V, _, _ in meshes])
+    return allv.min(axis=0), allv.max(axis=0)
+
+
+def _previews(folder, demo, d):
+    """CAD previews (not slicer previews): each first-print plate read back from its 3MF (top and shaded views), and
+    the assembled joint at the open stop from above and from below."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.collections import PolyCollection
+    paths = []
+    for stem, title in (("01A_kucuk_parcalar", "Plaka 01A — kupon, pimler, klipsler (destek yok, brim yok)"),
+                        ("01B_mafsal_cifti", "Plaka 01B — mafsal çifti (ağaç destek yalnız tabladan, 3 mm brim)")):
+        objs = read_3mf(folder / "3mf" / f"{stem}.3mf")
+        allv = np.vstack([V for _, V, _ in objs])
+        lo, hi = allv.min(axis=0), allv.max(axis=0)
+        fig = plt.figure(figsize=(15, 6.8))
+        ax = fig.add_subplot(1, 2, 1)
+        for name, V, F in objs:
+            ax.add_collection(PolyCollection(V[F][:, :, :2], facecolor=_color(name), edgecolor=_color(name),
+                                             alpha=0.75, linewidths=0, rasterized=True))
+            c = V.mean(axis=0)
+            ax.text(c[0], V[:, 1].max() + 1.2, name.replace("F1S_", ""), ha="center", fontsize=7)
+        ax.set_xlim(lo[0] - 6, hi[0] + 6); ax.set_ylim(lo[1] - 6, hi[1] + 8); ax.set_aspect("equal")
+        ax.set_xlabel("tabla X [mm]"); ax.set_ylabel("tabla Y [mm]"); ax.grid(True, lw=0.3)
+        ax.set_title(f"Üstten (z = 0 tabla düzlemi); en yüksek nesne {hi[2]:.1f} mm", fontsize=10)
+        ax3 = fig.add_subplot(1, 2, 2, projection="3d")
+        _scene(ax3, [(V, F, _color(name)) for name, V, F in objs])
+        ax3.set_xlim(lo[0], hi[0]); ax3.set_ylim(lo[1], hi[1]); ax3.set_zlim(0, max(hi[2], 1.0))
+        ax3.set_box_aspect((hi[0] - lo[0], hi[1] - lo[1], max(hi[2], 1.0)))
+        ax3.view_init(elev=32, azim=-62)
+        ax3.set_xlabel("X"); ax3.set_ylabel("Y"); ax3.set_zlabel("Z")
+        fig.suptitle(f"{title}\nCAD önizleme: `3mf/{stem}.3mf` dosyasından okundu — dilimleyici önizlemesi DEĞİL "
+                     "(destek, brim ve takım yolları gösterilmez)", fontsize=11)
+        paths.append((f"gorseller/onizleme_{stem}.png", fig))
+    parts = demo["parts"]
+    meshes = []
+    for shape, col in ((parts.proximal, PROX_C), (parts.distal, DIST_C), (parts.hardware["pin"], PIN_C),
+                       (parts.hardware["clip"], CLIP_C)):
+        v, f = cad.tessellate(copy.deepcopy(shape), 0.1, 0.3)
+        meshes.append((v, f, col))
+    px, py = parts.pin_axis
+    fig = plt.figure(figsize=(15, 7.5))
+    for k, (elev, azim, sub) in enumerate(((26, -55, "üstten: klips, pim ucu ve distal pul yüzü"),
+                                           (-26, -55, "alttan: pim kafası ve proksimal pul yüzü"))):
+        ax = fig.add_subplot(1, 2, k + 1, projection="3d")
+        lo, hi = _scene(ax, meshes)
+        lo = np.array([max(lo[0], px - 16), max(lo[1], py - 16), lo[2]])     # the joint, not the whole stubs
+        hi = np.array([min(hi[0], px + 16), min(hi[1], py + 16), hi[2]])
+        ax.set_xlim(lo[0], hi[0]); ax.set_ylim(lo[1], hi[1]); ax.set_zlim(lo[2], hi[2])
+        ax.set_box_aspect(hi - lo)
+        ax.view_init(elev=elev, azim=azim)
+        ax.set_title(sub, fontsize=10)
+        ax.set_xlabel("x [mm]"); ax.set_ylabel("y [mm]"); ax.set_zlabel("z [mm]")
+    fig.suptitle(f"{d.name} basılı pim gösterici — montajlı mafsal, açık konum (θ = 0°), pim Ø{max(PIN_DIAMETERS_MM):.2f}"
+                 "\nCAD önizleme (montaj katıları) — dilimleyici önizlemesi değil", fontsize=11)
+    paths.append(("gorseller/onizleme_montaj_acik.png", fig))
+    out = []
+    for name, f in paths:
+        f.tight_layout()
+        f.savefig(folder / name, dpi=130)
+        plt.close(f)
+        out.append(folder / name)
+    return out
+
+
 def export_package(d: PrototypeDesign, folder: Path, demo=None, chk=None) -> dict:
     """Self-contained Turkish operator package: the two first-print plates (3MF, print orientation), STL per part,
     STEP per part (assembly frame, open), views, guides, trial protocol, the forms and the trial record template."""
@@ -477,6 +680,7 @@ def export_package(d: PrototypeDesign, folder: Path, demo=None, chk=None) -> dic
         b3d.export_step(shape, str(folder / "step" / f"{name}.step"))
         files.append(folder / "step" / f"{name}.step")
     files += _views(demo, chk, folder)
+    files += _previews(folder, demo, d)
     pred = _jsonable(predictions(d, chk, s))
     docs = {"00_ONCE_BENI_OKU.md": _start_doc(d, pred), "BASKI_REHBERI.md": _guide_doc(d, pred, dims_a, dims_b),
             "MONTAJ.md": _assembly_doc(d, pred), "DENEME_PROTOKOLU.md": _protocol_doc(d, pred),
@@ -562,7 +766,7 @@ pim deliğe göre seçilir, delik pime göre değiştirilmez.
 | `MONTAJ.md` | parça listesi, pim seçimi, montaj ve söküm, klips takma/çıkarma |
 | `DENEME_PROTOKOLU.md` | elle deneme adımları, çevrimler, fotoğraflar, bu denemeden ne öğrenilir |
 | `deneme_kaydi.json` | deneme kaydı (yazıcı, malzeme, filament önceden dolduruldu; etiketle farklıysa düzeltin) |
-| `gorseller/` | patlatılmış montaj, pim ekseninden kesit, açık / en dar / katlı konumlar |
+| `gorseller/` | patlatılmış montaj, pim ekseninden kesit, açık / en dar / katlı konumlar; iki plakanın ve montajın CAD önizlemesi (`onizleme_*.png`, dilimleyici önizlemesi değil) |
 | `3mf/`, `stl/` | baskı yönünde geometri (mm, %100 ölçek); `step/`: montaj konumunda CAD (açık) |
 | `predictions.json`, `design.json`, `SHA256SUMS` | model değerleri, tasarım kaydı, dosya özetleri |
 
@@ -680,10 +884,27 @@ parçayı kaydedin.
 
 ## Yığın (CAD)
 
-Lug yığını q1 − p0 = {_tr(g['stack_mm'])} mm. Kanal bu yığının {_tr(g['groove_start_above_stack_mm'])} mm üstünde başlar
-(taşıma bölgesinin dışında), genişliği {_tr(g['groove_width_mm'])} mm, kanal dibi Ø{_tr(g['groove_root_mm'], 1)} mm. Klips
-{_tr(s['clip_thickness_mm'], 1)} mm; nominal eksenel boşluk {_tr(g['float_nominal_mm'])} mm. Basılı lug'lar toplamda
-{_tr(g['assembles_up_to_extra_stack_mm'])} mm'ye kadar kalın çıksa da klips takılır. Metal referans (pim
+Lug yığını q1 − p0 = {_tr(g['stack_mm'])} mm (iki lug + aralarındaki {_tr(g['inter_lug_gap_mm'])} mm). Kanal bu yığının
+{_tr(g['groove_start_above_stack_mm'])} mm üstünde başlar (taşıma bölgesinin dışında), genişliği {_tr(g['groove_width_mm'])} mm,
+kanal dibi Ø{_tr(g['groove_root_mm'], 1)} mm; klips {_tr(s['clip_thickness_mm'], 1)} mm.
+
+Boy referansları (kafa altından ölçülür):
+
+- **kanalın yakın kenarı: {_tr(g['grip_near_flank_mm'])} mm** — kayıtta ölçülen değer (`pin_head_to_groove_near_mm`);
+- kanalın uzak kenarı: {_tr(g['grip_far_flank_mm'])} mm (yakın kenar + klips + klips boşluğu).
+
+Eksenel hareket (açık montaj, proksimal kafaya oturmuş):
+
+- **uçtan uca eksenel boşluk: {_tr(g['end_play_total_mm'])} mm** (CAD katılarından da aynı bulundu);
+- bunun **{_tr(g['inter_lug_gap_mm'])} mm**'si nominal lug arası aralıktır: distal proksimale doğru yalnız bu kadar iner
+  (metal tasarımın çalışma aralığı);
+- **{_tr(g['clip_side_allowance_mm'])} mm**'si tek taraflı, klips tarafı montaj payıdır: distal nominal konumundan bu kadar
+  yükselebilir ({_tr(g['thick_lug_allowance_mm'])} mm kalın basılan lug payı + {_tr(g['clip_groove_slack_mm'])} mm klipsin
+  kanal içindeki boşluğu).
+
+Basılı lug'lar toplamda {_tr(g['assembles_up_to_extra_stack_mm'])} mm'ye kadar kalın çıksa da klips takılır (bu durumda
+uçtan uca boşluk o kadar azalır). Klips tarafındaki pay nedeniyle distal, metal modelden fazla sallanabilir: yüz sınırı
+≈ {_tr(g['rocking']['faces_deg'], 1)}° (metal model {_tr(g['rocking']['metal_model_faces_deg'], 1)}°). Metal referans (pim
 {d.hardware.pin_standard}, iki pul ve segman) ayrı bir yığındır; bu pim onun boyunu kopyalamaz.
 
 ## Kontrol listesi
@@ -695,8 +916,28 @@ Lug yığını q1 − p0 = {_tr(g['stack_mm'])} mm. Kanal bu yığının {_tr(g[
 """
 
 
+def _range(values):
+    v = list(values.values())
+    return f"{_tr(min(v))} ile {_tr(max(v))}"
+
+
+def _tightest_text(f, g):
+    """The tightest pose: nominal gap and the rocking expectation (both rocking bounds), or only what is known."""
+    if f.get("min_gap_mm") is None or f.get("tightest_distance_from_pin_mm") is None:
+        return " (bu konumda iki parça üst üste gelmiyor; nominal açıklık tanımsız)."
+    text = (f" (nominal dikey açıklık {_tr(f['min_gap_mm'])} mm, pimden {_tr(f['tightest_distance_from_pin_mm'], 0)} mm "
+            "uzakta).")
+    r, a, b = g["rocking"], f.get("tightest_gap_with_rocking_mm"), f.get("tightest_gap_with_rocking_clip_bearing_mm")
+    if a and b:
+        text += (f" Distal tam sallandığında model bu konumda temas bekler: ihtiyatlı sınırla (yüz sınırı, "
+                 f"{_tr(min(r['worst_deg'].values()), 1)}–{_tr(max(r['worst_deg'].values()), 1)}°) tahmini açıklık "
+                 f"{_range(a)} mm; klipste dayanma varsayımıyla ({_tr(min(r['worst_clip_bearing_deg'].values()), 1)}–"
+                 f"{_tr(max(r['worst_clip_bearing_deg'].values()), 1)}°) {_range(b)} mm.")
+    return text
+
+
 def _protocol_doc(d, pred):
-    f = pred["fold"]
+    f, g = pred["fold"], pred["geometry"]
     return f"""# {d.name} basılı pim gösterici — elle deneme protokolü
 
 Açı işareti: açık konum θ = 0°. Distal dönüş yönünün tersine geri katlanır; bu yön **negatif θ** ile gösterilir (θ = −103° = 103° katlanma). Kayıtta katlanma açısını pozitif yazın (ör. 140).
@@ -711,7 +952,9 @@ Kumpas (0,01–0,02 mm), sentil takımı (isteğe bağlı), açıölçer, telefo
 ## Adımlar
 
 1. **Ölçüler.** Üç pimin çapını iki dik yönde ölçün; isterseniz lug kalınlıklarını ve kanal–kafa altı boyunu da
-   ölçün. Kullanılan pimi kaydedin (`pin_variant_mm`, `pin_diameter_a_mm`, `pin_diameter_b_mm`).
+   ölçün. Kullanılan pimi kaydedin (`pin_variant_mm`, `pin_diameter_a_mm`, `pin_diameter_b_mm`). Kafa altından
+   kanalın kafaya **yakın** kenarına boyu kumpasın derinlik ucuyla ölçün (`pin_head_to_groove_near_mm`; CAD
+   {_tr(g['grip_near_flank_mm'])} mm; uzak kenar CAD {_tr(g['grip_far_flank_mm'])} mm).
 2. **Geçme.** Kullanılan pimle kupon deliklerini (`coupon_fit`) ve mafsal deliklerini (`insertion_fit`) değerlendirin.
    Pimin elle çıkıp çıkmadığını yazın (`removal_by_hand`).
 3. **Klips.** Takma (`clip_installs`) ve tırnakla çıkarma (`clip_removes`). Deneme boyunca yerinde kalıp kalmadığı
@@ -719,9 +962,15 @@ Kumpas (0,01–0,02 mm), sentil takımı (isteğe bağlı), açıölçer, telefo
 4. **Serbest dönüş.** Distal açık stoptan katlı konuma kadar takılmadan dönüyor mu (`rotation_free`)? Takıldığı açıyı
    ve yeri yazın.
 5. **Açık stop.** Burun pede oturuyor mu (ışık testi, `open_stop_seats`); sentil varsa aralık (`stop_gap_mm`).
+   **Uçtan uca eksenel boşluk** (sentil varsa): distal'i proksimal lug'a bastırın, klipsi kanalın uzak kenarına itin
+   ve distal üst yüzü ile klips arasındaki aralığı ölçün (`end_play_total_mm`). CAD: uçtan uca
+   {_tr(g['end_play_total_mm'])} mm = nominal lug arası {_tr(g['inter_lug_gap_mm'])} mm + tek taraflı klips tarafı payı
+   {_tr(g['clip_side_allowance_mm'])} mm. Bu, metal kitin eksenel boşluk ölçümü değildir.
 6. **Katlanma.** Elle ulaşılan katlanma açısı (`folded_stop_deg`). Model: yararlı hareket ≈ {f['useful_travel_deg']:.0f}°,
-   en dar ara konum θ ≈ {f['tightest_angle_deg']:.0f}°. Görülen temas veya sürtünmeyi yeriyle yazın
-   (`interference_observed`) ve fotoğraflayın.
+   en dar ara konum θ ≈ {f['tightest_angle_deg']:.0f}°{_tightest_text(f, g)} Önce distal'i bastırmadan, kendi
+   ağırlığıyla katlayın; sonra distal ucunu hafifçe proksimale doğru bastırarak tekrarlayın. Görülen temas veya
+   sürtünmeyi, bastırarak mı bastırmadan mı olduğunu belirterek yeriyle yazın (`interference_observed`) ve
+   fotoğraflayın. Bu geometrik bir gözlemdir.
 7. **Çevrimler.** Açık → katlı → açık bir çevrimdir. Beyan edilen sayıda çevrim yapın (öneri: 10, sonra toplam 50,
    sonra toplam 200) ve her aşamada şunları kontrol edin:
    - aşınma, beyazlama ve toz (`wear_observed`);
@@ -763,6 +1012,7 @@ def _form_doc(d, pred):
     table = "\n".join(f"| {k} | {v} | |" for k, v in rows)
     obs = ["Kullanılan pim (çentik sayısı / CAD çapı)", "Pim çapı, iki dik yön [mm]", "Diğer pimlerin çapı ve geçmesi",
            "Mafsal deliğine takılma (girmez / sıkı / akıcı / boşluklu)", "Pim elle çıkıyor mu",
+           "Kafa altı → kanalın yakın kenarı [mm]", "Uçtan uca eksenel boşluk [mm] (sentil)",
            "Klips takıldı / çıkarıldı / yerinde kaldı", "Serbest dönüş", "Açık stop oturuyor mu; aralık [mm]",
            "Elle katlanma açısı [°]", "Görülen temas/sürtünme (yer, açı)", "Toplam çevrim sayısı",
            "Aşınma / boşluk değişimi / hasar", "Fotoğraf dosya adları"]
