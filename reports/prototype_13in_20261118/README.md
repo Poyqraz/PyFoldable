@@ -193,13 +193,28 @@ Regenerate F1S with
 Regenerate the sizing grid with `study.joint_sizing(Path.cwd(), Path('reports/prototype_13in_20261118/F1S_sizing'))`.
 It needs the saved polars in `aero/`.
 
+## F1S measurement print handoff
+
+`F1S_print_handoff/` is a geometry-and-instructions package for the P1S operator. It has not been sliced in Bambu
+Studio. It holds:
+
+- print-oriented 3MF per plate: `01_kupon` first, then `02_cift_c0p00` … `c0p40`, each with named parts;
+- STL per part;
+- the Turkish guide, the hardware and assembly doc, and the proposed-versus-used form;
+- the prefilled measurement record (schema /2), predictions, the design record and SHA-256 sums.
+
+It is generated with `fit.export_handoff(d, folder)`, where `d` is the F1S design from `study.run_candidate`. See
+`docs/prototype_13in.md`.
+
 ## What is committed (second increment)
 
 - `study/`: everything.
-- `fit_kit_F1S/`, `fit_kit_E/` and `fit_kit_B/`: everything except `stl/` and `step/`.
+- `fit_kit_F1S/`, `fit_kit_E/` and `fit_kit_B/`: everything except `stl/` and `step/`. The 3MF files are the
+  printing set. The fit-pair STEP files are about 17 MB each, so they stay local; they are regenerable and listed in
+  each kit's `SHA256SUMS`.
 - `F1S_candidate/`: the documents, drawings, design record, CSVs, figure and `3mf/`. STEP and STL stay local.
-- `F1S_sizing/`: everything. The 3MF files are the printing set. The fit-pair STEP files
-  are about 17 MB each, so they stay local; they are regenerable and listed in the kit's `SHA256SUMS`.
+- `F1S_sizing/`: everything.
+- `F1S_print_handoff/`: everything. Its 3MF and STL files are the operator's print files.
 - `E_offset6_ts0p86_zone45_travel140/`: the documents, drawings, design record and `3mf/`. STEP and STL stay local.
 
 ## Print first

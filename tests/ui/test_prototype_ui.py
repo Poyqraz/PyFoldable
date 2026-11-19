@@ -272,7 +272,8 @@ def _kit(tmp_path):
     (tmp_path / "3mf").mkdir()
     (tmp_path / "3mf" / "hole_coupon.3mf").write_bytes(b"3mf")
     rec = json.loads(fit.template(pred))
-    rec.update(print_printer="P1S", print_material="PLA", print_nozzle_mm=0.4, print_layer_mm=0.2, print_walls=3,
+    rec.update(print_printer="P1S", print_material_family="PLA", print_filament_product="PLA", print_slicer="BS",
+               pin_grip_length_mm=12.0, washer_stack_mm=1.0, print_nozzle_mm=0.4, print_layer_mm=0.2, print_walls=3,
                print_infill_fraction=1.0, pin_measured_diameter_mm=2.99, coupon_fit=["sıkı", "sıkı", "akıcı", "akıcı", "boşluklu"],
                fit_pair_clearance_mm=0.2, lug_thickness_proximal_mm=6.8, lug_thickness_distal_mm=7.2, axial_float_mm=0.1,
                tilt_load_n=2.0, tilt_range_at_tab_mm=0.4, friction_breakaway_n=0.3, stop_gap_mm=0.0, stop_seats=True,
@@ -335,7 +336,8 @@ def test_kit_generator_writes_the_editor_design_kit_and_goes_stale_on_change(fak
     at.radio(key="proto_fit_kit").set_value("G").run()                 # the generated kit is a record source
     pred = at.session_state["_proto_kitgen"]["pred"]
     rec = json.loads(fit.template(pred))
-    rec.update(print_printer="P1S", print_material="PLA", print_nozzle_mm=0.4, print_layer_mm=0.2, print_walls=3,
+    rec.update(print_printer="P1S", print_material_family="PLA", print_filament_product="PLA", print_slicer="BS",
+               pin_grip_length_mm=12.0, washer_stack_mm=1.0, print_nozzle_mm=0.4, print_layer_mm=0.2, print_walls=3,
                print_infill_fraction=1.0, pin_measured_diameter_mm=3.0, coupon_fit=["sıkı", "akıcı", "akıcı", "akıcı", "boşluklu"],
                fit_pair_clearance_mm=0.2, lug_thickness_proximal_mm=pred["lug_thicknesses_mm"][0],
                lug_thickness_distal_mm=pred["lug_thicknesses_mm"][1], axial_float_mm=0.1, tilt_load_n=2.0,

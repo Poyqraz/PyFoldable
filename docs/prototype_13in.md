@@ -309,6 +309,67 @@ Warnings name:
 
 The break-away torque gives the speed at which the centrifugal stop moment overcomes zero-load friction.
 
+## F1S measurement print: operator handoff (Bambu Lab P1S, Eco Smart Standard PLA)
+
+The P1S belongs to a printer operator. `reports/prototype_13in_20261118/F1S_print_handoff/` is therefore a
+**geometry-and-instructions package, not a sliced Bambu Studio project**. Nothing in it has been opened or sliced in
+Bambu Studio. The operator slices with their own P1S configuration and records what they actually used. The package
+contains:
+
+- **Geometry:**
+  - `3mf/01_kupon.3mf`, the **first plate**: the Ø4.0–4.4 mm hole coupon;
+  - `3mf/02_cift_cXpXX.3mf`, one fit pair per coupon step 0.00–0.40 mm, each with two named parts;
+  - STL copies of every part in `stl/`.
+
+  The files are in millimetres and placed in print orientation on z = 0, with the pin axis along printer Z. The
+  proximal prints upright on its lug's washer-seat face. Its stub is trimmed to that plane, away from the joint. The
+  distal prints **inverted** on its washer-seat face, so the running face between the lugs is a free top surface with
+  no support. The guide lists each object's expected bounding box, so the operator can check scale.
+- **Instructions:**
+  - `BASKI_REHBERI.md`: a Turkish guide covering units, scale, orientation and the **proposed** settings. These are a
+    0.4 mm nozzle, 0.20 mm layers, 3 wall loops (≈ 1.2 mm), 100 % infill, no X-Y hole or contour compensation,
+    supports only from the build plate (support under the inverted distal's stop nose is expected) and never on
+    holes, lug faces or the stop contact faces, and no ironing.
+  - `MONTAJ_VE_DONANIM.md`: hardware requirements and the assembly checklist.
+  - `BASKI_VE_OLCUM_KAYDI.md`: a proposed-versus-used settings form.
+- **Record and model data:**
+  - `olcum_kaydi.json`: the measurement record (schema /2). The kit identity and the confirmed setup (printer, PLA,
+    filament product) are prefilled. Nozzle, plate, manufacturer, process values and every physical measurement are
+    empty.
+  - `predictions.json`, `design.json`, `SHA256SUMS`.
+
+**Coupon to pair, one decision:** print the pair at the **smallest `akıcı` coupon step**. A pair exists for every
+step, so "nearest" no longer applies. If no hole runs freely, the exact pair is generated, either in the page (kit
+generator with that hole clearance) or with `fit.export_kit(d, folder, clearances=(c,))`.
+
+**Hardware stays open.** The proposed A4/316 Ø4×14 mm pin is not yet confirmed. Before assembly, check:
+
+- **Pin diameter:** Ø4.
+- **Head:** larger than the washer bore, 4.3 mm, and at most about 8.6 mm across.
+- **Retention:** a DIN 6799 size 3.2 groove, or a split-pin hole.
+- **Usable grip:** from under the head to the groove, at least 11.84 mm. That is the stack: two washers, both lugs
+  and the 0.3 mm gap.
+- **Excess grip:** target 0.1–0.4 mm over the measured stack, closed with DIN 988 shims or extra washers.
+
+The record now carries `pin_grip_length_mm` and `washer_stack_mm`. `fit.apply` warns when the grip is too short (by more
+than max(0.05 mm, 2 × resolution)), and when the float predicted from the hardware disagrees with the measured float
+by more than max(0.15 mm, 4 × resolution). That tolerance covers four readings and the clip-groove slack.
+
+**Evidence is bound to the process.** A measurement is direct evidence only when all three hold:
+
+- the CAD identity, including the declared process, matches the kit;
+- no change from the proposed settings is reported (`print_changes` is blank; hole compensation, say, makes it
+  transferred);
+- the specimen's actual printer, nozzle, material family, filament product, layer, wall loops and infill all match
+  the process the design declares (F1S declares P1S, 0.4 mm, PLA, Eco Smart Standard PLA).
+
+Otherwise it is "transferred": shown for exploration, while the clearance verdict keeps the worst-case model. The
+reasons are listed, and the specimen's process is stored on the design (`measured_process`). A later ASA print, or a
+changed process, is therefore its own experiment, even with identical CAD. Earlier record files keep their schema
+and kit identity, so their applicability stays readable. A schema /1 record is refused by the current parser rather
+than silently reinterpreted. A design saved with measured play before this change
+(no `measured_process`) loads as transferred, with its process marked unknown.
+
 ## Next full-size prototype: from the measurements to the print
 
 1. **Coupon (F1S kit, Ø4.0–4.4 mm).** Rate the holes and pick the smallest running fit. E's coupon may also be

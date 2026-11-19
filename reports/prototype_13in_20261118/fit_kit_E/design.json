@@ -108,7 +108,8 @@
     "measured_play_basis": null,
     "measured_axial_play_u_mm": null,
     "measured_tilt_u_deg": null,
-    "print_z_u_mm": null
+    "print_z_u_mm": null,
+    "measured_process": null
   },
   "hardware": {
     "pin_standard": "ISO 2341-A Ø3 (kafa Ø5×1) + DIN 6799 kanalı (Ø2,3 × 0,64)",
@@ -127,6 +128,10 @@
   "print_model": {
     "material": "PLA",
     "infill_fraction": 1.0,
+    "printer": null,
+    "nozzle_mm": 0.4,
+    "filament": null,
+    "wall_loops": 3,
     "wall_mm": 1.2,
     "layer_mm": 0.2,
     "min_te_thickness_mm": 0.8,

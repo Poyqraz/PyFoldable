@@ -1,6 +1,6 @@
 # Calculation and assumption summary — 13in-F1S
 
-Design identity `8f078b088d560217cfea4171240bd69f3175fada294e0a7a35277287b1ad65b4`. Section identity `NACA2412-te0.80mm-x0.50` (catalog NACA2412 with the trailing edge thickened to 0.8 mm: a new aerodynamic section; retained polars of the catalog profile apply only approximately and an XFOIL family for this section is required before aerodynamic conclusions).
+Design identity `052b3fe9578cbd22a5dba6e70e1354dd087e43dd9c3b8560d4f4ac31cf5f114a`. Section identity `NACA2412-te0.80mm-x0.50` (catalog NACA2412 with the trailing edge thickened to 0.8 mm: a new aerodynamic section; retained polars of the catalog profile apply only approximately and an XFOIL family for this section is required before aerodynamic conclusions).
 
 Physical qualification: **false**. Exploratory material values: Keşif varsayımı: FFF %100 doluluk için tipik veri sayfası/literatür aralığının alt tarafı; sahibin yazıcısı, filamenti ve baskı süreci için ölçülmedi.
 

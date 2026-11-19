@@ -236,7 +236,9 @@ B_PARAMS = {"planform.twist_scale": 0.6, "connection.axial_offset_mm": 9.5}
 F1_PARAMS = {"planform.twist_scale": 0.86, "planform.hinge_zone_mm": 45.0, "planform.hinge_chord_factor": 0.85,
              "planform.hinge_twist_factor": 0.6, "connection.axial_offset_mm": 6.5}
 F1S_PARAMS = {**F1_PARAMS, "connection.pin_diameter_mm": 4.0, "connection.nose_depth_mm": 4.0,
-              "connection.nose_extension_mm": 4.0}   # the strengthened F1 chosen from joint_sizing.csv
+              "connection.nose_extension_mm": 4.0,   # the strengthened F1 chosen from joint_sizing.csv
+              # declared process of the first measurement print (owner, 2026-11-19); nozzle 0.4 is provisional
+              "print_model.printer": "Bambu Lab P1S", "print_model.filament": "Eco Smart Standard PLA"}
 SIZING_AXES = {"connection.pin_diameter_mm": (3.0, 4.0, 5.0), "connection.nose_depth_mm": (4.0, 5.0, 6.0),
                "connection.nose_extension_mm": (2.0, 3.0, 4.0)}
 SIZING_EXTRA = ({"connection.pin_diameter_mm": 4.0, "connection.boss_radius_mm": 6.5, "connection.nose_depth_mm": 5.0,

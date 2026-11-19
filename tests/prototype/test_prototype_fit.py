@@ -16,7 +16,8 @@ ROOT = Path(__file__).resolve().parents[2]
 @pytest.fixture(scope="module")
 def kit_design():
     d = pd.default_design(ROOT, twist_scale=0.6)
-    return pd.with_changes(d, **{"connection.axial_offset_mm": 9.5})
+    return pd.with_changes(d, **{"connection.axial_offset_mm": 9.5, "print_model.printer": "Bambu Lab P1S",
+                                 "print_model.filament": "Eco Smart Standard PLA"})
 
 
 @pytest.fixture(scope="module")
@@ -26,8 +27,10 @@ def pred(kit_design):
 
 def _record(pred, **over):
     rec = {k: None for k in fit.FIELDS}
-    rec.update(schema=fit.SCHEMA, kit_design_sha256=pred["kit_design_sha256"], print_printer="Bambu P1S",
-               print_material="PLA (marka X)", print_nozzle_mm=0.4, print_layer_mm=0.2, print_walls=3,
+    rec.update(schema=fit.SCHEMA, kit_design_sha256=pred["kit_design_sha256"], print_printer="Bambu Lab P1S",
+               print_material_family="PLA", print_filament_product="Eco Smart Standard PLA", print_slicer="Bambu Studio",
+               pin_grip_length_mm=pred["lug_thicknesses_mm"][0] + pred["lug_thicknesses_mm"][1] + 0.3 + 1.0,
+               washer_stack_mm=1.0, print_nozzle_mm=0.4, print_layer_mm=0.2, print_walls=3,
                print_infill_fraction=1.0, pin_measured_diameter_mm=2.98,
                coupon_fit=["girmez", "sıkı", "akıcı", "boşluklu", "boşluklu"],
                coupon_hole_mm=[None, 3.02, 3.12, None, None], fit_pair_clearance_mm=0.2,
@@ -36,6 +39,9 @@ def _record(pred, **over):
                stop_seats=True, folded_stop_deg=142.0, mass_fit_proximal_g=8.1, mass_fit_distal_g=5.7, notes="",
                measurement_resolution_mm=0.02, repeat_count=1, axial_float_spread_mm=None, tilt_range_spread_mm=None)
     rec.update(over)
+    if "pin_grip_length_mm" not in over:          # hardware consistent with the measured lugs and float by default
+        rec["pin_grip_length_mm"] = (rec["lug_thickness_proximal_mm"] + rec["lug_thickness_distal_mm"]
+                                     + rec["washer_stack_mm"] + (rec["axial_float_mm"] or 0.0))
     return json.dumps(rec, ensure_ascii=False)
 
 
@@ -311,3 +317,124 @@ def test_committed_f1s_kit_belongs_to_the_strengthened_f1_with_its_pin_set():
     assert pred["kit_design_sha256"] == d.identity and pred["pin_diameter_mm"] == 4.0
     assert d.hardware.pin_nominal_mm == 4.0 and d.connection.axial_offset_mm == 6.5
     assert pred["folded_stop_deg"] >= -d.connection.stowed_angle_deg                  # the stronger stop keeps the fold
+
+
+def test_fit_fixture_lug_faces_are_flat_bed_planes(kit_design):
+    pytest.importorskip("build123d")
+    from pyfoldable.prototype import cad
+    prox, dist, _ = cad.fit_fixture(cad.build(kit_design))
+    (p0, p1), (q0, q1) = kit_design.lug_bands_mm
+    pb, db = prox.bounding_box(), dist.bounding_box()
+    assert pb.min.Z == pytest.approx(p0, abs=1e-3)       # proximal: washer-seat face is the bottom plane
+    assert db.max.Z == pytest.approx(q1, abs=1e-3)       # distal: washer-seat face is the top plane (prints inverted)
+
+
+def test_kit_exports_a_pair_for_every_coupon_step_and_the_design_clearance(kit_design):
+    from pyfoldable.prototype import fit
+    assert fit.kit_clearances(kit_design) == (0.0, 0.1, 0.2, 0.3, 0.4)
+    odd = pd.with_changes(kit_design, **{"connection.hole_clearance_mm": 0.45})
+    assert fit.kit_clearances(odd) == (0.0, 0.1, 0.2, 0.3, 0.4, 0.45)
+
+
+@pytest.mark.parametrize("over, reason", [
+    ({"print_material_family": "ASA"}, "ASA"),
+    ({"print_layer_mm": 0.16}, "katman"),
+    ({"print_filament_product": "Another PLA"}, "filament"),
+    ({"print_printer": "Bambu Lab X1C"}, "yazıcı"),
+])
+def test_a_specimen_from_another_material_or_process_is_transferred_evidence(kit_design, pred, over, reason):
+    out = fit.apply(kit_design, fit.parse(_record(pred, **over), pred), pred)
+    assert out["basis"] == "transferred" and any(reason in w for w in out["warnings"])
+    assert out["design"].connection.measured_process and reason.lower() in " ".join(out["process_differences"]).lower()
+
+
+def test_the_matching_process_is_direct_and_names_the_process(kit_design, pred):
+    out = fit.apply(kit_design, fit.parse(_record(pred), pred), pred)
+    assert out["basis"] == "direct" and not out["process_differences"]
+    assert "Bambu Lab P1S" in out["design"].connection.measured_process and "PLA" in out["design"].connection.measured_process
+
+
+def test_hardware_stack_consistency_with_the_measured_float(kit_design, pred):
+    tp, td = pred["lug_thicknesses_mm"]
+    rec = fit.parse(_record(pred, lug_thickness_proximal_mm=tp, lug_thickness_distal_mm=td,
+                            pin_grip_length_mm=tp + td + 1.0 + 0.6, axial_float_mm=0.12), pred)
+    warnings = fit.apply(kit_design, rec, pred)["warnings"]
+    assert any("tutma boyu" in w for w in warnings)                       # grip predicts 0.6 mm float, 0.12 measured
+    short = fit.parse(_record(pred, lug_thickness_proximal_mm=tp, lug_thickness_distal_mm=td,
+                              pin_grip_length_mm=tp + td + 0.8), pred)
+    assert any("kısa" in w for w in fit.apply(kit_design, short, pred)["warnings"])
+
+
+def test_print_handoff_package_is_print_oriented_labelled_and_prefilled(kit_design, tmp_path):
+    pytest.importorskip("build123d")
+    import zipfile
+    import xml.etree.ElementTree as ET
+    out = fit.export_handoff(kit_design, tmp_path, clearances=(0.2,))
+    names = {p.relative_to(tmp_path).as_posix() for p in tmp_path.rglob("*") if p.is_file()}
+    assert {"BASKI_REHBERI.md", "MONTAJ_VE_DONANIM.md", "BASKI_VE_OLCUM_KAYDI.md", "olcum_kaydi.json",
+            "predictions.json", "SHA256SUMS", "3mf/01_kupon.3mf", "3mf/02_cift_c0p20.3mf",
+            "stl/01_kupon.stl", "stl/02_cift_c0p20_proksimal.stl", "stl/02_cift_c0p20_distal.stl"} <= names
+    ns = {"m": "http://schemas.microsoft.com/3dmanufacturing/core/2015/02"}
+    with zipfile.ZipFile(tmp_path / "3mf/02_cift_c0p20.3mf") as z:
+        root = ET.fromstring(z.read(next(n for n in z.namelist() if n.endswith(".model"))))
+    objects = root.findall(".//m:object", ns)
+    items = root.findall(".//m:build/m:item", ns)
+    named = {o.get("id"): o.get("name") for o in objects if o.get("name")}
+    tag = kit_design.name.replace("13in-", "")
+    assert root.get("unit") == "millimeter" and len(items) == 2
+    assert sorted(named[i.get("objectid")] for i in items) == sorted([f"{tag}_cift_c0.20_proksimal",
+                                                                      f"{tag}_cift_c0.20_distal"])
+    zs = [float(v.get("z")) for o in objects for v in o.findall(".//m:vertex", ns)]
+    assert min(zs) == pytest.approx(0.0, abs=1e-3)                          # on the bed
+    rec = json.loads((tmp_path / "olcum_kaydi.json").read_text(encoding="utf-8"))
+    assert rec["print_printer"] == "Bambu Lab P1S" and rec["print_filament_product"] == "Eco Smart Standard PLA"
+    assert rec["print_nozzle_mm"] is None and rec["print_layer_mm"] is None and rec["axial_float_mm"] is None
+    guide = (tmp_path / "BASKI_REHBERI.md").read_text(encoding="utf-8")
+    assert "01_kupon" in guide and "önerilen" in guide.lower() and "kullanılan" in guide.lower()
+    assert out["predictions"]["kit_design_sha256"] == kit_design.identity
+
+
+def test_reported_setting_changes_make_the_evidence_transferred(kit_design, pred):
+    out = fit.apply(kit_design, fit.parse(_record(pred, print_changes="X-Y delik telafisi +0.1"), pred), pred)
+    assert out["basis"] == "transferred" and any("ayar" in r for r in out["process_differences"])
+    assert fit.apply(kit_design, fit.parse(_record(pred, print_changes="  "), pred), pred)["basis"] == "direct"
+
+
+def test_a_correct_assembly_with_groove_slack_does_not_warn(kit_design, pred):
+    tp, td = pred["lug_thicknesses_mm"]
+    rec = fit.parse(_record(pred, lug_thickness_proximal_mm=tp, lug_thickness_distal_mm=td,
+                            pin_grip_length_mm=tp + td + 1.0 + 0.25, washer_stack_mm=1.0, axial_float_mm=0.12), pred)
+    assert not any("tutma boyu" in w for w in fit.apply(kit_design, rec, pred)["warnings"])     # 0.13 groove slack
+    far = fit.parse(_record(pred, lug_thickness_proximal_mm=tp, lug_thickness_distal_mm=td, measurement_resolution_mm=0.01,
+                            pin_grip_length_mm=tp + td + 1.0 + 0.45, washer_stack_mm=1.0, axial_float_mm=0.12), pred)
+    assert any("tutma boyu" in w for w in fit.apply(kit_design, far, pred)["warnings"])  # 0.33 > 0.15
+
+
+def test_project_hash_must_be_a_sha256(pred):
+    with pytest.raises(fit.RecordError, match="print_project_sha256"):
+        fit.parse(_record(pred, print_project_sha256="proje.3mf"), pred)
+    assert fit.parse(_record(pred, print_project_sha256="ab" * 32), pred)["print_project_sha256"] == "ab" * 32
+
+
+def test_design_clearance_is_snapped_and_is_the_nominal_pair(kit_design):
+    d = pd.with_changes(kit_design, **{"connection.hole_clearance_mm": 0.123})
+    cl = fit.kit_clearances(d)
+    assert 0.12 in cl and len(cl) == len(fit.COUPON_STEPS_MM) + 1
+    assert fit.nominal_clearance(d, cl) == 0.12
+
+
+def test_an_old_measured_design_loads_as_transferred(kit_design, pred):
+    d = fit.apply(kit_design, fit.parse(_record(pred), pred), pred)["design"]
+    raw = json.loads(pd.to_json(d))
+    raw["connection"].pop("measured_process")
+    old = pd.from_json(json.dumps(raw))
+    assert pd.validate(old) == [] and old.connection.measured_play_basis == "transferred"
+    assert "schema /2" in old.connection.measured_process
+
+
+def test_assembly_guide_follows_the_pin_set(kit_design):
+    from pyfoldable.prototype import explore
+    d5 = explore.candidate_design(kit_design, ROOT, {"connection.pin_diameter_mm": 5.0})
+    text = fit.assembly_guide(d5, fit.predictions(d5, 30.0, (8.0, 2.5), 144.0))
+    assert d5.hardware.pin_nominal_mm == 5.0
+    assert "DIN 433 5,3 × 9 × 1" in text and "DIN 6799 4 " in text and "Ø4×14" not in text and "DIN 433 4,3" not in text

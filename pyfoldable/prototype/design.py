@@ -35,7 +35,7 @@ from pathlib import Path
 TEMPLATE = "configs/designs/TIP_HINGED_250_CANONICAL.toml"
 MIN_LUG_MM = 2.0
 MEASURED_FIELDS = ("measured_axial_play_mm", "measured_tilt_deg", "play_record_sha256", "measured_play_basis",
-                   "measured_axial_play_u_mm", "measured_tilt_u_deg", "print_z_u_mm")
+                   "measured_axial_play_u_mm", "measured_tilt_u_deg", "print_z_u_mm", "measured_process")
 MIN_ZONE_MM = 10.0                            # hinge-zone half-width floor (the loft samples the zone every w/4)
 LUG_PROUD_MM = 0.2                            # full-depth lug faces stand proud of the blade's extreme surface point:
 #                                               a face tangent to the blade surface made OCC fusions fail silently
@@ -106,6 +106,7 @@ class Connection:
     measured_axial_play_u_mm: float | None = None   # standard uncertainties of the measurement (``fit.uncertainty``)
     measured_tilt_u_deg: float | None = None
     print_z_u_mm: float | None = None         # print variation of one surface (standard uncertainty)
+    measured_process: str | None = None       # printer · nozzle · material · filament · layer · walls · infill
 
 
 @dataclass(frozen=True)
@@ -152,6 +153,10 @@ def hardware_for_pin(pin_mm: float) -> "Hardware":
 class PrintModel:
     material: str = "PLA"
     infill_fraction: float = 1.0              # 1: solid; blades and lugs are recommended solid
+    printer: str | None = None                # the declared print process a measurement must match to be direct
+    nozzle_mm: float = 0.4
+    filament: str | None = None               # filament product (e.g. "Eco Smart Standard PLA")
+    wall_loops: int = 3                       # slicer wall count (wall_mm is the modelled shell thickness)
     wall_mm: float = 1.2                      # perimeters (3 × 0.4 mm nozzle)
     layer_mm: float = 0.2
     min_te_thickness_mm: float = 0.8          # printable trailing edge (template manufacturing section)
@@ -444,6 +449,11 @@ def to_json(d: PrototypeDesign) -> str:
 
 def from_json(text: str) -> PrototypeDesign:
     raw = json.loads(text)
+    conn = raw.get("connection", {})
+    if conn.get("measured_axial_play_mm") is not None and "measured_process" not in conn:
+        # saved before the record bound the print process (fit record schema /2): applicability unknown
+        raw["connection"] = {**conn, "measured_play_basis": "transferred",
+                             "measured_process": "bilinmiyor (fit kaydı schema /2 öncesi; süreç kaydedilmedi)"}
     parts = {"planform": Planform, "connection": Connection, "hardware": Hardware, "print_model": PrintModel,
              "operating": Operating}
     kw = {k: (parts[k](**{f: (tuple(map(tuple, v)) if f == "stations" else tuple(v) if isinstance(v, list) else v)
