@@ -18,7 +18,7 @@ _ACTIVE = "research_active"
 _KIND = "research_results_kind"
 _BEM_KIND = "BEM / mekanizma"
 _PAGE = "research_page"
-_PAGES = ("Tasarım", "Analiz", "Sonuçlar", "Karşılaştırma / kayıtlar", "Görseller")
+_PAGES = ("Tasarım", "Analiz", "Sonuçlar", "Karşılaştırma / kayıtlar", "Görseller", "Prototip")
 _MAX_HISTORY = 12
 _TEMPLATE_LABELS = {
     "axial_800": "800 mm eksenel referans · iki uzunluk sırası",
@@ -1048,3 +1048,6 @@ def render_research(root: Path):
     elif page == "Görseller":
         from . import gallery_ui
         gallery_ui.render_gallery(root, active, repository)
+    elif page == "Prototip":
+        from . import prototype_ui
+        prototype_ui.render_prototype(root)

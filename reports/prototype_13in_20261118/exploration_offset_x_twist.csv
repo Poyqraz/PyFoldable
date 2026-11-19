@@ -1,0 +1,10 @@
+axial_offset_mm,twist_scale,uygun,gerekçe,açık katlanma [°],en küçük boşluk [mm],"boşluk, oynama ile [mm]",gereken ofset [mm],basamak [mm],distal [g],kanat [g],stop momenti @ref [N·mm],pim kuvveti @ref [N],dayanım sınırı [RPM],belirleyici
+5.0,1.0,False,Gövdeler 51°'den sonra yeterli boşluk bırakmıyor (140° gerekli); en büyük girişim 5.7 mm @ -105°; gereken ofset ≈ 11.2 mm,51,-5.69,-7.19,11.2,5.0,4.07,26.3,601,270,3293,Stop burnu kök eğilmesi
+5.0,0.6,False,Gövdeler 62°'den sonra yeterli boşluk bırakmıyor (140° gerekli); en büyük girişim 2.3 mm @ -103°; gereken ofset ≈ 7.8 mm,62,-2.32,-3.86,7.8,5.0,4.01,26.0,612,268,3682,Stop burnu kök eğilmesi
+5.0,0.35,False,Gövdeler 74°'den sonra yeterli boşluk bırakmıyor (140° gerekli); en büyük girişim 0.4 mm @ -99°; gereken ofset ≈ 5.9 mm,74,-0.35,-1.91,5.9,5.0,3.98,26.0,616,267,3904,Pim eğilmesi (P·a/2)
+5.5,1.0,False,Gövdeler 57°'den sonra yeterli boşluk bırakmıyor (140° gerekli); en büyük girişim 5.2 mm @ -105°; gereken ofset ≈ 11.2 mm,57,-5.19,-6.69,11.2,5.5,4.11,26.4,598,271,3217,Stop burnu kök eğilmesi
+5.5,0.6,False,Gövdeler 67°'den sonra yeterli boşluk bırakmıyor (140° gerekli); en büyük girişim 1.8 mm @ -103°; gereken ofset ≈ 7.8 mm,67,-1.82,-3.36,7.8,5.5,4.04,26.1,609,269,3581,Stop burnu kök eğilmesi
+5.5,0.35,False,Gövdeler 82°'den sonra yeterli boşluk bırakmıyor (140° gerekli); en küçük boşluk 0.15 mm < gerekli 0.50 mm @ -99°; gereken ofset ≈ 5.9 mm,82,0.15,-1.41,5.9,5.5,4.01,26.1,614,268,3797,Pim eğilmesi (P·a/2)
+6.0,1.0,False,Gövdeler 61°'den sonra yeterli boşluk bırakmıyor (140° gerekli); en büyük girişim 4.7 mm @ -105°; gereken ofset ≈ 11.2 mm,61,-4.69,-6.19,11.2,6.0,4.14,26.4,596,273,3146,Stop burnu kök eğilmesi
+6.0,0.6,False,Gövdeler 72°'den sonra yeterli boşluk bırakmıyor (140° gerekli); en büyük girişim 1.3 mm @ -103°; gereken ofset ≈ 7.8 mm,72,-1.32,-2.86,7.8,6.0,4.07,26.2,606,270,3489,Stop burnu kök eğilmesi
+6.0,0.35,False,"Nominal açık, en kötü boşlukla girişim 0.9 mm @ -99° (gereken ofset ≈ 7.4 mm)",140,0.65,-0.91,6.0,6.0,4.05,26.2,611,269,3697,Pim eğilmesi (P·a/2)

@@ -1,0 +1,54 @@
+{
+ "kit_design_sha256": "8ba1aff9d18fb4404ef5cc997f0c5362ed0df189ae9a19ffb814d1657ebfab75",
+ "kit_design_name": "13in-B",
+ "coupon_steps_mm": [
+  0.0,
+  0.1,
+  0.2,
+  0.3,
+  0.4
+ ],
+ "fit_pair_clearances_mm": [
+  0.0,
+  0.1,
+  0.2,
+  0.3,
+  0.4
+ ],
+ "lever_mm": 30.0,
+ "fit_masses_g": [
+  8.877197448106154,
+  3.1958259480871933
+ ],
+ "folded_stop_deg": 144.0,
+ "pin_diameter_mm": 3.0,
+ "lug_thicknesses_mm": [
+  6.917850534476349,
+  7.303792533355109
+ ],
+ "lug_gap_mm": 0.3,
+ "boss_radius_mm": 5.5,
+ "model_play": {
+  "axial_play_mm": 0.3,
+  "tilt_rad": 0.05454545454545454,
+  "u_axial_mm": 0.0,
+  "u_tilt_rad": 0.0,
+  "u_print_mm": 0.0,
+  "k": 0.0,
+  "source": "model (en kötü durum)",
+  "tilt_limited_by": "lug yüz aralığı",
+  "radial_play_mm": 0.2,
+  "tilt_deg": 3.1252243370772175,
+  "model_tilt_rad": 0.05454545454545454,
+  "tip_droop_mm": 3.905454545454545
+ },
+ "washer_thickness_mm": 0.5,
+ "pin_grip_mm": 15.521643067831459,
+ "declared_process": "yazıcı ? · 0.4 mm nozul · PLA filament ? · 0.2 mm katman · 3 duvar · %100 doluluk",
+ "print_model": {
+  "material": "PLA",
+  "wall_mm": 1.2,
+  "infill_fraction": 1.0,
+  "layer_mm": 0.2
+ }
+}

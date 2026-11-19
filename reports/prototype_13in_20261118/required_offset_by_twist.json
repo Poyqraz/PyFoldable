@@ -1,0 +1,68 @@
+[
+ {
+  "twist_scale": 1.0,
+  "offset_tried_mm": 5.5,
+  "clear_travel_at_tried_deg": 57.0,
+  "required_offset_mm": 11.192132711356463,
+  "offset_rechecked_mm": 11.5,
+  "body_clear_at_recheck": true,
+  "folded_stop_deg": 144.0,
+  "min_gap_at_recheck_mm": 0.8078673047786151,
+  "required_with_play_mm": 12.52122955946098
+ },
+ {
+  "twist_scale": 0.8,
+  "offset_tried_mm": 5.5,
+  "clear_travel_at_tried_deg": 61.0,
+  "required_offset_mm": 9.501764006418941,
+  "offset_rechecked_mm": 10.0,
+  "body_clear_at_recheck": true,
+  "folded_stop_deg": 144.0,
+  "min_gap_at_recheck_mm": 0.9982359935810585,
+  "required_with_play_mm": 11.00092652168085
+ },
+ {
+  "twist_scale": 0.6,
+  "offset_tried_mm": 5.5,
+  "clear_travel_at_tried_deg": 67.0,
+  "required_offset_mm": 7.817709198263495,
+  "offset_rechecked_mm": 8.0,
+  "body_clear_at_recheck": true,
+  "folded_stop_deg": 144.0,
+  "min_gap_at_recheck_mm": 0.6822908097060498,
+  "required_with_play_mm": 9.360907566155731
+ },
+ {
+  "twist_scale": 0.45,
+  "offset_tried_mm": 5.5,
+  "clear_travel_at_tried_deg": 74.0,
+  "required_offset_mm": 6.621672907457253,
+  "offset_rechecked_mm": 7.0,
+  "body_clear_at_recheck": true,
+  "folded_stop_deg": 144.0,
+  "min_gap_at_recheck_mm": 0.8783270560828105,
+  "required_with_play_mm": 8.17928535654283
+ },
+ {
+  "twist_scale": 0.35,
+  "offset_tried_mm": 5.5,
+  "clear_travel_at_tried_deg": 82.0,
+  "required_offset_mm": 5.852147006365254,
+  "offset_rechecked_mm": 6.0,
+  "body_clear_at_recheck": true,
+  "folded_stop_deg": 144.0,
+  "min_gap_at_recheck_mm": 0.6478530653298673,
+  "required_with_play_mm": 7.413024007422674
+ },
+ {
+  "twist_scale": 0.25,
+  "offset_tried_mm": 5.5,
+  "clear_travel_at_tried_deg": 140.0,
+  "required_offset_mm": 5.5,
+  "offset_rechecked_mm": 5.5,
+  "body_clear_at_recheck": true,
+  "folded_stop_deg": 144.0,
+  "min_gap_at_recheck_mm": 0.8689732072794576,
+  "required_with_play_mm": 6.700836906563888
+ }
+]

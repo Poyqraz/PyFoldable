@@ -10,3 +10,6 @@
 
 # Immutable provider evidence must not undergo checkout/clean newline conversion.
 data/research_reference/axial_800_store/** -text
+
+# Generated prototype packages: SHA256SUMS covers their exact bytes, so no checkout newline conversion.
+reports/prototype_13in_20261118/*/** -text

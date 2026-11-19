@@ -1,0 +1,157 @@
+{
+ "schema": "pyfoldable.prototype.printed_pin_demo/1",
+ "kit_design_sha256": "9b023c27de8a22c752e9b26b5d39bdb8a4e4f3c146ad08e10b02d05bb57a06ae",
+ "kit_design_name": "13in-F1S",
+ "design_sha256": "052b3fe9578cbd22a5dba6e70e1354dd087e43dd9c3b8560d4f4ac31cf5f114a",
+ "evidence": "printed_pin_observation",
+ "physical_qualification": false,
+ "operating_envelope": null,
+ "rpm_limit": null,
+ "pin_diameters_mm": [
+  3.8,
+  3.9,
+  4.0
+ ],
+ "hole_diameter_mm": 4.2,
+ "hole_clearance_mm": 0.2,
+ "coupon_steps_mm": [
+  0.0,
+  0.1,
+  0.2,
+  0.3,
+  0.4
+ ],
+ "lug_thicknesses_mm": [
+  5.161326997025505,
+  5.3752249657904265
+ ],
+ "pin_spec": {
+  "head_diameter_mm": 8.0,
+  "head_height_mm": 1.6,
+  "groove_root_mm": 3.0,
+  "clip_thickness_mm": 1.6,
+  "groove_slack_mm": 0.2,
+  "stack_allowance_mm": 0.15,
+  "end_mm": 1.2,
+  "tip_chamfer_mm": 0.4,
+  "notch_depth_mm": 0.6,
+  "clip_seat_mm": 3.1,
+  "clip_arm_mm": 1.3,
+  "clip_mouth_mm": 2.7,
+  "clip_lead_mm": 3.6,
+  "clip_tab_mm": [
+   3.0,
+   4.0
+  ]
+ },
+ "geometry": {
+  "stack_mm": 10.836552162815932,
+  "pin_length_mm": 15.58655216281593,
+  "grip_near_flank_mm": 10.986552162815933,
+  "grip_far_flank_mm": 12.786552162815932,
+  "groove_start_above_stack_mm": 0.15000000000000036,
+  "groove_width_mm": 1.799999999999999,
+  "groove_root_mm": 3.0,
+  "groove_depth_mm": {
+   "3.80": 0.3999999999999999,
+   "3.90": 0.44999999999999996,
+   "4.00": 0.5
+  },
+  "clip_seat_mm": 3.1,
+  "clip_mouth_mm": 2.7,
+  "clip_thickness_mm": 1.6,
+  "inter_lug_gap_mm": 0.2999999999999998,
+  "thick_lug_allowance_mm": 0.15,
+  "clip_groove_slack_mm": 0.2,
+  "clip_side_allowance_mm": 0.35,
+  "end_play_total_mm": 0.6499999999999998,
+  "end_play_from_solids_mm": {
+   "below_nominal": 0.2998046875,
+   "above_nominal": 0.3486328125,
+   "total": 0.6484375,
+   "clip_slack": 0.19921875,
+   "method": "katıların z ötelemesiyle ikiye bölme, 0,001 mm"
+  },
+  "assembles_up_to_extra_stack_mm": 0.35,
+  "rocking": {
+   "faces_deg": 6.771319397000636,
+   "faces_clip_bearing_deg": 4.460150501018383,
+   "holes_deg": {
+    "3.80": 8.704084870999196,
+    "3.90": 6.528063653249397,
+    "4.00": 4.352042435499598
+   },
+   "worst_deg": {
+    "3.80": 6.771319397000636,
+    "3.90": 6.528063653249397,
+    "4.00": 4.352042435499598
+   },
+   "worst_clip_bearing_deg": {
+    "3.80": 4.460150501018383,
+    "3.90": 4.460150501018383,
+    "4.00": 4.352042435499598
+   },
+   "metal_model_faces_deg": 3.1252243370772157,
+   "note": "yüz sınırı (ihtiyatlı, metal modelin kuralı) = uçtan uca eksenel boşluk / göbek yarıçapı; klips dayanmalı = boşluk / (göbek yarıçapı + klips dış yarıçapı); delik sınırı = c/t_d + c/t_p (CAD); en kötüsü = min(yüz, delik)"
+  },
+  "head_diameter_mm": 8.0,
+  "spot_face_diameter_mm": 8.6,
+  "hole_diameter_mm": 4.2,
+  "diametral_clearance_cad_mm": {
+   "3.80": 0.40000000000000036,
+   "3.90": 0.30000000000000027,
+   "4.00": 0.20000000000000018
+  }
+ },
+ "fold": {
+  "useful_travel_deg": 143.0,
+  "tightest_angle_deg": -103.0,
+  "min_gap_mm": 0.4801204832450945,
+  "folded_stop_deg": 144.0,
+  "tightest_distance_from_pin_mm": 19.044847847121286,
+  "tightest_gap_with_rocking_mm": {
+   "3.80": -1.4206342623237842,
+   "3.90": -1.3631280713783143,
+   "4.00": -0.8487118865038445
+  },
+  "tightest_gap_with_rocking_clip_bearing_mm": {
+   "3.80": -0.8742688701236279,
+   "3.90": -0.8742688701236279,
+   "4.00": -0.8487118865038445
+  },
+  "body_contact_deg": null,
+  "metal_design_required_travel_deg": 140.0,
+  "method": "sütun yöntemi 0.25 mm ızgara, 1.0° adım; tesselasyon 0,05 mm"
+ },
+ "configurations": {
+  "open": 0.0,
+  "tightest": -103.0,
+  "folded": -143.0
+ },
+ "interference_mm3": {
+  "pim_proksimal": 0.0,
+  "klips_proksimal": 0.0,
+  "pim_distal_open": 0.0,
+  "klips_distal_open": 0.0,
+  "proksimal_distal_open": 0.0,
+  "pim_distal_tightest": 0.0,
+  "klips_distal_tightest": 0.0,
+  "proksimal_distal_tightest": 0.0,
+  "pim_distal_folded": 0.0,
+  "klips_distal_folded": 0.0,
+  "proksimal_distal_folded": 0.0
+ },
+ "access": {
+  "pin_path_clear": true,
+  "clip_path_clear": true,
+  "pin_path_mm3": 0.0,
+  "clip_path_mm3": 0.0,
+  "note": "klipsin pim kanalına oturması tasarlanmış bir yaylanmadır (ağız < kanal dibi)"
+ },
+ "declared_process": "Bambu Lab P1S · 0.4 mm nozul · PLA Eco Smart Standard PLA · 0.2 mm katman · 3 duvar · %100 doluluk",
+ "metal_reference": {
+  "pin_standard": "ISO 2341-A Ø4 (kafa Ø6×1) + DIN 6799 kanalı (Ø3,2 × 0,64)",
+  "pin_length_mm": 13.276551962815933,
+  "note": "metal pim ve kitin kendi paketi ayrıdır; bu gösterici onun yerine geçmez"
+ }
+}
