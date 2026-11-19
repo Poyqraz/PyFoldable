@@ -318,8 +318,9 @@ contains:
 
 - **Geometry:**
   - `3mf/01_kupon.3mf`, the **first plate**: the Ø4.0–4.4 mm hole coupon;
-  - `3mf/02_cift_cXpXX.3mf`, one fit pair per coupon step 0.00–0.40 mm, each with two named parts;
-  - STL copies of every part in `stl/`.
+  - `3mf/sonra_secilecek_ciftler/02_cift_cXpXX.3mf`, one fit pair per coupon step 0.00–0.40 mm, each with two
+    named parts. They sit in a separate "select later" folder: only one is printed, after the coupon test.
+  - STL copies of every part in `stl/` (the coupon at the top, the pairs in the same subfolder).
 
   The files are in millimetres and placed in print orientation on z = 0, with the pin axis along printer Z. The
   proximal prints upright on its lug's washer-seat face. Its stub is trimmed to that plane, away from the joint. The
@@ -332,6 +333,10 @@ contains:
     holes, lug faces or the stop contact faces, and no ironing.
   - `MONTAJ_VE_DONANIM.md`: hardware requirements and the assembly checklist.
   - `BASKI_VE_OLCUM_KAYDI.md`: a proposed-versus-used settings form.
+  - `00_ONCE_BENI_OKU.md`: the start-here note. It names `3mf/01_kupon.3mf` as the only part to print first and keeps
+    the Ø4×14 pin decision open.
+  - `OLCUM_PROTOKOLU.md`: the complete measurement protocol in Turkish, with the record fields. The package does not
+    depend on the kit README.
 - **Record and model data:**
   - `olcum_kaydi.json`: the measurement record (schema /2). The kit identity and the confirmed setup (printer, PLA,
     filament product) are prefilled. Nozzle, plate, manufacturer, process values and every physical measurement are

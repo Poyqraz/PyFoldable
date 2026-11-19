@@ -2,7 +2,8 @@
 
 ## Donanım kararı açık
 
-Önerilen A4/316 Ø4×14 mm pim **henüz uygun bulunmadı**. Montajdan önce aşağıdakiler ölçülüp doğrulanmalı.
+Önerilen A4/316 Ø4×14 mm pim: uygunluğu **doğrulanmadı; karar açıktır**. Pimin teknik çizimi veya ölçümüyle aşağıdakiler
+doğrulanmadan montaj yapılmaz.
 
 | Ölçü | Gereken | Neden |
 |---|---|---|
@@ -14,7 +15,7 @@
 | Pul | 2 × DIN 433 4,3 × 8 × 0,5 | kalınlıkları ölçün |
 | Segman | DIN 6799 3,2 (OD ≈ 7,3) | kanala tam oturmalı; pim ucu segmandan ≥ 0.8 mm taşmalı |
 
-Ø4×14 için not: kafa altı boy 14 mm ise kanal/delik konumu tedarikçi çiziminden okunmalı; tutma boyu ≈ 12,5 mm çıkarsa nominal yığında eksenel boşluk ≈ 0,96 mm olur ve ≈ 0,71 mm şim gerekir (hedef 0,25 mm).
+Ø4×14 için varsayımsal örnek (pim hakkında bir bulgu değildir): kafa altı boy 14 mm ise kanal/delik konumu tedarikçi çiziminden okunmalı; tutma boyu ≈ 12,5 mm çıkarsa nominal yığında eksenel boşluk ≈ 0,96 mm olur ve ≈ 0,71 mm şim gerekir (hedef 0,25 mm).
 
 ## Montaj sırası (alttan üste)
 
@@ -30,4 +31,4 @@
 - [ ] Pim çapı, kafa, tutma boyu, kanal, pul ve segman ölçüldü ve kayda yazıldı
 - [ ] Lug kalınlıkları ölçüldü (model 5.16 / 5.38 mm)
 - [ ] Şim kullanıldıysa toplam kalınlık `washer_stack_mm` içine yazıldı
-- [ ] Ölçüm protokolü (kit README) uygulandı; eksenel boşluk ve Δ en az 3 kez
+- [ ] Ölçüm protokolü (`OLCUM_PROTOKOLU.md`) uygulandı; eksenel boşluk ve Δ en az 3 kez

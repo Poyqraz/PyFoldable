@@ -371,11 +371,28 @@ def test_print_handoff_package_is_print_oriented_labelled_and_prefilled(kit_desi
     import xml.etree.ElementTree as ET
     out = fit.export_handoff(kit_design, tmp_path, clearances=(0.2,))
     names = {p.relative_to(tmp_path).as_posix() for p in tmp_path.rglob("*") if p.is_file()}
-    assert {"BASKI_REHBERI.md", "MONTAJ_VE_DONANIM.md", "BASKI_VE_OLCUM_KAYDI.md", "olcum_kaydi.json",
-            "predictions.json", "SHA256SUMS", "3mf/01_kupon.3mf", "3mf/02_cift_c0p20.3mf",
-            "stl/01_kupon.stl", "stl/02_cift_c0p20_proksimal.stl", "stl/02_cift_c0p20_distal.stl"} <= names
+    later = fit.LATER_DIR
+    assert {"00_ONCE_BENI_OKU.md", "OLCUM_PROTOKOLU.md", "BASKI_REHBERI.md", "MONTAJ_VE_DONANIM.md",
+            "BASKI_VE_OLCUM_KAYDI.md", "olcum_kaydi.json", "predictions.json", "SHA256SUMS", "3mf/01_kupon.3mf",
+            f"3mf/{later}/02_cift_c0p20.3mf", "stl/01_kupon.stl", f"stl/{later}/02_cift_c0p20_proksimal.stl",
+            f"stl/{later}/02_cift_c0p20_distal.stl"} <= names
+    # the first plate is the only printable file at the top of 3mf/ and stl/; the pairs wait in their own folder
+    assert sorted(n for n in names if n.count("/") == 1 and n.split("/")[0] in ("3mf", "stl")) == \
+        ["3mf/01_kupon.3mf", "stl/01_kupon.stl"]
+    docs = {n: (tmp_path / n).read_text(encoding="utf-8") for n in names if n.endswith(".md")}
+    assert not any("README" in text for text in docs.values())                       # self-contained package
+    start, proto = docs["00_ONCE_BENI_OKU.md"], docs["OLCUM_PROTOKOLU.md"]
+    assert "3mf/01_kupon.3mf" in start and "yalnız" in start.lower() and later in start and "Ø4×14" in start
+    assert all(k in proto for k in ("axial_float_mm", "tilt_range_at_tab_mm", "friction_breakaway_n", "en az üç"))
+    assert "yük deliği" in proto and "mengene bloğu" in proto                    # the fixture is defined, not assumed
+    form = docs["BASKI_VE_OLCUM_KAYDI.md"]
+    assert "önizleme" in form.lower() and "kontrol edildi mi" in form and "Generic PLA?" not in form and "Bambu Studio ?" not in form
+    assert "proje sahibi" in start.lower() and "proje sahibi" in docs["BASKI_REHBERI.md"].lower()   # owner picks the pair
+    assert not any("henüz uygun bulunmadı" in text for text in docs.values())   # the pin stays open, not rejected
+    sums = (tmp_path / "SHA256SUMS").read_text(encoding="utf-8")
+    assert "00_ONCE_BENI_OKU.md" in sums and "OLCUM_PROTOKOLU.md" in sums
     ns = {"m": "http://schemas.microsoft.com/3dmanufacturing/core/2015/02"}
-    with zipfile.ZipFile(tmp_path / "3mf/02_cift_c0p20.3mf") as z:
+    with zipfile.ZipFile(tmp_path / f"3mf/{later}/02_cift_c0p20.3mf") as z:
         root = ET.fromstring(z.read(next(n for n in z.namelist() if n.endswith(".model"))))
     objects = root.findall(".//m:object", ns)
     items = root.findall(".//m:build/m:item", ns)

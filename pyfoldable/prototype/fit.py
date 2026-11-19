@@ -488,6 +488,9 @@ creep; one print, one pin. Physical qualification: false.
 
 
 # ------------------------------------------------------------------------------------------- print handoff package
+LATER_DIR = "sonra_secilecek_ciftler"      # fit pairs: printed only after the coupon test, one of them
+
+
 def _oriented(shape, inverted):
     """Print orientation: pin axis along Z; inverted parts turned 180° about X; bounding box moved to x, y, z ≥ 0."""
     import build123d as b3d
@@ -497,8 +500,9 @@ def _oriented(shape, inverted):
 
 
 def export_handoff(d: PrototypeDesign, folder: Path, clearances=None) -> dict:
-    """Geometry-and-instructions package for a printer operator (not a sliced project): print-oriented 3MF per plate
-    (coupon; each fit pair with its two named parts) and STL per part, Turkish print guide with proposed settings,
+    """Self-contained geometry-and-instructions package for a printer operator (not a sliced project): print-oriented
+    3MF per plate and STL per part (the coupon at the top of 3mf/ and stl/, the fit pairs in ``LATER_DIR``), a Turkish
+    start-here note, the Turkish measurement protocol, print guide with proposed settings,
     assembly and hardware requirements, an operator form for the settings actually used and the measurements, the
     prefilled measurement record, predictions and SHA-256 sums."""
     import build123d as b3d
@@ -508,24 +512,25 @@ def export_handoff(d: PrototypeDesign, folder: Path, clearances=None) -> dict:
     folder = Path(folder)
     clearances = kit_clearances(d) if clearances is None else tuple(clearances)
     for sub in ("3mf", "stl"):
-        (folder / sub).mkdir(parents=True, exist_ok=True)
+        (folder / sub / LATER_DIR).mkdir(parents=True, exist_ok=True)
     written, dims = [], []
     tag = d.name.replace("13in-", "")
 
-    def write_plate(stem, shapes):
+    def write_plate(stem, shapes, sub=""):
         m = b3d.Mesher()
         for label, s in shapes:
             s.label = label
             m.add_shape(s, linear_deflection=0.01, angular_deflection=0.1)
             bb = s.bounding_box()
             dims.append((label, bb.size.X, bb.size.Y, bb.size.Z))
-        m.write(str(folder / "3mf" / f"{stem}.3mf"))
+        mf = folder / "3mf" / sub / f"{stem}.3mf"
+        m.write(str(mf))
         del m
-        _name_3mf_objects(folder / "3mf" / f"{stem}.3mf", [label for label, _ in shapes])
-        written.append(folder / "3mf" / f"{stem}.3mf")
+        _name_3mf_objects(mf, [label for label, _ in shapes])
+        written.append(mf)
         for label, s in shapes:
             part = "" if len(shapes) == 1 else "_" + label.rsplit("_", 1)[1]
-            path = folder / "stl" / f"{stem}{part}.stl"
+            path = folder / "stl" / sub / f"{stem}{part}.stl"
             b3d.export_stl(s, str(path), tolerance=0.01, angular_tolerance=0.1)
             written.append(path)
 
@@ -540,13 +545,14 @@ def export_handoff(d: PrototypeDesign, folder: Path, clearances=None) -> dict:
         q = _oriented(dist, True)
         q = q.translate(b3d.Vector(p.bounding_box().size.X + 12.0, 0.0, 0.0))
         write_plate(f"02_cift_c{cl:.2f}".replace(".", "p"),
-                    [(f"{tag}_cift_c{cl:.2f}_proksimal", p), (f"{tag}_cift_c{cl:.2f}_distal", q)])
+                    [(f"{tag}_cift_c{cl:.2f}_proksimal", p), (f"{tag}_cift_c{cl:.2f}_distal", q)], LATER_DIR)
         if cl == nominal:
             from . import checks, mass
             masses = (mass.printed(prox, parts.design).mass_g, mass.printed(dist, parts.design).mass_g)
             folded = checks.sweep(parts)["folded_stop_deg"]
     pred = predictions(d, lever, masses, folded, clearances)
-    docs = {"BASKI_REHBERI.md": print_guide(d, pred, dims), "MONTAJ_VE_DONANIM.md": assembly_guide(d, pred),
+    docs = {"00_ONCE_BENI_OKU.md": start_here(d, pred), "OLCUM_PROTOKOLU.md": protocol_tr(d, pred),
+            "BASKI_REHBERI.md": print_guide(d, pred, dims), "MONTAJ_VE_DONANIM.md": assembly_guide(d, pred),
             "BASKI_VE_OLCUM_KAYDI.md": operator_form(d, pred),
             "olcum_kaydi.json": template(pred, declared_prefill(d)),
             "predictions.json": json.dumps(pred, indent=1, ensure_ascii=False), "design.json": to_json(d)}
@@ -583,6 +589,134 @@ def _name_3mf_objects(path, names):
     os.replace(tmp, path)
 
 
+def start_here(d, pred) -> str:
+    """Turkish start-here note: what to print first, what waits, where everything is."""
+    pairs = ", ".join(f"`02_cift_c{s:.2f}`".replace(".", "p", 1) for s in pred["fit_pair_clearances_mm"])
+    return f"""# {d.name} ölçüm baskısı — önce beni okuyun
+
+Bu klasör bir **geometri ve talimat paketidir**; Bambu Studio'da açılıp dilimlenmedi. Dilimlemeyi kendi P1S
+yapılandırmanızla siz yapacaksınız.
+
+## Şimdi basılacak tek parça: `3mf/01_kupon.3mf`
+
+İlk aşamada **yalnız** delik kuponunu basın (STL karşılığı: `stl/01_kupon.stl`). Kupon gerçek pimle denenip sonucu
+belli olmadan başka hiçbir parça basılmaz. Kuponu **proje sahibine** teslim edin: pimle deneme ve çift seçimi onun kararıdır; hangi çiftin basılacağı size bildirilir.
+
+## Sonra, kupon sonucuna göre: `3mf/{LATER_DIR}/`
+
+Bu klasördeki uyum çiftleri ({pairs}) **şimdi basılmaz**. Proje sahibi kuponu gerçek pimle dener ve **yalnız bir
+çift** seçer: pimin serbest döndüğü (`akıcı`) en küçük adıma ait olan (`BASKI_REHBERI.md` → “Kupondan çift
+seçimi”). Hiçbir delik `akıcı` değilse komşu çift basılmaz; proje sahibi tam boşluklu yeni çift dosyasını ayrıca
+gönderir.
+
+## Pimin uygunluğu doğrulanmadı (karar açık)
+
+Önerilen A4/316 Ø4×14 mm pimin bu montaja uygunluğu **doğrulanmadı; karar açıktır**: kafası, tutma özelliği (segman kanalı veya kopilya
+deliği) ve kullanılabilir tutma boyu, pimin teknik çizimi veya ölçümüyle doğrulanmadan karar verilmez
+(`MONTAJ_VE_DONANIM.md`). Kupon denemesi için pimin gerçek çapı yeterlidir.
+
+## Dosyalar
+
+| Dosya | İçerik |
+|---|---|
+| `BASKI_REHBERI.md` | birim, ölçek, yön, beklenen boyutlar, **önerilen** baskı ayarları, kupondan çift seçimi |
+| `BASKI_VE_OLCUM_KAYDI.md` | önerilen ve **gerçekten kullanılan** ayarlar formu, değişiklikler |
+| `OLCUM_PROTOKOLU.md` | kupon ve uyum çifti ölçüm protokolü, kayıt alanları |
+| `MONTAJ_VE_DONANIM.md` | pim/pul/segman gereksinimleri, montaj sırası, kontrol listesi |
+| `olcum_kaydi.json` | ölçüm kaydı (proje sahibi PyFoldable'a yükler; yazıcı, malzeme ve filament proje sahibinin bildirdiği değerlerle önceden dolduruldu, etiketle farklıysa düzeltin) |
+| `3mf/`, `stl/` | baskı yönünde geometri (mm, %100 ölçek) |
+| `predictions.json`, `design.json`, `SHA256SUMS` | model tahminleri, tasarım kaydı, dosya özetleri |
+
+Kit kimliği `{pred['kit_design_sha256'][:12]}`. Fiziksel yeterlilik: yok — bu bir ölçüm denemesidir.
+"""
+
+
+def protocol_tr(d, pred) -> str:
+    """Turkish measurement protocol of the handoff package (the content of the kit README's protocol)."""
+    steps = ", ".join(f"Ø{pred['pin_diameter_mm'] + s:.1f}" for s in pred["coupon_steps_mm"])
+    fields = "\n".join(f"| `{k}` | {'evet' if v[2] else 'hayır'} | {v[3]} |" for k, v in FIELDS.items())
+    tp, td = pred["lug_thicknesses_mm"]
+    L = pred["lever_mm"]
+    folded = f"{pred['folded_stop_deg']:.0f}°" if pred["folded_stop_deg"] is not None else "yok"
+    m = pred["fit_masses_g"]
+    masses = f"{m[0]:.2f} / {m[1]:.2f} g" if m else "yok"
+    return f"""# {d.name} ölçüm protokolü (delik kuponu + uyum çifti)
+
+Pim geçmesi, mafsal boşluğu, sürtünme ve stop oturması için bir ölçüm prototipidir. Bu adayı motorlu pervane olarak
+seçmez ve fiziksel olarak hiçbir şeyi nitelendirmez. Tüm ölçüler mm. Kit kimliği `{pred['kit_design_sha256']}`;
+ölçüm kaydı aynı kimliği taşımalıdır.
+
+## Parçalar ve donanım
+
+- `01_kupon`: proksimal lug kalınlığında ({tp:.2f} mm) delikli plaka.
+- `02_cift_cX`: CAD çap boşluğu X mm olan mafsal. Proksimal parçanın iç ucunda düz bir **mengene bloğu**, distal
+  parçanın dış ucunda düz bir **yük dili** vardır; dildeki Ø3,2 **yük deliği**, pimden geçen açıklık çizgisi
+  üzerinde pim ekseninden {L:.1f} mm uzaktadır.
+- Tüm parçalarda pim ekseni yazıcının Z ekseninde; proksimal lug'ının pul yüzü tablada, distal **ters çevrilmiş**
+  (pul yüzü tablada) basılır (`BASKI_REHBERI.md`).
+- Çift başına donanım: bir pim ({d.hardware.pin_standard}; kafa altı boy {d.pin_length_mm:.1f} mm), iki DIN 433 pul
+  (Ø{d.hardware.washer_id_mm:g} × Ø{d.hardware.washer_od_mm:g} × {d.hardware.washer_thickness_mm:g} mm), bir DIN 6799
+  segman. Pimin gerçek çapını ölçün; pim uygunluğu `MONTAJ_VE_DONANIM.md` kontrolleri bitmeden kabul edilmez.
+
+## Gerekenler
+
+Gerçek pim (çapı ölçülmüş), 2 pul, segman (ve gerekirse şim); kumpas; komparatör veya sentil takımı (0,05 mm dahil);
+mengene; ≈ 2 N yük (≈ 200 g ağırlık) veya el dinamometresi; yaylı el kantarı; açıölçer; 0,01 g hassasiyetli terazi.
+
+## Ölçümler ve sıra
+
+1. **Kupon.** Kupon {tp:.2f} mm kalınlıkta, delikleri {steps} mm (k. deliğin yanında k çentik). Gerçek pimi her
+   deliğe elle itin ve değerlendirin: `girmez`, `sıkı` (yalnız zorla döner), `akıcı` (serbest döner, gözle görülür
+   boşluk yok), `boşluklu` (gözle görülür boşluk). İsterseniz her deliği pim mastarı veya matkap sapıyla ölçün.
+2. **Uyum çifti: tek karar.** CAD boşluğu **en küçük `akıcı` adıma** eşit olan çifti basın; her kupon adımı için bir
+   çift hazırdır (`3mf/{LATER_DIR}/`). Hiçbir delik `akıcı` değilse (hepsi `sıkı`/`girmez`) komşu çifti seçmeyin:
+   proje sahibi daha büyük boşluklu tam çifti PyFoldable'da üretir (*Prototip → Bu tasarımın ölçüm kitini
+   oluştur*, o delik boşluğuyla, veya `fit.export_kit(d, klasör, clearances=(c,))`) ve gönderir. 0,0 adımı bile boşluklu ise c0.00 çiftini basın ve not edin. Basılan çifti kayda yazın
+   (`fit_pair_clearance_mm`).
+3. **Boyutlar.** İki lug kalınlığını göbek bölgesinde kumpasla ölçün (model {tp:.2f} / {td:.2f} mm). Pim çapını,
+   tutma boyunu (kafa altından kanalın yakın kenarına) ve pul + şim yığınının toplam kalınlığını ölçün.
+4. **Eksenel boşluk a.** Proksimal bloğu mengeneye sıkın, rotor düzlemi yatay. Distal lug'ı pim boyunca aşağı yukarı
+   hareket ettirin; göbekteki serbest hareketi komparatör veya sentille ölçün. Model: {pred['lug_gap_mm']:.2f} mm.
+5. **Eğilme.** Yük deliğine bilinen bir yükü (≈ 2 N) önce yukarı, sonra aşağı uygulayın; deliğin toplam düşey
+   hareketi Δ'yı ölçün. Eğilme φ = max(0, Δ − a) / (2 L), L = {L:.1f} mm. Model (en kötü durum):
+   {pred['model_play']['tilt_deg']:.2f}°.
+   **a ve Δ'yı en az üç kez tekrarlayın** (tekrarlar arasında sökün ve yeniden takın; iki çift basıldıysa ikisini de
+   ölçün). Tekrar sayısını, ortalamaları ve her birinin aralığını (en büyük − en küçük) aletin çözünürlüğüyle birlikte
+   yazın. Karar, en kötü durum aralığından k = 2 kat birleşik belirsizliği (çözünürlük, tekrar aralığı, lug
+   kalınlıklarından baskı değişkenliği) düşer.
+6. **Sürtünme.** Rotor düzlemi yatay, distal açık stopunda. Yük deliğinden yaylı kantarla, yatay ve kola dik olarak,
+   katlanma yönüne (firar kenarına doğru) çekin; katlanmanın başladığı kuvveti yazın. Moment T = F L.
+7. **Stop oturması.** Distal'i elle açık tutun; burun–ped temasını 0,05 mm sentille ve ışığa karşı kontrol edin.
+   Aralığı ve yüzlerin düz oturup oturmadığını yazın.
+8. **Katlanmış stop.** Burun durana kadar katlayın; katlanma hareketini (açıyı) açıölçerle ölçün (model {folded}).
+9. **Kütleler.** İki parçayı donanımsız tartın (model {masses}, {pred['print_model']['material']},
+   duvar {pred['print_model']['wall_mm']} mm, doluluk %{pred['print_model']['infill_fraction'] * 100:.0f}).
+
+## Baskı bilgisi
+
+Ölçümler, onları üreten baskıya bağlıdır. Gerçek yazıcı, nozul, tabla, filament (üretici, ürün, renk/parti),
+dilimleyici ve sürümü, katman, duvar, doluluk ve önerilen ayarlardan **her farkı** `BASKI_VE_OLCUM_KAYDI.md` ile
+`olcum_kaydi.json` dosyasına yazın. Ölçüm, yalnız aynı yazıcı, nozul, malzeme, filament, katman, duvar ve doluluk ile ve
+ayar değişikliği olmadan basılmışsa bu tasarıma **doğrudan** kanıt sayılır; aksi halde **aktarılmış** sayılır ve
+boşluk kararı en kötü durum modelinde kalır. ASA veya değişmiş bir süreç ayrı bir deneydir.
+
+## Kayıt
+
+`olcum_kaydi.json` dosyasını (kitteki kayıt şablonu) doldurun; proje sahibi onu *Prototip → Ölçüm prototipi*
+sayfasına yükler. Bilinmeyen alanlar, eksik veya aralık dışı değerler ve başka bir kite ait kayıt reddedilir. Doğrudan
+kanıt sayılan ölçülmüş boşluk, tam hareket açıklık kontrolünde en kötü durum model boşluğunun yerine geçer ve
+ölçülen boşluk tasarımın delik boşluğu olur. Bilinmeyen değerleri tahminle doldurmayın; boş
+(`null`) bırakın.
+
+| Alan | Zorunlu | Anlam |
+|---|---|---|
+{fields}
+
+Sınırlar: yalnız yüksüz sürtünme (merkezkaç yükü altındaki pim sürtünmesi ölçülmez); statik boşluk, yorulma veya
+sünme değil; tek baskı, tek pim. Fiziksel yeterlilik: yok.
+"""
+
+
 def print_guide(d, pred, dims) -> str:
     c, pm, tp = d.connection, d.print_model, pred["lug_thicknesses_mm"][0]
     holes = ", ".join(f"Ø{c.pin_diameter_mm + s:.1f}" for s in pred["coupon_steps_mm"])
@@ -595,8 +729,9 @@ siz yapacaksınız; aşağıdaki ayarlar **önerilen** ayarlardır, **kullanıla
 
 ## İlk basılacak plaka: `3mf/01_kupon.3mf`
 
-Kupon: {tp:.2f} mm kalınlıkta plaka, delikler {holes} mm (deliğin yanında k adet çentik = k. delik). Önce yalnız kuponu
-basın, gerçek pimle deneyin, sonra tek bir uyum çifti basın.
+Kupon: {tp:.2f} mm kalınlıkta plaka, delikler {holes} mm (deliğin yanında k adet çentik = k. delik). **İlk baskıda
+yalnız bu kuponu basın.** `3mf/{LATER_DIR}/` klasöründeki çiftleri şimdi basmayın: kupon gerçek pimle denendikten sonra
+bunlardan **yalnız biri** seçilip basılır.
 
 ## Birim, ölçek, yön
 
@@ -619,6 +754,10 @@ basın, gerçek pimle deneyin, sonra tek bir uyum çifti basın.
 | Filament | {pm.filament or "?"} | üretici ve etiketi doğrulayın; listede yoksa Generic PLA profili |
 | Katman | {pm.layer_mm:g} mm (ilk katman {pm.layer_mm:g} mm) | |
 | Duvar | {pm.wall_loops} döngü (≈ {pm.wall_mm:g} mm) | dilim önizlemesinde delik çevresindeki duvar genişliğini kontrol edin |
+
+**Dilimleme önizlemesi (basmadan önce):** boyutların yukarıdaki tabloyla aynı olduğunu, deliklerin çevresinde
+tam duvar olduğunu ve deliklere, lug yüzlerine ve stop temas yüzlerine destek gelmediğini kontrol edin; önizlemenin
+ekran görüntüsünü alın ve `BASKI_VE_OLCUM_KAYDI.md` formuna yazın.
 | Doluluk | %{pm.infill_fraction * 100:.0f} | |
 | X-Y delik telafisi | 0 | kupon ham süreci ölçer; telafi kullanırsanız aynı değeri çiftte de kullanın ve yazın |
 | X-Y kontur telafisi | 0 | |
@@ -632,9 +771,12 @@ Delikleri matkap/raybayla açmayın, zımparalamayın: ölçüm, basıldığı h
 
 ## Kupondan çift seçimi (tek kural)
 
-Pimi her deliğe elle itin ve not edin: `girmez` / `sıkı` (zorla döner) / `akıcı` (serbest döner, gözle görülür
-boşluk yok) / `boşluklu`. **En küçük `akıcı` adım** s ise `02_cift_c` + s dosyasını basın. Hazır çiftler: {pairs}.
-Hiç `akıcı` yoksa komşu bir çifti seçmeyin; tam boşluklu çift PyFoldable'da üretilir (MONTAJ_VE_DONANIM.md).
+Kuponu **proje sahibine** teslim edin: pimle deneme ve çift seçimi onun kararıdır; hangi çiftin basılacağı size bildirilir.
+
+Proje sahibi gerçek pimi her deliğe elle iter ve not eder: `girmez` / `sıkı` (zorla döner) / `akıcı` (serbest döner,
+gözle görülür boşluk yok) / `boşluklu`. **En küçük `akıcı` adım** s ise `3mf/{LATER_DIR}/02_cift_c` + s dosyası
+basılır. Hazır çiftler: {pairs}. Hiç `akıcı` yoksa komşu bir çift seçilmez; proje sahibi tam boşluklu çift dosyasını
+ayrıca gönderir.
 
 Kit kimliği `{pred['kit_design_sha256'][:12]}` — ölçüm kaydı bu kimliği taşır.
 """
@@ -650,14 +792,15 @@ def assembly_guide(d, pred) -> str:
     note = ""
     if abs(pin - 4.0) < 1e-9:
         float_14 = 12.5 - grip + c.lug_gap_mm                    # assumed 12.5 mm usable grip of a Ø4×14 pin
-        note = (f"\nØ4×14 için not: kafa altı boy 14 mm ise kanal/delik konumu tedarikçi çiziminden okunmalı; tutma boyu "
-                f"≈ 12,5 mm çıkarsa nominal yığında eksenel boşluk ≈ {tr(round(float_14, 2))} mm olur ve ≈ "
+        note = (f"\nØ4×14 için varsayımsal örnek (pim hakkında bir bulgu değildir): kafa altı boy 14 mm ise kanal/delik "
+                f"konumu tedarikçi çiziminden okunmalı; tutma boyu ≈ 12,5 mm çıkarsa nominal yığında eksenel boşluk ≈ {tr(round(float_14, 2))} mm olur ve ≈ "
                 f"{tr(round(max(0.0, float_14 - 0.25), 2))} mm şim gerekir (hedef 0,25 mm).\n")
     return f"""# {d.name} uyum çifti — montaj ve donanım
 
 ## Donanım kararı açık
 
-{proposed} **henüz uygun bulunmadı**. Montajdan önce aşağıdakiler ölçülüp doğrulanmalı.
+{proposed}: uygunluğu **doğrulanmadı; karar açıktır**. Pimin teknik çizimi veya ölçümüyle aşağıdakiler
+doğrulanmadan montaj yapılmaz.
 
 | Ölçü | Gereken | Neden |
 |---|---|---|
@@ -683,20 +826,25 @@ def assembly_guide(d, pred) -> str:
 - [ ] Pim çapı, kafa, tutma boyu, kanal, pul ve segman ölçüldü ve kayda yazıldı
 - [ ] Lug kalınlıkları ölçüldü (model {tp:.2f} / {td:.2f} mm)
 - [ ] Şim kullanıldıysa toplam kalınlık `washer_stack_mm` içine yazıldı
-- [ ] Ölçüm protokolü (kit README) uygulandı; eksenel boşluk ve Δ en az 3 kez
+- [ ] Ölçüm protokolü (`OLCUM_PROTOKOLU.md`) uygulandı; eksenel boşluk ve Δ en az 3 kez
 """
 
 
 def operator_form(d, pred) -> str:
     pm = d.print_model
-    rows = [("Yazıcı", pm.printer or "?"), ("Nozul çapı", f"{pm.nozzle_mm:g} mm (doğrulanacak)"),
-            ("Tabla", "Textured PEI (doğrulanacak)"), ("Filament ürünü", pm.filament or "?"),
-            ("Filament üreticisi / etiket / renk / parti", "(etiket fotoğrafı)"), ("Filament profili", "Generic PLA?"),
-            ("Dilimleyici ve sürüm", "Bambu Studio ?"), ("Proje dosyası adı", ""), ("Katman", f"{pm.layer_mm:g} mm"),
+    rows = [("Yazıcı", pm.printer or "(bildirilmedi)"), ("Nozul çapı (takılı nozul kontrol edildi mi? evet/hayır)", f"{pm.nozzle_mm:g} mm"),
+            ("Tabla (takılı tabla kontrol edildi mi? evet/hayır)", "Textured PEI"),
+            ("Filament ürünü (etiketle karşılaştırıldı mı? evet/hayır)", pm.filament or "(bildirilmedi)"),
+            ("Filament üreticisi / renk / parti (etiket fotoğrafı dosya adı)", "(etiketten yazın)"),
+            ("Filament profili (dilimleyicide seçilen)", "(profil adını yazın)"),
+            ("Dilimleyici ve sürüm", "(ör. Bambu Studio 02.xx; sürümü yazın)"), ("Proje dosyası adı", "(yazın)"),
+            ("Katman", f"{pm.layer_mm:g} mm"),
             ("Duvar döngüsü", str(pm.wall_loops)), ("Doluluk", f"%{pm.infill_fraction * 100:.0f}"),
             ("X-Y delik / kontur telafisi", "0 / 0"), ("Fil ayağı telafisi", "varsayılan"),
             ("Destek", "kupon yok; çift: ağaç, yalnız tabladan"), ("Brim", "kupon yok; çift 3 mm"),
-            ("Akış oranı / basınç ilerlemesi", "profil varsayılanı"), ("Basılan çift", "02_cift_c____")]
+            ("Akış oranı / basınç ilerlemesi", "profil varsayılanı"),
+            ("Dilimleme önizlemesi incelendi mi? (boyut, delik duvarları, desteksiz delikler; ekran görüntüsü dosya adı)", "evet"),
+            ("Basılan çift (proje sahibinin bildirdiği)", "02_cift_c____")]
     table = "\n".join(f"| {k} | {v} | |" for k, v in rows)
     return f"""# Baskı ve ölçüm kaydı — {d.name} (kit {pred['kit_design_sha256'][:12]})
 
@@ -712,6 +860,9 @@ tasarıma doğrudan kanıt sayılır; ASA veya değişmiş bir süreç ayrı den
 
 -
 
-Ölçümler: kit README'deki protokol; değerler `olcum_kaydi.json` dosyasına (yazıcı, malzeme ailesi ve filament ürünü
-önceden dolduruldu; diğer tüm alanlar operatör/ölçüm içindir).
+“Önerilen” sütunu yalnız öneridir; “Kullanılan” sütununa gerçekte kullandığınız değeri yazın (aynıysa yine yazın).
+
+Ölçümler: `OLCUM_PROTOKOLU.md`; değerler `olcum_kaydi.json` dosyasına. Yazıcı, malzeme ailesi ve filament ürünü proje
+sahibinin bildirdiği değerlerle önceden dolduruldu: etikette farklıysa düzeltin. Diğer tüm alanlar boştur ve gerçek
+baskı/ölçüm değerleriyle doldurulur.
 """

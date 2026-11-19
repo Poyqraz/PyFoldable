@@ -7,13 +7,13 @@ tasarıma doğrudan kanıt sayılır; ASA veya değişmiş bir süreç ayrı den
 | Ayar | Önerilen | Kullanılan |
 |---|---|---|
 | Yazıcı | Bambu Lab P1S | |
-| Nozul çapı | 0.4 mm (doğrulanacak) | |
-| Tabla | Textured PEI (doğrulanacak) | |
-| Filament ürünü | Eco Smart Standard PLA | |
-| Filament üreticisi / etiket / renk / parti | (etiket fotoğrafı) | |
-| Filament profili | Generic PLA? | |
-| Dilimleyici ve sürüm | Bambu Studio ? | |
-| Proje dosyası adı |  | |
+| Nozul çapı (takılı nozul kontrol edildi mi? evet/hayır) | 0.4 mm | |
+| Tabla (takılı tabla kontrol edildi mi? evet/hayır) | Textured PEI | |
+| Filament ürünü (etiketle karşılaştırıldı mı? evet/hayır) | Eco Smart Standard PLA | |
+| Filament üreticisi / renk / parti (etiket fotoğrafı dosya adı) | (etiketten yazın) | |
+| Filament profili (dilimleyicide seçilen) | (profil adını yazın) | |
+| Dilimleyici ve sürüm | (ör. Bambu Studio 02.xx; sürümü yazın) | |
+| Proje dosyası adı | (yazın) | |
 | Katman | 0.2 mm | |
 | Duvar döngüsü | 3 | |
 | Doluluk | %100 | |
@@ -22,11 +22,15 @@ tasarıma doğrudan kanıt sayılır; ASA veya değişmiş bir süreç ayrı den
 | Destek | kupon yok; çift: ağaç, yalnız tabladan | |
 | Brim | kupon yok; çift 3 mm | |
 | Akış oranı / basınç ilerlemesi | profil varsayılanı | |
-| Basılan çift | 02_cift_c____ | |
+| Dilimleme önizlemesi incelendi mi? (boyut, delik duvarları, desteksiz delikler; ekran görüntüsü dosya adı) | evet | |
+| Basılan çift (proje sahibinin bildirdiği) | 02_cift_c____ | |
 
 Önerilenden farklar ve gözlemler (destek izi, dikiş, çarpılma, yapışma):
 
 -
 
-Ölçümler: kit README'deki protokol; değerler `olcum_kaydi.json` dosyasına (yazıcı, malzeme ailesi ve filament ürünü
-önceden dolduruldu; diğer tüm alanlar operatör/ölçüm içindir).
+“Önerilen” sütunu yalnız öneridir; “Kullanılan” sütununa gerçekte kullandığınız değeri yazın (aynıysa yine yazın).
+
+Ölçümler: `OLCUM_PROTOKOLU.md`; değerler `olcum_kaydi.json` dosyasına. Yazıcı, malzeme ailesi ve filament ürünü proje
+sahibinin bildirdiği değerlerle önceden dolduruldu: etikette farklıysa düzeltin. Diğer tüm alanlar boştur ve gerçek
+baskı/ölçüm değerleriyle doldurulur.

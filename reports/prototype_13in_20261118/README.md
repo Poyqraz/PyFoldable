@@ -198,7 +198,8 @@ It needs the saved polars in `aero/`.
 `F1S_print_handoff/` is a geometry-and-instructions package for the P1S operator. It has not been sliced in Bambu
 Studio. It holds:
 
-- print-oriented 3MF per plate: `01_kupon` first, then `02_cift_c0p00` … `c0p40`, each with named parts;
+- print-oriented 3MF per plate: `01_kupon` is the only plate printed first. `sonra_secilecek_ciftler/02_cift_c0p00` … `c0p40` wait for the coupon result, and each has named parts;
+- `00_ONCE_BENI_OKU.md` (start here) and `OLCUM_PROTOKOLU.md` (the Turkish measurement protocol), so the package is self-contained;
 - STL per part;
 - the Turkish guide, the hardware and assembly doc, and the proposed-versus-used form;
 - the prefilled measurement record (schema /2), predictions, the design record and SHA-256 sums.

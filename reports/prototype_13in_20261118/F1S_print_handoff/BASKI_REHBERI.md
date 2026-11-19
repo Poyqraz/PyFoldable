@@ -5,8 +5,9 @@ siz yapacaksınız; aşağıdaki ayarlar **önerilen** ayarlardır, **kullanıla
 
 ## İlk basılacak plaka: `3mf/01_kupon.3mf`
 
-Kupon: 5.16 mm kalınlıkta plaka, delikler Ø4.0, Ø4.1, Ø4.2, Ø4.3, Ø4.4 mm (deliğin yanında k adet çentik = k. delik). Önce yalnız kuponu
-basın, gerçek pimle deneyin, sonra tek bir uyum çifti basın.
+Kupon: 5.16 mm kalınlıkta plaka, delikler Ø4.0, Ø4.1, Ø4.2, Ø4.3, Ø4.4 mm (deliğin yanında k adet çentik = k. delik). **İlk baskıda
+yalnız bu kuponu basın.** `3mf/sonra_secilecek_ciftler/` klasöründeki çiftleri şimdi basmayın: kupon gerçek pimle denendikten sonra
+bunlardan **yalnız biri** seçilip basılır.
 
 ## Birim, ölçek, yön
 
@@ -39,6 +40,10 @@ basın, gerçek pimle deneyin, sonra tek bir uyum çifti basın.
 | Filament | Eco Smart Standard PLA | üretici ve etiketi doğrulayın; listede yoksa Generic PLA profili |
 | Katman | 0.2 mm (ilk katman 0.2 mm) | |
 | Duvar | 3 döngü (≈ 1.2 mm) | dilim önizlemesinde delik çevresindeki duvar genişliğini kontrol edin |
+
+**Dilimleme önizlemesi (basmadan önce):** boyutların yukarıdaki tabloyla aynı olduğunu, deliklerin çevresinde
+tam duvar olduğunu ve deliklere, lug yüzlerine ve stop temas yüzlerine destek gelmediğini kontrol edin; önizlemenin
+ekran görüntüsünü alın ve `BASKI_VE_OLCUM_KAYDI.md` formuna yazın.
 | Doluluk | %100 | |
 | X-Y delik telafisi | 0 | kupon ham süreci ölçer; telafi kullanırsanız aynı değeri çiftte de kullanın ve yazın |
 | X-Y kontur telafisi | 0 | |
@@ -52,8 +57,11 @@ Delikleri matkap/raybayla açmayın, zımparalamayın: ölçüm, basıldığı h
 
 ## Kupondan çift seçimi (tek kural)
 
-Pimi her deliğe elle itin ve not edin: `girmez` / `sıkı` (zorla döner) / `akıcı` (serbest döner, gözle görülür
-boşluk yok) / `boşluklu`. **En küçük `akıcı` adım** s ise `02_cift_c` + s dosyasını basın. Hazır çiftler: `02_cift_c0p00`, `02_cift_c0p10`, `02_cift_c0p20`, `02_cift_c0p30`, `02_cift_c0p40`.
-Hiç `akıcı` yoksa komşu bir çifti seçmeyin; tam boşluklu çift PyFoldable'da üretilir (MONTAJ_VE_DONANIM.md).
+Kuponu **proje sahibine** teslim edin: pimle deneme ve çift seçimi onun kararıdır; hangi çiftin basılacağı size bildirilir.
+
+Proje sahibi gerçek pimi her deliğe elle iter ve not eder: `girmez` / `sıkı` (zorla döner) / `akıcı` (serbest döner,
+gözle görülür boşluk yok) / `boşluklu`. **En küçük `akıcı` adım** s ise `3mf/sonra_secilecek_ciftler/02_cift_c` + s dosyası
+basılır. Hazır çiftler: `02_cift_c0p00`, `02_cift_c0p10`, `02_cift_c0p20`, `02_cift_c0p30`, `02_cift_c0p40`. Hiç `akıcı` yoksa komşu bir çift seçilmez; proje sahibi tam boşluklu çift dosyasını
+ayrıca gönderir.
 
 Kit kimliği `052b3fe9578c` — ölçüm kaydı bu kimliği taşır.
