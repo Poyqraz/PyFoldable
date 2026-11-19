@@ -21,7 +21,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from pyfoldable.core.profile_catalog import PROJECT_AIRFOIL_IDS
-from pyfoldable.prototype import cad, checks, design, explore, export, fit, loads, strength, study
+from pyfoldable.prototype import cad, checks, design, explore, export, fit, loads, printed_pin, strength, study
 
 from . import figure_style
 from . import research_ui as rui
@@ -34,6 +34,9 @@ KITS = {  # committed measurement kits (predictions, record template, printing s
     "B": ("B · referans", Path("reports/prototype_13in_20261118/fit_kit_B")),
 }
 KIT_FILES = ("README.md", "predictions.json", "fit_record_template.json", "design.json", "SHA256SUMS")
+# temporary printed-pin demonstrator (hand trial; its observations never reach the metal-pin design)
+PRINTED_PIN = Path("reports/prototype_13in_20261118/F1S_printed_pin_demo")
+_PP, _PP_ERROR, _PP_BUILD = "_proto_pp_record", "_proto_pp_error", "_proto_pp_build"
 FOLD_STEP_DEG = 10.0
 MESH_TOL_MM, MESH_ANGLE_RAD = 0.3, 0.5
 PROXIMAL, DISTAL, HARDWARE = "#4C78A8", "#E45756", figure_style.CONSTRUCTION
@@ -709,6 +712,110 @@ def _with_record(d):
     return out["design"]
 
 
+# ------------------------------------------------------------------------------------- printed-pin demonstrator
+@st.cache_data(show_spinner=False, max_entries=2)
+def _folder_zip(folder: str, sums: str) -> bytes:
+    """Every file of a committed package under its folder name; ``sums`` keys the cache to the content."""
+    base = Path(folder)
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for f in sorted(base.rglob("*")):
+            if f.is_file():
+                z.write(f, f"{base.name}/{f.relative_to(base).as_posix()}")
+    return buf.getvalue()
+
+
+def _pp_build(d, kit):
+    """Explicit action: the demonstrator solids, their checks and the fold playback (≈ 30 s), keyed by package."""
+    with st.spinner("Gösterici katıları kuruluyor, katlanma taranıyor…"):
+        try:
+            demo = printed_pin.build(d)
+            chk = printed_pin.check(demo)
+            return {"identity": kit, "figure": assembly_figure(demo["parts"], chk["sweep"]), "fold": chk["fold"]}
+        except Exception as exc:  # noqa: BLE001 - a failed build is a visible result, never a stale success
+            return {"identity": kit, "error": f"{type(exc).__name__}: {exc}"}
+
+
+def _pp_apply(pred, d):
+    st.session_state.pop(_PP, None)                      # fail closed: a failed paste never leaves an older record
+    st.session_state.pop(_PP_ERROR, None)
+    try:
+        text = st.session_state.get("proto_pp_text", "")
+        st.session_state[_PP] = {**printed_pin.classify(printed_pin.parse(text, pred), pred, d), "text": text}
+    except fit.RecordError as exc:
+        st.session_state[_PP_ERROR] = str(exc)
+
+
+def _printed_pin(root: Path):
+    st.subheader("Basılı pim gösterici (geçici, elle deneme)")
+    st.caption("Metal pim alınmadan önce elle montaj ve katlanma denemesi: başlı PLA pim (dik, kafa tablada), distal lug "
+               "üstündeki kanala yandan takılan düz PLA klips, metal kitin deliğiyle aynı kısa F1S mafsalı. Bu gösterici "
+               "metal referansın yerine geçmez: gözlemleri **basılı pim gözlemi** olarak gösterilir, tasarıma "
+               "uygulanmaz ve metal pimin boşluk, sürtünme, dayanım, temas yükü veya devir kanıtı değildir. Onaylı motorlu "
+               "çalışma zarfı yoktur. Fiziksel yeterlilik: yok.")
+    base = Path(root) / PRINTED_PIN
+    try:
+        pred = json.loads((base / "predictions.json").read_text(encoding="utf-8"))
+        tpl = (base / "deneme_kaydi.json").read_text(encoding="utf-8")
+        sums = (base / "SHA256SUMS").read_text(encoding="utf-8")
+        d = design.from_json((base / "design.json").read_text(encoding="utf-8"))
+        g, f, kit = pred["geometry"], pred["fold"], pred["kit_design_sha256"]
+    except (OSError, ValueError, TypeError, KeyError) as exc:
+        st.info(f"Basılı pim gösterici paketi bulunamadı veya eksik ({type(exc).__name__}).")
+        return
+    st.caption(f"Paket {pred['kit_design_sha256'][:12]} (tasarım {pred['kit_design_name']} {pred['design_sha256'][:12]}). "
+               "İlk baskı: `3mf/01A_kucuk_parcalar.3mf` ve `3mf/01B_mafsal_cifti.3mf`.")
+    st.dataframe([{"Bileşen": f"Basılı pim Ø{_f(p)} ({k + 1} çentik)", "Değer": f"boy {_f(g['pin_length_mm'])} mm, "
+                   f"CAD çap boşluğu {_f(g['diametral_clearance_cad_mm'][f'{p:.2f}'])} mm, kanal derinliği "
+                   f"{_f(g['groove_depth_mm'][f'{p:.2f}'])} mm"} for k, p in enumerate(pred["pin_diameters_mm"])]
+                 + [{"Bileşen": "Klips (düz PLA)", "Değer": f"{_f(g['clip_thickness_mm'], 1)} mm; ağız {_f(g['clip_mouth_mm'])} < "
+                     f"kanal dibi Ø{_f(g['groove_root_mm'], 1)} mm (yaylanarak oturur)"},
+                    {"Bileşen": "Mafsal deliği (metal tasarım)", "Değer": f"Ø{_f(g['hole_diameter_mm'])} mm, değiştirilmedi"},
+                    {"Bileşen": "Lug yığını (katılardan)", "Değer": f"{_f(g['stack_mm'])} mm; kanal {_f(g['groove_start_above_stack_mm'])} mm "
+                     f"üstünde; nominal eksenel boşluk {_f(g['float_nominal_mm'])} mm; pul yok"},
+                    {"Bileşen": "Elle katlanma (model)", "Değer": f"yararlı {_f(f['useful_travel_deg'], 0)}°, en dar "
+                     f"{_f(f['tightest_angle_deg'], 0)}° ({_f(f['min_gap_mm'])} mm), burun {_f(f['folded_stop_deg'], 0)}°"},
+                    {"Bileşen": "Çakışma / erişim", "Değer": ("açık, en dar ve katlı konumda çakışma yok" if all(
+                        v < 1e-3 for v in pred["interference_mm3"].values()) else "ÇAKIŞMA VAR") + "; pim ve klips yolları "
+                     + ("açık" if pred["access"]["pin_path_clear"] and pred["access"]["clip_path_clear"] else "KAPALI")}],
+                 hide_index=True, **figure_style.dataframe_width_kwargs())
+    with st.expander("Görseller: patlatılmış montaj, pim kesiti, açık / en dar / katlı"):
+        for name, cap in (("patlatilmis_montaj.png", "Patlatılmış montaj"), ("pim_kesiti.png", "Pim ekseninden kesit"),
+                          ("katlanma_konumlari.png", "Açık, en dar ara ve katlı konum")):
+            if (base / "gorseller" / name).is_file():
+                st.image(str(base / "gorseller" / name), caption=cap)
+    a, b = st.columns(2)
+    a.download_button("Gösterici paketini indir (zip)", _folder_zip(str(base), sums), f"{base.name}.zip",
+                      "application/zip", key="proto_pp_zip")
+    b.download_button("Deneme kaydı şablonunu indir (JSON)", tpl.encode("utf-8"), "deneme_kaydi.json",
+                      "application/json", key="proto_pp_template")
+    if st.button("Gösterici geometrisini kur ve katlanmayı oynat (≈ 30 s)", key="proto_pp_build"):
+        st.session_state[_PP_BUILD] = _pp_build(d, kit)
+    built = st.session_state.get(_PP_BUILD)
+    if built is not None:
+        if built["identity"] != kit:
+            st.warning("Paket değişti: kurulan gösterici güncel değil; yeniden kurun.")
+        elif "error" in built:
+            st.error("Gösterici kurulamadı: " + built["error"])
+        else:
+            rui._plot(built["figure"], "proto_pp_figure")
+    text = st.text_area("Doldurulmuş deneme kaydı (basılı pim gözlemi, JSON)", key="proto_pp_text", height=120)
+    st.button("Gözlemi doğrula ve göster (tasarıma uygulanmaz)", key="proto_pp_apply", disabled=not text.strip(),
+              on_click=_pp_apply, args=(pred, d))
+    if st.session_state.get(_PP_ERROR):
+        st.error("Deneme kaydı kullanılamadı (hiçbir şey gösterilmedi): " + st.session_state[_PP_ERROR])
+    out = st.session_state.get(_PP)
+    if out is not None and out["text"] != text:
+        st.warning("Kayıt metni değişti: gösterilen gözlem bu metne ait değil ve gizlendi; yeniden doğrulayın.")
+    elif out is not None:
+        st.info(f"**{out['label']}** · kayıt {out['record_sha256'][:12]} · metal pim için doğrudan kanıt: hayır. "
+                + " ".join(f"{r[0].upper()}{r[1:]}." for r in out["reasons"]))
+        st.dataframe(out["rows"], hide_index=True, **figure_style.dataframe_width_kwargs())
+        for w in out["warnings"]:
+            st.warning(w)
+        st.button("Deneme kaydını kaldır", key="proto_pp_clear", on_click=lambda: st.session_state.pop(_PP, None))
+
+
 # ---------------------------------------------------------------------------------------------------------- page
 def render_prototype(root: Path):
     head = st.container()
@@ -755,3 +862,4 @@ def render_prototype(root: Path):
         _results(res["result"])
     _exploration(root, d, errors)
     _measurement(root, d0)
+    _printed_pin(root)

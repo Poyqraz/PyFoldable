@@ -119,8 +119,10 @@ def _number(v):
     return abs(v) < 1e9 if isinstance(v, int) else math.isfinite(v)      # huge ints overflow math.isfinite
 
 
-def parse(text: str, pred: dict) -> dict:
-    """Validated record (a dict) or ``RecordError`` naming every problem."""
+def parse(text: str, pred: dict, fields=None, schema=SCHEMA) -> dict:
+    """Validated record (a dict) or ``RecordError`` naming every problem. ``fields``/``schema`` select another record
+    type with the same rules (the printed-pin trial record)."""
+    fields = FIELDS if fields is None else fields
     if len(text.encode("utf-8")) > MAX_BYTES:
         raise RecordError(f"Kayıt {MAX_BYTES} bayttan büyük.")
     try:
@@ -129,9 +131,9 @@ def parse(text: str, pred: dict) -> dict:
         raise RecordError(f"Kayıt JSON değil: {type(exc).__name__}") from exc
     if not isinstance(raw, dict):
         raise RecordError("Kayıt bir JSON nesnesi olmalı.")
-    errs = [f"bilinmeyen alan: {k}" for k in raw if k not in FIELDS]
+    errs = [f"bilinmeyen alan: {k}" for k in raw if k not in fields]
     n = len(pred["coupon_steps_mm"])
-    for key, (kind, rng, required, _) in FIELDS.items():
+    for key, (kind, rng, required, _) in fields.items():
         v = raw.get(key)
         if v is None or (kind == "text" and isinstance(v, str) and not v.strip() and required):
             if required:
@@ -147,6 +149,10 @@ def parse(text: str, pred: dict) -> dict:
             errs.append(f"{key}: {', '.join(MATERIAL_FAMILIES)} biri olmalı")
         elif kind == "sha256" and not (isinstance(v, str) and re.fullmatch(r"[0-9a-fA-F]{64}", v.strip())):
             errs.append(f"{key}: 64 onaltılık karakterli SHA-256 olmalı")
+        elif kind == "fit" and v not in FITS:
+            errs.append(f"{key}: {', '.join(FITS)} biri olmalı")
+        elif kind == "pin" and not (_number(v) and any(abs(v - c) < 1e-9 for c in pred["pin_diameters_mm"])):
+            errs.append(f"{key}: paketteki pim çaplarından biri olmalı {pred['pin_diameters_mm']}")
         elif kind == "bool" and not isinstance(v, bool):
             errs.append(f"{key}: true/false olmalı")
         elif kind == "fits" and not (isinstance(v, list) and len(v) == n and all(x in FITS for x in v)):
@@ -156,13 +162,13 @@ def parse(text: str, pred: dict) -> dict:
             errs.append(f"{key}: {n} değerli liste, her biri null veya 1–10 mm")
         elif kind == "choice" and not (_number(v) and any(abs(v - c) < 1e-9 for c in pred["fit_pair_clearances_mm"])):
             errs.append(f"{key}: kitteki uyum çifti boşluklarından biri olmalı {pred['fit_pair_clearances_mm']}")
-    if raw.get("schema") not in (None, SCHEMA):
-        errs.append(f"schema: {SCHEMA} olmalı (eski şemadaki kayıtlar süreç alanlarıyla yeniden girilmeli)")
+    if raw.get("schema") not in (None, schema):
+        errs.append(f"schema: {schema} olmalı (başka türdeki veya eski şemadaki kayıtlar kabul edilmez)")
     if raw.get("kit_design_sha256") not in (None, pred["kit_design_sha256"]):
         errs.append("kit_design_sha256: bu kayıt başka bir ölçüm kitine ait")
     if errs:
         raise RecordError("; ".join(errs))
-    return {k: raw.get(k) for k in FIELDS}
+    return {k: raw.get(k) for k in fields}
 
 
 def coupon_step(steps, fits):

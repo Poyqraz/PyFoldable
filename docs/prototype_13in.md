@@ -375,6 +375,69 @@ and kit identity, so their applicability stays readable. A schema /1 record is r
 than silently reinterpreted. A design saved with measured play before this change
 (no `measured_process`) loads as transferred, with its process marked unknown.
 
+## F1S printed-pin hinge demonstrator (temporary, hand-operated)
+
+Before any metal pin is bought, `pyfoldable/prototype/printed_pin.py` builds a fully printable demonstrator of the
+F1S short joint for hand assembly and folding trials. The package is in
+`reports/prototype_13in_20261118/F1S_printed_pin_demo/`. It is a geometry-and-instructions package and has **not**
+been sliced.
+
+**Selected arrangement:**
+
+- **Pin:** PLA with an integral head (Ø8 × 1.6 mm, inside the lugs' Ø8.6 spot face). It prints upright with the
+  head on the bed, so the bearing surface is round and the layer rings run with the rotation.
+- **Retention:** a flat PLA C-clip pushed sideways into a groove above the distal lug, entirely outside the bearing
+  span. The clip prints flat, so its arms flex within the layers. It is sized for PLA (1.6 mm thick, 1.3 mm arms,
+  0.3 mm snap on a Ø3.0 groove root) and is not a scaled DIN 6799. One clip fits all three pins.
+- **No washers.** The head and the clip bear on the lugs' washer-seat faces, which print on the bed.
+- **Joint:** the F1S fit-test section (same pivot, lugs, stop, blade sections, and the metal-design hole Ø4.2),
+  trimmed like the metal kit's fit pair but without its clamp block and load tab
+  (`cad.print_trimmed_stubs`, shared with `cad.fit_fixture`).
+
+**Derived from the regenerated solids:**
+
+- lug stack q1 − p0 = 10.84 mm;
+- groove 0.15 mm above the stack, 1.8 mm wide;
+- nominal axial float 0.35 mm; the clip still fits if the printed lugs are up to 0.35 mm thicker in total;
+- pin length 15.59 mm.
+
+The metal reference stack (about 11.84 mm with two washers) is a separate configuration and is not copied.
+
+**Fit experiment:** three pins, Ø3.80, Ø3.90 and Ø4.00 (1, 2 and 3 notches on the head), plus the Ø4.0–4.4 hole
+coupon. The joint hole stays at the metal design clearance: the pin is chosen to fit the hole, and neither the hole
+nor the metal clearance is changed because a printed pin fits.
+
+**Checks** (`printed_pin.check`, on the actual solids):
+
+- no interference between pin, clip and either stub at the open, tightest and folded poses;
+- the pin's path from below and the clip's sideways path are free;
+- hand-fold travel is 143° by the column sweep, ending one step before the stop nose meets the proximal at 144°;
+- the tightest intermediate pose is θ = −103°, with a 0.48 mm vertical gap.
+
+**Package:**
+
+- **First print**, two plates and nothing else:
+  - `3mf/01A_kucuk_parcalar.3mf`: the coupon, the three pins and three clips; no supports, no brim;
+  - `3mf/01B_mafsal_cifti.3mf`: the joint pair, with tree supports from the plate and a 3 mm brim.
+- **Geometry files:** STL per part in print orientation, and STEP per part in the assembly frame.
+- **Views:** exploded assembly, a section through the pivot, and plan views at open, tightest and folded.
+- **Turkish documents:** start-here, print guide, assembly, a hand-trial protocol (insertion and removal, rotation,
+  stop seating, fold, interference, clip retention, declared cycles, photos; no force measurement), and the
+  proposed-versus-used form.
+- **Record:** a trial record template (`pyfoldable.prototype.printed_pin_trial/1`).
+
+**Evidence:** `printed_pin.classify` labels a trial record a **printed-pin observation**.
+
+- It is shown on the *Prototip* page and never applied to a design.
+- It is not evidence for the metal-pin assembly's play, friction, strength, contact loads or allowable RPM.
+- Observed contact is geometric, not a quantitative clearance acceptance.
+- The metal kit's record and this record cannot be swapped: the schemas differ, and both parsers fail closed.
+- The demonstrator has no operating envelope (`operating_envelope` and `rpm_limit` are null) and inherits no RPM
+  limit.
+- A metal pin, another retention method or ASA needs the relevant measurements again.
+
+Physical qualification: false.
+
 ## Next full-size prototype: from the measurements to the print
 
 1. **Coupon (F1S kit, Ø4.0–4.4 mm).** Rate the holes and pick the smallest running fit. E's coupon may also be

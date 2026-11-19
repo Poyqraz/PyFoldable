@@ -40,9 +40,10 @@ def _arr(x):
 
 
 def downloads(at):
-    """Result downloads (the measurement kit and record template are always offered when a kit exists)."""
+    """Result downloads (the measurement kits and record templates are always offered when a package exists)."""
     return [b for b in at.get("download_button")
-            if b.key not in ("proto_fit_template", "proto_fit_kit_zip", "proto_kitgen_zip")]
+            if b.key not in ("proto_fit_template", "proto_fit_kit_zip", "proto_kitgen_zip", "proto_pp_zip",
+                             "proto_pp_template")]
 
 
 def _sweep():
@@ -361,3 +362,50 @@ def test_pin_diameter_input_switches_to_the_matched_pin_set(fake):
     assert d.hardware.pin_nominal_mm == 4.0 and d.hardware.clip_od_mm == pytest.approx(7.3)
     at.number_input(key="proto_connection.pin_diameter_mm").set_value(3.5).run()
     assert any("katalog pim seti yok" in e.value for e in at.error)
+
+
+def _pp_record(**over):
+    from pyfoldable.prototype import fit
+    base = ROOT / prototype_ui.PRINTED_PIN
+    rec = json.loads((base / "deneme_kaydi.json").read_text(encoding="utf-8"))
+    rec.update(print_nozzle_mm=0.4, print_layer_mm=0.2, print_walls=3, print_infill_fraction=1.0,
+               print_slicer="Bambu Studio", pin_print_orientation="dik", pin_variant_mm=3.9, pin_diameter_a_mm=3.92,
+               insertion_fit="akıcı", clip_installs=True, clip_retains=True, rotation_free=True,
+               open_stop_seats=True, cycle_count=10)
+    rec.update(over)
+    assert fit.SCHEMA != rec["schema"]
+    return json.dumps(rec, ensure_ascii=False)
+
+
+def test_printed_pin_kit_is_shown_exported_and_its_trial_never_reaches_the_metal_design(fake):
+    at = go(app(), PAGE)
+    assert "Basılı pim gösterici" in " ".join(s.value for s in at.subheader) and "basılı pim gözlemi" in text(at)
+    keys = {b.key for b in at.get("download_button")}
+    assert {"proto_pp_zip", "proto_pp_template"} <= keys
+    names = zipfile.ZipFile(io.BytesIO(prototype_ui._folder_zip(str(ROOT / prototype_ui.PRINTED_PIN), ""))).namelist()
+    assert "F1S_printed_pin_demo/3mf/01A_kucuk_parcalar.3mf" in names and "F1S_printed_pin_demo/MONTAJ.md" in names
+    at.text_area(key="proto_pp_text").set_value(_pp_record(cycle_count=None)).run()
+    at.button(key="proto_pp_apply").click().run()
+    assert "Deneme kaydı kullanılamadı" in text(at) and "cycle_count" in text(at)
+    at.text_area(key="proto_pp_text").set_value(_pp_record(print_material_family="ASA")).run()
+    at.button(key="proto_pp_apply").click().run()
+    assert not at.exception and "basılı pim gözlemi (metal referans değil)" in text(at)
+    assert "metal pim için doğrudan kanıt: hayır" in text(at) and "ASA" in text(at)
+    assert "_proto_fit_record" not in at.session_state and "Ölçüm kaydı uygulanıyor" not in text(at)
+    at.text_area(key="proto_pp_text").set_value(_pp_record(print_material_family="ASA", cycle_count=11)).run()
+    assert "Kayıt metni değişti" in text(at) and "metal referans değil" not in text(at)   # no stale observation
+    at.button(key="proto_build").click().run()
+    c = at.session_state["_proto_build"]["result"]["design"].connection
+    assert c.measured_axial_play_mm is None and c.play_record_sha256 is None       # the metal design is untouched
+    at.text_area(key="proto_pp_text").set_value(prototype_ui.fit.SCHEMA).run()
+    at.button(key="proto_pp_apply").click().run()                     # a failed paste drops the earlier observation
+    assert "Deneme kaydı kullanılamadı" in text(at) and "metal referans değil" not in text(at)
+
+
+def test_printed_pin_build_shows_the_fold_playback_on_the_real_cad():
+    pytest.importorskip("build123d")
+    at = go(app(), PAGE)
+    at.button(key="proto_pp_build").click().run(timeout=300)
+    assert not at.exception and "Gösterici kurulamadı" not in text(at)
+    spec = next(s for s in specs(at) if len(s.get("frames", [])) > 5)
+    assert any("Distal" == tr.get("name") for tr in spec["data"])

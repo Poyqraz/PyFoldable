@@ -250,13 +250,38 @@ def fit_fixture(parts: Parts, clamp_mm=(20.0, 8.0), tab_mm=(12.0, 14.0, 3.0), le
     d = parts.design
     c = d.connection
     rj, L, px = c.hinge_radius_mm, d.fit_section_mm, c.pin_x_mm
-    fp, fd = fit_test(parts)
     (p0, _), (_, q1) = d.lug_bands_mm
     big = 400.0
     y_in = rj - L
     sec = section_points(d, y_in)
     # the block touches the stub cut face (an overlap merges the bed faces into a pinched, non-manifold mesh face)
     block = _box(b3d, sec[:, 0].min(), sec[:, 0].max(), y_in - clamp_mm[0], y_in, p0, p0 + clamp_mm[1])
+    fp, fd = print_trimmed_stubs(parts)
+    prox = _single(fp + block, "fit proximal with clamp block")
+    y_out = rj + L
+    w, length, t = tab_mm
+    if not (lever_mm - L >= 3.0 and L + length - lever_mm >= 3.0):           # hole on the tab, ≥ 3 mm from its ends
+        raise RuntimeError("Load-tab hole does not fit on the tab (adjust the lever or the tab length).")
+    out = section_points(d, y_out, c.axial_offset_mm)
+    zt = q1                                                                      # tab top on the washer-seat plane
+    if not float(out[np.abs(out[:, 0] - px) <= 2.0, 2].max()) > zt - t:
+        raise RuntimeError("Load tab does not reach the distal stub section (raise the tab thickness).")
+    tab = _box(b3d, px - w / 2.0, px + w / 2.0, y_out - 1.0, y_out + length, zt - t, zt)
+    tab = tab - _zcyl(b3d, px, rj + lever_mm, zt - t - 1.0, zt + 1.0, 1.6)
+    dist = _single(fd + tab, "fit distal with load tab")
+    return prox, dist, float(lever_mm)
+
+
+def print_trimmed_stubs(parts: Parts):
+    """The fit-test stubs trimmed for printing (proximal: z ≥ p0, its washer-seat plane on the bed; distal: z ≤ q1,
+    printed inverted on that plane), refused when a trim would remove joint material or clip the stop nose."""
+    b3d = _b3d()
+    d = parts.design
+    c = d.connection
+    rj, px = c.hinge_radius_mm, c.pin_x_mm
+    fp, fd = fit_test(parts)
+    (p0, _), (_, q1) = d.lug_bands_mm
+    big = 400.0
     if parts.meta["nose_z_mm"][1] > q1 + 1e-6:
         raise RuntimeError("The stop nose rises above the distal washer-seat plane; the print trim would clip it.")
     x_front = parts.meta["stop_x_mm"][0]
@@ -268,19 +293,8 @@ def fit_fixture(parts: Parts, clamp_mm=(20.0, 8.0), tab_mm=(12.0, 14.0, 3.0), le
         cut_joint = None if removed is None else removed & zone
         if cut_joint is not None and cut_joint.volume > 1e-2:                       # above boolean slivers at the cut plane
             raise RuntimeError(f"The {name} print trim would remove joint material (pin, boss, relief or stop).")
-    prox = _single((fp & _box(b3d, -big, big, -big, big, p0, big)) + block, "fit proximal with clamp block")
-    y_out = rj + L
-    w, length, t = tab_mm
-    if not (lever_mm - L >= 3.0 and L + length - lever_mm >= 3.0):           # hole on the tab, ≥ 3 mm from its ends
-        raise RuntimeError("Load-tab hole does not fit on the tab (adjust the lever or the tab length).")
-    out = section_points(d, y_out, c.axial_offset_mm)
-    zt = q1                                                                      # tab top on the washer-seat plane
-    if not float(out[np.abs(out[:, 0] - px) <= 2.0, 2].max()) > zt - t:
-        raise RuntimeError("Load tab does not reach the distal stub section (raise the tab thickness).")
-    tab = _box(b3d, px - w / 2.0, px + w / 2.0, y_out - 1.0, y_out + length, zt - t, zt)
-    tab = tab - _zcyl(b3d, px, rj + lever_mm, zt - t - 1.0, zt + 1.0, 1.6)
-    dist = _single((fd & _box(b3d, -big, big, -big, big, -big, q1)) + tab, "fit distal with load tab")
-    return prox, dist, float(lever_mm)
+    return (_single(fp & _box(b3d, -big, big, -big, big, p0, big), "trimmed fit proximal"),
+            _single(fd & _box(b3d, -big, big, -big, big, -big, q1), "trimmed fit distal"))
 
 
 def hole_coupon(d: PrototypeDesign, steps=(0.0, 0.1, 0.2, 0.3, 0.4)):
