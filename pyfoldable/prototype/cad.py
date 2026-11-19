@@ -67,16 +67,21 @@ def section_points(d: PrototypeDesign, radius_mm: float, z_offset_mm: float = 0.
     return np.column_stack([X * c + Z * s, np.full(len(prof), radius_mm), -X * s + Z * c + z_offset_mm])
 
 
-def _wire(pts):
+def _wire(pts, parameters=None):
     b3d = _b3d()
     v = [b3d.Vector(*map(float, p)) for p in pts]
-    return b3d.Wire([b3d.Edge.make_spline(v), b3d.Edge.make_line(v[-1], v[0])])
+    return b3d.Wire([b3d.Edge.make_spline(v, parameters=parameters), b3d.Edge.make_line(v[-1], v[0])])
 
 
 def _loft(d: PrototypeDesign, radii, z_offset, chord_of=None):
+    """Loft through the section splines. All sections share the first section's chord-length parameters, so their
+    knot vectors coincide; per-section knots (the trailing-edge thickening varies with chord) merged into a skin of
+    ~1700 poles that CAD tools such as SolidWorks drop on STEP import. The splines still pass through every point."""
     b3d = _b3d()
-    wires = [_wire(section_points(d, r, z_offset, None if chord_of is None else chord_of(r))) for r in radii]
-    return b3d.Solid.make_loft(wires, ruled=False)
+    secs = [section_points(d, r, z_offset, None if chord_of is None else chord_of(r)) for r in radii]
+    t = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(secs[0], axis=0), axis=1))])
+    params = [float(x) for x in t / t[-1]]
+    return b3d.Solid.make_loft([_wire(s, params) for s in secs], ruled=False)
 
 
 def _radii(d: PrototypeDesign, r0, r1, step=4.0):

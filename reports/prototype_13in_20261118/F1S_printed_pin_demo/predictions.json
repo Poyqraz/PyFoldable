@@ -45,10 +45,10 @@
   ]
  },
  "geometry": {
-  "stack_mm": 10.836552162816021,
-  "pin_length_mm": 15.58655216281602,
-  "grip_near_flank_mm": 10.986552162816022,
-  "grip_far_flank_mm": 12.78655216281602,
+  "stack_mm": 10.836552162815932,
+  "pin_length_mm": 15.58655216281593,
+  "grip_near_flank_mm": 10.986552162815933,
+  "grip_far_flank_mm": 12.786552162815932,
   "groove_start_above_stack_mm": 0.15000000000000036,
   "groove_width_mm": 1.799999999999999,
   "groove_root_mm": 3.0,
@@ -106,18 +106,18 @@
  "fold": {
   "useful_travel_deg": 143.0,
   "tightest_angle_deg": -103.0,
-  "min_gap_mm": 0.4801077560075653,
+  "min_gap_mm": 0.4801204832450945,
   "folded_stop_deg": 144.0,
   "tightest_distance_from_pin_mm": 19.044847847121286,
   "tightest_gap_with_rocking_mm": {
-   "3.80": -1.4206469895613134,
-   "3.90": -1.3631407986158435,
-   "4.00": -0.8487246137413738
+   "3.80": -1.4206342623237842,
+   "3.90": -1.3631280713783143,
+   "4.00": -0.8487118865038445
   },
   "tightest_gap_with_rocking_clip_bearing_mm": {
-   "3.80": -0.8742815973611571,
-   "3.90": -0.8742815973611571,
-   "4.00": -0.8487246137413738
+   "3.80": -0.8742688701236279,
+   "3.90": -0.8742688701236279,
+   "4.00": -0.8487118865038445
   },
   "body_contact_deg": null,
   "metal_design_required_travel_deg": 140.0,

@@ -441,6 +441,10 @@ nor the metal clearance is changed because a printed pin fits.
   - `3mf/01A_kucuk_parcalar.3mf`: the coupon, the three pins and three clips; no supports, no brim;
   - `3mf/01B_mafsal_cifti.3mf`: the joint pair, with tree supports from the plate and a 3 mm brim.
 - **Geometry files:** STL per part in print orientation, and STEP per part in the assembly frame.
+  - All loft sections share one spline parameterisation, so the blade skin stays a compact B-spline (97 control
+    points around the section).
+  - Before this, the distal skin carried about 1700 merged knots, and SolidWorks dropped it on STEP import. The solid
+    itself is unchanged.
 - **Views:** exploded assembly, a section through the pivot, and plan views at open, tightest and folded.
 - **Turkish documents:** start-here, print guide, assembly, a hand-trial protocol (insertion and removal, rotation,
   stop seating, fold, interference, clip retention, declared cycles, photos; no force measurement), and the

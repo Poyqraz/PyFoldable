@@ -248,3 +248,18 @@ def test_rocking_bounds_are_ordered_and_contact_is_expected_under_both(chk):
     assert all(v < 0.0 for v in f["tightest_gap_with_rocking_clip_bearing_mm"].values())   # robust to the convention
     assert all(a <= b for a, b in zip(f["tightest_gap_with_rocking_mm"].values(),
                                       f["tightest_gap_with_rocking_clip_bearing_mm"].values()))
+
+
+def test_lofted_stub_surfaces_stay_compact_for_cad_exchange(demo):
+    # Each loft section used to get its own spline knots (the trailing-edge thickening changes with chord), so the
+    # loft merged them into a ~1700-pole skin that SolidWorks dropped on STEP import, leaving only the planar faces.
+    from OCP.BRepAdaptor import BRepAdaptor_Surface
+    from OCP.GeomAbs import GeomAbs_SurfaceType
+    poles = {}
+    for name in ("proximal", "distal"):
+        for face in getattr(demo["parts"], name).faces():
+            a = BRepAdaptor_Surface(face.wrapped)
+            if a.GetType() == GeomAbs_SurfaceType.GeomAbs_BSplineSurface:
+                poles[name] = max(poles.get(name, 0), a.BSpline().NbUPoles())
+    assert set(poles) == {"proximal", "distal"}
+    assert max(poles.values()) <= 120, poles          # 97 around the 95-point section; ~1700 when knots merge
